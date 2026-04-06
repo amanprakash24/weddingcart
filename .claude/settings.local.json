@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npm install:*)",
+      "Bash(mkdir -p C:/Users/praka/OneDrive/Desktop/weddingcart/lib/models)",
+      "Bash(mkdir -p C:/Users/praka/OneDrive/Desktop/weddingcart/types)",
+      "Bash(mkdir -p C:/Users/praka/OneDrive/Desktop/weddingcart/context)",
+      "Bash(mkdir -p C:/Users/praka/OneDrive/Desktop/weddingcart/components)",
+      "Bash(mkdir -p C:/Users/praka/OneDrive/Desktop/weddingcart/data)",
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\(Object.keys\\(l\\).filter\\(k => k.toLowerCase\\(\\).includes\\('instagram'\\) || k.toLowerCase\\(\\).includes\\('facebook'\\) || k.toLowerCase\\(\\).includes\\('twitter'\\) || k.toLowerCase\\(\\).includes\\('youtube'\\) || k.toLowerCase\\(\\).includes\\('share'\\)\\).join\\(', '\\)\\)\")",
+      "Bash(npm run:*)",
+      "Bash(curl -s http://localhost:3000)"
+    ]
+  }
+}
