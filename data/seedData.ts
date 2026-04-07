@@ -1,6 +1,6 @@
 import { Category, Vendor } from '@/types';
 
-export const CITIES = ['Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa', 'Pune'];
+export const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 
 export const CATEGORIES: Category[] = [
   {

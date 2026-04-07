@@ -12,7 +12,7 @@ const categories = [
   { label: 'Photo & Video', href: '/categories/photo-video' },
 ];
 
-const cities = ['Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Udaipur', 'Goa', 'Pune'];
+const cities = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Udaipur', 'Goa'];
 
 export default function Footer() {
   return (
@@ -26,13 +26,14 @@ export default function Footer() {
               <Heart className="w-6 h-6 fill-rose-500 text-rose-500" />
               <span className="text-xl font-bold text-white font-[Playfair_Display,serif]">WeddingCart</span>
             </div>
-            <p className="text-gray-400 text-sm leading-relaxed mb-5">
+            <p className="text-gray-400 text-sm leading-relaxed mb-1">
               India&apos;s premier wedding planning marketplace. Discover, compare, and book top vendors for your dream wedding.
             </p>
+            <p className="text-gray-500 text-xs mb-5">Founded by <span className="text-amber-400 font-medium">Gaurav Singh</span>, Patna, Bihar.</p>
             <div className="space-y-2.5 text-sm">
               <div className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <a href="tel:+911800000000" className="hover:text-amber-400 transition-colors">1800-000-0000 (Toll Free)</a>
+                <a href="tel:+917070486987" className="hover:text-amber-400 transition-colors">+91 70704 86987</a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-amber-400 flex-shrink-0" />
@@ -40,7 +41,7 @@ export default function Footer() {
               </div>
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                <span>New Delhi, India - 110001</span>
+                <span>Patna, Bihar, India</span>
               </div>
             </div>
           </div>
@@ -125,7 +126,7 @@ export default function Footer() {
           <div className="flex items-center gap-1.5 text-gray-500 text-sm">
             <span>Made with</span>
             <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-            <span>for couples across India</span>
+            <span>in Patna, Bihar for couples across India</span>
           </div>
         </div>
       </div>

@@ -14,12 +14,11 @@ export default function VendorDetailClient({ id }: Props) {
   const [loading, setLoading] = useState(true);
   const [imgIdx, setImgIdx] = useState(0);
   const [lightbox, setLightbox] = useState<number | null>(null);
-  const [selectedPkg, setSelectedPkg] = useState<Package | null>(null);
   const [showEnquiry, setShowEnquiry] = useState(false);
   const [enquiryForm, setEnquiryForm] = useState({ name: '', phone: '', email: '', eventDate: '', guestCount: '', eventType: 'wedding', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const { addItem } = useCart();
+  const { addItem, removeItem, items } = useCart();
 
   useEffect(() => {
     fetch(`/api/vendors/${id}`)
@@ -28,11 +27,26 @@ export default function VendorDetailClient({ id }: Props) {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Check if a specific package is already in cart
+  const isInCart = (pkgId: string) =>
+    items.some((i) => i.vendor.id === vendor?.id && i.package.id === pkgId);
+
   const handleAddToCart = (pkg: Package) => {
     if (!vendor) return;
+
+    // Toggle: if this exact package is in cart, remove it
+    if (isInCart(pkg.id)) {
+      removeItem(vendor.id, pkg.id);
+      return;
+    }
+
+    // One vendor per category: remove any existing item from the same category
+    const existingInCategory = items.find((i) => i.vendor.category === vendor.category);
+    if (existingInCategory) {
+      removeItem(existingInCategory.vendor.id, existingInCategory.package.id);
+    }
+
     addItem(vendor, pkg);
-    setSelectedPkg(pkg);
-    setTimeout(() => setSelectedPkg(null), 2000);
   };
 
   const handleEnquiry = async (e: React.FormEvent) => {
@@ -247,16 +261,16 @@ export default function VendorDetailClient({ id }: Props) {
                     <button
                       onClick={() => handleAddToCart(pkg)}
                       className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                        selectedPkg?.id === pkg.id
-                          ? 'bg-emerald-500 text-white'
+                        isInCart(pkg.id)
+                          ? 'bg-emerald-500 text-white hover:bg-rose-500'
                           : pkg.isPopular
                           ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:opacity-90'
                           : 'bg-white border-2 border-amber-400 text-amber-600 hover:bg-amber-500 hover:text-white hover:border-amber-500'
                       }`}
                     >
-                      {selectedPkg?.id === pkg.id ? (
+                      {isInCart(pkg.id) ? (
                         <span className="flex items-center justify-center gap-2">
-                          <Check className="w-4 h-4" /> Added to Plan!
+                          <Check className="w-4 h-4" /> Added — Click to Remove
                         </span>
                       ) : (
                         'Add to Plan'

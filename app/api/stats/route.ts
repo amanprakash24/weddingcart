@@ -4,18 +4,21 @@ import VendorModel from '@/lib/models/Vendor';
 import CategoryModel from '@/lib/models/Category';
 import EnquiryModel from '@/lib/models/Enquiry';
 import ConsultationModel from '@/lib/models/Consultation';
+import BookingModel from '@/lib/models/Booking';
 
 export async function GET() {
   try {
     await connectDB();
 
-    const [vendors, categories, enquiries, consultations, newEnquiries, newConsultations] = await Promise.all([
+    const [vendors, categories, enquiries, consultations, newEnquiries, newConsultations, bookings, newBookings] = await Promise.all([
       VendorModel.countDocuments(),
       CategoryModel.countDocuments(),
       EnquiryModel.countDocuments(),
       ConsultationModel.countDocuments(),
       EnquiryModel.countDocuments({ status: 'new' }),
       ConsultationModel.countDocuments({ status: 'new' }),
+      BookingModel.countDocuments(),
+      BookingModel.countDocuments({ status: 'new' }),
     ]);
 
     return NextResponse.json({
@@ -27,6 +30,8 @@ export async function GET() {
         consultations,
         newEnquiries,
         newConsultations,
+        bookings,
+        newBookings,
       },
     });
   } catch (error) {

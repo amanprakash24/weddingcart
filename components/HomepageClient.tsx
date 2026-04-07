@@ -15,7 +15,7 @@ const HERO_IMAGES = [
   'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=1920&q=90',
 ];
 
-const CITIES = ['All Cities', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa', 'Pune'];
+const CITIES = ['All Cities', 'Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 
 const HOW_IT_WORKS = [
   {
@@ -151,37 +151,17 @@ export default function HomepageClient() {
               Discover and book top-rated venues, photographers, caterers, makeup artists and more — all in one place.
             </p>
 
-            {/* Search bar */}
-            <form onSubmit={handleSearch} className="animate-slide-up animation-delay-300">
-              <div className="bg-white rounded-2xl p-2 shadow-2xl flex flex-col sm:flex-row gap-2">
-                <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-gray-50 rounded-xl">
-                  <Search className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Search vendors, venues, photographers..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="bg-transparent flex-1 text-gray-900 placeholder-gray-400 text-sm outline-none"
-                  />
-                </div>
-                <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl sm:w-44">
-                  <MapPin className="w-4 h-4 text-rose-400 flex-shrink-0" />
-                  <select
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="bg-transparent flex-1 text-gray-700 text-sm outline-none cursor-pointer"
-                  >
-                    {CITIES.map((c) => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition-all whitespace-nowrap"
-                >
-                  Search
-                </button>
-              </div>
-            </form>
+            {/* Plan Your Wedding button */}
+            <div className="animate-slide-up animation-delay-300">
+              <Link
+                href="/plan"
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-2xl hover:opacity-90 hover:scale-105 transition-all"
+              >
+                <Sparkles className="w-5 h-5" />
+                Plan Your Wedding
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </div>
 
             {/* Stats */}
             <div className="flex flex-wrap gap-6 mt-8 animate-slide-up animation-delay-400">
@@ -229,6 +209,62 @@ export default function HomepageClient() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* ── SPECIAL / ON-DEMAND SERVICES ── */}
+      <section className="py-16 sm:py-20 bg-gradient-to-br from-rose-50 to-amber-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">On-Demand</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+              Special Services <span className="gradient-text">Offered by Us</span>
+            </h2>
+            <p className="text-gray-500 mt-2 text-sm">Additional services we arrange exclusively for your wedding — just tell us what you need</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[
+              { icon: '🛏️', label: 'Accommodation', desc: 'Guest stay arrangements near your venue', id: 'accommodation' },
+              { icon: '🎁', label: 'Gifts & Hampers', desc: 'Curated return gifts and wedding hampers', id: 'gifts' },
+              { icon: '✉️', label: 'Invitations & Stationery', desc: 'Printed & digital wedding invitation suites', id: 'invitations' },
+              { icon: '🚗', label: 'Transportation', desc: 'Luxury cars and guest fleet management', id: 'transport' },
+              { icon: '📋', label: 'Legal & Documentation', desc: 'Marriage registration and paperwork help', id: 'legal' },
+              { icon: '🤝', label: 'Hospitality', desc: 'End-to-end guest management & coordination', id: 'hospitality' },
+              { icon: '📝', label: 'Wedding Planning & Coordination', desc: 'Full-service planners for every detail', id: 'planning' },
+              { icon: '🔮', label: 'Astrologers & Pandits', desc: 'Muhurat, kundali & religious ceremony experts', id: 'astro' },
+              { icon: '👗', label: 'Bridal Lehenga', desc: 'Exquisite lehengas, sarees & bridal outfits', id: 'bridal-lehenga' },
+              { icon: '💍', label: 'Bridal Jewellery', desc: 'Traditional gold, kundan & diamond jewellery sets', id: 'bridal-jewellery' },
+              { icon: '🤵', label: 'Sherwani / Groom Wear', desc: 'Royal sherwanis, bandhgalas & Indo-western outfits', id: 'sherwani' },
+              { icon: '🎀', label: 'Trousseau Packing', desc: 'Creative & elegant trousseau packing services', id: 'trousseau' },
+            ].map((svc) => (
+              <Link
+                key={svc.id}
+                href="/plan"
+                className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-300 transition-all flex flex-col gap-3"
+              >
+                <div className="w-12 h-12 bg-amber-50 group-hover:bg-amber-100 rounded-xl flex items-center justify-center text-2xl transition-colors">
+                  {svc.icon}
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900 text-sm leading-tight mb-1 group-hover:text-amber-600 transition-colors">{svc.label}</p>
+                  <p className="text-gray-400 text-xs leading-relaxed">{svc.desc}</p>
+                </div>
+                <div className="mt-auto flex items-center gap-1 text-amber-600 text-xs font-semibold">
+                  Add to Plan <ArrowRight className="w-3 h-3" />
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="text-center mt-10">
+            <Link
+              href="/plan"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all hover:shadow-lg text-sm"
+            >
+              <Sparkles className="w-4 h-4" /> Start Planning Your Wedding
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -314,6 +350,7 @@ export default function HomepageClient() {
           </div>
         </div>
       </section>
+
 
       {/* ── FEATURED (Top Rated) ── */}
       {featuredVendors.length > 0 && (
@@ -462,7 +499,7 @@ export default function HomepageClient() {
                 Start Planning — Free
               </Link>
               <a
-                href="tel:+911800000000"
+                href="tel:+917070486987"
                 className="flex items-center justify-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 text-white font-semibold px-8 py-4 rounded-full hover:bg-white/25 transition-all text-sm"
               >
                 <Phone className="w-4 h-4" />

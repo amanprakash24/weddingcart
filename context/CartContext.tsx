@@ -27,7 +27,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       if (exists) {
         return {
           ...state,
-          isOpen: true,
           items: state.items.map((i) =>
             i.vendor.id === action.vendor.id && i.package.id === action.package.id
               ? { ...i, quantity: i.quantity + 1 }
@@ -37,7 +36,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       }
       return {
         ...state,
-        isOpen: true,
         items: [...state.items, { vendor: action.vendor, package: action.package, quantity: 1 }],
       };
     }

@@ -1,24 +1,92 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart, Menu, X, Heart, Phone } from 'lucide-react';
+import { ShoppingCart, Menu, X, Heart, Phone, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+
+const MEGA_MENU = [
+  {
+    heading: 'Venues',
+    items: [
+      { label: 'Wedding Venues', href: '/categories/venue', bold: true, icon: Home },
+      { label: 'Wedding Lawns & Farmhouses', href: '/categories/venue' },
+      { label: 'Hotels', href: '/categories/venue' },
+      { label: 'Banquet Halls', href: '/categories/venue' },
+      { label: 'Marriage Garden', href: '/categories/venue' },
+      { label: 'Kalyana Mandapams', href: '/categories/venue' },
+      { label: 'Wedding Resorts', href: '/categories/venue' },
+    ],
+  },
+  {
+    heading: 'Food & Hospitality',
+    items: [
+      { label: 'Caterers', href: '/categories/catering', bold: true, icon: UtensilsCrossed },
+      { label: 'Wedding Cakes', href: '/categories/catering' },
+      { label: 'Accommodation', href: '/categories/venue' },
+    ],
+  },
+  {
+    heading: 'Photography',
+    items: [
+      { label: 'Wedding Photographers', href: '/categories/photo-video', bold: true, icon: Camera },
+      { label: 'Wedding Videography', href: '/categories/photo-video' },
+      { label: 'Photobooth', href: '/categories/photo-video' },
+    ],
+  },
+  {
+    heading: 'Decor & Entertainment',
+    items: [
+      { label: 'Wedding Decorators', href: '/categories/decorator', bold: true, icon: Palette },
+      { label: 'Florists', href: '/categories/decorator' },
+      { label: 'Wedding Entertainment', href: '/categories/band', bold: true, icon: Music },
+      { label: 'Wedding DJ', href: '/categories/dj' },
+      { label: 'Wedding Music / Band', href: '/categories/band' },
+      { label: 'Wedding Choreographers', href: '/categories/band' },
+    ],
+  },
+  {
+    heading: 'Bridal & Groom',
+    items: [
+      { label: 'Bridal Makeup Artists', href: '/categories/makeup', bold: true, icon: Star },
+      { label: 'Mehndi Artists', href: '/categories/mehndi' },
+      { label: 'Bridal Lehenga', href: '/categories/makeup' },
+      { label: 'Trousseau Packing', href: '/categories/makeup' },
+      { label: 'Bridal Jewellery', href: '/categories/makeup' },
+      { label: 'Sherwani / Groom Wear', href: '/categories/makeup' },
+    ],
+  },
+  {
+    heading: 'Logistics & More',
+    items: [
+      { label: 'Wedding Transportation', href: '/categories/transport', bold: true, icon: Car },
+      { label: 'Tent House', href: '/categories/decorator' },
+      { label: 'Wedding Invitations', href: '/categories/invitations', bold: true, icon: Mail },
+      { label: 'Wedding Gifts', href: '/categories/gifts', bold: true, icon: Gift },
+      { label: 'Pandits', href: '/categories/planning' },
+      { label: 'Astrologers', href: '/categories/planning' },
+      { label: 'Legal & Documentation', href: '/categories/planning' },
+      { label: 'Wedding Planners', href: '/categories/planning', bold: true, icon: FileText },
+      { label: 'Hospitality', href: '/plan' },
+      { label: 'Honeymoon', href: '/categories/venue' },
+      { label: 'Party Places', href: '/categories/venue' },
+    ],
+  },
+];
 
 const navLinks = [
   { href: '/', label: 'Home' },
-  { href: '/categories/venue', label: 'Venues' },
-  { href: '/categories/makeup', label: 'Makeup' },
-  { href: '/categories/catering', label: 'Catering' },
-  { href: '/categories/photo-video', label: 'Photography' },
   { href: '/plan', label: 'Plan Wedding' },
 ];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { itemCount, openCart } = useCart();
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
+  const megaRef = useRef<HTMLDivElement>(null);
+  const { itemCount } = useCart();
   const pathname = usePathname();
   const isHome = pathname === '/';
 
@@ -30,15 +98,22 @@ export default function Navbar() {
 
   useEffect(() => {
     setMobileOpen(false);
+    setMegaOpen(false);
   }, [pathname]);
 
-  // Prevent body scroll when mobile menu open
+  // Close mega menu on outside click
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    const handler = (e: MouseEvent) => {
+      if (megaRef.current && !megaRef.current.contains(e.target as Node)) {
+        setMegaOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
@@ -46,7 +121,6 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Use z-[9999] so the nav is always above page content on all mobile browsers */}
       <nav
         style={{ zIndex: 9999 }}
         className={`fixed top-0 inset-x-0 transition-all duration-300 ${
@@ -58,22 +132,14 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link
-              href="/"
-              className="flex items-center gap-2 flex-shrink-0 py-2"
-              style={{ touchAction: 'manipulation' }}
-            >
+            <Link href="/" className="flex items-center gap-2 flex-shrink-0 py-2" style={{ touchAction: 'manipulation' }}>
               <div className="relative w-8 h-8">
                 <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-rose-500 rounded-full opacity-20 animate-spin-slow pointer-events-none" />
                 <div className="relative flex items-center justify-center w-8 h-8">
                   <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
                 </div>
               </div>
-              <span
-                className={`text-xl font-bold font-[Playfair_Display,serif] transition-colors ${
-                  isTransparent ? 'text-white' : 'gradient-text'
-                }`}
-              >
+              <span className={`text-xl font-bold font-[Playfair_Display,serif] transition-colors ${isTransparent ? 'text-white' : 'gradient-text'}`}>
                 WeddingCart
               </span>
             </Link>
@@ -96,32 +162,74 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
+
+              {/* Services mega menu trigger */}
+              <div className="relative" ref={megaRef}>
+                <button
+                  onClick={() => setMegaOpen((v) => !v)}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    megaOpen
+                      ? 'bg-amber-500 text-white'
+                      : isTransparent
+                      ? 'text-white/90 hover:text-white hover:bg-white/15'
+                      : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                  }`}
+                >
+                  All Services <ChevronDown className={`w-3.5 h-3.5 transition-transform ${megaOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {megaOpen && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[860px] bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 animate-fade-in">
+                    <div className="grid grid-cols-3 gap-6">
+                      {MEGA_MENU.map((col) => (
+                        <div key={col.heading}>
+                          <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2">{col.heading}</p>
+                          <ul className="space-y-1">
+                            {col.items.map((item) => (
+                              <li key={item.label}>
+                                <Link
+                                  href={item.href}
+                                  className={`flex items-center gap-1.5 text-sm py-1 transition-colors hover:text-amber-600 ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-500'}`}
+                                >
+                                  {item.icon && <item.icon className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
+                                  {item.label}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
+                      <p className="text-xs text-gray-400">Can&apos;t find what you need?</p>
+                      <Link href="/plan" className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:underline">
+                        <Sparkles className="w-3.5 h-3.5" /> Use the Planning Wizard
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-1">
               <a
-                href="tel:+911800000000"
+                href="tel:+917070486987"
                 style={{ touchAction: 'manipulation' }}
                 className={`hidden sm:flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full transition-all ${
-                  isTransparent
-                    ? 'text-white/90 hover:bg-white/15'
-                    : 'text-gray-600 hover:text-amber-600 hover:bg-amber-50'
+                  isTransparent ? 'text-white/90 hover:bg-white/15' : 'text-gray-600 hover:text-amber-600 hover:bg-amber-50'
                 }`}
               >
                 <Phone className="w-4 h-4" />
-                <span className="hidden md:inline">1800-000-0000</span>
+                <span className="hidden md:inline">70704 86987</span>
               </a>
 
-              {/* Cart button — min 44×44 tap target for mobile */}
-              <button
-                onClick={openCart}
-                aria-label="Open cart"
+              <Link
+                href="/cart"
+                aria-label="View cart"
                 style={{ touchAction: 'manipulation', minWidth: 44, minHeight: 44 }}
                 className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-all ${
-                  isTransparent
-                    ? 'text-white hover:bg-white/15'
-                    : 'text-gray-700 hover:bg-amber-50 hover:text-amber-600'
+                  isTransparent ? 'text-white hover:bg-white/15' : 'text-gray-700 hover:bg-amber-50 hover:text-amber-600'
                 }`}
               >
                 <ShoppingCart className="w-5 h-5" />
@@ -130,7 +238,7 @@ export default function Navbar() {
                     {itemCount > 9 ? '9+' : itemCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               <Link
                 href="/plan"
@@ -140,14 +248,11 @@ export default function Navbar() {
                 Start Planning
               </Link>
 
-              {/* Hamburger — min 44×44 tap target */}
               <button
                 onClick={() => setMobileOpen((v) => !v)}
                 style={{ touchAction: 'manipulation', minWidth: 44, minHeight: 44 }}
                 className={`lg:hidden flex items-center justify-center w-11 h-11 rounded-full transition-all ${
-                  isTransparent
-                    ? 'text-white hover:bg-white/15'
-                    : 'text-gray-700 hover:bg-gray-100'
+                  isTransparent ? 'text-white hover:bg-white/15' : 'text-gray-700 hover:bg-gray-100'
                 }`}
                 aria-label="Toggle menu"
                 aria-expanded={mobileOpen}
@@ -176,6 +281,36 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
+
+              {/* Mobile All Services accordion */}
+              <div>
+                <button
+                  onClick={() => setMobileServicesOpen((v) => !v)}
+                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-all min-h-[48px]"
+                >
+                  All Services
+                  <ChevronDown className={`w-4 h-4 transition-transform ${mobileServicesOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {mobileServicesOpen && (
+                  <div className="ml-4 mt-1 space-y-1 pb-2">
+                    {MEGA_MENU.map((col) => (
+                      <div key={col.heading} className="mb-3">
+                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest px-3 py-1">{col.heading}</p>
+                        {col.items.map((item) => (
+                          <Link
+                            key={item.label}
+                            href={item.href}
+                            className={`block px-3 py-2 rounded-lg text-sm transition-colors hover:text-amber-600 hover:bg-amber-50 ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-500'}`}
+                          >
+                            {item.label}
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="pt-2 pb-1">
                 <Link
                   href="/plan"
@@ -187,12 +322,12 @@ export default function Navbar() {
               </div>
               <div className="pb-2">
                 <a
-                  href="tel:+911800000000"
+                  href="tel:+917070486987"
                   style={{ touchAction: 'manipulation' }}
                   className="flex items-center justify-center gap-2 w-full border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm min-h-[48px]"
                 >
                   <Phone className="w-4 h-4" />
-                  Call: 1800-000-0000
+                  Call: 70704 86987
                 </a>
               </div>
             </div>
@@ -200,7 +335,6 @@ export default function Navbar() {
         )}
       </nav>
 
-      {/* Mobile menu backdrop — closes menu on tap outside */}
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/20"

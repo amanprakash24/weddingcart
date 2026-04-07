@@ -19,7 +19,7 @@ const CATEGORY_INFO: Record<string, { name: string; desc: string; image: string 
   'photo-video': { name: 'Photo & Video', desc: 'Capture every precious moment beautifully', image: 'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=1920&q=80' },
 };
 
-const CITIES = ['All Cities', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa', 'Pune'];
+const CITIES = ['All Cities', 'Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 const SORTS = [
   { value: 'rating', label: 'Top Rated' },
   { value: 'reviews', label: 'Most Reviewed' },

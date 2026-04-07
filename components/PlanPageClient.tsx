@@ -8,16 +8,27 @@ import { useCart } from '@/context/CartContext';
 const STEPS = ['Event Details', 'Services', 'Meal Plan', 'Venue Preference', 'Consultation'];
 
 const SERVICES = [
-  { id: 'venue', label: 'Venue', icon: '🏛️', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-  { id: 'makeup', label: 'Makeup Artist', icon: '💄', color: 'bg-pink-50 border-pink-200 text-pink-700' },
+  // ── Primary 8 categories (in original order) ──
+  { id: 'venue', label: 'Venues', icon: '🏛️', color: 'bg-blue-50 border-blue-200 text-blue-700' },
+  { id: 'makeup', label: 'Makeup Artists', icon: '💄', color: 'bg-pink-50 border-pink-200 text-pink-700' },
   { id: 'mehndi', label: 'Mehndi', icon: '🌿', color: 'bg-green-50 border-green-200 text-green-700' },
-  { id: 'decorator', label: 'Decorator', icon: '🌸', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-  { id: 'band', label: 'Band', icon: '🎺', color: 'bg-orange-50 border-orange-200 text-orange-700' },
+  { id: 'decorator', label: 'Decorators', icon: '🌸', color: 'bg-purple-50 border-purple-200 text-purple-700' },
+  { id: 'band', label: 'Band & Music', icon: '🎺', color: 'bg-orange-50 border-orange-200 text-orange-700' },
   { id: 'dj', label: 'DJ', icon: '🎧', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
   { id: 'catering', label: 'Catering', icon: '🍽️', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
   { id: 'photo-video', label: 'Photo & Video', icon: '📸', color: 'bg-teal-50 border-teal-200 text-teal-700' },
-  { id: 'invitations', label: 'Invitations', icon: '✉️', color: 'bg-rose-50 border-rose-200 text-rose-700' },
-  { id: 'transport', label: 'Transport', icon: '🚗', color: 'bg-gray-50 border-gray-200 text-gray-700' },
+  // ── Additional / On-demand services ──
+  { id: 'accommodation', label: 'Accommodation', icon: '🏨', color: 'bg-sky-50 border-sky-200 text-sky-700' },
+  { id: 'gifts', label: 'Gifts', icon: '🎁', color: 'bg-red-50 border-red-200 text-red-700' },
+  { id: 'invitations', label: 'Invitations & Stationery', icon: '✉️', color: 'bg-rose-50 border-rose-200 text-rose-700' },
+  { id: 'transport', label: 'Transportation', icon: '🚗', color: 'bg-gray-50 border-gray-200 text-gray-700' },
+  { id: 'legal', label: 'Legal & Documentation', icon: '📋', color: 'bg-slate-50 border-slate-200 text-slate-700' },
+  { id: 'hospitality', label: 'Hospitality', icon: '🤝', color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+  { id: 'planning', label: 'Wedding Planning & Coordination', icon: '📝', color: 'bg-violet-50 border-violet-200 text-violet-700' },
+  { id: 'bridal-lehenga', label: 'Bridal Lehenga', icon: '👗', color: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700' },
+  { id: 'bridal-jewellery', label: 'Bridal Jewellery', icon: '💍', color: 'bg-amber-50 border-amber-200 text-amber-700' },
+  { id: 'sherwani', label: 'Sherwani / Groom Wear', icon: '🤵', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+  { id: 'trousseau', label: 'Trousseau Packing', icon: '🎀', color: 'bg-lime-50 border-lime-200 text-lime-700' },
 ];
 
 const VENUE_TYPES = [
@@ -28,7 +39,7 @@ const VENUE_TYPES = [
   { id: 'banquet', label: 'Banquet Hall', icon: '🏛️', desc: 'Classic & elegant' },
   { id: 'beach', label: 'Beach Venue', icon: '🏖️', desc: 'Romantic & scenic' },
   { id: 'garden', label: 'Garden / Lawn', icon: '🌿', desc: 'Natural & fresh' },
-  { id: 'rooftop', label: 'Rooftop', icon: '🌆', desc: 'Urban & chic' },
+  { id: 'own-home', label: 'Own Home', icon: '🏠', desc: 'Personal & intimate' },
 ];
 
 const TIMES = ['9:00 AM', '11:00 AM', '1:00 PM', '3:00 PM', '5:00 PM', '7:00 PM'];
@@ -37,7 +48,7 @@ interface FormData {
   name: string; phone: string; email: string; weddingDate: string;
   days: number; guestCount: number; foodPreference: string;
   services: string[]; meals: Record<number, string[]>;
-  venueType: string; preferredTime: string; message: string;
+  venueType: string; consultationDate: string; preferredTime: string; message: string;
 }
 
 export default function PlanPageClient() {
@@ -48,7 +59,7 @@ export default function PlanPageClient() {
   const [form, setForm] = useState<FormData>({
     name: '', phone: '', email: '', weddingDate: '', days: 1,
     guestCount: 100, foodPreference: 'veg', services: [],
-    meals: {}, venueType: '', preferredTime: '', message: '',
+    meals: {}, venueType: '', consultationDate: '', preferredTime: '', message: '',
   });
 
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) =>
@@ -73,7 +84,7 @@ export default function PlanPageClient() {
   const canNext = () => {
     if (step === 0) return form.name && form.phone && form.weddingDate;
     if (step === 1) return form.services.length > 0;
-    if (step === 4) return form.preferredTime;
+    if (step === 4) return true;
     return true;
   };
 
@@ -104,11 +115,12 @@ export default function PlanPageClient() {
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-3 font-[Playfair_Display,serif]">You&apos;re All Set! 🎉</h2>
         <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-          Your wedding consultation has been scheduled. Our expert planner will call you at <strong>{form.preferredTime}</strong> to discuss your dream wedding.
+          Your wedding consultation has been scheduled. Our expert planner will call you on <strong>{form.consultationDate}</strong> at <strong>{form.preferredTime}</strong> to discuss your dream wedding.
         </p>
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 text-left space-y-2">
           <p className="text-sm text-gray-700"><span className="font-semibold">Name:</span> {form.name}</p>
           <p className="text-sm text-gray-700"><span className="font-semibold">Phone:</span> {form.phone}</p>
+          <p className="text-sm text-gray-700"><span className="font-semibold">Date:</span> {form.consultationDate}</p>
           <p className="text-sm text-gray-700"><span className="font-semibold">Call Time:</span> {form.preferredTime}</p>
           {total > 0 && <p className="text-sm text-gray-700"><span className="font-semibold">Plan Budget:</span> ₹{total.toLocaleString('en-IN')}</p>}
         </div>
@@ -374,18 +386,38 @@ export default function PlanPageClient() {
                       <p className="text-gray-500 text-xs">Get personalized vendor recommendations</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-                    {TIMES.map((t) => (
-                      <button key={t} onClick={() => updateField('preferredTime', t)}
-                        className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 text-xs font-semibold transition-all ${
-                          form.preferredTime === t
-                            ? 'border-amber-400 bg-amber-500 text-white'
-                            : 'border-gray-200 bg-white text-gray-600 hover:border-amber-300'
-                        }`}
-                      >
-                        <Clock className="w-3.5 h-3.5" /> {t}
-                      </button>
-                    ))}
+
+                  {/* Date picker */}
+                  <div className="mb-4">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                      Preferred Date <span className="text-gray-400 font-normal normal-case">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="date"
+                        min={new Date().toISOString().split('T')[0]}
+                        value={form.consultationDate}
+                        onChange={(e) => updateField('consultationDate', e.target.value)}
+                        className="w-full border border-amber-200 bg-white rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Time picker */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                      Preferred Time <span className="text-gray-400 font-normal normal-case">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="time"
+                        value={form.preferredTime}
+                        onChange={(e) => updateField('preferredTime', e.target.value)}
+                        className="w-full border border-amber-200 bg-white rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -403,7 +435,8 @@ export default function PlanPageClient() {
                     <div className="flex justify-between"><span>Duration</span><span className="font-medium text-gray-900">{form.days} day{form.days > 1 ? 's' : ''}</span></div>
                     <div className="flex justify-between"><span>Guests</span><span className="font-medium text-gray-900">{form.guestCount}</span></div>
                     <div className="flex justify-between"><span>Services</span><span className="font-medium text-gray-900">{form.services.length} selected</span></div>
-                    {form.venueType && <div className="flex justify-between"><span>Venue Type</span><span className="font-medium text-gray-900 capitalize">{form.venueType.replace('-', ' ')}</span></div>}
+                    {form.venueType && <div className="flex justify-between"><span>Venue Type</span><span className="font-medium text-gray-900 capitalize">{form.venueType.replace(/-/g, ' ')}</span></div>}
+                    {form.consultationDate && <div className="flex justify-between"><span>Consultation Date</span><span className="font-medium text-gray-900">{form.consultationDate}</span></div>}
                     {total > 0 && <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="font-semibold">Cart Total</span><span className="font-bold gradient-text">₹{total.toLocaleString('en-IN')}</span></div>}
                   </div>
                 </div>
