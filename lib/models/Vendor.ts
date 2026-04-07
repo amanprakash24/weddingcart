@@ -12,6 +12,9 @@ const PackageSchema = new Schema({
 export interface IVendor extends Document {
   id: string;
   name: string;
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail: string;
   category: string;
   city: string;
   priceMin: number;
@@ -29,6 +32,9 @@ export interface IVendor extends Document {
 const VendorSchema = new Schema<IVendor>({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
+  ownerName: { type: String, default: '' },
+  ownerPhone: { type: String, default: '' },
+  ownerEmail: { type: String, default: '' },
   category: { type: String, required: true },
   city: { type: String, required: true },
   priceMin: { type: Number, required: true },
@@ -46,4 +52,9 @@ const VendorSchema = new Schema<IVendor>({
 VendorSchema.index({ category: 1, city: 1, rating: -1 });
 VendorSchema.index({ name: 'text', description: 'text' });
 
-export default mongoose.models.Vendor || mongoose.model<IVendor>('Vendor', VendorSchema);
+// Delete cached model in development so schema changes (new fields) take effect without restart
+if (process.env.NODE_ENV !== 'production') {
+  delete (mongoose.models as Record<string, unknown>).Vendor;
+}
+
+export default mongoose.model<IVendor>('Vendor', VendorSchema);

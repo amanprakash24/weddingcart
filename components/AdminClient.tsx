@@ -1,8 +1,85 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, XCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search } from 'lucide-react';
+
+// ── Cloudinary image uploader ─────────────────────────────────────────────────
+function ImageUploadField({
+  value,
+  onChange,
+  required = false,
+  placeholder = 'Upload image',
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setError('');
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) {
+        onChange(data.url);
+      } else {
+        setError(data.error || 'Upload failed');
+      }
+    } catch {
+      setError('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {value ? (
+        <div className="relative inline-block">
+          <Image src={value} alt="preview" width={120} height={80} className="rounded-lg object-cover border border-gray-200" style={{ height: 80, width: 120, objectFit: 'cover' }} unoptimized />
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-colors"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50 transition-all disabled:opacity-50 w-full"
+        >
+          {uploading ? (
+            <><RefreshCw className="w-4 h-4 animate-spin" /> Uploading...</>
+          ) : (
+            <><Upload className="w-4 h-4" /> {placeholder}</>
+          )}
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        required={required && !value}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
+      />
+      {error && <p className="text-xs text-rose-500">{error}</p>}
+    </div>
+  );
+}
 
 type Tab = 'dashboard' | 'vendors' | 'categories' | 'enquiries' | 'consultations' | 'bookings';
 
@@ -20,7 +97,7 @@ const STATUS_COLORS = {
   closed: 'bg-gray-100 text-gray-500',
 };
 
-const EMPTY_VENDOR = { name: '', category: 'venue', city: 'Patna', priceMin: '', priceMax: '', rating: '4.5', reviewCount: '', description: '', features: '', isFeatured: false };
+const EMPTY_VENDOR = { name: '', ownerName: '', ownerPhone: '', ownerEmail: '', category: 'venue', city: 'Patna', priceMin: '', priceMax: '', rating: '4.5', reviewCount: '', description: '', features: '', isFeatured: false };
 const EMPTY_CATEGORY = { id: '', name: '', icon: '🏛️', description: '', image: '' };
 
 export default function AdminClient() {
@@ -41,6 +118,15 @@ export default function AdminClient() {
   const [vendorForm, setVendorForm] = useState(EMPTY_VENDOR);
   const [vendorImages, setVendorImages] = useState<string[]>(['']);
   const [packages, setPackages] = useState<PackageForm[]>([{ ...EMPTY_PACKAGE }]);
+  const vendorFormRef = useRef<HTMLDivElement>(null);
+  const [vendorSearch, setVendorSearch] = useState('');
+
+  // Scroll to form whenever it opens (add or edit)
+  useEffect(() => {
+    if (showAddVendor && vendorFormRef.current) {
+      vendorFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showAddVendor, editingVendor]);
 
   // Category form
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -89,6 +175,14 @@ export default function AdminClient() {
     fetchAll();
   };
 
+  const isVendorFormValid = Boolean(
+    vendorForm.name.trim() &&
+    vendorForm.description.trim() &&
+    vendorForm.priceMin &&
+    vendorForm.priceMax &&
+    vendorImages[0]?.trim()
+  );
+
   const addPackageRow = () => setPackages((p) => [...p, { ...EMPTY_PACKAGE }]);
   const removePackageRow = (i: number) => setPackages((p) => p.filter((_, idx) => idx !== i));
   const updatePackage = (i: number, key: keyof PackageForm, value: string | boolean) =>
@@ -105,7 +199,8 @@ export default function AdminClient() {
   const openEditVendor = (v: AnyRecord) => {
     setEditingVendor(v);
     setVendorForm({
-      name: v.name, category: v.category, city: v.city,
+      name: v.name, ownerName: v.ownerName || '', ownerPhone: v.ownerPhone || '', ownerEmail: v.ownerEmail || '',
+      category: v.category, city: v.city,
       priceMin: v.priceMin, priceMax: v.priceMax, rating: v.rating,
       reviewCount: v.reviewCount, description: v.description,
       features: (v.features || []).join(', '), isFeatured: v.isFeatured,
@@ -143,6 +238,9 @@ export default function AdminClient() {
     const cleanImages = vendorImages.map((u) => u.trim()).filter(Boolean);
     const payload = {
       ...vendorForm,
+      ownerName: vendorForm.ownerName.trim(),
+      ownerPhone: vendorForm.ownerPhone.trim(),
+      ownerEmail: vendorForm.ownerEmail.trim(),
       id: editingVendor ? editingVendor.id : `${vendorForm.category}-${Date.now()}`,
       image: cleanImages[0] || '',
       images: cleanImages,
@@ -325,23 +423,60 @@ export default function AdminClient() {
           {/* VENDORS */}
           {tab === 'vendors' && (
             <div>
-              <div className="flex justify-between items-center mb-5">
-                <p className="text-gray-500 text-sm">{vendors.length} vendors total</p>
-                <button onClick={openAddVendor} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all">
-                  <Plus className="w-4 h-4" /> Add Vendor
-                </button>
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <p className="text-gray-500 text-sm">{vendors.length} vendors total</p>
+                </div>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      value={vendorSearch}
+                      onChange={(e) => setVendorSearch(e.target.value)}
+                      placeholder="Search vendors..."
+                      className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                    />
+                  </div>
+                  <button onClick={openAddVendor} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all whitespace-nowrap">
+                    <Plus className="w-4 h-4" /> Add Vendor
+                  </button>
+                </div>
               </div>
 
               {showAddVendor && (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5 animate-fade-in">
+                <div ref={vendorFormRef} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5 animate-fade-in">
                   <h3 className="font-bold text-gray-900 mb-4 text-lg">{editingVendor ? 'Edit Vendor' : 'Add New Vendor'}</h3>
                   <form onSubmit={handleVendorSubmit} className="space-y-6">
                     {/* Basic info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Name *</label>
-                        <input required value={vendorForm.name} onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Vendor Name" />
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Business Name *</label>
+                        <input required value={vendorForm.name} onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="e.g. Sharma Photography Studio" />
                       </div>
+
+                      {/* Owner details — admin only */}
+                      <div className="sm:col-span-2">
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+                          <p className="text-xs font-bold text-blue-600 uppercase tracking-widest flex items-center gap-1.5">
+                            🔒 Owner Details <span className="font-normal normal-case text-blue-400">(admin only — not shown publicly)</span>
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Owner Name *</label>
+                              <input required value={vendorForm.ownerName} onChange={(e) => setVendorForm({ ...vendorForm, ownerName: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="Ramesh Sharma" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Contact Number *</label>
+                              <input required type="tel" value={vendorForm.ownerPhone} onChange={(e) => setVendorForm({ ...vendorForm, ownerPhone: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="+91 98765 43210" />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">Email <span className="text-gray-400 font-normal">(optional)</span></label>
+                              <input type="email" value={vendorForm.ownerEmail} onChange={(e) => setVendorForm({ ...vendorForm, ownerEmail: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="ramesh@example.com" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 mb-1">Category</label>
                         <select value={vendorForm.category} onChange={(e) => setVendorForm({ ...vendorForm, category: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
@@ -362,12 +497,12 @@ export default function AdminClient() {
                         <input type="number" step="0.1" min="1" max="5" value={vendorForm.rating} onChange={(e) => setVendorForm({ ...vendorForm, rating: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Min Price (₹)</label>
-                        <input type="number" value={vendorForm.priceMin} onChange={(e) => setVendorForm({ ...vendorForm, priceMin: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="50000" />
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Min Price (₹) <span className="text-rose-500">*</span></label>
+                        <input required type="number" value={vendorForm.priceMin} onChange={(e) => setVendorForm({ ...vendorForm, priceMin: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="50000" />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Max Price (₹)</label>
-                        <input type="number" value={vendorForm.priceMax} onChange={(e) => setVendorForm({ ...vendorForm, priceMax: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="200000" />
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Max Price (₹) <span className="text-rose-500">*</span></label>
+                        <input required type="number" value={vendorForm.priceMax} onChange={(e) => setVendorForm({ ...vendorForm, priceMax: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="200000" />
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 mb-1">Review Count</label>
@@ -377,21 +512,22 @@ export default function AdminClient() {
                         <div className="flex items-center justify-between mb-1">
                           <label className="block text-xs font-semibold text-gray-500">Image Gallery <span className="text-rose-500">*</span> <span className="text-gray-400 font-normal">(first image = cover)</span></label>
                           <button type="button" onClick={() => setVendorImages((imgs) => [...imgs, ''])} className="flex items-center gap-1 text-xs text-amber-600 border border-amber-300 px-2 py-1 rounded-lg hover:bg-amber-50 transition-all">
-                            <Plus className="w-3 h-3" /> Add Image
+                            <Plus className="w-3 h-3" /> Add Slot
                           </button>
                         </div>
                         <div className="space-y-2">
                           {vendorImages.map((url, i) => (
-                            <div key={i} className="flex gap-2 items-center">
-                              <input
-                                required={i === 0}
-                                value={url}
-                                onChange={(e) => setVendorImages((imgs) => imgs.map((u, idx) => idx === i ? e.target.value : u))}
-                                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
-                                placeholder={i === 0 ? 'Cover image URL (required)' : `Gallery image ${i + 1} URL (optional)`}
-                              />
+                            <div key={i} className="flex gap-2 items-start">
+                              <div className="flex-1">
+                                <ImageUploadField
+                                  value={url}
+                                  onChange={(u) => setVendorImages((imgs) => imgs.map((v, idx) => idx === i ? u : v))}
+                                  required={i === 0}
+                                  placeholder={i === 0 ? 'Upload cover image (required)' : `Upload gallery image ${i + 1} (optional)`}
+                                />
+                              </div>
                               {vendorImages.length > 1 && (
-                                <button type="button" onClick={() => setVendorImages((imgs) => imgs.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-600 transition-colors flex-shrink-0">
+                                <button type="button" onClick={() => setVendorImages((imgs) => imgs.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-600 transition-colors flex-shrink-0 mt-3">
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               )}
@@ -400,8 +536,8 @@ export default function AdminClient() {
                         </div>
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">Description</label>
-                        <textarea rows={3} value={vendorForm.description} onChange={(e) => setVendorForm({ ...vendorForm, description: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none" placeholder="Vendor description..." />
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Description <span className="text-rose-500">*</span></label>
+                        <textarea required rows={3} value={vendorForm.description} onChange={(e) => setVendorForm({ ...vendorForm, description: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none" placeholder="Vendor description..." />
                       </div>
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 mb-1">Features (comma-separated)</label>
@@ -451,7 +587,11 @@ export default function AdminClient() {
                               </div>
                               <div>
                                 <label className="block text-xs font-semibold text-gray-500 mb-1">Package Image <span className="text-gray-400 font-normal">(optional)</span></label>
-                                <input value={pkg.image} onChange={(e) => updatePackage(i, 'image', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="https://... (optional)" />
+                                <ImageUploadField
+                                  value={pkg.image}
+                                  onChange={(u) => updatePackage(i, 'image', u)}
+                                  placeholder="Upload package image (optional)"
+                                />
                               </div>
                               <div className="flex items-center gap-2">
                                 <input type="checkbox" id={`popular-${i}`} checked={pkg.isPopular} onChange={(e) => updatePackage(i, 'isPopular', e.target.checked)} className="w-4 h-4" />
@@ -463,13 +603,20 @@ export default function AdminClient() {
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
-                      <button type="submit" className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90">
+                    <div className="flex gap-3 items-center">
+                      <button
+                        type="submit"
+                        disabled={!isVendorFormValid}
+                        className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40 transition-opacity"
+                      >
                         {editingVendor ? 'Update' : 'Add'} Vendor
                       </button>
                       <button type="button" onClick={() => { setShowAddVendor(false); setEditingVendor(null); }} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-200">
                         Cancel
                       </button>
+                      {!isVendorFormValid && (
+                        <p className="text-xs text-rose-500">Fill all required <span className="text-rose-500 font-bold">*</span> fields to continue</p>
+                      )}
                     </div>
                   </form>
                 </div>
@@ -480,15 +627,36 @@ export default function AdminClient() {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
-                        {['Name', 'Category', 'City', 'Price Range', 'Rating', 'Packages', 'Featured', 'Actions'].map((h) => (
-                          <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                        {['Business', 'Owner / Contact', 'Category', 'City', 'Price Range', 'Rating', 'Pkgs', 'Actions'].map((h) => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {vendors.map((v) => (
+                      {vendors
+                        .filter((v) => {
+                          const q = vendorSearch.toLowerCase();
+                          return !q || v.name?.toLowerCase().includes(q) || v.category?.toLowerCase().includes(q) || v.city?.toLowerCase().includes(q) || v.ownerName?.toLowerCase().includes(q);
+                        })
+                        .map((v) => (
                         <tr key={v._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900">{v.name}</td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-semibold text-gray-900">{v.name}</p>
+                            {v.isFeatured && <span className="text-[10px] text-emerald-600 font-bold">★ Featured</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {v.ownerName ? (
+                              <div className="space-y-0.5">
+                                <p className="text-xs font-semibold text-gray-800">{v.ownerName}</p>
+                                {v.ownerPhone && (
+                                  <a href={`tel:${v.ownerPhone}`} className="text-xs text-blue-600 hover:underline block">{v.ownerPhone}</a>
+                                )}
+                                {v.ownerEmail && (
+                                  <a href={`mailto:${v.ownerEmail}`} className="text-xs text-gray-400 hover:underline block truncate max-w-[140px]">{v.ownerEmail}</a>
+                                )}
+                              </div>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
                           <td className="px-4 py-3"><span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full capitalize">{v.category}</span></td>
                           <td className="px-4 py-3 text-sm text-gray-600">{v.city}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">₹{(v.priceMin || 0).toLocaleString('en-IN')} – ₹{(v.priceMax || 0).toLocaleString('en-IN')}</td>
@@ -499,18 +667,18 @@ export default function AdminClient() {
                           </td>
                           <td className="px-4 py-3">
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
-                              {(v.packages || []).length} pkg{(v.packages || []).length !== 1 ? 's' : ''}
+                              {(v.packages || []).length}
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {v.isFeatured ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <XCircle className="w-5 h-5 text-gray-300" />}
-                          </td>
-                          <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <button onClick={() => openEditVendor(v)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                              <Link href={`/admin/vendors/${v.id}`} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="View">
+                                <Eye className="w-4 h-4" />
+                              </Link>
+                              <button onClick={() => openEditVendor(v)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                                 <Edit className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleDeleteVendor(v.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                              <button onClick={() => handleDeleteVendor(v.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -557,8 +725,13 @@ export default function AdminClient() {
                       <input required value={categoryForm.icon} onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="📸" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">Cover Image URL <span className="text-rose-500">*</span></label>
-                      <input required value={categoryForm.image} onChange={(e) => setCategoryForm({ ...categoryForm, image: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="https://..." />
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Cover Image <span className="text-rose-500">*</span></label>
+                      <ImageUploadField
+                        value={categoryForm.image}
+                        onChange={(u) => setCategoryForm({ ...categoryForm, image: u })}
+                        required
+                        placeholder="Upload cover image (required)"
+                      />
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-semibold text-gray-500 mb-1">Description *</label>

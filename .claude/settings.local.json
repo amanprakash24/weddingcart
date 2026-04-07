@@ -11,7 +11,11 @@
       "Bash(npx tsc:*)",
       "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\(Object.keys\\(l\\).filter\\(k => k.toLowerCase\\(\\).includes\\('instagram'\\) || k.toLowerCase\\(\\).includes\\('facebook'\\) || k.toLowerCase\\(\\).includes\\('twitter'\\) || k.toLowerCase\\(\\).includes\\('youtube'\\) || k.toLowerCase\\(\\).includes\\('share'\\)\\).join\\(', '\\)\\)\")",
       "Bash(npm run:*)",
-      "Bash(curl -s http://localhost:3000)"
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s \"http://localhost:3000/api/vendors?category=photo-video\")",
+      "Bash(curl -s \"http://localhost:3000/api/vendors?limit=100\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(v['name'], '|', v['category'], '|', v.get\\('image','NO_IMAGE'\\)[:40]\\) for v in d['data']]\")",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);j.data.forEach\\(v=>console.log\\(v.name,'->',v.category,'| img:',v.image?'yes':'EMPTY','| pkgs:',v.packages?.length\\)\\)}\\)\")"
     ]
   }
 }
