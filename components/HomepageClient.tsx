@@ -439,7 +439,7 @@ export default function HomepageClient() {
               },
               {
                 name: 'Sneha & Arjun',
-                city: 'Jaipur', rating: 4,
+                city: 'Jaipur', rating: 5,
                 text: 'From mehndi to photography, WeddingCart had the perfect vendors for our royal Rajasthani wedding. The team was helpful throughout. Couldn\'t have asked for a better experience!',
                 image: 'https://images.unsplash.com/photo-1587826080692-f439cd0b70da?w=200&q=80',
               },
