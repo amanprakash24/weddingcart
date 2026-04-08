@@ -77,7 +77,11 @@ export default function CategoryPageClient({ slug }: Props) {
       {/* Hero */}
       <section className="relative h-64 sm:h-80 flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          <Image src={info.image} alt={info.name} fill sizes="100vw" className="object-cover" priority />
+          {info.image ? (
+            <Image src={info.image} alt={info.name} fill sizes="100vw" className="object-cover" priority />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-rose-900 to-pink-800" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
         </div>
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">

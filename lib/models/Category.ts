@@ -7,6 +7,7 @@ export interface ICategory extends Document {
   description: string;
   vendorCount: number;
   image: string;
+  isSpecial: boolean;
 }
 
 const CategorySchema = new Schema<ICategory>({
@@ -16,6 +17,11 @@ const CategorySchema = new Schema<ICategory>({
   description: { type: String, required: true },
   vendorCount: { type: Number, default: 0 },
   image: { type: String, required: true },
+  isSpecial: { type: Boolean, default: false },
 }, { timestamps: true });
+
+if (process.env.NODE_ENV !== 'production') {
+  delete (mongoose.models as Record<string, unknown>).Category;
+}
 
 export default mongoose.models.Category || mongoose.model<ICategory>('Category', CategorySchema);

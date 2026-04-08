@@ -3,10 +3,17 @@ import { connectDB } from '@/lib/mongodb';
 import CategoryModel from '@/lib/models/Category';
 import VendorModel from '@/lib/models/Vendor';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectDB();
-    const categories = await CategoryModel.find().sort({ name: 1 }).lean();
+    const { searchParams } = new URL(req.url);
+    const isSpecialParam = searchParams.get('isSpecial');
+    const filter = isSpecialParam === 'true'
+      ? { isSpecial: true }
+      : isSpecialParam === 'false'
+      ? { isSpecial: { $ne: true } }
+      : {};
+    const categories = await CategoryModel.find(filter).sort({ name: 1 }).lean();
 
     // Sync vendor counts
     const vendorCounts = await VendorModel.aggregate([

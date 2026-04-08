@@ -7,8 +7,9 @@ export interface IEnquiry extends Document {
   name: string;
   phone: string;
   email?: string;
+  city: string;
   eventDate: string;
-  guestCount: string;
+  guestCount?: string;
   eventType: string;
   message?: string;
   status: 'new' | 'contacted' | 'closed';
@@ -22,8 +23,9 @@ const EnquirySchema = new Schema<IEnquiry>({
   name: { type: String, required: true },
   phone: { type: String, required: true },
   email: String,
+  city: { type: String, required: true },
   eventDate: { type: String, required: true },
-  guestCount: { type: String, required: true },
+  guestCount: String,
   eventType: { type: String, required: true },
   message: String,
   status: { type: String, enum: ['new', 'contacted', 'closed'], default: 'new' },

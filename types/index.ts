@@ -6,7 +6,19 @@ export type CategoryType =
   | 'band'
   | 'dj'
   | 'catering'
-  | 'photo-video';
+  | 'photo-video'
+  | 'accommodation'
+  | 'gifts'
+  | 'invitations'
+  | 'transport'
+  | 'legal'
+  | 'hospitality'
+  | 'planning'
+  | 'astro'
+  | 'bridal-lehenga'
+  | 'bridal-jewellery'
+  | 'sherwani'
+  | 'trousseau';
 
 export interface Package {
   id: string;
@@ -15,12 +27,16 @@ export interface Package {
   price: number;
   features: string[];
   isPopular?: boolean;
+  image?: string;
 }
 
 export interface Vendor {
   _id?: string;
   id: string;
   name: string;
+  ownerName?: string;
+  ownerPhone?: string;
+  ownerEmail?: string;
   category: CategoryType;
   city: string;
   priceMin: number;
@@ -43,6 +59,7 @@ export interface Category {
   description: string;
   vendorCount: number;
   image: string;
+  isSpecial?: boolean;
 }
 
 export interface CartItem {
@@ -60,8 +77,9 @@ export interface Enquiry {
   name: string;
   phone: string;
   email?: string;
+  city: string;
   eventDate: string;
-  guestCount: string;
+  guestCount?: string;
   eventType: string;
   message?: string;
   createdAt: string;

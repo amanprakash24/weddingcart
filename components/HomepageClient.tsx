@@ -50,6 +50,7 @@ export default function HomepageClient() {
   const [city, setCity] = useState('All Cities');
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [specialServices, setSpecialServices] = useState<Category[]>([]);
   const [featuredVendors, setFeaturedVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [vendorPage, setVendorPage] = useState(0);
@@ -64,13 +65,15 @@ export default function HomepageClient() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [catRes, vendorRes] = await Promise.all([
-        fetch('/api/categories'),
+      const [catRes, specialRes, vendorRes] = await Promise.all([
+        fetch('/api/categories?isSpecial=false'),
+        fetch('/api/categories?isSpecial=true'),
         fetch('/api/vendors?limit=50'),
       ]);
-      const [catData, vendorData] = await Promise.all([catRes.json(), vendorRes.json()]);
+      const [catData, specialData, vendorData] = await Promise.all([catRes.json(), specialRes.json(), vendorRes.json()]);
 
       if (catData.success) setCategories(catData.data);
+      if (specialData.success) setSpecialServices(specialData.data);
       if (vendorData.success) {
         setVendors(vendorData.data);
         setFeaturedVendors(vendorData.data.filter((v: Vendor) => v.isFeatured).slice(0, 8));
@@ -213,60 +216,66 @@ export default function HomepageClient() {
       </section>
 
       {/* ── SPECIAL / ON-DEMAND SERVICES ── */}
-      <section className="py-16 sm:py-20 bg-gradient-to-br from-rose-50 to-amber-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">On-Demand</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
-              Special Services <span className="gradient-text">Offered by Us</span>
-            </h2>
-            <p className="text-gray-500 mt-2 text-sm">Additional services we arrange exclusively for your wedding — just tell us what you need</p>
-          </div>
+      {(loading || specialServices.length > 0) && (
+        <section className="py-16 sm:py-20 bg-gradient-to-br from-rose-50 to-amber-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">On-Demand</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+                Special Services <span className="gradient-text">Offered by Us</span>
+              </h2>
+              <p className="text-gray-500 mt-2 text-sm">Additional services we arrange exclusively for your wedding — just tell us what you need</p>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[
-              { icon: '🛏️', label: 'Accommodation', desc: 'Guest stay arrangements near your venue', id: 'accommodation' },
-              { icon: '🎁', label: 'Gifts & Hampers', desc: 'Curated return gifts and wedding hampers', id: 'gifts' },
-              { icon: '✉️', label: 'Invitations & Stationery', desc: 'Printed & digital wedding invitation suites', id: 'invitations' },
-              { icon: '🚗', label: 'Transportation', desc: 'Luxury cars and guest fleet management', id: 'transport' },
-              { icon: '📋', label: 'Legal & Documentation', desc: 'Marriage registration and paperwork help', id: 'legal' },
-              { icon: '🤝', label: 'Hospitality', desc: 'End-to-end guest management & coordination', id: 'hospitality' },
-              { icon: '📝', label: 'Wedding Planning & Coordination', desc: 'Full-service planners for every detail', id: 'planning' },
-              { icon: '🔮', label: 'Astrologers & Pandits', desc: 'Muhurat, kundali & religious ceremony experts', id: 'astro' },
-              { icon: '👗', label: 'Bridal Lehenga', desc: 'Exquisite lehengas, sarees & bridal outfits', id: 'bridal-lehenga' },
-              { icon: '💍', label: 'Bridal Jewellery', desc: 'Traditional gold, kundan & diamond jewellery sets', id: 'bridal-jewellery' },
-              { icon: '🤵', label: 'Sherwani / Groom Wear', desc: 'Royal sherwanis, bandhgalas & Indo-western outfits', id: 'sherwani' },
-              { icon: '🎀', label: 'Trousseau Packing', desc: 'Creative & elegant trousseau packing services', id: 'trousseau' },
-            ].map((svc) => (
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="skeleton h-36 rounded-2xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {specialServices.map((svc) => (
+                  <Link
+                    key={svc.id}
+                    href={`/categories/${svc.id}`}
+                    className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-300 transition-all overflow-hidden flex flex-col"
+                  >
+                    {svc.image && (
+                      <div className="relative h-28 w-full overflow-hidden">
+                        <Image src={svc.image} alt={svc.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                        <span className="absolute bottom-2 left-3 text-2xl">{svc.icon}</span>
+                      </div>
+                    )}
+                    <div className="p-4 flex flex-col gap-2 flex-1">
+                      {!svc.image && (
+                        <div className="w-11 h-11 bg-amber-50 group-hover:bg-amber-100 rounded-xl flex items-center justify-center text-2xl transition-colors mb-1">
+                          {svc.icon}
+                        </div>
+                      )}
+                      <p className="font-bold text-gray-900 text-sm leading-tight group-hover:text-amber-600 transition-colors">{svc.name}</p>
+                      <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{svc.description}</p>
+                      <div className="mt-auto flex items-center gap-1 text-amber-600 text-xs font-semibold pt-1">
+                        View Vendors <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            <div className="text-center mt-10">
               <Link
-                key={svc.id}
                 href="/plan"
-                className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-300 transition-all flex flex-col gap-3"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all hover:shadow-lg text-sm"
               >
-                <div className="w-12 h-12 bg-amber-50 group-hover:bg-amber-100 rounded-xl flex items-center justify-center text-2xl transition-colors">
-                  {svc.icon}
-                </div>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm leading-tight mb-1 group-hover:text-amber-600 transition-colors">{svc.label}</p>
-                  <p className="text-gray-400 text-xs leading-relaxed">{svc.desc}</p>
-                </div>
-                <div className="mt-auto flex items-center gap-1 text-amber-600 text-xs font-semibold">
-                  Add to Plan <ArrowRight className="w-3 h-3" />
-                </div>
+                <Sparkles className="w-4 h-4" /> Start Planning Your Wedding
               </Link>
-            ))}
+            </div>
           </div>
-
-          <div className="text-center mt-10">
-            <Link
-              href="/plan"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all hover:shadow-lg text-sm"
-            >
-              <Sparkles className="w-4 h-4" /> Start Planning Your Wedding
-            </Link>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── TOP-RATED VENDORS ── */}
       <section className="py-16 sm:py-20 bg-[#FFFAF5]">

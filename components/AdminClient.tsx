@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search } from 'lucide-react';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -81,7 +81,7 @@ function ImageUploadField({
   );
 }
 
-type Tab = 'dashboard' | 'vendors' | 'categories' | 'enquiries' | 'consultations' | 'bookings';
+type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings';
 
 interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -132,6 +132,14 @@ export default function AdminClient() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<AnyRecord | null>(null);
   const [categoryForm, setCategoryForm] = useState(EMPTY_CATEGORY);
+
+  // Special services form (same shape as category, but isSpecial=true)
+  const [showAddSpecialCategory, setShowAddSpecialCategory] = useState(false);
+  const [editingSpecialCategory, setEditingSpecialCategory] = useState<AnyRecord | null>(null);
+  const [specialCategoryForm, setSpecialCategoryForm] = useState(EMPTY_CATEGORY);
+  // Special vendor form (reuses vendor form, category limited to special service ids)
+  const [showAddSpecialVendor, setShowAddSpecialVendor] = useState(false);
+  const [editingSpecialVendor, setEditingSpecialVendor] = useState<AnyRecord | null>(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -297,6 +305,119 @@ export default function AdminClient() {
     fetchAll();
   };
 
+  // ── Special service category handlers ─────────────────────────────────────
+  const specialCategories = categories.filter((c) => c.isSpecial);
+  const regularCategories = categories.filter((c) => !c.isSpecial);
+  const regularVendors = vendors.filter((v) => !specialCategories.some((sc) => sc.id === v.category));
+  const specialVendors = vendors.filter((v) => specialCategories.some((sc) => sc.id === v.category));
+
+  const openAddSpecialCategory = () => {
+    setEditingSpecialCategory(null);
+    setSpecialCategoryForm(EMPTY_CATEGORY);
+    setShowAddSpecialCategory(true);
+  };
+
+  const openEditSpecialCategory = (c: AnyRecord) => {
+    setEditingSpecialCategory(c);
+    setSpecialCategoryForm({ id: c.id, name: c.name, icon: c.icon, description: c.description, image: c.image || '' });
+    setShowAddSpecialCategory(true);
+  };
+
+  const handleSpecialCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingSpecialCategory) {
+      await fetch(`/api/categories/${editingSpecialCategory.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...specialCategoryForm, isSpecial: true }) });
+    } else {
+      await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...specialCategoryForm, isSpecial: true, vendorCount: 0 }) });
+    }
+    setShowAddSpecialCategory(false);
+    setEditingSpecialCategory(null);
+    setSpecialCategoryForm(EMPTY_CATEGORY);
+    fetchAll();
+  };
+
+  const handleDeleteSpecialCategory = async (id: string) => {
+    if (!confirm('Delete this special service category?')) return;
+    await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+    fetchAll();
+  };
+
+  const openAddSpecialVendor = () => {
+    setEditingSpecialVendor(null);
+    setEditingVendor(null);
+    setVendorForm({ ...EMPTY_VENDOR, category: specialCategories[0]?.id || '' });
+    setVendorImages(['']);
+    setPackages([{ ...EMPTY_PACKAGE }]);
+    setShowAddSpecialVendor(true);
+  };
+
+  const openEditSpecialVendor = (v: AnyRecord) => {
+    setEditingSpecialVendor(v);
+    setEditingVendor(v);
+    setVendorForm({
+      name: v.name, ownerName: v.ownerName || '', ownerPhone: v.ownerPhone || '', ownerEmail: v.ownerEmail || '',
+      category: v.category, city: v.city,
+      priceMin: v.priceMin, priceMax: v.priceMax, rating: v.rating,
+      reviewCount: v.reviewCount, description: v.description,
+      features: (v.features || []).join(', '), isFeatured: v.isFeatured,
+    });
+    const imgs = v.images?.length ? v.images : v.image ? [v.image] : [''];
+    setVendorImages(imgs);
+    setPackages(
+      v.packages?.length
+        ? v.packages.map((p: AnyRecord) => ({
+            name: p.name || '', price: String(p.price || ''),
+            description: p.description || '',
+            features: (p.features || []).join(', '),
+            isPopular: p.isPopular || false,
+            image: p.image || '',
+          }))
+        : [{ ...EMPTY_PACKAGE }]
+    );
+    setShowAddSpecialVendor(true);
+  };
+
+  const handleSpecialVendorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const builtPackages = packages
+      .filter((p) => p.name && p.price)
+      .map((p, i) => ({
+        id: `pkg-${i + 1}`, name: p.name, price: Number(p.price),
+        description: p.description,
+        features: p.features.split(',').map((f) => f.trim()).filter(Boolean),
+        isPopular: p.isPopular,
+        ...(p.image ? { image: p.image } : {}),
+      }));
+    const cleanImages = vendorImages.map((u) => u.trim()).filter(Boolean);
+    const payload = {
+      ...vendorForm,
+      ownerName: vendorForm.ownerName.trim(),
+      ownerPhone: vendorForm.ownerPhone.trim(),
+      ownerEmail: vendorForm.ownerEmail.trim(),
+      id: editingSpecialVendor ? editingSpecialVendor.id : `${vendorForm.category}-${Date.now()}`,
+      image: cleanImages[0] || '',
+      images: cleanImages,
+      priceMin: Number(vendorForm.priceMin),
+      priceMax: Number(vendorForm.priceMax),
+      rating: Number(vendorForm.rating),
+      reviewCount: Number(vendorForm.reviewCount),
+      features: vendorForm.features.split(',').map((f) => f.trim()).filter(Boolean),
+      packages: builtPackages,
+    };
+    if (editingSpecialVendor) {
+      await fetch(`/api/vendors/${editingSpecialVendor.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } else {
+      await fetch('/api/vendors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    }
+    setShowAddSpecialVendor(false);
+    setEditingSpecialVendor(null);
+    setEditingVendor(null);
+    setVendorForm(EMPTY_VENDOR);
+    setVendorImages(['']);
+    setPackages([{ ...EMPTY_PACKAGE }]);
+    fetchAll();
+  };
+
   const handleStatusChange = async (type: 'enquiries' | 'consultations', id: string, status: string) => {
     await fetch(`/api/${type}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
     fetchAll();
@@ -304,8 +425,10 @@ export default function AdminClient() {
 
   const TABS = [
     { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'vendors' as Tab, icon: Briefcase, label: 'Vendors', badge: stats?.vendors },
-    { id: 'categories' as Tab, icon: Tag, label: 'Categories', badge: stats?.categories },
+    { id: 'vendors' as Tab, icon: Briefcase, label: 'Vendors', badge: regularVendors.length },
+    { id: 'categories' as Tab, icon: Tag, label: 'Categories', badge: regularCategories.length },
+    { id: 'special-services' as Tab, icon: Sparkles, label: 'Special Services', badge: specialCategories.length },
+    { id: 'special-vendors' as Tab, icon: Briefcase, label: 'Special Vendors', badge: specialVendors.length, badgeColor: 'bg-violet-500' },
     { id: 'enquiries' as Tab, icon: MessageSquare, label: 'Enquiries', badge: stats?.newEnquiries, badgeColor: 'bg-rose-500' },
     { id: 'consultations' as Tab, icon: Phone, label: 'Consultations', badge: stats?.newConsultations, badgeColor: 'bg-rose-500' },
     { id: 'bookings' as Tab, icon: BookOpen, label: 'Bookings', badge: stats?.newBookings, badgeColor: 'bg-emerald-500' },
@@ -425,7 +548,7 @@ export default function AdminClient() {
             <div>
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <p className="text-gray-500 text-sm">{vendors.length} vendors total</p>
+                  <p className="text-gray-500 text-sm">{regularVendors.length} vendors total</p>
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <div className="relative flex-1 sm:w-64">
@@ -480,8 +603,8 @@ export default function AdminClient() {
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 mb-1">Category</label>
                         <select value={vendorForm.category} onChange={(e) => setVendorForm({ ...vendorForm, category: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
-                          {categories.length > 0
-                            ? categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
+                          {regularCategories.length > 0
+                            ? regularCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)
                             : ['venue', 'makeup', 'mehndi', 'decorator', 'band', 'dj', 'catering', 'photo-video'].map((c) => <option key={c} value={c}>{c}</option>)
                           }
                         </select>
@@ -633,7 +756,7 @@ export default function AdminClient() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {vendors
+                      {regularVendors
                         .filter((v) => {
                           const q = vendorSearch.toLowerCase();
                           return !q || v.name?.toLowerCase().includes(q) || v.category?.toLowerCase().includes(q) || v.city?.toLowerCase().includes(q) || v.ownerName?.toLowerCase().includes(q);
@@ -687,7 +810,7 @@ export default function AdminClient() {
                       ))}
                     </tbody>
                   </table>
-                  {vendors.length === 0 && (
+                  {regularVendors.length === 0 && (
                     <div className="text-center py-12 text-gray-400">
                       <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-30" />
                       <p className="text-sm">No vendors yet. Seed the database or add vendors manually.</p>
@@ -702,7 +825,7 @@ export default function AdminClient() {
           {tab === 'categories' && (
             <div>
               <div className="flex justify-between items-center mb-5">
-                <p className="text-gray-500 text-sm">{categories.length} categories total</p>
+                <p className="text-gray-500 text-sm">{regularCategories.length} categories total</p>
                 <button onClick={openAddCategory} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all">
                   <Plus className="w-4 h-4" /> Add Category
                 </button>
@@ -754,13 +877,13 @@ export default function AdminClient() {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
-                        {['Icon', 'Name', 'ID', 'Description', 'Vendors', 'Actions'].map((h) => (
+                        {['Icon', 'Name', 'ID', 'Description', 'Vendors', 'Image', 'Actions'].map((h) => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {categories.map((c) => (
+                      {regularCategories.map((c) => (
                         <tr key={c._id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3 text-2xl">{c.icon}</td>
                           <td className="px-4 py-3 text-sm font-semibold text-gray-900">{c.name}</td>
@@ -768,11 +891,21 @@ export default function AdminClient() {
                           <td className="px-4 py-3 text-sm text-gray-500 max-w-xs line-clamp-1">{c.description}</td>
                           <td className="px-4 py-3 text-sm font-bold text-amber-600">{c.vendorCount}</td>
                           <td className="px-4 py-3">
+                            {c.image ? (
+                              <div className="relative w-12 h-8 rounded-lg overflow-hidden border border-gray-200">
+                                <Image src={c.image} alt={c.name} fill className="object-cover" unoptimized />
+                              </div>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+                          <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <button onClick={() => openEditCategory(c)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                              <Link href={`/admin/categories/${c.id}`} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="View">
+                                <Eye className="w-4 h-4" />
+                              </Link>
+                              <button onClick={() => openEditCategory(c)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                                 <Edit className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleDeleteCategory(c.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                              <button onClick={() => handleDeleteCategory(c.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -781,7 +914,7 @@ export default function AdminClient() {
                       ))}
                     </tbody>
                   </table>
-                  {categories.length === 0 && (
+                  {regularCategories.length === 0 && (
                     <div className="text-center py-12 text-gray-400">
                       <Tag className="w-12 h-12 mx-auto mb-3 opacity-30" />
                       <p className="text-sm">No categories yet. Seed the database or add categories manually.</p>
@@ -792,34 +925,407 @@ export default function AdminClient() {
             </div>
           )}
 
-          {/* ENQUIRIES */}
-          {tab === 'enquiries' && (
-            <div className="space-y-3">
-              {enquiries.length === 0 && <div className="text-center py-12 text-gray-400"><p>No enquiries yet.</p></div>}
-              {enquiries.map((e) => (
-                <div key={e._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-gray-900 text-sm">{e.name}</h4>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[e.status as keyof typeof STATUS_COLORS]}`}>{e.status}</span>
+          {/* SPECIAL SERVICES — categories only */}
+          {tab === 'special-services' && (
+            <div>
+              {/* ── Special Service Categories ── */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Special Service Categories</h2>
+                    <p className="text-gray-400 text-xs mt-0.5">{specialCategories.length} special categories</p>
+                  </div>
+                  <button onClick={openAddSpecialCategory} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all">
+                    <Plus className="w-4 h-4" /> Add Special Category
+                  </button>
+                </div>
+
+                {showAddSpecialCategory && (
+                  <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-6 mb-5 animate-fade-in">
+                    <h3 className="font-bold text-gray-900 mb-4 text-lg flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-500" />
+                      {editingSpecialCategory ? 'Edit Special Service' : 'Add Special Service'}
+                    </h3>
+                    <form onSubmit={handleSpecialCategorySubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Category ID * <span className="text-gray-400 font-normal">(slug, e.g. &ldquo;trousseau&rdquo;)</span></label>
+                        <input required value={specialCategoryForm.id} onChange={(e) => setSpecialCategoryForm({ ...specialCategoryForm, id: e.target.value.toLowerCase().replace(/\s+/g, '-') })} disabled={!!editingSpecialCategory} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm disabled:bg-gray-50 disabled:text-gray-400 font-mono" placeholder="bridal-lehenga" />
                       </div>
-                      <p className="text-gray-500 text-xs">{e.vendorName} ({e.vendorCategory}) · {e.phone} · {e.eventDate}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">{e.guestCount} guests · {e.eventType}</p>
-                      {e.message && <p className="text-gray-600 text-xs mt-1.5 bg-gray-50 rounded-lg px-3 py-2">{e.message}</p>}
-                    </div>
-                    <div className="flex gap-2">
-                      {['new', 'contacted', 'closed'].map((s) => (
-                        <button key={s} onClick={() => handleStatusChange('enquiries', e._id, s)}
-                          className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
-                            e.status === s ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300'
-                          }`}
-                        >{s}</button>
-                      ))}
-                    </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Display Name *</label>
+                        <input required value={specialCategoryForm.name} onChange={(e) => setSpecialCategoryForm({ ...specialCategoryForm, name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Bridal Lehenga" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Icon (emoji) *</label>
+                        <input required value={specialCategoryForm.icon} onChange={(e) => setSpecialCategoryForm({ ...specialCategoryForm, icon: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="👗" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Cover Image <span className="text-rose-500">*</span></label>
+                        <ImageUploadField value={specialCategoryForm.image} onChange={(u) => setSpecialCategoryForm({ ...specialCategoryForm, image: u })} required placeholder="Upload cover image (required)" />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Description *</label>
+                        <textarea required rows={2} value={specialCategoryForm.description} onChange={(e) => setSpecialCategoryForm({ ...specialCategoryForm, description: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none" placeholder="What this special service offers..." />
+                      </div>
+                      <div className="sm:col-span-2 flex gap-3">
+                        <button type="submit" className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90">
+                          {editingSpecialCategory ? 'Update' : 'Add'} Special Service
+                        </button>
+                        <button type="button" onClick={() => { setShowAddSpecialCategory(false); setEditingSpecialCategory(null); }} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-200">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          {['Icon', 'Name', 'ID', 'Description', 'Vendors', 'Image', 'Actions'].map((h) => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {specialCategories.map((c) => (
+                          <tr key={c._id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 text-2xl">{c.icon}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-gray-900">{c.name}</td>
+                            <td className="px-4 py-3"><span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-mono">{c.id}</span></td>
+                            <td className="px-4 py-3 text-sm text-gray-500 max-w-xs line-clamp-1">{c.description}</td>
+                            <td className="px-4 py-3 text-sm font-bold text-amber-600">{specialVendors.filter((v) => v.category === c.id).length}</td>
+                            <td className="px-4 py-3">
+                              {c.image ? (
+                                <div className="relative w-12 h-8 rounded-lg overflow-hidden border border-gray-200">
+                                  <Image src={c.image} alt={c.name} fill className="object-cover" unoptimized />
+                                </div>
+                              ) : <span className="text-xs text-gray-300">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <Link href={`/admin/categories/${c.id}`} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="View">
+                                  <Eye className="w-4 h-4" />
+                                </Link>
+                                <button onClick={() => openEditSpecialCategory(c)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDeleteSpecialCategory(c.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {specialCategories.length === 0 && (
+                      <div className="text-center py-12 text-gray-400">
+                        <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">No special services yet. Add your first special service category above.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* ── hint ── */}
+              <div className="mt-6 bg-violet-50 border border-violet-100 rounded-2xl px-5 py-4 flex items-center gap-3">
+                <Sparkles className="w-5 h-5 text-violet-400 flex-shrink-0" />
+                <p className="text-sm text-violet-700">To add or manage vendors for these special services, go to the <button onClick={() => setTab('special-vendors')} className="font-bold underline hover:text-violet-900">Special Vendors</button> tab.</p>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIAL VENDORS — vendors in special services */}
+          {tab === 'special-vendors' && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Special Service Vendors</h2>
+                  <p className="text-gray-400 text-xs mt-0.5">{specialVendors.length} vendors across {specialCategories.length} special services</p>
+                </div>
+                <button onClick={openAddSpecialVendor} disabled={specialCategories.length === 0} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Plus className="w-4 h-4" /> Add Vendor
+                </button>
+              </div>
+              {specialCategories.length === 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-5 flex items-center gap-3">
+                  <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                  <p className="text-sm text-amber-700">Add at least one special service category first from the <button onClick={() => setTab('special-services')} className="font-bold underline hover:text-amber-900">Special Services</button> tab.</p>
+                </div>
+              )}
+              <div>
+
+                {showAddSpecialVendor && (
+                  <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-6 mb-5 animate-fade-in">
+                    <h3 className="font-bold text-gray-900 mb-4 text-lg">{editingSpecialVendor ? 'Edit Vendor' : 'Add Special Service Vendor'}</h3>
+                    <form onSubmit={handleSpecialVendorSubmit} className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Business Name *</label>
+                          <input required value={vendorForm.name} onChange={(e) => setVendorForm({ ...vendorForm, name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="e.g. Rani Bridal Studio" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">🔒 Owner Details <span className="font-normal normal-case text-blue-400">(admin only)</span></p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1">Owner Name</label>
+                                <input value={vendorForm.ownerName} onChange={(e) => setVendorForm({ ...vendorForm, ownerName: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="Sunita Devi" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1">Contact Number</label>
+                                <input type="tel" value={vendorForm.ownerPhone} onChange={(e) => setVendorForm({ ...vendorForm, ownerPhone: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="+91 98765 43210" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+                                <input type="email" value={vendorForm.ownerEmail} onChange={(e) => setVendorForm({ ...vendorForm, ownerEmail: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="sunita@example.com" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Special Service Category *</label>
+                          <select required value={vendorForm.category} onChange={(e) => setVendorForm({ ...vendorForm, category: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                            {specialCategories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">City</label>
+                          <select value={vendorForm.city} onChange={(e) => setVendorForm({ ...vendorForm, city: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm">
+                            {['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'].map((c) => <option key={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Min Price (₹) *</label>
+                          <input required type="number" value={vendorForm.priceMin} onChange={(e) => setVendorForm({ ...vendorForm, priceMin: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="5000" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Max Price (₹) *</label>
+                          <input required type="number" value={vendorForm.priceMax} onChange={(e) => setVendorForm({ ...vendorForm, priceMax: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="50000" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Rating</label>
+                          <input type="number" step="0.1" min="1" max="5" value={vendorForm.rating} onChange={(e) => setVendorForm({ ...vendorForm, rating: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Review Count</label>
+                          <input type="number" value={vendorForm.reviewCount} onChange={(e) => setVendorForm({ ...vendorForm, reviewCount: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="20" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block text-xs font-semibold text-gray-500">Image Gallery <span className="text-rose-500">*</span> <span className="text-gray-400 font-normal">(first = cover)</span></label>
+                            <button type="button" onClick={() => setVendorImages((imgs) => [...imgs, ''])} className="flex items-center gap-1 text-xs text-amber-600 border border-amber-300 px-2 py-1 rounded-lg hover:bg-amber-50">
+                              <Plus className="w-3 h-3" /> Add Slot
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {vendorImages.map((url, i) => (
+                              <div key={i} className="flex gap-2 items-start">
+                                <div className="flex-1">
+                                  <ImageUploadField value={url} onChange={(u) => setVendorImages((imgs) => imgs.map((v, idx) => idx === i ? u : v))} required={i === 0} placeholder={i === 0 ? 'Upload cover image (required)' : `Gallery image ${i + 1} (optional)`} />
+                                </div>
+                                {vendorImages.length > 1 && (
+                                  <button type="button" onClick={() => setVendorImages((imgs) => imgs.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-600 mt-3 flex-shrink-0"><Trash2 className="w-4 h-4" /></button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Description *</label>
+                          <textarea required rows={3} value={vendorForm.description} onChange={(e) => setVendorForm({ ...vendorForm, description: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none" placeholder="Vendor description..." />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Features <span className="text-gray-400 font-normal">(comma-separated)</span></label>
+                          <input value={vendorForm.features} onChange={(e) => setVendorForm({ ...vendorForm, features: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Home delivery, Trial session, Pan India" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" id="special-vendor-featured" checked={vendorForm.isFeatured} onChange={(e) => setVendorForm({ ...vendorForm, isFeatured: e.target.checked })} className="w-4 h-4" />
+                          <label htmlFor="special-vendor-featured" className="text-sm text-gray-700">Mark as Featured</label>
+                        </div>
+                      </div>
+                      {/* Packages */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-bold text-gray-800 text-sm flex items-center gap-1.5"><Tag className="w-4 h-4 text-amber-500" /> Packages</h4>
+                          <button type="button" onClick={addPackageRow} className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-50">
+                            <Plus className="w-3.5 h-3.5" /> Add Package
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {packages.map((pkg, i) => (
+                            <div key={i} className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">Package {i + 1}</span>
+                                {packages.length > 1 && <button type="button" onClick={() => removePackageRow(i)} className="text-rose-400 hover:text-rose-600"><Trash2 className="w-4 h-4" /></button>}
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-500 mb-1">Name *</label>
+                                  <input value={pkg.name} onChange={(e) => updatePackage(i, 'name', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Basic, Standard, Premium" />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-500 mb-1">Price (₹) *</label>
+                                  <input type="number" value={pkg.price} onChange={(e) => updatePackage(i, 'price', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="10000" />
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <label className="block text-xs font-semibold text-gray-500 mb-1">Description</label>
+                                  <input value={pkg.description} onChange={(e) => updatePackage(i, 'description', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="What's included..." />
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <label className="block text-xs font-semibold text-gray-500 mb-1">Features (comma-separated)</label>
+                                  <input value={pkg.features} onChange={(e) => updatePackage(i, 'features', e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Home delivery, Customisation" />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-500 mb-1">Package Image <span className="text-gray-400 font-normal">(optional)</span></label>
+                                  <ImageUploadField value={pkg.image} onChange={(u) => updatePackage(i, 'image', u)} placeholder="Upload package image (optional)" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input type="checkbox" id={`spl-popular-${i}`} checked={pkg.isPopular} onChange={(e) => updatePackage(i, 'isPopular', e.target.checked)} className="w-4 h-4" />
+                                  <label htmlFor={`spl-popular-${i}`} className="text-xs text-gray-600 font-medium">Mark as Popular</label>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-3 items-center">
+                        <button type="submit" disabled={!isVendorFormValid} className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
+                          {editingSpecialVendor ? 'Update' : 'Add'} Vendor
+                        </button>
+                        <button type="button" onClick={() => { setShowAddSpecialVendor(false); setEditingSpecialVendor(null); }} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-200">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-100">
+                        <tr>
+                          {['Business', 'Service', 'City', 'Price Range', 'Rating', 'Pkgs', 'Actions'].map((h) => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {specialVendors.map((v) => (
+                          <tr key={v._id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="text-sm font-semibold text-gray-900">{v.name}</p>
+                              {v.isFeatured && <span className="text-[10px] text-emerald-600 font-bold">★ Featured</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full capitalize">
+                                {specialCategories.find((sc) => sc.id === v.category)?.icon} {specialCategories.find((sc) => sc.id === v.category)?.name || v.category}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{v.city}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">₹{(v.priceMin || 0).toLocaleString('en-IN')} – ₹{(v.priceMax || 0).toLocaleString('en-IN')}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1 text-sm">
+                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> {v.rating}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">{(v.packages || []).length}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <Link href={`/admin/vendors/${v.id}`} className="p-1.5 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors" title="View">
+                                  <Eye className="w-4 h-4" />
+                                </Link>
+                                <button onClick={() => openEditSpecialVendor(v)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDeleteVendor(v.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {specialVendors.length === 0 && (
+                      <div className="text-center py-12 text-gray-400">
+                        <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                        <p className="text-sm">{specialCategories.length === 0 ? 'Add a special service category first, then add vendors.' : 'No vendors yet. Click "Add Vendor" to get started.'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ENQUIRIES */}
+          {tab === 'enquiries' && (
+            <div className="space-y-4">
+              {enquiries.length === 0 && <div className="text-center py-12 text-gray-400"><p>No enquiries yet.</p></div>}
+              {enquiries.map((e) => {
+                const vendorData = vendors.find((v) => v.id === e.vendorId);
+                const categoryData = categories.find((c) => c.id === e.vendorCategory);
+                const isSpecialVendor = categoryData?.isSpecial;
+                return (
+                  <div key={e._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    {/* Header */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[e.status as keyof typeof STATUS_COLORS]}`}>{e.status}</span>
+                        {isSpecialVendor && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700">Special Service</span>}
+                        <span className="text-xs text-gray-400">{new Date(e.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        {['new', 'contacted', 'closed'].map((s) => (
+                          <button key={s} onClick={() => handleStatusChange('enquiries', e._id, s)}
+                            className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
+                              e.status === s ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300'
+                            }`}
+                          >{s}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Client & Vendor cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                      {/* Client */}
+                      <div className="bg-blue-50 rounded-xl p-3.5">
+                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">Client</p>
+                        <p className="font-semibold text-gray-900 text-sm">{e.name}</p>
+                        <p className="text-gray-700 text-xs mt-1">📞 {e.phone}</p>
+                        {e.city && <p className="text-gray-700 text-xs mt-0.5">📍 {e.city}</p>}
+                        {e.email && <p className="text-gray-600 text-xs mt-0.5">✉️ {e.email}</p>}
+                      </div>
+                      {/* Vendor */}
+                      <div className="bg-amber-50 rounded-xl p-3.5">
+                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-2">
+                          Vendor {isSpecialVendor && <span className="text-violet-600">(Special)</span>}
+                        </p>
+                        <p className="font-semibold text-gray-900 text-sm">{e.vendorName}</p>
+                        <p className="text-gray-600 text-xs mt-0.5 capitalize">{e.vendorCategory.replace(/-/g, ' ')}</p>
+                        {vendorData?.ownerPhone && <p className="text-gray-700 text-xs mt-1">📞 {vendorData.ownerPhone}</p>}
+                        {vendorData?.ownerName && <p className="text-gray-600 text-xs mt-0.5">👤 {vendorData.ownerName}</p>}
+                      </div>
+                    </div>
+
+                    {/* Event details */}
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-600 pt-2 border-t border-gray-100">
+                      <span>📅 {e.eventDate}</span>
+                      {e.guestCount && <span>👥 {e.guestCount} guests</span>}
+                      <span className="capitalize">🎊 {e.eventType}</span>
+                    </div>
+                    {e.message && <p className="mt-2 text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">{e.message}</p>}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -876,7 +1382,7 @@ export default function AdminClient() {
                         <h4 className="font-semibold text-gray-900 text-sm">{c.name}</h4>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status as keyof typeof STATUS_COLORS]}`}>{c.status}</span>
                       </div>
-                      <p className="text-gray-500 text-xs">{c.phone} · {c.email}</p>
+                      <p className="text-gray-500 text-xs">{c.phone} · {c.email}{c.city ? ` · 📍 ${c.city}` : ''}</p>
                       <p className="text-gray-500 text-xs mt-0.5">Wedding: {c.weddingDate} · {c.guestCount} guests · {c.days} day(s)</p>
                       <p className="text-gray-500 text-xs">Preferred call time: <strong>{c.preferredTime}</strong></p>
                       {c.totalBudget > 0 && <p className="text-amber-600 text-xs font-semibold mt-1">Budget: ₹{c.totalBudget?.toLocaleString('en-IN')}</p>}

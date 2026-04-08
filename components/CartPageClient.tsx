@@ -29,8 +29,11 @@ export default function CartPageClient() {
   // Suggested = categories not yet in cart
   const suggested = categories.filter((c) => !coveredCategories.has(c.id));
 
+  const isValidPhone = (v: string) => /^\d{10}$/.test(v.replace(/[\s\-\+\(\)]/g, ''));
+
   const handleBook = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isValidPhone(bookingForm.phone)) return;
     setSubmitting(true);
     try {
       await fetch('/api/bookings', {
@@ -281,11 +284,16 @@ export default function CartPageClient() {
                   <input
                     required
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     value={bookingForm.phone}
-                    onChange={(e) => setBookingForm({ ...bookingForm, phone: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors"
-                    placeholder="+91 98765 43210"
+                    onChange={(e) => setBookingForm({ ...bookingForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                    className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition-colors border ${bookingForm.phone && !isValidPhone(bookingForm.phone) ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
+                    placeholder="10-digit mobile number"
                   />
+                  {bookingForm.phone && !isValidPhone(bookingForm.phone) && (
+                    <p className="text-xs text-rose-500 mt-1">Enter a valid 10-digit mobile number</p>
+                  )}
                 </div>
               </div>
               <div>
@@ -303,7 +311,7 @@ export default function CartPageClient() {
               </div>
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !isValidPhone(bookingForm.phone)}
                 className="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all disabled:opacity-60 text-sm"
               >
                 {submitting ? 'Confirming...' : 'Confirm Booking'}

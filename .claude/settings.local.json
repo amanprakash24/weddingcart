@@ -16,7 +16,10 @@
       "Bash(curl -s \"http://localhost:3000/api/vendors?limit=100\")",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(v['name'], '|', v['category'], '|', v.get\\('image','NO_IMAGE'\\)[:40]\\) for v in d['data']]\")",
       "Bash(node -e \"process.stdin.resume\\(\\);let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\);j.data.forEach\\(v=>console.log\\(v.name,'->',v.category,'| img:',v.image?'yes':'EMPTY','| pkgs:',v.packages?.length\\)\\)}\\)\")",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(node -e \"require\\('./data/seedData.ts'\\)\")",
+      "Bash(npx tsx:*)",
+      "Bash(curl -s http://localhost:3000/admin)"
     ]
   }
 }

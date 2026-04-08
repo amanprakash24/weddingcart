@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import CartDrawer from '@/components/CartDrawer';
 import CartFAB from '@/components/CartFAB';
 import ContactBanner from '@/components/ContactBanner';
+import ScrollToTop from '@/components/ScrollToTop';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body className="bg-[#FFFAF5] text-[#2D2D2D] min-h-screen antialiased" suppressHydrationWarning>
         <CartProvider>
+          <ScrollToTop />
           <Navbar />
           <main className="min-h-screen">{children}</main>
           <Footer />

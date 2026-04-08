@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Star, MapPin, ChevronLeft, ChevronRight, CheckCircle, Phone, Calendar, Users, X, ShoppingCart, ChevronRight as CR, Check } from 'lucide-react';
+
+const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
+// Categories where guest count makes sense
+const GUEST_COUNT_CATEGORIES = new Set(['venue', 'catering', 'accommodation', 'hospitality', 'planning', 'decorator']);
 import { Vendor, Package } from '@/types';
 import { useCart } from '@/context/CartContext';
 
@@ -15,7 +19,7 @@ export default function VendorDetailClient({ id }: Props) {
   const [imgIdx, setImgIdx] = useState(0);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [showEnquiry, setShowEnquiry] = useState(false);
-  const [enquiryForm, setEnquiryForm] = useState({ name: '', phone: '', email: '', eventDate: '', guestCount: '', eventType: 'wedding', message: '' });
+  const [enquiryForm, setEnquiryForm] = useState({ name: '', phone: '', email: '', city: 'Patna', eventDate: '', guestCount: '', eventType: 'wedding', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { addItem, removeItem, items } = useCart();
@@ -49,9 +53,11 @@ export default function VendorDetailClient({ id }: Props) {
     addItem(vendor, pkg);
   };
 
+  const isValidPhone = (v: string) => /^\d{10}$/.test(v.replace(/[\s\-\+\(\)]/g, ''));
+
   const handleEnquiry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vendor) return;
+    if (!vendor || !isValidPhone(enquiryForm.phone)) return;
     setSubmitting(true);
     try {
       await fetch('/api/enquiries', {
@@ -385,22 +391,44 @@ export default function VendorDetailClient({ id }: Props) {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone *</label>
-                    <input required type="tel" value={enquiryForm.phone} onChange={(e) => setEnquiryForm({ ...enquiryForm, phone: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors" placeholder="+91 98765 43210" />
+                    <input
+                      required
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={enquiryForm.phone}
+                      onChange={(e) => setEnquiryForm({ ...enquiryForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                      className={`w-full rounded-xl px-3 py-2.5 text-sm text-gray-900 transition-colors border ${enquiryForm.phone && !isValidPhone(enquiryForm.phone) ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
+                      placeholder="10-digit mobile number"
+                    />
+                    {enquiryForm.phone && !isValidPhone(enquiryForm.phone) && (
+                      <p className="text-xs text-rose-500 mt-1">Enter a valid 10-digit mobile number</p>
+                    )}
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
-                  <input type="email" value={enquiryForm.email} onChange={(e) => setEnquiryForm({ ...enquiryForm, email: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors" placeholder="priya@email.com" />
-                </div>
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Your City *</label>
+                    <select required value={enquiryForm.city} onChange={(e) => setEnquiryForm({ ...enquiryForm, city: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors">
+                      {CITIES.map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
+                    <input type="email" value={enquiryForm.email} onChange={(e) => setEnquiryForm({ ...enquiryForm, email: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors" placeholder="priya@email.com" />
+                  </div>
+                </div>
+                <div className={`grid gap-4 ${GUEST_COUNT_CATEGORIES.has(vendor.category) ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5">Event Date *</label>
                     <input required type="date" value={enquiryForm.eventDate} onChange={(e) => setEnquiryForm({ ...enquiryForm, eventDate: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors" />
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Guest Count *</label>
-                    <input required type="number" value={enquiryForm.guestCount} onChange={(e) => setEnquiryForm({ ...enquiryForm, guestCount: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors" placeholder="200" />
-                  </div>
+                  {GUEST_COUNT_CATEGORIES.has(vendor.category) && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Guest Count *</label>
+                      <input required type="text" inputMode="numeric" value={enquiryForm.guestCount} onChange={(e) => setEnquiryForm({ ...enquiryForm, guestCount: e.target.value.replace(/\D/g, '') })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors" placeholder="200" />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Event Type</label>
@@ -414,7 +442,7 @@ export default function VendorDetailClient({ id }: Props) {
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Message</label>
                   <textarea rows={3} value={enquiryForm.message} onChange={(e) => setEnquiryForm({ ...enquiryForm, message: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors resize-none" placeholder="Any specific requirements or questions..." />
                 </div>
-                <button type="submit" disabled={submitting} className="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-70 text-sm">
+                <button type="submit" disabled={submitting || !isValidPhone(enquiryForm.phone)} className="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-70 text-sm">
                   {submitting ? 'Sending...' : 'Send Enquiry'}
                 </button>
               </form>
