@@ -108,6 +108,8 @@ export default function AdminClient() {
   const [enquiries, setEnquiries] = useState<AnyRecord[]>([]);
   const [consultations, setConsultations] = useState<AnyRecord[]>([]);
   const [bookings, setBookings] = useState<AnyRecord[]>([]);
+  const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
+  const [consultationFilter, setConsultationFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [loading, setLoading] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
@@ -1269,8 +1271,24 @@ export default function AdminClient() {
           {/* ENQUIRIES */}
           {tab === 'enquiries' && (
             <div className="space-y-4">
-              {enquiries.length === 0 && <div className="text-center py-12 text-gray-400"><p>No enquiries yet.</p></div>}
-              {enquiries.map((e) => {
+              {/* Filter bar */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filter:</span>
+                {(['all', 'new', 'contacted', 'closed'] as const).map((f) => {
+                  const count = f === 'all' ? enquiries.length : enquiries.filter((e) => e.status === f).length;
+                  return (
+                    <button key={f} onClick={() => setEnquiryFilter(f)}
+                      className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
+                        enquiryFilter === f ? 'bg-amber-500 text-white border-amber-500' : 'border-gray-200 text-gray-600 hover:border-amber-300 bg-white'
+                      }`}
+                    >{f} ({count})</button>
+                  );
+                })}
+              </div>
+              {(enquiryFilter === 'all' ? enquiries : enquiries.filter((e) => e.status === enquiryFilter)).length === 0 && (
+                <div className="text-center py-12 text-gray-400"><p>No {enquiryFilter === 'all' ? '' : enquiryFilter} enquiries.</p></div>
+              )}
+              {(enquiryFilter === 'all' ? enquiries : enquiries.filter((e) => e.status === enquiryFilter)).map((e) => {
                 const vendorData = vendors.find((v) => v.id === e.vendorId);
                 const categoryData = categories.find((c) => c.id === e.vendorCategory);
                 const isSpecialVendor = categoryData?.isSpecial;
@@ -1373,8 +1391,24 @@ export default function AdminClient() {
           {/* CONSULTATIONS */}
           {tab === 'consultations' && (
             <div className="space-y-3">
-              {consultations.length === 0 && <div className="text-center py-12 text-gray-400"><p>No consultations yet.</p></div>}
-              {consultations.map((c) => (
+              {/* Filter bar */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filter:</span>
+                {(['all', 'new', 'contacted', 'closed'] as const).map((f) => {
+                  const count = f === 'all' ? consultations.length : consultations.filter((c) => c.status === f).length;
+                  return (
+                    <button key={f} onClick={() => setConsultationFilter(f)}
+                      className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
+                        consultationFilter === f ? 'bg-amber-500 text-white border-amber-500' : 'border-gray-200 text-gray-600 hover:border-amber-300 bg-white'
+                      }`}
+                    >{f} ({count})</button>
+                  );
+                })}
+              </div>
+              {(consultationFilter === 'all' ? consultations : consultations.filter((c) => c.status === consultationFilter)).length === 0 && (
+                <div className="text-center py-12 text-gray-400"><p>No {consultationFilter === 'all' ? '' : consultationFilter} consultations.</p></div>
+              )}
+              {(consultationFilter === 'all' ? consultations : consultations.filter((c) => c.status === consultationFilter)).map((c) => (
                 <div key={c._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
