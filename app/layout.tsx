@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Playfair_Display, Inter } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
@@ -52,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body className="bg-[#FFFAF5] text-[#2D2D2D] min-h-screen antialiased" suppressHydrationWarning>
         <CartProvider>
-          <ScrollToTop />
+          <Suspense><ScrollToTop /></Suspense>
           <Navbar />
           <main className="min-h-screen">{children}</main>
           <Footer />

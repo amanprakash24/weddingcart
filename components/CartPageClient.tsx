@@ -42,6 +42,7 @@ export default function CartPageClient() {
         body: JSON.stringify({
           ...bookingForm,
           items: items.map((i) => ({
+            vendorId: i.vendor.id,
             vendorName: i.vendor.name,
             vendorCategory: i.vendor.category,
             packageName: i.package.name,

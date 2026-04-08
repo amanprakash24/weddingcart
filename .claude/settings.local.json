@@ -19,7 +19,10 @@
       "Bash(git config:*)",
       "Bash(node -e \"require\\('./data/seedData.ts'\\)\")",
       "Bash(npx tsx:*)",
-      "Bash(curl -s http://localhost:3000/admin)"
+      "Bash(curl -s http://localhost:3000/admin)",
+      "Bash(openssl rand:*)",
+      "Bash(echo \"ADMIN_SECRET=wc-secret-$\\(openssl rand -hex 16\\)\")",
+      "Bash(printf \\\\nSUPER_ADMIN_USERNAME=super_admin\\\\nSUPER_ADMIN_PASSWORD=#superadminamanprakshsingh@2410\\\\n:*)"
     ]
   }
 }

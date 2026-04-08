@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -101,6 +102,7 @@ const EMPTY_VENDOR = { name: '', ownerName: '', ownerPhone: '', ownerEmail: '', 
 const EMPTY_CATEGORY = { id: '', name: '', icon: '🏛️', description: '', image: '' };
 
 export default function AdminClient() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
   const [vendors, setVendors] = useState<AnyRecord[]>([]);
@@ -113,6 +115,7 @@ export default function AdminClient() {
   const [loading, setLoading] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
+  const [role, setRole] = useState<'admin' | 'super_admin' | null>(null);
 
   // Vendor form
   const [showAddVendor, setShowAddVendor] = useState(false);
@@ -167,6 +170,10 @@ export default function AdminClient() {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    fetch('/api/admin/me').then(r => r.json()).then(d => setRole(d.role));
+  }, []);
 
   const handleSeed = async () => {
     setSeeding(true); setSeedMsg('');
@@ -437,7 +444,7 @@ export default function AdminClient() {
   ];
 
   return (
-    <div className="pt-16 min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside className="w-16 sm:w-56 bg-gray-950 flex-shrink-0 flex flex-col">
         <div className="p-4 border-b border-gray-800">
@@ -465,13 +472,17 @@ export default function AdminClient() {
           ))}
         </nav>
         <div className="p-3 border-t border-gray-800">
-          <button onClick={handleSeed} disabled={seeding}
-            className="w-full flex items-center gap-2 justify-center bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-medium px-3 py-2.5 rounded-xl transition-all"
-          >
-            <Database className="w-4 h-4" />
-            <span className="hidden sm:block">{seeding ? 'Seeding...' : 'Seed DB'}</span>
-          </button>
-          {seedMsg && <p className="text-emerald-400 text-[10px] mt-1 text-center hidden sm:block">{seedMsg}</p>}
+          {role === 'super_admin' && (
+            <>
+              <button onClick={handleSeed} disabled={seeding}
+                className="w-full flex items-center gap-2 justify-center bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-medium px-3 py-2.5 rounded-xl transition-all"
+              >
+                <Database className="w-4 h-4" />
+                <span className="hidden sm:block">{seeding ? 'Seeding...' : 'Seed DB'}</span>
+              </button>
+              {seedMsg && <p className="text-emerald-400 text-[10px] mt-1 text-center hidden sm:block">{seedMsg}</p>}
+            </>
+          )}
         </div>
       </aside>
 
@@ -483,9 +494,20 @@ export default function AdminClient() {
               <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] capitalize">{tab}</h1>
               <p className="text-gray-500 text-sm mt-0.5">WeddingCart Admin Panel</p>
             </div>
-            <button onClick={fetchAll} disabled={loading} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm border border-gray-200 px-3 py-2 rounded-xl hover:bg-white transition-all">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={fetchAll} disabled={loading} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm border border-gray-200 px-3 py-2 rounded-xl hover:bg-white transition-all">
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+              </button>
+              <button
+                onClick={async () => {
+                  await fetch('/api/admin/logout', { method: 'POST' });
+                  router.replace('/admin/login');
+                }}
+                className="flex items-center gap-2 text-rose-500 hover:text-rose-700 text-sm border border-rose-200 px-3 py-2 rounded-xl hover:bg-rose-50 transition-all"
+              >
+                <LogOut className="w-4 h-4" /> Logout
+              </button>
+            </div>
           </div>
 
           {/* DASHBOARD */}
@@ -493,24 +515,26 @@ export default function AdminClient() {
             <div>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 {[
-                  { label: 'Total Vendors', value: stats?.vendors || 0, icon: Briefcase, color: 'bg-blue-500' },
-                  { label: 'Categories', value: stats?.categories || 0, icon: Tag, color: 'bg-purple-500' },
-                  { label: 'Enquiries', value: stats?.enquiries || 0, icon: MessageSquare, color: 'bg-amber-500', sub: `${stats?.newEnquiries || 0} new` },
-                  { label: 'Consultations', value: stats?.consultations || 0, icon: Phone, color: 'bg-rose-500', sub: `${stats?.newConsultations || 0} new` },
-                  { label: 'New Enquiries', value: stats?.newEnquiries || 0, icon: Star, color: 'bg-emerald-500' },
-                  { label: 'Pending Calls', value: stats?.newConsultations || 0, icon: CheckCircle, color: 'bg-indigo-500' },
-                  { label: 'Bookings', value: stats?.bookings || 0, icon: BookOpen, color: 'bg-teal-500', sub: `${stats?.newBookings || 0} new` },
-                ].map(({ label, value, icon: Icon, color, sub }) => (
-                  <div key={label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                  { label: 'Total Vendors',  value: stats?.vendors || 0,       icon: Briefcase,    color: 'bg-blue-500',   tab: 'vendors' as Tab },
+                  { label: 'Categories',     value: stats?.categories || 0,    icon: Tag,          color: 'bg-purple-500', tab: 'categories' as Tab },
+                  { label: 'Enquiries',      value: stats?.enquiries || 0,     icon: MessageSquare,color: 'bg-amber-500',  tab: 'enquiries' as Tab,     sub: stats?.newEnquiries ? `${stats.newEnquiries} new` : undefined },
+                  { label: 'Consultations',  value: stats?.consultations || 0, icon: Phone,        color: 'bg-rose-500',   tab: 'consultations' as Tab, sub: stats?.newConsultations ? `${stats.newConsultations} new` : undefined },
+                  { label: 'Bookings',       value: stats?.bookings || 0,      icon: BookOpen,     color: 'bg-teal-500',   tab: 'bookings' as Tab,      sub: stats?.newBookings ? `${stats.newBookings} new` : undefined },
+                ].map(({ label, value, icon: Icon, color, tab: targetTab, sub }) => (
+                  <button
+                    key={label}
+                    onClick={() => setTab(targetTab)}
+                    className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm text-left hover:shadow-md hover:border-amber-200 transition-all group"
+                  >
                     <div className="flex items-center gap-3 mb-3">
-                      <div className={`${color} w-10 h-10 rounded-xl flex items-center justify-center`}>
+                      <div className={`${color} w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
                         <Icon className="w-5 h-5 text-white" />
                       </div>
                       <span className="text-gray-600 text-sm font-medium">{label}</span>
                     </div>
                     <p className="text-3xl font-bold text-gray-900">{value}</p>
                     {sub && <p className="text-xs text-amber-600 font-medium mt-1">{sub}</p>}
-                  </div>
+                  </button>
                 ))}
               </div>
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -532,14 +556,16 @@ export default function AdminClient() {
                     </div>
                     <ChevronRight className="w-4 h-4 ml-auto" />
                   </button>
-                  <button onClick={handleSeed} disabled={seeding} className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-all">
-                    <Database className="w-5 h-5" />
-                    <div className="text-left">
-                      <p className="font-semibold text-sm">Seed Database</p>
-                      <p className="text-xs opacity-70">Load sample data</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 ml-auto" />
-                  </button>
+                  {role === 'super_admin' && (
+                    <button onClick={handleSeed} disabled={seeding} className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-all">
+                      <Database className="w-5 h-5" />
+                      <div className="text-left">
+                        <p className="font-semibold text-sm">Seed Database</p>
+                        <p className="text-xs opacity-70">Load sample data</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 ml-auto" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1299,7 +1325,11 @@ export default function AdminClient() {
                       <div className="flex items-center gap-2">
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${STATUS_COLORS[e.status as keyof typeof STATUS_COLORS]}`}>{e.status}</span>
                         {isSpecialVendor && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700">Special Service</span>}
-                        <span className="text-xs text-gray-400">{new Date(e.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(e.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {' · '}
+                          <span className="font-semibold text-amber-600">{new Date(e.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                        </span>
                       </div>
                       <div className="flex gap-1.5">
                         {['new', 'contacted', 'closed'].map((s) => (
@@ -1349,31 +1379,84 @@ export default function AdminClient() {
 
           {/* BOOKINGS */}
           {tab === 'bookings' && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {bookings.length === 0 && <div className="text-center py-12 text-gray-400"><p>No bookings yet.</p></div>}
               {bookings.map((b) => (
                 <div key={b._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-gray-900 text-sm">{b.name}</h4>
+                  {/* Header row */}
+                  <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h4 className="font-bold text-gray-900">{b.name}</h4>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[b.status as keyof typeof STATUS_COLORS] || 'bg-gray-100 text-gray-500'}`}>
                           {b.status}
                         </span>
                       </div>
-                      <p className="text-gray-500 text-xs mb-2">{b.phone} · {b.city}</p>
-                      <div className="space-y-1">
-                        {b.items?.map((item: AnyRecord, i: number) => (
-                          <div key={i} className="flex justify-between text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-1.5">
-                            <span>{item.vendorName} — {item.packageName} <span className="text-gray-400 capitalize">({item.vendorCategory})</span></span>
-                            <span className="font-semibold text-amber-600">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="text-amber-600 font-bold text-sm mt-2">Total: ₹{b.total?.toLocaleString('en-IN')}</p>
-                      <p className="text-gray-400 text-xs mt-0.5">{new Date(b.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="text-gray-500 text-xs">📞 {b.phone}{b.city ? ` · 📍 ${b.city}` : ''}</p>
                     </div>
-                    <div className="flex gap-2 flex-wrap">
+                    {/* Booking time — prominent */}
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Booked at</p>
+                      <p className="text-xs font-semibold text-gray-700">
+                        {new Date(b.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                      <p className="text-sm font-bold text-amber-600">
+                        {new Date(b.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Booked items with vendor details */}
+                  <div className="space-y-3 mb-4">
+                    {b.items?.map((item: AnyRecord, i: number) => {
+                      const vendorData = vendors.find((v) => v.id === item.vendorId)
+                        || vendors.find((v) => v.name === item.vendorName && v.category === item.vendorCategory)
+                        || vendors.find((v) => v.name === item.vendorName);
+                      return (
+                        <div key={i} className="rounded-xl border border-gray-100 overflow-hidden">
+                          {/* Item header */}
+                          <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
+                            <div>
+                              <span className="text-sm font-semibold text-gray-900">{item.vendorName}</span>
+                              <span className="text-xs text-gray-400 capitalize ml-2">({item.vendorCategory?.replace(/-/g, ' ')})</span>
+                            </div>
+                            <span className="text-xs font-bold text-amber-600">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="px-3 py-1.5 text-xs text-gray-500">
+                            Package: <span className="font-medium text-gray-700">{item.packageName}</span>
+                            {item.quantity > 1 && <span className="ml-2 text-gray-400">× {item.quantity}</span>}
+                          </div>
+                          {/* Vendor contact — only if found */}
+                          {vendorData && (
+                            <div className="bg-amber-50 border-t border-amber-100 px-3 py-2 flex flex-wrap gap-3">
+                              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider w-full">Vendor Contact</p>
+                              {vendorData.ownerName && (
+                                <span className="text-xs text-gray-700 flex items-center gap-1">👤 {vendorData.ownerName}</span>
+                              )}
+                              {vendorData.ownerPhone && (
+                                <a href={`tel:${vendorData.ownerPhone}`} className="text-xs font-semibold text-amber-700 hover:underline flex items-center gap-1">
+                                  📞 {vendorData.ownerPhone}
+                                </a>
+                              )}
+                              {vendorData.ownerEmail && (
+                                <a href={`mailto:${vendorData.ownerEmail}`} className="text-xs text-gray-600 hover:underline flex items-center gap-1">
+                                  ✉️ {vendorData.ownerEmail}
+                                </a>
+                              )}
+                              {vendorData.city && (
+                                <span className="text-xs text-gray-500">📍 {vendorData.city}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Total + status controls */}
+                  <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-gray-100">
+                    <p className="text-amber-600 font-bold text-base">Total: ₹{b.total?.toLocaleString('en-IN')}</p>
+                    <div className="flex gap-1.5 flex-wrap">
                       {['new', 'contacted', 'confirmed', 'closed'].map((s) => (
                         <button key={s} onClick={async () => { await fetch(`/api/bookings/${b._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: s }) }); fetchAll(); }}
                           className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
@@ -1415,6 +1498,13 @@ export default function AdminClient() {
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-gray-900 text-sm">{c.name}</h4>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[c.status as keyof typeof STATUS_COLORS]}`}>{c.status}</span>
+                        {c.createdAt && (
+                          <span className="text-xs text-gray-400">
+                            {new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {' · '}
+                            <span className="font-semibold text-amber-600">{new Date(c.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                          </span>
+                        )}
                       </div>
                       <p className="text-gray-500 text-xs">{c.phone} · {c.email}{c.city ? ` · 📍 ${c.city}` : ''}</p>
                       <p className="text-gray-500 text-xs mt-0.5">Wedding: {c.weddingDate} · {c.guestCount} guests · {c.days} day(s)</p>

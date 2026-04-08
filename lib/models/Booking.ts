@@ -4,7 +4,7 @@ export interface IBooking extends Document {
   name: string;
   phone: string;
   city: string;
-  items: { vendorName: string; vendorCategory: string; packageName: string; price: number; quantity: number }[];
+  items: { vendorId: string; vendorName: string; vendorCategory: string; packageName: string; price: number; quantity: number }[];
   total: number;
   status: 'new' | 'contacted' | 'confirmed' | 'closed';
   createdAt: Date;
@@ -15,6 +15,7 @@ const BookingSchema = new Schema<IBooking>({
   phone: { type: String, required: true },
   city: { type: String, required: true },
   items: [{
+    vendorId: String,
     vendorName: String,
     vendorCategory: String,
     packageName: String,

@@ -88,6 +88,7 @@ export default function Navbar() {
   const megaRef = useRef<HTMLDivElement>(null);
   const { itemCount } = useCart();
   const pathname = usePathname();
+  const isAdmin = pathname.startsWith('/admin');
   const isHome = pathname === '/';
 
   useEffect(() => {
@@ -118,6 +119,8 @@ export default function Navbar() {
   }, [mobileOpen]);
 
   const isTransparent = isHome && !scrolled && !mobileOpen;
+
+  if (isAdmin) return null;
 
   return (
     <>
@@ -344,15 +347,6 @@ export default function Navbar() {
         />
       )}
 
-      {/* Admin link */}
-      <Link
-        href="/admin"
-        className="fixed bottom-4 left-4 z-40 w-10 h-10 flex items-center justify-center bg-gray-800/80 text-white text-xs rounded-full opacity-20 hover:opacity-100 transition-opacity"
-        title="Admin Panel"
-        style={{ touchAction: 'manipulation' }}
-      >
-        A
-      </Link>
     </>
   );
 }

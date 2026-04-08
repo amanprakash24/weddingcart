@@ -1,11 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { X, Mail, Phone } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ContactBanner() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(true);
+
+  if (pathname.startsWith('/admin')) return null;
 
   return (
     <div className="fixed bottom-6 right-5 z-50 flex flex-col items-end gap-3">
