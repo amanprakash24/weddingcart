@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { User, Phone, Mail, Calendar, Users, UtensilsCrossed, Building2, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Heart, Clock, X, MapPin } from 'lucide-react';
 
@@ -57,6 +57,8 @@ export default function PlanPageClient() {
   const { items, total, clearCart } = useCart();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
   const [success, setSuccess] = useState(false);
   const [form, setForm] = useState<FormData>({
     name: '', phone: '', email: '', city: 'Patna', weddingDate: '', days: 1,
@@ -482,7 +484,7 @@ export default function PlanPageClient() {
           {/* Navigation */}
           <div className="border-t border-gray-100 px-6 sm:px-8 py-5 flex items-center justify-between bg-gray-50">
             <button
-              onClick={() => { setStep((s) => s - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              onClick={() => setStep((s) => s - 1)}
               disabled={step === 0}
               className="flex items-center gap-2 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm font-medium"
             >
@@ -497,7 +499,7 @@ export default function PlanPageClient() {
 
             {step < STEPS.length - 1 ? (
               <button
-                onClick={() => { if (canNext()) { setStep((s) => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); } }}
+                onClick={() => { if (canNext()) setStep((s) => s + 1); }}
                 disabled={!canNext()}
                 className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
