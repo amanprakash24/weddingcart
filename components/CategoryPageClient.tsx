@@ -27,9 +27,14 @@ const SORTS = [
   { value: 'price-desc', label: 'Price: High to Low' },
 ];
 
-interface Props { slug: string }
+interface Props {
+  slug: string;
+  initialCoverImage?: string;
+  initialName?: string;
+  initialDescription?: string;
+}
 
-export default function CategoryPageClient({ slug }: Props) {
+export default function CategoryPageClient({ slug, initialCoverImage, initialName, initialDescription }: Props) {
   const searchParams = useSearchParams();
   const info = CATEGORY_INFO[slug] || { name: slug, desc: '', image: '' };
 
@@ -77,8 +82,16 @@ export default function CategoryPageClient({ slug }: Props) {
       {/* Hero */}
       <section className="relative h-64 sm:h-80 flex items-end overflow-hidden">
         <div className="absolute inset-0">
-          {info.image ? (
-            <Image src={info.image} alt={info.name} fill sizes="100vw" className="object-cover" priority />
+          {(initialCoverImage || category?.image || info.image) ? (
+            <Image
+              src={initialCoverImage || category?.image || info.image}
+              alt={initialName || category?.name || info.name}
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority
+              fetchPriority="high"
+            />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-rose-900 to-pink-800" />
           )}
@@ -89,10 +102,10 @@ export default function CategoryPageClient({ slug }: Props) {
           <nav className="flex items-center gap-2 text-white/70 text-sm mb-3">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
             <ChevronRight className="w-4 h-4" />
-            <span className="text-white">{info.name}</span>
+            <span className="text-white">{initialName || category?.name || info.name}</span>
           </nav>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white font-[Playfair_Display,serif]">{info.name}</h1>
-          <p className="text-white/80 text-sm mt-1">{info.desc}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white font-[Playfair_Display,serif]">{initialName || category?.name || info.name}</h1>
+          <p className="text-white/80 text-sm mt-1">{initialDescription || category?.description || info.desc}</p>
           {category && (
             <div className="flex items-center gap-4 mt-3">
               <span className="bg-white/20 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
