@@ -143,7 +143,7 @@ export default function Navbar() {
                 </div>
               </div>
               <span className={`text-xl font-bold font-[Playfair_Display,serif] transition-colors ${isTransparent ? 'text-white' : 'gradient-text'}`}>
-                WeddingCart
+                ShaadiShopping
               </span>
             </Link>
 

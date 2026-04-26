@@ -24,7 +24,7 @@ export default function Footer() {
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <Heart className="w-6 h-6 fill-rose-500 text-rose-500" />
-              <span className="text-xl font-bold text-white font-[Playfair_Display,serif]">WeddingCart</span>
+              <span className="text-xl font-bold text-white font-[Playfair_Display,serif]">ShaadiShopping</span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-1">
               India&apos;s premier wedding planning marketplace. Discover, compare, and book top vendors for your dream wedding.
@@ -37,7 +37,7 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <a href="mailto:hello@weddingcart.in" className="hover:text-amber-400 transition-colors">hello@weddingcart.in</a>
+                <a href="mailto:hello@shaadishopping.com" className="hover:text-amber-400 transition-colors">hello@shaadishopping.com</a>
               </div>
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
@@ -121,7 +121,7 @@ export default function Footer() {
       <div className="border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-gray-500 text-sm text-center">
-            © {new Date().getFullYear()} WeddingCart. All rights reserved.
+            © {new Date().getFullYear()} ShaadiShopping. All rights reserved.
           </p>
           <div className="flex items-center gap-1.5 text-gray-500 text-sm">
             <span>Made with</span>

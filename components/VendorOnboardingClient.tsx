@@ -98,7 +98,7 @@ export default function VendorOnboardingClient() {
             Application Submitted!
           </h2>
           <p className="text-gray-500 text-sm leading-relaxed mb-6">
-            Thank you for applying to join WeddingCart as a vendor. Our team will review your details and get back to you within <strong>2–3 business days</strong>.
+            Thank you for applying to join ShaadiShopping as a vendor. Our team will review your details and get back to you within <strong>2–3 business days</strong>.
           </p>
           <Link
             href="/"
@@ -128,7 +128,7 @@ export default function VendorOnboardingClient() {
             <Sparkles className="w-4 h-4 text-amber-300" /> Vendor Partnership
           </motion.div>
           <motion.h1 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-3 font-[Playfair_Display,serif]">
-            Grow Your Business with <span className="text-amber-400">WeddingCart</span>
+            Grow Your Business with <span className="text-amber-400">ShaadiShopping</span>
           </motion.h1>
           <motion.p variants={fadeUp} className="text-white/70 text-sm">
             Reach thousands of couples planning their dream wedding. Fill in your details below and our team will onboard you.

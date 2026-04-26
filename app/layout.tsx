@@ -24,8 +24,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "WeddingCart — India's Premier Wedding Planning Marketplace",
-    template: '%s | WeddingCart',
+    default: "ShaadiShopping — India's Premier Wedding Planning Marketplace",
+    template: '%s | ShaadiShopping',
   },
   description:
     "Discover, compare, and book top wedding vendors — venues, photographers, caterers, makeup artists, decorators, DJs, and more across India. Start planning your dream wedding today.",
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
     'mehndi artist', 'wedding DJ', 'wedding band', 'wedding planning',
   ],
   openGraph: {
-    title: "WeddingCart — India's Premier Wedding Planning Marketplace",
+    title: "ShaadiShopping — India's Premier Wedding Planning Marketplace",
     description: "Book top wedding vendors across India. Venues, photographers, caterers, makeup artists and more.",
     type: 'website',
     locale: 'en_IN',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'WeddingCart',
+    title: 'ShaadiShopping',
     description: "Plan your dream wedding with India's best vendors.",
   },
   robots: { index: true, follow: true },

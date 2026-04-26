@@ -454,7 +454,7 @@ export default function AdminClient() {
       <aside className="w-16 sm:w-56 bg-gray-950 flex-shrink-0 flex flex-col">
         <div className="p-4 border-b border-gray-800">
           <Link href="/" className="hidden sm:flex items-center gap-2 text-white font-bold text-sm">
-            <ArrowLeft className="w-4 h-4 text-gray-400" /> WeddingCart
+            <ArrowLeft className="w-4 h-4 text-gray-400" /> ShaadiShopping
           </Link>
           <div className="sm:hidden flex justify-center"><ArrowLeft className="w-5 h-5 text-gray-400" /></div>
         </div>
@@ -497,7 +497,7 @@ export default function AdminClient() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] capitalize">{tab}</h1>
-              <p className="text-gray-500 text-sm mt-0.5">WeddingCart Admin Panel</p>
+              <p className="text-gray-500 text-sm mt-0.5">ShaadiShopping Admin Panel</p>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={fetchAll} disabled={loading} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm border border-gray-200 px-3 py-2 rounded-xl hover:bg-white transition-all">

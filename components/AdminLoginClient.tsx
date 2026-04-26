@@ -51,7 +51,7 @@ export default function AdminLoginClient() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-5 py-2.5 rounded-full text-sm font-bold mb-4 shadow-lg">
             <Sparkles className="w-4 h-4" />
-            WeddingCart
+            ShaadiShopping
           </div>
           <h1 className="text-3xl font-bold text-gray-900 font-[Playfair_Display,serif]">Admin Panel</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to manage your wedding marketplace</p>
@@ -130,7 +130,7 @@ export default function AdminLoginClient() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          WeddingCart Admin · Restricted Access
+          ShaadiShopping Admin · Restricted Access
         </p>
       </div>
     </div>

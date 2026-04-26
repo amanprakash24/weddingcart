@@ -35,7 +35,7 @@ async function createVendorFromApplication(app: InstanceType<typeof VendorApplic
     reviewCount: 0,
     image: app.coverImage || DEFAULT_IMAGE,
     images: app.coverImage ? [app.coverImage] : [DEFAULT_IMAGE],
-    description: app.description || `${app.businessName} — a verified WeddingCart vendor.`,
+    description: app.description || `${app.businessName} — a verified ShaadiShopping vendor.`,
     features,
     packages: [],
     isFeatured: false,

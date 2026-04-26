@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Search, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle, Heart, Users, Award, ArrowRight, Sparkles, Phone } from 'lucide-react';
 import { Vendor, Category } from '@/types';
 import VendorCard from './VendorCard';
@@ -120,12 +120,7 @@ function SectionHeader({ eyebrow, eyebrowColor = 'text-amber-600', title, subtit
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=90',
-  'https://images.unsplash.com/photo-1502635385003-ee1e6a1a742d?w=1920&q=90',
-  'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=90',
-  'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=1920&q=90',
-];
+const HERO_VIDEO_ID = 'W_uKnsMrKXs';
 
 const HOW_IT_WORKS = [
   {
@@ -148,7 +143,6 @@ const HOW_IT_WORKS = [
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HomepageClient() {
-  const [heroIdx, setHeroIdx] = useState(0);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [specialServices, setSpecialServices] = useState<Category[]>([]);
@@ -156,11 +150,6 @@ export default function HomepageClient() {
   const [loading, setLoading] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
   const featuredCarouselRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const t = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_IMAGES.length), 5000);
-    return () => clearInterval(t);
-  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -226,39 +215,22 @@ export default function HomepageClient() {
     <div>
       {/* ── HERO ── */}
       <section className="relative h-screen min-h-[600px] max-h-[900px] flex items-center overflow-hidden">
-        {/* Background images */}
-        <AnimatePresence mode="sync">
-          {HERO_IMAGES.map((src, i) =>
-            i === heroIdx ? (
-              <motion.div
-                key={src}
-                className="absolute inset-0 pointer-events-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.2 }}
-              >
-                <Image src={src} alt="Wedding" fill priority={i === 0} sizes="100vw" className="object-cover" />
-              </motion.div>
-            ) : null
-          )}
-        </AnimatePresence>
+        {/* Background video */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <iframe
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+            style={{ width: 'calc(177.78vh)', height: 'calc(56.25vw)', minWidth: '100%', minHeight: '100%' }}
+            src={`https://www.youtube.com/embed/${HERO_VIDEO_ID}?autoplay=1&mute=1&loop=1&playlist=${HERO_VIDEO_ID}&controls=0&rel=0&modestbranding=1&playsinline=1&disablekb=1`}
+            title="Hero background video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          />
+        </div>
 
         <div className="absolute inset-0 hero-overlay pointer-events-none" />
 
         {/* Floating petals */}
         <FloatingPetals />
-
-        {/* Hero dots */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {HERO_IMAGES.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setHeroIdx(i)}
-              className={`transition-all duration-300 rounded-full ${i === heroIdx ? 'w-6 h-2 bg-white' : 'w-2 h-2 bg-white/50'}`}
-            />
-          ))}
-        </div>
 
         {/* Hero content */}
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
@@ -565,7 +537,7 @@ export default function HomepageClient() {
           <SectionHeader
             eyebrow="Simple Process"
             eyebrowColor="text-emerald-600"
-            title={<>How WeddingCart <span className="gradient-text">Works</span></>}
+            title={<>How ShaadiShopping <span className="gradient-text">Works</span></>}
             subtitle="From discovery to your dream day — we handle every detail so you can focus on celebrating."
           />
 
@@ -624,17 +596,17 @@ export default function HomepageClient() {
             {[
               {
                 name: 'Priya & Rahul', city: 'Delhi', rating: 5,
-                text: 'WeddingCart made our wedding planning so effortless! We found our dream venue, photographer, and caterer all in one place. The vendors were professional and delivered beyond expectations.',
+                text: 'ShaadiShopping made our wedding planning so effortless! We found our dream venue, photographer, and caterer all in one place. The vendors were professional and delivered beyond expectations.',
                 image: 'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=200&q=80',
               },
               {
                 name: 'Ananya & Vikram', city: 'Mumbai', rating: 5,
-                text: 'Absolutely love WeddingCart! The comparison feature helped us find vendors within our budget. The planning wizard saved us weeks of research. Our wedding was a fairy tale!',
+                text: 'Absolutely love ShaadiShopping! The comparison feature helped us find vendors within our budget. The planning wizard saved us weeks of research. Our wedding was a fairy tale!',
                 image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=200&q=80',
               },
               {
                 name: 'Sneha & Arjun', city: 'Jaipur', rating: 5,
-                text: "From mehndi to photography, WeddingCart had the perfect vendors for our royal Rajasthani wedding. The team was helpful throughout. Couldn't have asked for a better experience!",
+                text: "From mehndi to photography, ShaadiShopping had the perfect vendors for our royal Rajasthani wedding. The team was helpful throughout. Couldn't have asked for a better experience!",
                 image: 'https://images.unsplash.com/photo-1587826080692-f439cd0b70da?w=200&q=80',
               },
             ].map((t, i) => (
@@ -694,7 +666,7 @@ export default function HomepageClient() {
               <span className="shimmer-text">Dream Wedding?</span>
             </motion.h2>
             <motion.p variants={fadeUp} className="text-white/70 text-base mb-8">
-              Join 10,000+ couples who planned their perfect wedding with WeddingCart. Get expert guidance, compare vendors, and book with confidence.
+              Join 10,000+ couples who planned their perfect wedding with ShaadiShopping. Get expert guidance, compare vendors, and book with confidence.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link

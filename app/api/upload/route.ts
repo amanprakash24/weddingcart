@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
       cloudinary.uploader
-        .upload_stream({ folder: 'weddingcart', resource_type: 'image' }, (error, res) => {
+        .upload_stream({ folder: 'shaadishopping', resource_type: 'image' }, (error, res) => {
           if (error || !res) reject(error ?? new Error('Upload failed'));
           else resolve(res as { secure_url: string });
         })

@@ -1,7 +1,7 @@
 import AdminLoginClient from '@/components/AdminLoginClient';
 
 export const metadata = {
-  title: 'Admin Login | WeddingCart',
+  title: 'Admin Login | ShaadiShopping',
   robots: { index: false, follow: false },
 };
 
