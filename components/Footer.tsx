@@ -29,7 +29,7 @@ export default function Footer() {
             <p className="text-gray-400 text-sm leading-relaxed mb-1">
               India&apos;s premier wedding planning marketplace. Discover, compare, and book top vendors for your dream wedding.
             </p>
-            <p className="text-gray-500 text-xs mb-5">Founded by <span className="text-amber-400 font-medium">Gaurav Singh</span>, Patna, Bihar.</p>
+            <p className="text-gray-500 text-xs mb-5">Founded by <span className="text-amber-400 font-medium">Anisha Kumari</span>, Patna, Bihar.</p>
             <div className="space-y-2.5 text-sm">
               <div className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-amber-400 flex-shrink-0" />

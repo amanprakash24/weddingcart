@@ -5,12 +5,13 @@ import CategoryModel from '@/lib/models/Category';
 import EnquiryModel from '@/lib/models/Enquiry';
 import ConsultationModel from '@/lib/models/Consultation';
 import BookingModel from '@/lib/models/Booking';
+import VendorApplicationModel from '@/lib/models/VendorApplication';
 
 export async function GET() {
   try {
     await connectDB();
 
-    const [vendors, categories, enquiries, consultations, newEnquiries, newConsultations, bookings, newBookings] = await Promise.all([
+    const [vendors, categories, enquiries, consultations, newEnquiries, newConsultations, bookings, newBookings, outsideVendors, newOutsideVendors] = await Promise.all([
       VendorModel.countDocuments(),
       CategoryModel.countDocuments(),
       EnquiryModel.countDocuments(),
@@ -19,6 +20,8 @@ export async function GET() {
       ConsultationModel.countDocuments({ status: 'new' }),
       BookingModel.countDocuments(),
       BookingModel.countDocuments({ status: 'new' }),
+      VendorApplicationModel.countDocuments(),
+      VendorApplicationModel.countDocuments({ status: 'new' }),
     ]);
 
     return NextResponse.json({
@@ -32,6 +35,8 @@ export async function GET() {
         newConsultations,
         bookings,
         newBookings,
+        outsideVendors,
+        newOutsideVendors,
       },
     });
   } catch (error) {

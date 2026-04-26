@@ -710,6 +710,13 @@ export default function HomepageClient() {
                 <Phone className="w-4 h-4" />
                 Talk to an Expert
               </a>
+              <Link
+                href="/vendor-onboarding"
+                className="flex items-center justify-center gap-2 bg-white text-gray-900 font-semibold px-8 py-4 rounded-full hover:bg-amber-50 transition-all text-sm"
+              >
+                <Users className="w-4 h-4" />
+                Join as Vendor
+              </Link>
             </motion.div>
           </div>
         </motion.div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut } from 'lucide-react';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -82,9 +82,9 @@ function ImageUploadField({
   );
 }
 
-type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings';
+type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings' | 'outside-vendors';
 
-interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; }
+interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
 
@@ -110,6 +110,8 @@ export default function AdminClient() {
   const [enquiries, setEnquiries] = useState<AnyRecord[]>([]);
   const [consultations, setConsultations] = useState<AnyRecord[]>([]);
   const [bookings, setBookings] = useState<AnyRecord[]>([]);
+  const [vendorApplications, setVendorApplications] = useState<AnyRecord[]>([]);
+  const [appFilter, setAppFilter] = useState<'all' | 'new' | 'approved' | 'rejected'>('all');
   const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [consultationFilter, setConsultationFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [loading, setLoading] = useState(false);
@@ -149,21 +151,23 @@ export default function AdminClient() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, vRes, cRes, eRes, conRes, bRes] = await Promise.all([
+      const [sRes, vRes, cRes, eRes, conRes, bRes, appRes] = await Promise.all([
         fetch('/api/stats'),
         fetch('/api/vendors?limit=100'),
         fetch('/api/categories'),
         fetch('/api/enquiries'),
         fetch('/api/consultations'),
         fetch('/api/bookings'),
+        fetch('/api/vendor-applications'),
       ]);
-      const [s, v, c, e, con, b] = await Promise.all([sRes.json(), vRes.json(), cRes.json(), eRes.json(), conRes.json(), bRes.json()]);
+      const [s, v, c, e, con, b, app] = await Promise.all([sRes.json(), vRes.json(), cRes.json(), eRes.json(), conRes.json(), bRes.json(), appRes.json()]);
       if (s.success) setStats(s.data);
       if (v.success) setVendors(v.data);
       if (c.success) setCategories(c.data);
       if (e.success) setEnquiries(e.data);
       if (con.success) setConsultations(con.data);
       if (b.success) setBookings(b.data);
+      if (app.success) setVendorApplications(app.data);
     } finally {
       setLoading(false);
     }
@@ -441,6 +445,7 @@ export default function AdminClient() {
     { id: 'enquiries' as Tab, icon: MessageSquare, label: 'Enquiries', badge: stats?.newEnquiries, badgeColor: 'bg-rose-500' },
     { id: 'consultations' as Tab, icon: Phone, label: 'Consultations', badge: stats?.newConsultations, badgeColor: 'bg-rose-500' },
     { id: 'bookings' as Tab, icon: BookOpen, label: 'Bookings', badge: stats?.newBookings, badgeColor: 'bg-emerald-500' },
+    { id: 'outside-vendors' as Tab, icon: Users, label: 'Outside Vendors', badge: stats?.newOutsideVendors, badgeColor: 'bg-indigo-500' },
   ];
 
   return (
@@ -513,6 +518,25 @@ export default function AdminClient() {
           {/* DASHBOARD */}
           {tab === 'dashboard' && (
             <div>
+              {/* Notification banner for pending vendor applications */}
+              {(stats?.newOutsideVendors ?? 0) > 0 && (
+                <button
+                  onClick={() => setTab('outside-vendors')}
+                  className="w-full mb-5 flex items-center gap-4 bg-indigo-50 border border-indigo-200 rounded-2xl px-5 py-4 text-left hover:bg-indigo-100 transition-all group"
+                >
+                  <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Users className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-indigo-800 text-sm">
+                      {stats!.newOutsideVendors} new vendor application{stats!.newOutsideVendors > 1 ? 's' : ''} pending review
+                    </p>
+                    <p className="text-indigo-500 text-xs mt-0.5">Click to review and approve — approved vendors are automatically listed on the site.</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-indigo-400 flex-shrink-0" />
+                </button>
+              )}
+
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 {[
                   { label: 'Total Vendors',  value: stats?.vendors || 0,       icon: Briefcase,    color: 'bg-blue-500',   tab: 'vendors' as Tab },
@@ -520,6 +544,7 @@ export default function AdminClient() {
                   { label: 'Enquiries',      value: stats?.enquiries || 0,     icon: MessageSquare,color: 'bg-amber-500',  tab: 'enquiries' as Tab,     sub: stats?.newEnquiries ? `${stats.newEnquiries} new` : undefined },
                   { label: 'Consultations',  value: stats?.consultations || 0, icon: Phone,        color: 'bg-rose-500',   tab: 'consultations' as Tab, sub: stats?.newConsultations ? `${stats.newConsultations} new` : undefined },
                   { label: 'Bookings',       value: stats?.bookings || 0,      icon: BookOpen,     color: 'bg-teal-500',   tab: 'bookings' as Tab,      sub: stats?.newBookings ? `${stats.newBookings} new` : undefined },
+                  { label: 'Outside Vendors', value: stats?.outsideVendors || 0, icon: Users,       color: 'bg-indigo-500', tab: 'outside-vendors' as Tab, sub: stats?.newOutsideVendors ? `${stats.newOutsideVendors} new` : undefined },
                 ].map(({ label, value, icon: Icon, color, tab: targetTab, sub }) => (
                   <button
                     key={label}
@@ -1526,6 +1551,139 @@ export default function AdminClient() {
                           }`}
                         >{s}</button>
                       ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* OUTSIDE VENDORS */}
+          {tab === 'outside-vendors' && (
+            <div className="space-y-3">
+              {/* Filter bar */}
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filter:</span>
+                {(['all', 'new', 'approved', 'rejected'] as const).map((f) => {
+                  const count = f === 'all' ? vendorApplications.length : vendorApplications.filter((a) => a.status === f).length;
+                  return (
+                    <button key={f} onClick={() => setAppFilter(f)}
+                      className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
+                        appFilter === f ? 'bg-indigo-500 text-white border-indigo-500' : 'border-gray-200 text-gray-600 hover:border-indigo-300 bg-white'
+                      }`}
+                    >{f} ({count})</button>
+                  );
+                })}
+              </div>
+
+              {(appFilter === 'all' ? vendorApplications : vendorApplications.filter((a) => a.status === appFilter)).length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>No {appFilter === 'all' ? '' : appFilter} vendor applications.</p>
+                </div>
+              )}
+
+              {(appFilter === 'all' ? vendorApplications : vendorApplications.filter((a) => a.status === appFilter)).map((a) => (
+                <div key={a._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h4 className="font-semibold text-gray-900 text-sm">{a.businessName}</h4>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                          a.status === 'new' ? 'bg-blue-100 text-blue-700'
+                          : a.status === 'approved' ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-red-100 text-red-600'
+                        }`}>{a.status}</span>
+                        {a.status === 'approved' && a.vendorId && (
+                          <Link
+                            href={`/vendors/${a.vendorId}`}
+                            target="_blank"
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors flex items-center gap-1"
+                          >
+                            <Eye className="w-2.5 h-2.5" /> Listed on site
+                          </Link>
+                        )}
+                        {a.createdAt && (
+                          <span className="text-xs text-gray-400">
+                            {new Date(a.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-gray-500 text-xs mb-0.5">
+                        <span className="capitalize font-medium text-indigo-600">{a.category}</span>
+                        {a.city ? ` · 📍 ${a.city}` : ''}
+                        {a.experience ? ` · ${a.experience}` : ''}
+                      </p>
+
+                      <p className="text-gray-600 text-xs font-medium">{a.ownerName}</p>
+                      <p className="text-gray-400 text-xs">
+                        {a.ownerPhone && <span>{a.ownerPhone}</span>}
+                        {a.ownerEmail && <span> · {a.ownerEmail}</span>}
+                      </p>
+
+                      {(a.priceMin > 0 || a.priceMax > 0) && (
+                        <p className="text-amber-600 text-xs font-semibold mt-1">
+                          ₹{a.priceMin?.toLocaleString('en-IN')} – ₹{a.priceMax?.toLocaleString('en-IN')}
+                        </p>
+                      )}
+
+                      {a.description && (
+                        <p className="text-gray-500 text-xs mt-1.5 line-clamp-2 max-w-xl">{a.description}</p>
+                      )}
+
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
+                        {a.instagram && (
+                          <a href={`https://instagram.com/${a.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-pink-500 hover:underline">
+                            <AtSign className="w-3 h-3" /> {a.instagram}
+                          </a>
+                        )}
+                        {a.website && (
+                          <a href={a.website} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-blue-500 hover:underline">
+                            <Globe className="w-3 h-3" /> Website
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status actions */}
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      {(['new', 'approved', 'rejected'] as const).map((s) => (
+                        <button key={s}
+                          disabled={a.status === s}
+                          onClick={async () => {
+                            await fetch(`/api/vendor-applications/${a._id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: s }),
+                            });
+                            fetchAll();
+                          }}
+                          className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize disabled:opacity-60 disabled:cursor-default ${
+                            a.status === s
+                              ? s === 'approved' ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                                : s === 'rejected' ? 'border-red-300 bg-red-50 text-red-600'
+                                : 'border-blue-300 bg-blue-50 text-blue-700'
+                              : s === 'approved' ? 'border-gray-200 text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'
+                              : s === 'rejected' ? 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 hover:bg-red-50'
+                              : 'border-gray-200 text-gray-500 hover:border-indigo-300'
+                          }`}
+                        >
+                          {s === 'approved' && a.status !== 'approved' ? '✓ Approve & List' : s === 'rejected' ? '✗ Reject' : s}
+                        </button>
+                      ))}
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Delete this application?')) return;
+                          await fetch(`/api/vendor-applications/${a._id}`, { method: 'DELETE' });
+                          fetchAll();
+                        }}
+                        className="text-xs px-3 py-1.5 rounded-full font-medium border border-gray-200 text-rose-500 hover:border-rose-300 hover:bg-rose-50 transition-all mt-1"
+                      >
+                        <Trash2 className="w-3 h-3 inline mr-1" />Delete
+                      </button>
                     </div>
                   </div>
                 </div>
