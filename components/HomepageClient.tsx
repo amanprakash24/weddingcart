@@ -251,7 +251,17 @@ export default function HomepageClient() {
         });
         setCategories(sorted);
       }
-      if (specialData.success) setSpecialServices(specialData.data);
+      if (specialData.success) {
+        const PRIORITY = ['legal', 'pandit', 'pandits'];
+        const sorted = [...specialData.data].sort((a: Category, b: Category) => {
+          const aIdx = PRIORITY.findIndex((p) => a.id?.toLowerCase().includes(p) || a.name?.toLowerCase().includes(p));
+          const bIdx = PRIORITY.findIndex((p) => b.id?.toLowerCase().includes(p) || b.name?.toLowerCase().includes(p));
+          const aRank = aIdx === -1 ? 999 : aIdx;
+          const bRank = bIdx === -1 ? 999 : bIdx;
+          return aRank - bRank;
+        });
+        setSpecialServices(sorted);
+      }
       if (vendorData.success) {
         setVendors(vendorData.data);
         setFeaturedVendors(vendorData.data.filter((v: Vendor) => v.isFeatured).slice(0, 8));
@@ -575,7 +585,7 @@ export default function HomepageClient() {
                 onScroll={onCarousel1Scroll}
                 onMouseEnter={pauseCarousel1}
                 onMouseLeave={resetCarousel1Timer}
-                className="flex gap-3.5 overflow-x-auto scrollbar-hide pb-2"
+                className="flex gap-5 overflow-x-auto scrollbar-hide pb-2"
               >
                 {[...topVendors, ...topVendors].map((vendor, idx) => (
                   <div key={`${vendor.id}-${idx}`} className="flex-none w-[85vw] sm:w-[calc((100%-56px)/4.1)]">
@@ -641,7 +651,7 @@ export default function HomepageClient() {
                 onScroll={onCarousel2Scroll}
                 onMouseEnter={pauseCarousel2}
                 onMouseLeave={resetCarousel2Timer}
-                className="flex gap-3.5 overflow-x-auto scrollbar-hide pb-2"
+                className="flex gap-5 overflow-x-auto scrollbar-hide pb-2"
               >
                 {[...featuredVendors, ...featuredVendors].map((v, idx) => (
                   <div key={`${v.id}-${idx}`} className="flex-none w-[85vw] sm:w-[calc((100%-56px)/4.1)] relative pt-3">

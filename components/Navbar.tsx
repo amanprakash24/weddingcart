@@ -134,16 +134,27 @@ export default function Navbar() {
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0 py-2" style={{ touchAction: 'manipulation' }}>
-              <div className="relative w-40 h-18 flex-shrink-0 mt-2">
-                <Image src="/logo.png" alt="ShaadiShopping logo" fill className="object-contain" />
-              </div>
-              <span className={`text-xl font-bold font-[Playfair_Display,serif] transition-colors ${isTransparent ? 'text-white' : 'gradient-text'}`}>
+          <div className="flex items-center justify-between h-16 relative">
+            {/* Logo — extreme left */}
+            <Link href="/" className="flex items-center gap-2 flex-shrink-0" style={{ touchAction: 'manipulation' }}>
+              <Image
+                src="/logo.png"
+                alt="ShaadiShopping logo"
+                width={220}
+                height={140}
+                className="h-12 w-auto object-contain"
+                priority
+              />
+              {/* Brand name beside logo on desktop */}
+              <span className={`hidden lg:block text-xl font-bold font-[Playfair_Display,serif] whitespace-nowrap transition-colors ${isTransparent ? 'text-white' : 'gradient-text'}`}>
                 ShaadiShopping
               </span>
             </Link>
+
+            {/* Brand name — centered on mobile only */}
+            <span className={`lg:hidden absolute left-1/2 -translate-x-1/2 text-lg font-bold font-[Playfair_Display,serif] whitespace-nowrap transition-colors pointer-events-none ${isTransparent ? 'text-white' : 'gradient-text'}`}>
+              ShaadiShopping
+            </span>
 
             {/* Desktop Nav */}
             <div className="hidden lg:flex items-center gap-1">
@@ -180,32 +191,34 @@ export default function Navbar() {
                 </button>
 
                 {megaOpen && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[860px] bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 animate-fade-in">
-                    <div className="grid grid-cols-3 gap-6">
-                      {MEGA_MENU.map((col) => (
-                        <div key={col.heading}>
-                          <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2">{col.heading}</p>
-                          <ul className="space-y-1">
-                            {col.items.map((item) => (
-                              <li key={item.label}>
-                                <Link
-                                  href={item.href}
-                                  className={`flex items-center gap-1.5 text-sm py-1 transition-colors hover:text-amber-600 ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-500'}`}
-                                >
-                                  {item.icon && <item.icon className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
-                                  {item.label}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
-                      <p className="text-xs text-gray-400">Can&apos;t find what you need?</p>
-                      <Link href="/plan" className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:underline">
-                        <Sparkles className="w-3.5 h-3.5" /> Use the Planning Wizard
-                      </Link>
+                  <div className="fixed top-16 left-[10%] right-[10%] h-[65vh] bg-white shadow-2xl border border-amber-100/60 rounded-b-2xl animate-fade-in overflow-y-auto z-[9998]">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-full flex flex-col">
+                      <div className="grid grid-cols-3 lg:grid-cols-6 gap-6 flex-1">
+                        {MEGA_MENU.map((col) => (
+                          <div key={col.heading}>
+                            <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-3 border-b border-amber-100 pb-1.5">{col.heading}</p>
+                            <ul className="space-y-1">
+                              {col.items.map((item) => (
+                                <li key={item.label}>
+                                  <Link
+                                    href={item.href}
+                                    className={`flex items-center gap-1.5 text-sm py-1 transition-colors hover:text-amber-600 ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-500'}`}
+                                  >
+                                    {item.icon && <item.icon className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
+                                    {item.label}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between flex-shrink-0">
+                        <p className="text-xs text-gray-400">Can&apos;t find what you need?</p>
+                        <Link href="/plan" className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:underline">
+                          <Sparkles className="w-3.5 h-3.5" /> Use the Planning Wizard
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 )}
