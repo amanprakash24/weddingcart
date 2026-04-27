@@ -140,6 +140,86 @@ const HOW_IT_WORKS = [
   },
 ];
 
+// ── Vendor directory data ─────────────────────────────────────────────────────
+
+const VENDOR_CATEGORIES = [
+  {
+    heading: 'Wedding Venues',
+    items: [
+      { label: 'Banquet Halls', href: '/categories/venue' },
+      { label: 'Hotels', href: '/categories/venue' },
+      { label: 'Marriage Garden', href: '/categories/venue' },
+      { label: 'Kalyana Mandapams', href: '/categories/venue' },
+      { label: 'Wedding Resorts', href: '/categories/venue' },
+      { label: 'Wedding Lawns & Farmhouses', href: '/categories/venue' },
+    ],
+  },
+  {
+    heading: 'Wedding Vendors',
+    items: [
+      { label: 'Caterers', href: '/categories/catering' },
+      { label: 'Wedding Invitations', href: '/categories/invitations' },
+      { label: 'Wedding Gifts', href: '/categories/gifts' },
+      { label: 'Wedding Photographers', href: '/categories/photo-video' },
+      { label: 'Wedding Music', href: '/categories/band' },
+      { label: 'Wedding Transportation', href: '/categories/transport' },
+      { label: 'Tent House', href: '/categories/decorator' },
+      { label: 'Wedding Entertainment', href: '/categories/band' },
+      { label: 'Florists', href: '/categories/decorator' },
+      { label: 'Wedding Planners', href: '/categories/planning' },
+      { label: 'Wedding Videography', href: '/categories/photo-video' },
+      { label: 'Honeymoon', href: '/categories/venue' },
+      { label: 'Wedding Decorators', href: '/categories/decorator' },
+      { label: 'Wedding Cakes', href: '/categories/catering' },
+      { label: 'Wedding DJ', href: '/categories/dj' },
+      { label: 'Pandits', href: '/categories/planning' },
+      { label: 'Photobooth', href: '/categories/photo-video' },
+      { label: 'Astrologers', href: '/categories/planning' },
+      { label: 'Party Places', href: '/categories/venue' },
+      { label: 'Wedding Choreographers', href: '/categories/band' },
+    ],
+  },
+  {
+    heading: 'Brides',
+    items: [
+      { label: 'Mehndi Artists', href: '/categories/mehndi' },
+      { label: 'Bridal Makeup Artists', href: '/categories/makeup' },
+      { label: 'Makeup Salon', href: '/categories/makeup' },
+      { label: 'Bridal Jewellery', href: '/categories/makeup' },
+      { label: 'Bridal Lehenga', href: '/categories/makeup' },
+      { label: 'Trousseau Packing', href: '/categories/makeup' },
+    ],
+  },
+  {
+    heading: 'Grooms',
+    items: [
+      { label: 'Sherwani / Groom Wear', href: '/categories/makeup' },
+    ],
+  },
+];
+
+const LOCATIONS = [
+  { state: 'Bihar', cities: ['Patna', 'Gaya', 'Muzaffarpur', 'Bhagalpur'] },
+  { state: 'West Bengal', cities: ['Kolkata', 'Darjeeling', 'Howrah'] },
+  { state: 'Goa', cities: ['North Goa', 'South Goa'] },
+  { state: 'Maharashtra', cities: ['Mumbai', 'Pune', 'Nashik', 'Nagpur', 'Raigad'] },
+  { state: 'Delhi NCR', cities: ['Gurgaon', 'South Delhi', 'West Delhi', 'Noida', 'Faridabad', 'Dwarka', 'Greater Noida'] },
+  { state: 'Uttar Pradesh', cities: ['Lucknow', 'Agra', 'Varanasi', 'Kanpur', 'Allahabad'] },
+  { state: 'Rajasthan', cities: ['Jaipur', 'Udaipur', 'Jodhpur', 'Ajmer', 'Alwar'] },
+  { state: 'Karnataka', cities: ['Bangalore', 'Mysore', 'Belgaum'] },
+  { state: 'Tamil Nadu', cities: ['Chennai', 'Coimbatore', 'Madurai', 'Salem', 'Vellore'] },
+  { state: 'Telangana', cities: ['Hyderabad', 'Warangal', 'Medchal'] },
+  { state: 'Gujarat', cities: ['Ahmedabad', 'Vadodara', 'Surat', 'Gandhinagar', 'Rajkot'] },
+  { state: 'Uttarakhand', cities: ['Dehradun', 'Nainital', 'Haridwar'] },
+  { state: 'Punjab', cities: ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala'] },
+  { state: 'Chandigarh', cities: ['Chandigarh City', 'Mohali', 'Panchkula', 'Zirakpur'] },
+  { state: 'Madhya Pradesh', cities: ['Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain'] },
+  { state: 'Kerala', cities: ['Kochi', 'Thiruvananthapuram', 'Alappuzha', 'Thrissur'] },
+  { state: 'Himachal Pradesh', cities: ['Shimla', 'Solan', 'Kangra', 'Kullu', 'Chamba'] },
+  { state: 'Andhra Pradesh', cities: ['Visakhapatnam', 'Vijayawada', 'Kurnool'] },
+  { state: 'Odisha', cities: ['Bhubaneswar', 'Puri', 'Khordha'] },
+];
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HomepageClient() {
@@ -634,6 +714,81 @@ export default function HomepageClient() {
               </motion.div>
             ))}
           </motion.div>
+        </div>
+      </section>
+
+      {/* ── VENDORS BY CATEGORY ── */}
+      <section className="py-10 bg-gray-50 border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-6 font-[Playfair_Display,serif]">
+            Wedding Vendors by Category
+          </h2>
+          <div className="space-y-4">
+            {VENDOR_CATEGORIES.map((group) => (
+              <div key={group.heading}>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">{group.heading}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {group.items.map((item, idx) => (
+                    <span key={item.label}>
+                      <Link href={item.href} className="hover:text-amber-600 transition-colors">
+                        {item.label}
+                      </Link>
+                      {idx < group.items.length - 1 && <span className="mx-2 text-gray-400">·</span>}
+                    </span>
+                  ))}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── VENDORS BY LOCATION ── */}
+      <section className="py-14 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-8 font-[Playfair_Display,serif]">
+            Wedding Vendors by Location
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+            {LOCATIONS.map((loc) => (
+              <div key={loc.state}>
+                <h3 className="text-sm font-bold text-rose-700 uppercase tracking-wide mb-2 border-b border-rose-100 pb-1.5">
+                  {loc.state}
+                </h3>
+                <ul className="space-y-1">
+                  {loc.cities.map((city) => (
+                    <li key={city}>
+                      <Link
+                        href={`/categories/venue?city=${encodeURIComponent(city)}`}
+                        className="text-sm text-gray-600 hover:text-rose-600 hover:pl-1 transition-all duration-150 block"
+                      >
+                        Wedding Venues {city}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CONTACT EXPERT ── */}
+      <section className="py-10 bg-gradient-to-r from-amber-50 to-rose-50 border-t border-amber-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">
+              Contact a wedding expert for free
+            </h3>
+            <p className="text-sm text-gray-500">We&apos;d love to help you! Monday to Friday, from 10am to 7pm.</p>
+          </div>
+          <a
+            href="tel:+917070486987"
+            className="flex items-center gap-3 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-8 py-3.5 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm flex-shrink-0"
+          >
+            <Phone className="w-4 h-4" />
+            Call +91 70704 86987
+          </a>
         </div>
       </section>
 

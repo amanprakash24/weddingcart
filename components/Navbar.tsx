@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart, Menu, X, Heart, Phone, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText } from 'lucide-react';
+import { ShoppingCart, Menu, X, Phone, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
 const MEGA_MENU = [
@@ -136,11 +137,8 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 flex-shrink-0 py-2" style={{ touchAction: 'manipulation' }}>
-              <div className="relative w-8 h-8">
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-rose-500 rounded-full opacity-20 animate-spin-slow pointer-events-none" />
-                <div className="relative flex items-center justify-center w-8 h-8">
-                  <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
-                </div>
+              <div className="relative w-40 h-18 flex-shrink-0 mt-2">
+                <Image src="/logo.png" alt="ShaadiShopping logo" fill className="object-contain" />
               </div>
               <span className={`text-xl font-bold font-[Playfair_Display,serif] transition-colors ${isTransparent ? 'text-white' : 'gradient-text'}`}>
                 ShaadiShopping

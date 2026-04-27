@@ -26,7 +26,8 @@
       "Bash(node:*)",
       "Bash(xargs sed *)",
       "Bash(ffmpeg -version)",
-      "Bash(where ffmpeg *)"
+      "Bash(where ffmpeg *)",
+      "WebFetch(domain:www.weddingwire.in)"
     ]
   }
 }
