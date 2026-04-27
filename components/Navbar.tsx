@@ -152,9 +152,9 @@ export default function Navbar() {
             </Link>
 
             {/* Brand name — centered on mobile only */}
-            <span className={`lg:hidden absolute left-1/2 -translate-x-1/2 text-lg font-bold font-[Playfair_Display,serif] whitespace-nowrap transition-colors pointer-events-none ${isTransparent ? 'text-white' : 'gradient-text'}`}>
+            <Link href="/" style={{ touchAction: 'manipulation' }} className={`lg:hidden absolute left-1/2 -translate-x-1/2 text-lg font-bold font-[Playfair_Display,serif] whitespace-nowrap transition-colors ${isTransparent ? 'text-white' : 'gradient-text'}`}>
               ShaadiShopping
-            </span>
+            </Link>
 
             {/* Desktop Nav */}
             <div className="hidden lg:flex items-center gap-1">
