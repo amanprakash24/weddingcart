@@ -230,7 +230,7 @@ export default function Navbar() {
               <a
                 href="tel:+917070486987"
                 style={{ touchAction: 'manipulation' }}
-                className={`hidden sm:flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full transition-all ${
+                className={`hidden lg:flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full transition-all ${
                   isTransparent ? 'text-white/90 hover:bg-white/15' : 'text-gray-600 hover:text-amber-600 hover:bg-amber-50'
                 }`}
               >

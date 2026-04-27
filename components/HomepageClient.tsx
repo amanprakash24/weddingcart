@@ -411,7 +411,7 @@ export default function HomepageClient() {
             </motion.p>
 
             {/* CTA */}
-            <motion.div variants={fadeUp}>
+            <motion.div variants={fadeUp} className="flex flex-col items-start gap-3">
               <Link
                 href="/plan"
                 className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-2xl hover:opacity-90 hover:scale-105 transition-all"
@@ -420,6 +420,13 @@ export default function HomepageClient() {
                 Plan Your Wedding
                 <ArrowRight className="w-5 h-5" />
               </Link>
+              <a
+                href="tel:+917070486987"
+                className="lg:hidden inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 text-white px-6 py-3.5 rounded-2xl font-semibold text-base hover:bg-white/25 transition-all"
+              >
+                <Phone className="w-5 h-5" />
+                Call Us
+              </a>
             </motion.div>
 
             {/* Stats */}
