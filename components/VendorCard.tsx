@@ -89,16 +89,23 @@ export default function VendorCard({ vendor }: Props) {
             <span className="text-gray-600 text-xs">({vendor.reviewCount})</span>
           </div>
 
-          {/* Features */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {vendor.features.slice(0, 3).map((f) => (
-              <span key={f} className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md">
+          {/* Features — max 2 rows */}
+          <div className="flex flex-wrap gap-1.5 mb-3 max-h-[54px] overflow-hidden">
+            {vendor.features.slice(0, 4).map((f) => (
+              <span
+                key={f}
+                title={f}
+                className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md break-words leading-relaxed cursor-default"
+              >
                 {f}
               </span>
             ))}
-            {vendor.features.length > 3 && (
-              <span className="text-[11px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md">
-                +{vendor.features.length - 3} more
+            {vendor.features.length > 4 && (
+              <span
+                title={vendor.features.slice(4).join(' · ')}
+                className="text-[11px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded-md cursor-help flex-shrink-0"
+              >
+                +{vendor.features.length - 4} more
               </span>
             )}
           </div>

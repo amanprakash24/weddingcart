@@ -78,7 +78,7 @@ const MEGA_MENU = [
 
 const navLinks = [
   { href: '/', label: 'Home' },
-  { href: '/plan', label: 'Plan Wedding' },
+  { href: '/about', label: 'About Us' },
 ];
 
 export default function Navbar() {

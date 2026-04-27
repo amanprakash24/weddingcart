@@ -79,7 +79,7 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Company</h4>
             <ul className="space-y-2 mb-6">
               {[
-                { label: 'About Us', href: '#' },
+                { label: 'About Us', href: '/about' },
                 { label: 'How It Works', href: '#' },
                 { label: 'For Vendors', href: '#' },
                 { label: 'Blog', href: '#' },

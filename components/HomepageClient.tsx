@@ -230,6 +230,8 @@ export default function HomepageClient() {
   const [loading, setLoading] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
   const featuredCarouselRef = useRef<HTMLDivElement>(null);
+  const carousel1Timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const carousel2Timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -241,7 +243,14 @@ export default function HomepageClient() {
       ]);
       const [catData, specialData, vendorData] = await Promise.all([catRes.json(), specialRes.json(), vendorRes.json()]);
 
-      if (catData.success) setCategories(catData.data);
+      if (catData.success) {
+        const sorted = [...catData.data].sort((a: Category, b: Category) => {
+          if (a.id === 'venue') return -1;
+          if (b.id === 'venue') return 1;
+          return 0;
+        });
+        setCategories(sorted);
+      }
       if (specialData.success) setSpecialServices(specialData.data);
       if (vendorData.success) {
         setVendors(vendorData.data);
@@ -259,36 +268,83 @@ export default function HomepageClient() {
   const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 12);
 
   const scrollCarousel = (dir: 'left' | 'right') => {
-    if (!carouselRef.current) return;
     const el = carouselRef.current;
-    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 10;
-    if (dir === 'right' && atEnd) {
-      el.scrollTo({ left: 0, behavior: 'smooth' });
-    } else {
-      el.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' });
+    if (!el) return;
+    const card = el.firstElementChild as HTMLElement;
+    const amount = card ? card.offsetWidth + 14 : el.clientWidth / 4;
+    if (dir === 'left' && el.scrollLeft < amount) {
+      el.scrollLeft = el.scrollWidth / 2;
     }
+    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
   };
 
   const scrollFeatured = (dir: 'left' | 'right') => {
-    if (!featuredCarouselRef.current) return;
     const el = featuredCarouselRef.current;
-    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 10;
-    if (dir === 'right' && atEnd) {
-      el.scrollTo({ left: 0, behavior: 'smooth' });
-    } else {
-      el.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' });
+    if (!el) return;
+    const card = el.firstElementChild as HTMLElement;
+    const amount = card ? card.offsetWidth + 14 : el.clientWidth / 4;
+    if (dir === 'left' && el.scrollLeft < amount) {
+      el.scrollLeft = el.scrollWidth / 2;
     }
+    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
+  };
+
+  const onCarousel1Scroll = () => {
+    const el = carouselRef.current;
+    if (!el) return;
+    if (el.scrollLeft >= el.scrollWidth / 2) {
+      el.scrollLeft -= el.scrollWidth / 2;
+    }
+  };
+
+  const onCarousel2Scroll = () => {
+    const el = featuredCarouselRef.current;
+    if (!el) return;
+    if (el.scrollLeft >= el.scrollWidth / 2) {
+      el.scrollLeft -= el.scrollWidth / 2;
+    }
+  };
+
+  const resetCarousel1Timer = () => {
+    if (carousel1Timer.current) clearInterval(carousel1Timer.current);
+    carousel1Timer.current = setInterval(() => scrollCarousel('right'), 5000);
+  };
+
+  const resetCarousel2Timer = () => {
+    if (carousel2Timer.current) clearInterval(carousel2Timer.current);
+    carousel2Timer.current = setInterval(() => scrollFeatured('right'), 5000);
+  };
+
+  const pauseCarousel1 = () => {
+    if (carousel1Timer.current) clearInterval(carousel1Timer.current);
+  };
+
+  const pauseCarousel2 = () => {
+    if (carousel2Timer.current) clearInterval(carousel2Timer.current);
+  };
+
+  const handleCarousel1 = (dir: 'left' | 'right') => {
+    scrollCarousel(dir);
+    resetCarousel1Timer();
+  };
+
+  const handleCarousel2 = (dir: 'left' | 'right') => {
+    scrollFeatured(dir);
+    resetCarousel2Timer();
   };
 
   // Auto-scroll both carousels every 3s (featured offset by 1.5s)
   useEffect(() => {
     if (loading) return;
-    const id1 = setInterval(() => scrollCarousel('right'), 3000);
-    const id2 = setTimeout(() => {
-      const id = setInterval(() => scrollFeatured('right'), 3000);
-      return () => clearInterval(id);
+    carousel1Timer.current = setInterval(() => scrollCarousel('right'), 5000);
+    const timeout = setTimeout(() => {
+      carousel2Timer.current = setInterval(() => scrollFeatured('right'), 5000);
     }, 1500);
-    return () => { clearInterval(id1); clearTimeout(id2); };
+    return () => {
+      if (carousel1Timer.current) clearInterval(carousel1Timer.current);
+      if (carousel2Timer.current) clearInterval(carousel2Timer.current);
+      clearTimeout(timeout);
+    };
   }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -516,10 +572,13 @@ export default function HomepageClient() {
             >
               <div
                 ref={carouselRef}
-                className="flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory snap-always scrollbar-hide pb-2 sm:-mx-4 sm:px-4"
+                onScroll={onCarousel1Scroll}
+                onMouseEnter={pauseCarousel1}
+                onMouseLeave={resetCarousel1Timer}
+                className="flex gap-3.5 overflow-x-auto scrollbar-hide pb-2"
               >
-                {topVendors.map((vendor) => (
-                  <div key={vendor.id} className="snap-start flex-none w-full sm:w-[300px]">
+                {[...topVendors, ...topVendors].map((vendor, idx) => (
+                  <div key={`${vendor.id}-${idx}`} className="flex-none w-[85vw] sm:w-[calc((100%-56px)/4.1)]">
                     <VendorCard vendor={vendor} />
                   </div>
                 ))}
@@ -530,13 +589,13 @@ export default function HomepageClient() {
           {/* Carousel controls */}
           <div className="flex items-center justify-center gap-3 mt-6 mb-8">
             <button
-              onClick={() => scrollCarousel('left')}
+              onClick={() => handleCarousel1('left')}
               className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
-              onClick={() => scrollCarousel('right')}
+              onClick={() => handleCarousel1('right')}
               className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
             >
               <ChevronRight className="w-5 h-5" />
@@ -579,10 +638,13 @@ export default function HomepageClient() {
             >
               <div
                 ref={featuredCarouselRef}
-                className="flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory snap-always scrollbar-hide pb-2 sm:-mx-4 sm:px-4"
+                onScroll={onCarousel2Scroll}
+                onMouseEnter={pauseCarousel2}
+                onMouseLeave={resetCarousel2Timer}
+                className="flex gap-3.5 overflow-x-auto scrollbar-hide pb-2"
               >
-                {featuredVendors.map((v) => (
-                  <div key={v.id} className="snap-start flex-none w-full sm:w-[300px] relative pt-3">
+                {[...featuredVendors, ...featuredVendors].map((v, idx) => (
+                  <div key={`${v.id}-${idx}`} className="flex-none w-[85vw] sm:w-[calc((100%-56px)/4.1)] relative pt-3">
                     <div className="absolute top-0 left-4 z-10 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1">
                       <Star className="w-3 h-3 fill-current" /> Editor&apos;s Choice
                     </div>
@@ -595,13 +657,13 @@ export default function HomepageClient() {
             {/* Controls */}
             <div className="flex items-center justify-center gap-3 mt-6">
               <button
-                onClick={() => scrollFeatured('left')}
+                onClick={() => handleCarousel2('left')}
                 className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
-                onClick={() => scrollFeatured('right')}
+                onClick={() => handleCarousel2('right')}
                 className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
               >
                 <ChevronRight className="w-5 h-5" />
