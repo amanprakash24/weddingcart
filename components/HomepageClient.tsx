@@ -730,7 +730,7 @@ export default function HomepageClient() {
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section className="py-16 sm:py-20 bg-[#FFFAF5]">
+      <section className="py-16 sm:py-20 bg-[#FFFAF5] overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
             eyebrow="Couples Love Us"

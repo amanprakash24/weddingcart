@@ -13,10 +13,10 @@ export default function ContactBanner() {
   if (pathname.startsWith('/admin')) return null;
 
   return (
-    <div className="fixed bottom-6 right-5 z-50 flex flex-col items-end gap-3">
+    <div className="fixed bottom-6 right-3 sm:right-5 z-50 flex flex-col items-end gap-3">
       {/* Popup */}
       {open && (
-        <div className="relative w-[300px] sm:w-[330px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-slide-up">
+        <div className="relative w-[min(300px,calc(100vw-30px))] sm:w-[330px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-slide-up">
           {/* Close button */}
           <button
             onClick={() => setOpen(false)}
