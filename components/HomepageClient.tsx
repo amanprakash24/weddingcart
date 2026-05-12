@@ -120,8 +120,6 @@ function SectionHeader({ eyebrow, eyebrowColor = 'text-amber-600', title, subtit
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const HERO_VIDEO_ID = 'W_uKnsMrKXs';
-
 const HOW_IT_WORKS = [
   {
     step: '01', icon: Search, title: 'Discover & Compare',
@@ -361,15 +359,15 @@ export default function HomepageClient() {
     <div>
       {/* ── HERO ── */}
       <section className="relative h-screen min-h-[600px] max-h-[900px] flex items-center overflow-hidden">
-        {/* Background video */}
+        {/* Background image */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <iframe
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-            style={{ width: 'calc(177.78vh)', height: 'calc(56.25vw)', minWidth: '100%', minHeight: '100%' }}
-            src={`https://www.youtube.com/embed/${HERO_VIDEO_ID}?autoplay=1&mute=1&loop=1&playlist=${HERO_VIDEO_ID}&controls=0&rel=0&modestbranding=1&playsinline=1&disablekb=1`}
-            title="Hero background video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          <Image
+            src="/images/hero-bg.jpg"
+            alt="Wedding background"
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
           />
         </div>
 
