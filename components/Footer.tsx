@@ -6,13 +6,9 @@ const services = [
   { label: 'Makeup Artists', href: '/categories/makeup' },
   { label: 'Mehndi Artists', href: '/categories/mehndi' },
   { label: 'Decorators', href: '/categories/decorator' },
-  { label: 'Band & Music', href: '/categories/band' },
   { label: 'Catering', href: '/categories/catering' },
   { label: 'Photo & Video', href: '/categories/photo-video' },
-  { label: 'Wedding Planners', href: '/categories/planning' },
 ];
-
-const cities = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Udaipur'];
 
 const company = [
   { label: 'About Us', href: '/about' },
@@ -44,19 +40,17 @@ export default function Footer() {
                 Wedding Planning Tips &amp; Inspiration
               </h3>
               <p className="text-gray-500 text-sm leading-relaxed">
-                Get expert wedding advice, vendor spotlights, and planning guides — no spam. Only what matters for your big day.
+                Expert wedding advice and vendor spotlights — no spam. Only what matters for your big day.
               </p>
             </div>
-            <div className="w-full lg:w-auto lg:min-w-[380px]">
+            <div className="w-full lg:w-auto lg:min-w-[360px]">
               <div className="flex gap-2">
                 <input
                   type="email"
                   placeholder="Your email address"
                   className="flex-1 bg-white/5 border border-[#C9A96E]/20 rounded-xl px-4 py-3.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#C9A96E]/50 transition-colors"
                 />
-                <button
-                  className="shrink-0 bg-[#8B1A4A] text-white text-xs font-semibold tracking-widest uppercase px-6 rounded-xl hover:opacity-90 transition-all"
-                >
+                <button className="shrink-0 bg-[#8B1A4A] text-white text-xs font-semibold tracking-widest uppercase px-6 rounded-xl hover:opacity-90 transition-all">
                   Subscribe
                 </button>
               </div>
@@ -68,9 +62,9 @@ export default function Footer() {
 
       {/* ── MAIN FOOTER ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16">
 
-          {/* Brand */}
+          {/* Brand — spans 2 sm cols, 1 lg col */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-1">
               <Heart className="w-5 h-5 fill-[#8B1A4A] text-[#8B1A4A]" />
@@ -78,17 +72,13 @@ export default function Footer() {
             </div>
             <div className="h-px w-24 mb-5" style={{ background: 'linear-gradient(to right, #C9A96E, transparent)' }} />
             <p className="text-gray-500 text-sm leading-relaxed mb-2">
-              India&apos;s managed wedding planning &amp; coordination platform. Expert consultants, trusted vendors, and a stress-free journey — from Venue to Vidaai.
+              India&apos;s managed wedding planning &amp; coordination platform — from Venue to Vidaai.
             </p>
             <p className="text-[#C9A96E]/60 text-xs mb-6">Founded by <span className="text-[#C9A96E]">Anisha Kumari</span> · Patna, Bihar</p>
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2.5">
                 <Phone className="w-3.5 h-3.5 text-[#C9A96E] flex-shrink-0" />
                 <a href="tel:+917646028228" className="hover:text-[#C9A96E] transition-colors">+91 76460 28228</a>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <Phone className="w-3.5 h-3.5 text-[#C9A96E] flex-shrink-0" />
-                <a href="tel:+916201732422" className="hover:text-[#C9A96E] transition-colors">+91 62017 32422</a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-3.5 h-3.5 text-[#C9A96E] flex-shrink-0" />
@@ -104,7 +94,7 @@ export default function Footer() {
           {/* Wedding Services */}
           <div>
             <h4 className="text-[#C9A96E] font-semibold mb-5 text-[0.6rem] uppercase tracking-[0.25em]">Wedding Services</h4>
-            <ul className="space-y-2.5">
+            <ul className="space-y-3">
               {services.map((s) => (
                 <li key={s.href}>
                   <Link href={s.href} className="text-sm text-gray-500 hover:text-[#C9A96E] transition-colors hover:pl-1.5 duration-200 block">
@@ -115,24 +105,10 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Top Cities */}
-          <div>
-            <h4 className="text-[#C9A96E] font-semibold mb-5 text-[0.6rem] uppercase tracking-[0.25em]">Top Cities</h4>
-            <ul className="space-y-2.5">
-              {cities.map((city) => (
-                <li key={city}>
-                  <Link href={`/categories/venue?city=${city}`} className="text-sm text-gray-500 hover:text-[#C9A96E] transition-colors hover:pl-1.5 duration-200 block">
-                    Weddings in {city}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* Company + Socials */}
           <div>
             <h4 className="text-[#C9A96E] font-semibold mb-5 text-[0.6rem] uppercase tracking-[0.25em]">Company</h4>
-            <ul className="space-y-2.5 mb-8">
+            <ul className="space-y-3 mb-10">
               {company.map((l) => (
                 <li key={l.label}>
                   <Link href={l.href} className="text-sm text-gray-500 hover:text-[#C9A96E] transition-colors hover:pl-1.5 duration-200 block">
@@ -155,6 +131,7 @@ export default function Footer() {
               ))}
             </div>
           </div>
+
         </div>
       </div>
 

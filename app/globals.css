@@ -3,10 +3,18 @@
 :root {
   --background: #FFFAF5;
   --foreground: #2D2D2D;
-  --primary: #B8860B;
+  --primary: #8B1A4A;
   --secondary: #FFF8F0;
   --accent: #E8B4B8;
-  --gold: #D4AF37;
+  --gold: #C9A96E;
+  --gold-light: #E8D4A0;
+  --gold-dark: #9B7A3C;
+  --champagne: #F5E9D0;
+  --ivory: #FAF5EE;
+  --maroon: #8B1A4A;
+  --maroon-dark: #5C1133;
+  --deep-dark: #1C1208;
+  --blush: #F5E0D6;
 }
 
 html,
@@ -26,7 +34,17 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-playfair, 'Playfair Display', serif);
+}
+
+/* Cormorant Garamond utility */
+.font-cormorant {
+  font-family: var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
+}
+
+/* DM Sans utility */
+.font-dm-sans {
+  font-family: var(--font-dm-sans, system-ui, sans-serif);
 }
 
 /* Scrollbar */
@@ -97,9 +115,9 @@ h1, h2, h3, h4, h5, h6 {
 .animate-slide-in-right { animation: slideInRight 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 .animate-spin-slow { animation: spin-slow 8s linear infinite; }
 
-/* Shimmer text — animated gradient sweep */
+/* Shimmer text — animated champagne gold sweep */
 .shimmer-text {
-  background: linear-gradient(90deg, #fbbf24, #f59e0b, #fb7185, #f43f5e, #fbbf24);
+  background: linear-gradient(90deg, #C9A96E, #E8D4A0, #F5E9D0, #C9A96E, #9B7A3C, #C9A96E);
   background-size: 300% 100%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -200,4 +218,162 @@ input[type="checkbox"], input[type="radio"] {
 .drawer-backdrop {
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
+}
+
+/* ── LUXURY ADDITIONS ── */
+
+/* Marquee animation */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 35s linear infinite;
+  will-change: transform;
+}
+.animate-marquee:hover { animation-play-state: paused; }
+
+/* Announcement bar marquee (faster) */
+@keyframes marquee-fast {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee-fast {
+  animation: marquee-fast 22s linear infinite;
+}
+
+/* Border glow pulse */
+@keyframes borderGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 110, 0); }
+  50%       { box-shadow: 0 0 24px 4px rgba(201, 169, 110, 0.25); }
+}
+.luxury-glow { animation: borderGlow 4s ease-in-out infinite; }
+
+/* Ornament / decorative thin line divider */
+.ornament-line {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--gold);
+}
+.ornament-line::before,
+.ornament-line::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
+}
+
+/* Luxury heading (Cormorant italic) */
+.luxury-heading {
+  font-family: var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Gold gradient text */
+.gradient-text-luxury {
+  background: linear-gradient(135deg, #C9A96E 0%, #E8D4A0 40%, #9B7A3C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Maroon gradient text */
+.gradient-text-maroon {
+  background: linear-gradient(135deg, #8B1A4A 0%, #C0395E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Vendor card luxury hover */
+.vendor-card-luxury {
+  transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s ease, border-color 0.3s ease;
+  border: 1px solid transparent;
+}
+.vendor-card-luxury:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 60px rgba(139, 26, 74, 0.12), 0 8px 24px rgba(0,0,0,0.08);
+  border-color: rgba(201,169,110,0.4);
+}
+
+/* Luxury button */
+.btn-luxury {
+  background: linear-gradient(135deg, #8B1A4A 0%, #A02358 100%);
+  color: #fff;
+  font-family: var(--font-dm-sans, system-ui, sans-serif);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  border-radius: 100px;
+  padding: 14px 32px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(139, 26, 74, 0.3);
+}
+.btn-luxury:hover {
+  box-shadow: 0 8px 32px rgba(139, 26, 74, 0.45);
+  transform: translateY(-1px);
+}
+
+/* Luxury section eyebrow */
+.eyebrow-luxury {
+  font-family: var(--font-dm-sans, system-ui, sans-serif);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Announcement bar */
+.announcement-bar {
+  background: var(--deep-dark);
+  color: var(--gold);
+  font-family: var(--font-dm-sans, system-ui, sans-serif);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Pull quote */
+.pull-quote {
+  font-family: var(--font-cormorant, 'Cormorant Garamond', serif);
+  font-size: 1.6rem;
+  font-style: italic;
+  line-height: 1.5;
+  color: #2D2D2D;
+}
+
+/* Luxury card shine effect */
+@keyframes cardShine {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.card-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.25) 50%, transparent 60%);
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.card-shine:hover::after {
+  opacity: 1;
+  animation: cardShine 0.6s ease;
+}
+
+/* Subtle dot pattern bg */
+.dot-pattern {
+  background-image: radial-gradient(circle, rgba(201,169,110,0.15) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Thin gold top border */
+.gold-top-border {
+  border-top: 2px solid;
+  border-image: linear-gradient(to right, transparent, var(--gold), transparent) 1;
 }

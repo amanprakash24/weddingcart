@@ -166,15 +166,6 @@ export default function Navbar() {
                 className="h-12 w-auto object-contain"
                 priority
               />
-              {/* Brand name beside logo on desktop */}
-              <span className={`hidden lg:block text-xl font-bold font-[Playfair_Display,serif] whitespace-nowrap transition-colors ${isTransparent ? 'text-white' : 'gradient-text'}`}>
-                ShaadiShopping
-              </span>
-            </Link>
-
-            {/* Brand name — centered on mobile only */}
-            <Link href="/" style={{ touchAction: 'manipulation' }} className={`lg:hidden absolute left-1/2 -translate-x-1/2 text-lg font-bold font-[Playfair_Display,serif] whitespace-nowrap transition-colors ${isTransparent ? 'text-white' : 'gradient-text'}`}>
-              ShaadiShopping
             </Link>
 
             {/* Desktop Nav */}

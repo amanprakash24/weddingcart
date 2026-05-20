@@ -4,26 +4,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Star, ChevronLeft, ChevronRight, Users, Award, ArrowRight, Sparkles, Phone } from 'lucide-react';
-import { Vendor, Category } from '@/types';
+import { Star, ArrowRight, Sparkles, Phone } from 'lucide-react';
+import { Vendor } from '@/types';
 import VendorCard from './VendorCard';
-import CategoryCard from './CategoryCard';
 
 // ── Animation variants ────────────────────────────────────────────────────────
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
   show:   { opacity: 1, y: 0,  transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } },
-};
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  show:   { opacity: 1, transition: { duration: 0.6 } },
-};
-
-const scaleUp = {
-  hidden: { opacity: 0, scale: 0.88, y: 20 },
-  show:   { opacity: 1, scale: 1,    y: 0,  transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 const slideLeft = {
@@ -90,118 +79,11 @@ function FloatingPetals() {
   );
 }
 
-// ── Section header ────────────────────────────────────────────────────────────
-
-function SectionHeader({ eyebrow, eyebrowColor = 'text-[#C9A96E]', title, subtitle }: {
-  eyebrow: string; eyebrowColor?: string; title: React.ReactNode; subtitle?: string;
-}) {
-  return (
-    <motion.div
-      className="text-center mb-10"
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: '-60px' }}
-      variants={stagger(0.15)}
-    >
-      <motion.p variants={fadeUp} className={`eyebrow-luxury ${eyebrowColor} mb-3`}>
-        {eyebrow}
-      </motion.p>
-      <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[var(--font-playfair),Playfair_Display,serif]">
-        {title}
-      </motion.h2>
-      {subtitle && (
-        <motion.p variants={fadeUp} className="text-gray-500 mt-3 text-sm max-w-lg mx-auto leading-relaxed">
-          {subtitle}
-        </motion.p>
-      )}
-      <motion.div variants={fadeUp} className="ornament-line mt-5 max-w-xs mx-auto">
-        <span className="text-[#C9A96E] text-sm">✦</span>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-// ── Vendor directory data ─────────────────────────────────────────────────────
-
-const VENDOR_CATEGORIES = [
-  {
-    heading: 'Wedding Venues',
-    items: [
-      { label: 'Banquet Halls', href: '/categories/venue' },
-      { label: 'Hotels', href: '/categories/venue' },
-      { label: 'Marriage Garden', href: '/categories/venue' },
-      { label: 'Kalyana Mandapams', href: '/categories/venue' },
-      { label: 'Wedding Resorts', href: '/categories/venue' },
-      { label: 'Wedding Lawns & Farmhouses', href: '/categories/venue' },
-    ],
-  },
-  {
-    heading: 'Wedding Vendors',
-    items: [
-      { label: 'Caterers', href: '/categories/catering' },
-      { label: 'Wedding Invitations', href: '/categories/invitations' },
-      { label: 'Wedding Gifts', href: '/categories/gifts' },
-      { label: 'Wedding Photographers', href: '/categories/photo-video' },
-      { label: 'Wedding Music', href: '/categories/band' },
-      { label: 'Wedding Transportation', href: '/categories/transport' },
-      { label: 'Tent House', href: '/categories/decorator' },
-      { label: 'Wedding Entertainment', href: '/categories/band' },
-      { label: 'Florists', href: '/categories/decorator' },
-      { label: 'Wedding Planners', href: '/categories/planning' },
-      { label: 'Wedding Videography', href: '/categories/photo-video' },
-      { label: 'Honeymoon', href: '/categories/venue' },
-      { label: 'Wedding Decorators', href: '/categories/decorator' },
-      { label: 'Wedding Cakes', href: '/categories/catering' },
-      { label: 'Wedding DJ', href: '/categories/dj' },
-      { label: 'Pandits', href: '/categories/planning' },
-      { label: 'Photobooth', href: '/categories/photo-video' },
-      { label: 'Astrologers', href: '/categories/planning' },
-      { label: 'Party Places', href: '/categories/venue' },
-      { label: 'Wedding Choreographers', href: '/categories/band' },
-    ],
-  },
-  {
-    heading: 'Brides',
-    items: [
-      { label: 'Mehndi Artists', href: '/categories/mehndi' },
-      { label: 'Bridal Makeup Artists', href: '/categories/makeup' },
-      { label: 'Makeup Salon', href: '/categories/makeup' },
-      { label: 'Bridal Jewellery', href: '/categories/makeup' },
-      { label: 'Bridal Lehenga', href: '/categories/makeup' },
-      { label: 'Trousseau Packing', href: '/categories/makeup' },
-    ],
-  },
-  {
-    heading: 'Grooms',
-    items: [
-      { label: 'Sherwani / Groom Wear', href: '/categories/makeup' },
-    ],
-  },
-];
-
-const LOCATIONS = [
-  { state: 'Bihar', cities: ['Patna', 'Gaya', 'Muzaffarpur'] },
-  { state: 'Delhi NCR', cities: ['South Delhi', 'Gurgaon', 'Noida'] },
-  { state: 'Rajasthan', cities: ['Jaipur', 'Udaipur', 'Jodhpur'] },
-  { state: 'Maharashtra', cities: ['Mumbai', 'Pune', 'Nashik'] },
-  { state: 'Karnataka', cities: ['Bangalore', 'Mysore'] },
-  { state: 'Goa', cities: ['North Goa', 'South Goa'] },
-];
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HomepageClient() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [specialServices, setSpecialServices] = useState<Category[]>([]);
-  const [featuredVendors, setFeaturedVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  const featuredCarouselRef = useRef<HTMLDivElement>(null);
-  const carousel1Timer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const carousel2Timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const howItWorksTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -209,38 +91,11 @@ export default function HomepageClient() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [catRes, specialRes, vendorRes] = await Promise.all([
-        fetch('/api/categories?isSpecial=false'),
-        fetch('/api/categories?isSpecial=true'),
-        fetch('/api/vendors?limit=50'),
-      ]);
-      const [catData, specialData, vendorData] = await Promise.all([catRes.json(), specialRes.json(), vendorRes.json()]);
-
-      if (catData.success) {
-        const sorted = [...catData.data].sort((a: Category, b: Category) => {
-          if (a.id === 'venue') return -1;
-          if (b.id === 'venue') return 1;
-          return 0;
-        });
-        setCategories(sorted);
-      }
-      if (specialData.success) {
-        const PRIORITY = ['legal', 'pandit', 'pandits'];
-        const sorted = [...specialData.data].sort((a: Category, b: Category) => {
-          const aIdx = PRIORITY.findIndex((p) => a.id?.toLowerCase().includes(p) || a.name?.toLowerCase().includes(p));
-          const bIdx = PRIORITY.findIndex((p) => b.id?.toLowerCase().includes(p) || b.name?.toLowerCase().includes(p));
-          const aRank = aIdx === -1 ? 999 : aIdx;
-          const bRank = bIdx === -1 ? 999 : bIdx;
-          return aRank - bRank;
-        });
-        setSpecialServices(sorted);
-      }
-      if (vendorData.success) {
-        setVendors(vendorData.data);
-        setFeaturedVendors(vendorData.data.filter((v: Vendor) => v.isFeatured).slice(0, 6));
-      }
+      const res = await fetch('/api/vendors?limit=20');
+      const data = await res.json();
+      if (data.success) setVendors(data.data);
     } catch {
-      // Use empty arrays if API fails
+      // silent
     } finally {
       setLoading(false);
     }
@@ -259,93 +114,13 @@ export default function HomepageClient() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 6);
-
-  const scrollCarousel = (dir: 'left' | 'right') => {
-    const el = carouselRef.current;
-    if (!el) return;
-    const card = el.firstElementChild as HTMLElement;
-    const amount = card ? card.offsetWidth + 14 : el.clientWidth / 4;
-    if (dir === 'left' && el.scrollLeft < amount) {
-      el.scrollLeft = el.scrollWidth / 2;
-    }
-    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-  };
-
-  const scrollFeatured = (dir: 'left' | 'right') => {
-    const el = featuredCarouselRef.current;
-    if (!el) return;
-    const card = el.firstElementChild as HTMLElement;
-    const amount = card ? card.offsetWidth + 14 : el.clientWidth / 4;
-    if (dir === 'left' && el.scrollLeft < amount) {
-      el.scrollLeft = el.scrollWidth / 2;
-    }
-    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-  };
-
-  const onCarousel1Scroll = () => {
-    const el = carouselRef.current;
-    if (!el) return;
-    if (el.scrollLeft >= el.scrollWidth / 2) {
-      el.scrollLeft -= el.scrollWidth / 2;
-    }
-  };
-
-  const onCarousel2Scroll = () => {
-    const el = featuredCarouselRef.current;
-    if (!el) return;
-    if (el.scrollLeft >= el.scrollWidth / 2) {
-      el.scrollLeft -= el.scrollWidth / 2;
-    }
-  };
-
-  const resetCarousel1Timer = () => {
-    if (carousel1Timer.current) clearInterval(carousel1Timer.current);
-    carousel1Timer.current = setInterval(() => scrollCarousel('right'), 5000);
-  };
-
-  const resetCarousel2Timer = () => {
-    if (carousel2Timer.current) clearInterval(carousel2Timer.current);
-    carousel2Timer.current = setInterval(() => scrollFeatured('right'), 5000);
-  };
-
-  const pauseCarousel1 = () => {
-    if (carousel1Timer.current) clearInterval(carousel1Timer.current);
-  };
-
-  const pauseCarousel2 = () => {
-    if (carousel2Timer.current) clearInterval(carousel2Timer.current);
-  };
-
-  const handleCarousel1 = (dir: 'left' | 'right') => {
-    scrollCarousel(dir);
-    resetCarousel1Timer();
-  };
-
-  const handleCarousel2 = (dir: 'left' | 'right') => {
-    scrollFeatured(dir);
-    resetCarousel2Timer();
-  };
-
-  // Auto-scroll both carousels every 3s (featured offset by 1.5s)
-  useEffect(() => {
-    if (loading) return;
-    carousel1Timer.current = setInterval(() => scrollCarousel('right'), 5000);
-    const timeout = setTimeout(() => {
-      carousel2Timer.current = setInterval(() => scrollFeatured('right'), 5000);
-    }, 1500);
-    return () => {
-      if (carousel1Timer.current) clearInterval(carousel1Timer.current);
-      if (carousel2Timer.current) clearInterval(carousel2Timer.current);
-      clearTimeout(timeout);
-    };
-  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+  const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 4);
 
   return (
     <div>
-      {/* ── HERO ── */}
+
+      {/* ── 1. HERO ── */}
       <section className="relative h-screen min-h-[600px] max-h-[900px] flex items-center overflow-hidden">
-        {/* Background image */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <Image
             src="/images/hero-bg.jpg"
@@ -356,13 +131,9 @@ export default function HomepageClient() {
             priority
           />
         </div>
-
         <div className="absolute inset-0 hero-overlay pointer-events-none" />
-
-        {/* Floating petals */}
         <FloatingPetals />
 
-        {/* Hero content */}
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32">
           <motion.div
             className="max-w-3xl"
@@ -370,7 +141,7 @@ export default function HomepageClient() {
             animate="show"
             variants={stagger(0.18, 0.2)}
           >
-            {/* Pill badge */}
+            {/* Pill */}
             <motion.div
               variants={fadeUp}
               className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/25 text-white/90 px-5 py-2 rounded-full text-xs font-medium mb-7 tracking-[0.12em] uppercase"
@@ -382,13 +153,13 @@ export default function HomepageClient() {
             {/* Heading */}
             <motion.h1
               variants={fadeUp}
-              className="text-5xl sm:text-6xl lg:text-7xl xl:text-[82px] font-bold text-white leading-[1.05] mb-3 font-[var(--font-playfair),Playfair_Display,serif]"
+              className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.05] mb-2 font-[Playfair_Display,serif]"
             >
               From Venue to Vidaai
             </motion.h1>
             <motion.p
               variants={fadeUp}
-              className="font-cormorant text-3xl sm:text-4xl lg:text-5xl text-white/85 italic mb-7 font-light"
+              className="text-3xl sm:text-4xl lg:text-5xl text-white/80 italic mb-7 font-light font-[Playfair_Display,serif] whitespace-nowrap"
             >
               — We Handle <span className="shimmer-text not-italic font-semibold">Everything</span>
             </motion.p>
@@ -398,7 +169,7 @@ export default function HomepageClient() {
               Expert consultants, verified vendors, and end-to-end coordination — all in one place for your dream Indian wedding.
             </motion.p>
 
-            {/* CTA */}
+            {/* CTAs */}
             <motion.div variants={fadeUp} className="flex flex-col items-start gap-3">
               <Link
                 href="/plan"
@@ -426,7 +197,7 @@ export default function HomepageClient() {
                 { value: '25+',     label: 'Cities Covered' },
               ].map(({ value, label }, i) => (
                 <div key={label} className={`flex flex-col items-center px-6 py-3.5 ${i < 2 ? 'border-r border-white/15' : ''}`}>
-                  <p className="text-white font-bold text-xl sm:text-2xl font-[var(--font-playfair),serif] leading-tight">{value}</p>
+                  <p className="text-white font-bold text-xl sm:text-2xl font-[Playfair_Display,serif] leading-tight">{value}</p>
                   <p className="text-white/55 text-[10px] tracking-[0.12em] uppercase mt-0.5">{label}</p>
                 </div>
               ))}
@@ -435,12 +206,12 @@ export default function HomepageClient() {
         </div>
       </section>
 
-      {/* ── LUXURY MARQUEE STRIP ── */}
+      {/* ── 2. MARQUEE STRIP ── */}
       <div className="bg-[#1C1208] py-3.5 overflow-hidden border-y border-[#C9A96E]/20">
         <div className="flex animate-marquee whitespace-nowrap">
           {[0, 1].map((idx) => (
             <span key={idx} className="flex items-center">
-              {['Venues', 'Photographers', 'Decorators', 'Mehndi Artists', 'Makeup & Bridal', 'Catering', 'DJ & Bands', 'Wedding Planners', 'Jewellery', 'Invitations', 'Honeymoon', 'Pandits'].map((item) => (
+              {['Venues', 'Photographers', 'Decorators', 'Mehndi Artists', 'Makeup & Bridal', 'Catering', 'DJ & Bands', 'Wedding Planners', 'Jewellery', 'Invitations', 'Pandits'].map((item) => (
                 <span key={item} className="flex items-center gap-5 mx-5">
                   <span className="text-[#C9A96E] text-[0.65rem] font-semibold tracking-[0.22em] uppercase">{item}</span>
                   <span className="text-[#C9A96E]/30 text-base">✦</span>
@@ -451,24 +222,20 @@ export default function HomepageClient() {
         </div>
       </div>
 
-      {/* ── HOW IT WORKS ── */}
-      <section className="py-16 sm:py-24 bg-[#FEFBEC]">
+      {/* ── 3. HOW IT WORKS ── */}
+      <section className="py-24 sm:py-32 bg-[#FEFBEC]">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
-
-          {/* Title */}
-          <div className="text-center mb-12 lg:mb-16">
+          <div className="text-center mb-16 lg:mb-20">
             <p className="eyebrow-luxury mb-3">Your Journey With Us</p>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 font-[var(--font-playfair),serif] mb-3">How it works</h2>
-            <div className="ornament-line max-w-xs mx-auto mb-3">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-4">How it works</h2>
+            <div className="ornament-line max-w-xs mx-auto mb-4">
               <span className="text-[#C9A96E] text-sm">✦</span>
             </div>
             <p className="text-gray-500 text-sm sm:text-base">4 simple steps to a stress-free, perfectly coordinated wedding</p>
           </div>
 
-          {/* Steps + Image */}
           <div className="flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-24 w-11/12 mx-auto">
-
-            {/* Circular illustration — right on desktop */}
+            {/* Circle illustration */}
             <div className="relative h-[240px] w-[240px] sm:h-[360px] sm:w-[360px] lg:h-[480px] lg:w-[480px] flex-shrink-0">
               <div
                 className="h-full w-full rounded-full p-[2px] shadow-[0px_12px_100px_rgba(255,255,255,0.7)]"
@@ -477,14 +244,7 @@ export default function HomepageClient() {
                 <div className="h-full w-full rounded-full bg-[#FCF7C8] overflow-hidden flex items-center justify-center">
                   <AnimatePresence mode="wait">
                     {activeStep === 0 && (
-                      <motion.div
-                        key="s1"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ duration: 0.35 }}
-                        className="flex flex-col items-center justify-center h-full w-full px-6 relative"
-                      >
+                      <motion.div key="s1" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.35 }} className="flex flex-col items-center justify-center h-full w-full px-6 relative">
                         <div className="relative">
                           <span className="text-[80px] sm:text-[110px] lg:text-[140px] leading-none select-none">📱</span>
                           <div className="absolute -top-4 -right-2 sm:-top-6 sm:-right-3 lg:-top-10 lg:-right-6 bg-white rounded-2xl shadow-lg px-3 py-2 text-[10px] sm:text-xs lg:text-sm font-medium text-gray-700 max-w-[110px] sm:max-w-[140px] lg:max-w-[170px] text-center border border-gray-100 leading-snug">
@@ -494,14 +254,7 @@ export default function HomepageClient() {
                       </motion.div>
                     )}
                     {activeStep === 1 && (
-                      <motion.div
-                        key="s2"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ duration: 0.35 }}
-                        className="flex items-center justify-center h-full w-full"
-                      >
+                      <motion.div key="s2" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.35 }} className="flex items-center justify-center h-full w-full">
                         <div className="bg-white rounded-2xl lg:rounded-3xl shadow-lg px-5 py-5 lg:px-9 lg:py-8 text-center border border-amber-100">
                           <div className="text-[#C9A96E] text-xs lg:text-sm mb-2 tracking-[0.3em]">✦&nbsp;✦&nbsp;✦</div>
                           <p className="font-[Playfair_Display,serif] text-gray-800 text-base sm:text-xl lg:text-3xl font-bold">Rahul</p>
@@ -513,14 +266,7 @@ export default function HomepageClient() {
                       </motion.div>
                     )}
                     {activeStep === 2 && (
-                      <motion.div
-                        key="s3"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        transition={{ duration: 0.35 }}
-                        className="flex items-center justify-center h-full w-full relative"
-                      >
+                      <motion.div key="s3" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.35 }} className="flex items-center justify-center h-full w-full relative">
                         <span className="text-[90px] sm:text-[120px] lg:text-[160px] leading-none select-none">🛕</span>
                         <div className="absolute top-1/4 right-[18%] w-9 h-9 lg:w-14 lg:h-14 rounded-full bg-rose-500 flex items-center justify-center shadow-xl border-2 lg:border-4 border-white">
                           <span className="text-white font-bold text-sm lg:text-xl">✓</span>
@@ -540,11 +286,11 @@ export default function HomepageClient() {
               </div>
             </div>
 
-            {/* Steps list — left on desktop */}
+            {/* Steps list */}
             <div className="flex flex-col lg:-order-1 w-full lg:basis-1/2">
               {[
-                { num: 1, title: 'Tell Us About Your Wedding',       desc: 'Share your date, city, guest count, budget, and wedding style. It takes under 2 minutes.' },
-                { num: 2, title: 'Get Personalized Recommendations', desc: 'We curate venues, vendors, and packages tailored specifically to your preferences and budget.' },
+                { num: 1, title: 'Tell Us About Your Wedding',        desc: 'Share your date, city, guest count, budget, and wedding style. It takes under 2 minutes.' },
+                { num: 2, title: 'Get Personalized Recommendations',  desc: 'We curate venues, vendors, and packages tailored specifically to your preferences and budget.' },
                 { num: 3, title: 'Speak With Your Wedding Consultant', desc: 'Your dedicated consultant reviews your plan and guides you through every decision — for free.' },
                 { num: 4, title: 'Relax While We Coordinate Everything', desc: 'We handle vendor coordination, follow-ups, and logistics so you can enjoy your wedding journey.' },
               ].map((step, i) => {
@@ -566,16 +312,12 @@ export default function HomepageClient() {
                       howItWorksTimerRef.current = setInterval(() => setActiveStep((s) => (s + 1) % 4), 3000);
                     }}
                   >
-                    {/* Number circle */}
                     <div
-                      className={`absolute left-0 top-0 z-10 flex h-7 w-7 lg:h-9 lg:w-9 items-center justify-center rounded-full text-xs lg:text-base font-bold transition-all duration-300 ${
-                        isActive ? 'bg-[#8B1A4A] text-white' : 'bg-gray-200 text-gray-400'
-                      }`}
+                      className={`absolute left-0 top-0 z-10 flex h-7 w-7 lg:h-9 lg:w-9 items-center justify-center rounded-full text-xs lg:text-base font-bold transition-all duration-300 ${isActive ? 'bg-[#8B1A4A] text-white' : 'bg-gray-200 text-gray-400'}`}
                       style={{ transform: 'translateX(-50%)' }}
                     >
                       {step.num}
                     </div>
-                    {/* Pulse ring */}
                     {isActive && (
                       <motion.div
                         className="absolute left-0 top-0 h-7 w-7 lg:h-9 lg:w-9 rounded-full bg-[#8B1A4A]/30 z-0"
@@ -584,22 +326,10 @@ export default function HomepageClient() {
                         transition={{ repeat: Infinity, duration: 1.8 }}
                       />
                     )}
-                    {/* Step title */}
-                    <p
-                      className={`font-[Playfair_Display,serif] leading-tight transition-all duration-300 ${
-                        isActive
-                          ? 'text-xl sm:text-2xl lg:text-[38px] lg:leading-[1.1] font-semibold text-gray-900'
-                          : 'text-sm lg:text-xl font-semibold text-gray-400'
-                      }`}
-                    >
+                    <p className={`font-[Playfair_Display,serif] leading-tight transition-all duration-300 ${isActive ? 'text-xl sm:text-2xl lg:text-[38px] lg:leading-[1.1] font-semibold text-gray-900' : 'text-sm lg:text-xl font-semibold text-gray-400'}`}>
                       {step.title}
                     </p>
-                    {/* Step description */}
-                    <p
-                      className={`text-gray-500 text-sm lg:text-base lg:w-3/4 leading-relaxed transition-all duration-300 overflow-hidden ${
-                        isActive ? 'max-h-24 opacity-100 mt-2' : 'max-h-0 opacity-0'
-                      }`}
-                    >
+                    <p className={`text-gray-500 text-sm lg:text-base lg:w-3/4 leading-relaxed transition-all duration-300 overflow-hidden ${isActive ? 'max-h-24 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
                       {step.desc}
                     </p>
                   </div>
@@ -608,117 +338,139 @@ export default function HomepageClient() {
             </div>
           </div>
 
-          {/* CTA */}
-          <div className="text-center mt-12 lg:mt-16">
-            <Link
-              href="/plan"
-              className="inline-block bg-[#8B1A4A] text-white font-semibold px-10 py-4 rounded-full hover:opacity-90 transition-all text-sm lg:text-base shadow-lg hover:shadow-xl"
-            >
+          <div className="text-center mt-14 lg:mt-20">
+            <Link href="/plan" className="inline-block bg-[#8B1A4A] text-white font-semibold px-10 py-4 rounded-full hover:opacity-90 transition-all text-sm lg:text-base shadow-lg hover:shadow-xl">
               Start my wedding planning
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ── GROUPED SERVICES ── */}
-      <section className="py-20 sm:py-28 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="eyebrow-luxury mb-3">Everything In One Place</p>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[var(--font-playfair),serif]">
-              Complete Wedding Services,<br/><span className="gradient-text-maroon">Curated For You</span>
-            </h2>
-            <div className="ornament-line max-w-xs mx-auto my-4">
-              <span className="text-[#C9A96E] text-sm">✦</span>
-            </div>
-            <p className="text-gray-500 text-sm max-w-xl mx-auto">We don&apos;t just list vendors — we coordinate your entire wedding across every service category.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-            {[
-              { icon: '📋', label: 'Planning & Coordination', color: 'from-violet-50 to-violet-100 border-violet-200', text: 'text-violet-700', items: ['Wedding Planning', 'Hospitality', 'Legal Documentation'] },
-              { icon: '🏛️', label: 'Venue & Experience', color: 'from-blue-50 to-blue-100 border-blue-200', text: 'text-blue-700', items: ['Wedding Venues', 'Accommodation', 'Transportation'] },
-              { icon: '🍽️', label: 'Food & Entertainment', color: 'from-orange-50 to-orange-100 border-orange-200', text: 'text-orange-700', items: ['Catering', 'DJ', 'Band & Music'] },
-              { icon: '💄', label: 'Beauty & Fashion', color: 'from-pink-50 to-pink-100 border-pink-200', text: 'text-pink-700', items: ['Makeup Artists', 'Bridal Lehenga', 'Jewellery', 'Sherwani'] },
-              { icon: '📸', label: 'Decor & Media', color: 'from-teal-50 to-teal-100 border-teal-200', text: 'text-teal-700', items: ['Photography', 'Decorators', 'Invitations'] },
-            ].map((group) => (
-              <motion.div
-                key={group.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
-                className={`bg-gradient-to-br ${group.color} border rounded-2xl p-5`}
-              >
-                <div className="text-3xl mb-3">{group.icon}</div>
-                <p className={`font-bold text-sm mb-3 ${group.text}`}>{group.label}</p>
-                <ul className="space-y-1">
-                  {group.items.map((item) => (
-                    <li key={item} className="text-xs text-gray-600 flex items-center gap-1.5">
-                      <span className="w-1 h-1 rounded-full bg-gray-400 flex-shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+      {/* ── 4. CURATED VENDORS ── */}
+      {!loading && topVendors.length > 0 && (
+        <section className="py-24 sm:py-32 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              className="text-center mb-14"
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: '-60px' }}
+              variants={stagger(0.15)}
+            >
+              <motion.p variants={fadeUp} className="eyebrow-luxury mb-3">Handpicked For You</motion.p>
+              <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+                Selected By Our <span className="gradient-text-maroon">Wedding Experts</span>
+              </motion.h2>
+              <motion.div variants={fadeUp} className="ornament-line max-w-xs mx-auto my-5">
+                <span className="text-[#C9A96E] text-sm">✦</span>
               </motion.div>
-            ))}
+              <motion.p variants={fadeUp} className="text-gray-500 text-sm max-w-md mx-auto">
+                We don&apos;t list every vendor. We curate only those who consistently deliver excellence.
+              </motion.p>
+            </motion.div>
+
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: '-40px' }}
+              variants={stagger(0.1)}
+            >
+              {topVendors.map((vendor) => (
+                <motion.div key={vendor.id} variants={fadeUp}>
+                  <VendorCard vendor={vendor} />
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <div className="text-center mt-12">
+              <Link href="/categories/venue" className="inline-flex items-center gap-2 border border-[#C9A96E]/40 text-[#8B1A4A] font-semibold px-8 py-3.5 rounded-full hover:bg-[#8B1A4A] hover:text-white hover:border-[#8B1A4A] transition-all text-sm">
+                Explore All Curated Vendors
+              </Link>
+            </div>
           </div>
-          <div className="text-center mt-10">
-            <Link href="/plan" className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all text-sm shadow-lg">
-              <Sparkles className="w-4 h-4" /> Start Planning — It&apos;s Free
-            </Link>
+        </section>
+      )}
+
+      {/* ── 5. WHY COUPLES CHOOSE US ── */}
+      <section className="py-24 sm:py-32 bg-[#FEFBF6]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 lg:gap-28 items-start">
+
+            {/* Left: Editorial statement */}
+            <motion.div
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: '-60px' }}
+              variants={stagger(0.15)}
+            >
+              <motion.p variants={fadeUp} className="eyebrow-luxury mb-4">Why Us</motion.p>
+              <motion.h2 variants={fadeUp} className="font-cormorant text-4xl sm:text-5xl lg:text-[3.5rem] italic font-light text-gray-900 mb-6 leading-[1.15]">
+                Not just a platform — a partner who cares about every detail of your most important day.
+              </motion.h2>
+              <motion.div variants={fadeUp} className="ornament-line max-w-[120px] mb-6">
+                <span className="text-[#C9A96E] text-sm">✦</span>
+              </motion.div>
+              <motion.p variants={fadeUp} className="text-gray-500 text-base leading-relaxed mb-8 max-w-md">
+                We built ShaadiShopping because weddings deserve more than a listing site. Every couple gets a real human expert coordinating every detail — from first enquiry to final vidaai.
+              </motion.p>
+              <motion.div variants={fadeUp}>
+                <Link href="/plan" className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all shadow-lg text-sm">
+                  <Sparkles className="w-4 h-4" /> Start Planning — Free
+                </Link>
+              </motion.div>
+            </motion.div>
+
+            {/* Right: Minimalist numbered rows — no cards, no boxes */}
+            <motion.div
+              className="divide-y divide-[#C9A96E]/12"
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: '-40px' }}
+              variants={stagger(0.1)}
+            >
+              {[
+                { num: '01', title: 'One Team Managing Everything',     desc: 'A single dedicated team coordinates all your vendors, visits, and logistics end-to-end.' },
+                { num: '02', title: 'Personalized Vendor Matching',     desc: 'We match vendors to your style, budget, and city — not random listings.' },
+                { num: '03', title: 'Planning Within Your Budget',      desc: 'Your entire plan is built around your budget, with zero hidden surprises.' },
+                { num: '04', title: 'Expert Guidance, Start to Finish', desc: 'Your dedicated consultant is with you from first call to the final vidaai.' },
+                { num: '05', title: 'Technology + Human Touch',         desc: 'Smart tools combined with real human expertise for a flawless experience.' },
+              ].map((point) => (
+                <motion.div key={point.num} variants={fadeUp} className="flex items-start gap-7 py-7 group">
+                  <span className="font-cormorant text-3xl font-light text-[#C9A96E]/35 leading-none flex-shrink-0 pt-0.5 group-hover:text-[#C9A96E] transition-colors duration-300">{point.num}</span>
+                  <div>
+                    <p className="font-[Playfair_Display,serif] font-semibold text-gray-900 text-[0.95rem] mb-1.5">{point.title}</p>
+                    <p className="text-gray-500 text-sm leading-relaxed">{point.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
           </div>
         </div>
       </section>
 
-      {/* ── WHY SHAADISHOPPING ── */}
-      <section className="py-20 sm:py-28 bg-gradient-to-br from-rose-50 to-amber-50">
+      {/* ── 6. TESTIMONIALS ── */}
+      <section className="py-24 sm:py-32 bg-[#FFFAF5] overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="eyebrow-luxury mb-3">Why Us</p>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[var(--font-playfair),serif]">
-              Why Couples Choose <span className="gradient-text-maroon">ShaadiShopping</span>
-            </h2>
-            <div className="ornament-line max-w-xs mx-auto mt-4">
+          <motion.div
+            className="text-center mb-14"
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+            variants={stagger(0.15)}
+          >
+            <motion.p variants={fadeUp} className="eyebrow-luxury text-rose-500 mb-3">Real Weddings</motion.p>
+            <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+              Trusted By Couples For <span className="gradient-text">Stress-Free Planning</span>
+            </motion.h2>
+            <motion.div variants={fadeUp} className="ornament-line max-w-xs mx-auto mt-5">
               <span className="text-[#C9A96E] text-sm">✦</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-            {[
-              { num: '01', title: 'One Team Managing Everything', desc: 'A single dedicated team coordinates all your vendors, visits, and logistics end-to-end.' },
-              { num: '02', title: 'Personalized Vendor Coordination', desc: 'We match vendors to your specific style, budget, and city — not random listings.' },
-              { num: '03', title: 'Planning Within Your Budget', desc: 'Your entire wedding plan is built around your budget, with zero hidden surprises.' },
-              { num: '04', title: 'Expert Guidance Start to Finish', desc: 'Your dedicated consultant is with you from first call to the final vidaai.' },
-              { num: '05', title: 'Technology + Human Touch', desc: 'Smart planning tools combined with real human expertise for a flawless experience.' },
-            ].map((point, i) => (
-              <motion.div
-                key={point.title}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.55, delay: i * 0.1 }}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-transparent hover:border-[#C9A96E]/30 transition-colors group"
-              >
-                <p className="font-cormorant text-5xl font-light text-[#C9A96E]/30 leading-none mb-3 group-hover:text-[#C9A96E]/50 transition-colors">{point.num}</p>
-                <div className="w-8 h-px bg-[#C9A96E]/40 mb-3" />
-                <p className="font-bold text-gray-900 text-sm mb-2 font-[var(--font-playfair),serif] leading-snug">{point.title}</p>
-                <p className="text-gray-500 text-xs leading-relaxed">{point.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
-      <section className="py-20 sm:py-28 bg-[#FFFAF5] overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            eyebrow="Real Weddings"
-            eyebrowColor="text-rose-500"
-            title={<>Trusted By Couples For <span className="gradient-text">Stress-Free Planning</span></>}
-          />
+            </motion.div>
+          </motion.div>
 
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            className="grid grid-cols-1 md:grid-cols-3 gap-8"
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: '-50px' }}
@@ -729,28 +481,24 @@ export default function HomepageClient() {
                 name: 'Priya & Rahul', city: 'Delhi', rating: 5,
                 text: 'ShaadiShopping made our wedding planning so effortless! We found our dream venue, photographer, and caterer all in one place. The vendors were professional and delivered beyond expectations.',
                 image: 'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=200&q=80',
-                accent: 'border-rose-200',
               },
               {
                 name: 'Ananya & Vikram', city: 'Mumbai', rating: 5,
                 text: 'Absolutely love ShaadiShopping! The comparison feature helped us find vendors within our budget. The planning wizard saved us weeks of research. Our wedding was a fairy tale!',
                 image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=200&q=80',
-                accent: 'border-amber-200',
               },
               {
                 name: 'Sneha & Arjun', city: 'Jaipur', rating: 5,
                 text: "From mehndi to photography, ShaadiShopping had the perfect vendors for our royal Rajasthani wedding. The team was helpful throughout. Couldn't have asked for a better experience!",
                 image: 'https://images.unsplash.com/photo-1587826080692-f439cd0b70da?w=200&q=80',
-                accent: 'border-purple-200',
               },
             ].map((t, i) => (
               <motion.div
                 key={t.name}
                 variants={i % 2 === 0 ? slideLeft : slideRight}
-                whileHover={{ y: -8, transition: { duration: 0.3, ease: [0.22,1,0.36,1] } }}
-                className={`bg-white rounded-3xl p-7 shadow-sm border-2 ${t.accent} hover:shadow-lg transition-shadow relative overflow-hidden`}
+                whileHover={{ y: -6, transition: { duration: 0.3, ease: [0.22,1,0.36,1] } }}
+                className="bg-white rounded-3xl p-9 shadow-sm border border-gray-100/80 hover:shadow-md transition-shadow relative overflow-hidden"
               >
-                {/* Decorative large quote mark */}
                 <div className="absolute top-4 right-5 font-cormorant text-8xl text-gray-100 leading-none select-none pointer-events-none">
                   &ldquo;
                 </div>
@@ -765,7 +513,7 @@ export default function HomepageClient() {
                     <Image src={t.image} alt={t.name} fill sizes="48px" className="object-cover" />
                   </div>
                   <div>
-                    <p className="text-gray-900 font-semibold text-sm font-[var(--font-playfair),serif]">{t.name}</p>
+                    <p className="text-gray-900 font-semibold text-sm font-[Playfair_Display,serif]">{t.name}</p>
                     <p className="text-[#C9A96E] text-xs tracking-wider uppercase mt-0.5">{t.city}</p>
                   </div>
                 </div>
@@ -775,156 +523,130 @@ export default function HomepageClient() {
         </div>
       </section>
 
-      {/* ── REAL WEDDING EXPERIENCES ── */}
-      <section className="py-20 sm:py-28 bg-[#FFFAF5]">
+      {/* ── 7. WEDDING JOURNAL ── */}
+      <section className="py-24 sm:py-32 bg-[#1C1208]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <p className="eyebrow-luxury mb-3">Real Weddings</p>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[var(--font-playfair),serif]">
-              Weddings We&apos;ve <span className="gradient-text-maroon">Coordinated</span>
+          <div className="text-center mb-16 lg:mb-20">
+            <p className="eyebrow-luxury text-[#C9A96E]/70 mb-3">Wedding Journal</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white font-[Playfair_Display,serif]">
+              Weddings We&apos;ve <span className="text-[#C9A96E]">Brought to Life</span>
             </h2>
-            <div className="ornament-line max-w-xs mx-auto my-4">
-              <span className="text-[#C9A96E] text-sm">✦</span>
-            </div>
-            <p className="text-gray-500 text-sm sm:text-base max-w-xl mx-auto">Behind every beautiful wedding is months of expert coordination. Here&apos;s a glimpse into weddings we&apos;ve helped bring to life.</p>
+            <div className="mt-5 h-px max-w-[80px] mx-auto bg-[#C9A96E]/30" />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+
+          <div className="divide-y divide-[#C9A96E]/12">
             {[
-              { label: 'Royal Palace Wedding', city: 'Jaipur', tag: 'Venue Setup', emoji: '🏰', bg: 'from-rose-100 to-amber-100' },
-              { label: 'Garden Ceremony', city: 'Patna', tag: 'Decor & Floral', emoji: '🌸', bg: 'from-green-100 to-teal-100' },
-              { label: 'Beachside Reception', city: 'Goa', tag: 'Coordination', emoji: '🏖️', bg: 'from-sky-100 to-blue-100' },
-              { label: 'Grand Banquet', city: 'Delhi', tag: 'Catering', emoji: '🍽️', bg: 'from-amber-100 to-yellow-100' },
-              { label: 'Intimate Mehendi', city: 'Mumbai', tag: 'Pre-Events', emoji: '🌿', bg: 'from-lime-100 to-green-100' },
-              { label: 'Destination Wedding', city: 'Udaipur', tag: 'Full Coordination', emoji: '✈️', bg: 'from-purple-100 to-rose-100' },
-              { label: 'Sangeet Night', city: 'Bangalore', tag: 'Entertainment', emoji: '🎵', bg: 'from-indigo-100 to-purple-100' },
-              { label: 'Luxury 5-Star', city: 'Hyderabad', tag: 'Premium Planning', emoji: '👑', bg: 'from-rose-100 to-pink-100' },
-            ].map((w) => (
-              <div key={w.label} className={`rounded-2xl bg-gradient-to-br ${w.bg} p-6 flex flex-col items-center justify-center text-center aspect-square hover:scale-105 transition-transform cursor-pointer`}>
-                <span className="text-4xl mb-3">{w.emoji}</span>
-                <p className="font-semibold text-gray-900 text-sm leading-tight">{w.label}</p>
-                <p className="text-xs text-gray-500 mt-1">{w.city}</p>
-                <span className="mt-2 text-xs bg-white/70 text-gray-700 font-medium px-2 py-0.5 rounded-full">{w.tag}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-xs text-gray-400 mt-6">Real photos coming soon — our team is capturing the magic. ✨</p>
-        </div>
-      </section>
-
-      {/* ── VENDORS BY CATEGORY ── */}
-      <section className="py-10 bg-gray-50 border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-6 font-[Playfair_Display,serif]">
-            Explore Vendors by Category
-          </h2>
-          <div className="space-y-4">
-            {VENDOR_CATEGORIES.map((group) => (
-              <div key={group.heading}>
-                <h3 className="text-sm font-bold text-gray-900 mb-1">{group.heading}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  {group.items.map((item, idx) => (
-                    <span key={item.label}>
-                      <Link href={item.href} className="hover:text-amber-600 transition-colors">
-                        {item.label}
-                      </Link>
-                      {idx < group.items.length - 1 && <span className="mx-2 text-gray-400">·</span>}
-                    </span>
-                  ))}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── VENDORS BY LOCATION ── */}
-      <section className="py-14 bg-white border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-8 font-[Playfair_Display,serif]">
-            Find Wedding Vendors Near You
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
-            {LOCATIONS.map((loc) => (
-              <div key={loc.state}>
-                <h3 className="text-sm font-bold text-rose-700 uppercase tracking-wide mb-2 border-b border-rose-100 pb-1.5">
-                  {loc.state}
-                </h3>
-                <ul className="space-y-1">
-                  {loc.cities.map((city) => (
-                    <li key={city}>
-                      <Link
-                        href={`/categories/venue?city=${encodeURIComponent(city)}`}
-                        className="text-sm text-gray-600 hover:text-rose-600 hover:pl-1 transition-all duration-150 block"
-                      >
-                        Wedding Venues {city}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CONTACT EXPERT ── */}
-      <section className="py-10 bg-gradient-to-r from-amber-50 to-rose-50 border-t border-amber-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">
-              Contact a wedding expert for free
-            </h3>
-            <p className="text-sm text-gray-500">We&apos;d love to help you! Monday to Friday, from 10am to 7pm.</p>
-          </div>
-          <a
-            href="tel:+917070486987"
-            className="flex items-center gap-3 bg-[#8B1A4A] text-white font-semibold px-8 py-3.5 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm flex-shrink-0"
-          >
-            <Phone className="w-4 h-4" />
-            Call +91 70704 86987
-          </a>
-        </div>
-      </section>
-
-      {/* ── MEET YOUR EXPERT ── */}
-      <section className="py-20 sm:py-28 bg-white border-t border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-[#8B1A4A] text-sm font-semibold uppercase tracking-wider mb-2">Human First</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
-              Meet Your <span className="gradient-text">Wedding Expert</span>
-            </h2>
-            <p className="text-gray-500 text-sm sm:text-base mt-3 max-w-lg mx-auto">Every couple gets a dedicated expert who personally guides them — from first call to final vidaai.</p>
-          </div>
-          <div className="grid sm:grid-cols-3 gap-6">
-            {[
-              { name: 'Priya Sharma', role: 'Senior Wedding Consultant', weddings: '120+ weddings', city: 'Patna & Delhi', quote: 'I treat every wedding as if it were my own sister\'s.', emoji: '👩‍💼', specialty: 'Luxury & Destination' },
-              { name: 'Ritu Verma', role: 'Wedding Coordination Expert', weddings: '90+ weddings', city: 'Mumbai & Pune', quote: 'The joy on a couple\'s face on their big day — that\'s why I do this.', emoji: '👩‍💼', specialty: 'Traditional & Royal' },
-              { name: 'Neha Singh', role: 'Planning & Vendor Specialist', weddings: '80+ weddings', city: 'Jaipur & Udaipur', quote: 'I handle every detail so you can fully enjoy your journey.', emoji: '👩‍💼', specialty: 'Intimate & Modern' },
-            ].map((expert) => (
-              <div key={expert.name} className="bg-[#FFFAF5] rounded-3xl p-6 border border-rose-100 hover:border-[#8B1A4A]/30 transition-colors">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-100 to-amber-100 flex items-center justify-center text-3xl mb-4">{expert.emoji}</div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-gray-900 text-base">{expert.name}</h3>
-                  <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Available</span>
+              {
+                num: '001',
+                title: 'The Jaipur Palace Ceremony',
+                city: 'Jaipur, Rajasthan',
+                desc: 'A 600-guest royal celebration across 3 palace venues — venue selection, 8-cuisine catering, décor, and entertainment all managed by our team.',
+                tags: ['Venue', 'Catering', 'Décor', 'Entertainment'],
+              },
+              {
+                num: '002',
+                title: 'The Goa Beachside Wedding',
+                city: 'North Goa',
+                desc: 'An intimate 120-guest destination wedding on a private beach. End-to-end coordination including accommodation, custom floral setup, and live music.',
+                tags: ['Destination', 'Floral', 'Accommodation', 'Music'],
+              },
+              {
+                num: '003',
+                title: 'The Delhi Grand Reception',
+                city: 'New Delhi',
+                desc: 'A 1,200-guest five-star reception. Coordinated catering, photography, décor, mehndi, bridal makeup, and full-day logistics.',
+                tags: ['Full Coordination', 'Photography', 'Makeup', 'Catering'],
+              },
+            ].map((w, i) => (
+              <motion.div
+                key={w.num}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: i * 0.1 }}
+                className="grid grid-cols-12 gap-4 lg:gap-8 items-start py-10 lg:py-14 group"
+              >
+                <div className="col-span-2 lg:col-span-1">
+                  <span className="font-cormorant text-3xl lg:text-5xl font-light text-[#C9A96E]/20 group-hover:text-[#C9A96E]/50 transition-colors duration-300 leading-none block">{w.num}</span>
                 </div>
-                <p className="text-xs text-[#8B1A4A] font-semibold mb-1">{expert.role}</p>
-                <p className="text-xs text-gray-500 mb-3">{expert.weddings} · {expert.city}</p>
-                <p className="text-sm text-gray-600 italic mb-4">&ldquo;{expert.quote}&rdquo;</p>
-                <span className="text-xs bg-rose-50 text-rose-700 font-medium px-3 py-1 rounded-full">{expert.specialty}</span>
-              </div>
+                <div className="col-span-10 lg:col-span-4">
+                  <p className="text-[#C9A96E]/50 text-[0.65rem] tracking-[0.22em] uppercase mb-2">{w.city}</p>
+                  <h3 className="font-[Playfair_Display,serif] text-white text-xl lg:text-2xl font-semibold leading-snug">{w.title}</h3>
+                </div>
+                <div className="col-span-12 lg:col-span-5">
+                  <p className="text-gray-400 text-sm leading-relaxed">{w.desc}</p>
+                </div>
+                <div className="col-span-12 lg:col-span-2 flex flex-wrap lg:flex-col gap-2">
+                  {w.tags.map((tag) => (
+                    <span key={tag} className="text-[10px] text-[#C9A96E]/60 border border-[#C9A96E]/15 px-2.5 py-1 rounded-full tracking-wide whitespace-nowrap">{tag}</span>
+                  ))}
+                </div>
+              </motion.div>
             ))}
           </div>
-          <div className="text-center mt-10">
-            <Link href="/plan" className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all shadow-lg">
-              <Sparkles className="w-4 h-4" /> Get Your Dedicated Expert
-            </Link>
+
+          <div className="text-center mt-10 pt-10 border-t border-[#C9A96E]/10">
+            <p className="text-gray-600 text-sm">Real photography coming soon — we&apos;re documenting every coordinated wedding.</p>
           </div>
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="relative py-20 sm:py-24 overflow-hidden">
+      {/* ── 8. MEET YOUR EXPERT ── */}
+      <section className="py-24 sm:py-32 bg-[#FFFAF5]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="grid lg:grid-cols-2 gap-14 lg:gap-24 items-center"
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+            variants={stagger(0.18)}
+          >
+            {/* Avatar — large, editorial */}
+            <motion.div variants={slideLeft} className="flex flex-col items-center lg:items-start">
+              <div className="w-48 h-48 rounded-full bg-gradient-to-br from-rose-100 to-amber-50 border-[3px] border-[#C9A96E]/25 flex items-center justify-center text-8xl mb-6 shadow-xl">
+                👩‍💼
+              </div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-emerald-600 font-semibold tracking-wide">Available for consultation</span>
+              </div>
+              <p className="text-gray-400 text-xs">Mon – Sat · 10am to 7pm IST</p>
+            </motion.div>
+
+            {/* Content */}
+            <motion.div variants={slideRight}>
+              <p className="eyebrow-luxury mb-4">Human First</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-4 leading-tight">
+                Meet Priya.<br />Your Wedding Expert.
+              </h2>
+              <div className="w-12 h-px bg-[#C9A96E]/40 mb-5" />
+              <p className="font-cormorant text-xl italic text-gray-600 mb-5 leading-relaxed">
+                &ldquo;I treat every wedding as if it were my own sister&apos;s. Every call, every vendor visit, every decision — I&apos;m there with you.&rdquo;
+              </p>
+              <div className="space-y-2 text-sm text-gray-500 mb-8">
+                <p><span className="text-[#C9A96E] font-semibold">Role ·</span> Senior Wedding Consultant</p>
+                <p><span className="text-[#C9A96E] font-semibold">Coordinated ·</span> 120+ weddings</p>
+                <p><span className="text-[#C9A96E] font-semibold">Speciality ·</span> Luxury & Destination</p>
+                <p><span className="text-[#C9A96E] font-semibold">Cities ·</span> Patna · Delhi · Jaipur</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/plan" className="inline-flex items-center justify-center gap-2 bg-[#8B1A4A] text-white px-7 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all shadow-lg text-sm">
+                  <Sparkles className="w-4 h-4" /> Speak With Priya
+                </Link>
+                <a href="tel:+917646028228" className="inline-flex items-center justify-center gap-2 border border-gray-200 text-gray-600 px-7 py-3.5 rounded-full font-medium hover:border-[#8B1A4A] hover:text-[#8B1A4A] transition-all text-sm">
+                  <Phone className="w-4 h-4" /> Call Now
+                </a>
+              </div>
+              <p className="text-gray-400 text-xs mt-6">
+                Priya is one of 5 dedicated consultants on our team — each specializing in different wedding styles and regions across India.
+              </p>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── 9. FINAL CTA ── */}
+      <section className="relative py-24 sm:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
             src="https://images.unsplash.com/photo-1478146059778-26028b07395a?w=1920&q=80"
@@ -947,16 +669,16 @@ export default function HomepageClient() {
             <motion.p variants={fadeUp} className="eyebrow-luxury text-[#C9A96E] mb-4">
               Begin Your Journey
             </motion.p>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white mb-5 font-[var(--font-playfair),serif]">
+            <motion.h2 variants={fadeUp} className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white mb-5 font-[Playfair_Display,serif]">
               Let&apos;s Start Planning<br/><span className="shimmer-text">Your Wedding</span>
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-white/70 text-base mb-8">
+            <motion.p variants={fadeUp} className="text-white/70 text-base mb-10">
               Join thousands of couples who planned their perfect wedding with ShaadiShopping&apos;s expert coordination and trusted vendors.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/plan"
-                className="bg-[#8B1A4A] text-white font-bold px-8 py-4 rounded-full hover:opacity-90 transition-all hover:shadow-2xl text-sm"
+                className="bg-[#8B1A4A] text-white font-bold px-10 py-4 rounded-full hover:opacity-90 transition-all hover:shadow-2xl text-sm"
               >
                 Build My Wedding Plan
               </Link>
@@ -990,6 +712,7 @@ export default function HomepageClient() {
           </a>
         </div>
       )}
+
     </div>
   );
 }
