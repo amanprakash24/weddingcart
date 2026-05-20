@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Search, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle, Heart, Users, Award, ArrowRight, Sparkles, Phone } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Star, ChevronLeft, ChevronRight, Users, Award, ArrowRight, Sparkles, Phone } from 'lucide-react';
 import { Vendor, Category } from '@/types';
 import VendorCard from './VendorCard';
 import CategoryCard from './CategoryCard';
@@ -120,24 +120,6 @@ function SectionHeader({ eyebrow, eyebrowColor = 'text-amber-600', title, subtit
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const HOW_IT_WORKS = [
-  {
-    step: '01', icon: Search, title: 'Discover & Compare',
-    desc: 'Browse hundreds of verified vendors across categories. Read reviews, compare packages, and shortlist your favourites.',
-    color: 'from-amber-400 to-amber-600', bg: 'bg-amber-50',
-  },
-  {
-    step: '02', icon: Heart, title: 'Build Your Plan',
-    desc: 'Add vendors to your wedding plan, mix and match packages, and get a consolidated view of your entire wedding budget.',
-    color: 'from-rose-400 to-rose-600', bg: 'bg-rose-50',
-  },
-  {
-    step: '03', icon: CheckCircle, title: 'Book & Celebrate',
-    desc: 'Our expert planners confirm bookings, coordinate with vendors, and ensure your special day is absolutely perfect.',
-    color: 'from-emerald-400 to-emerald-600', bg: 'bg-emerald-50',
-  },
-];
-
 // ── Vendor directory data ─────────────────────────────────────────────────────
 
 const VENDOR_CATEGORIES = [
@@ -230,6 +212,8 @@ export default function HomepageClient() {
   const featuredCarouselRef = useRef<HTMLDivElement>(null);
   const carousel1Timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const carousel2Timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [activeStep, setActiveStep] = useState(0);
+  const howItWorksTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -272,6 +256,11 @@ export default function HomepageClient() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    howItWorksTimerRef.current = setInterval(() => setActiveStep((s) => (s + 1) % 4), 3000);
+    return () => { if (howItWorksTimerRef.current) clearInterval(howItWorksTimerRef.current); };
+  }, []);
 
   const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 12);
 
@@ -398,14 +387,13 @@ export default function HomepageClient() {
               variants={fadeUp}
               className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] mb-6 font-[Playfair_Display,serif]"
             >
-              Plan Your{' '}
-              <span className="shimmer-text">Dream Wedding</span>
-              <br />with Ease
+              From Venue to Vidaai —{' '}
+              <span className="shimmer-text">We Handle Everything</span>
             </motion.h1>
 
             {/* Subtitle */}
             <motion.p variants={fadeUp} className="text-white/80 text-lg sm:text-xl mb-8 max-w-xl">
-              Discover and book top-rated venues, photographers, caterers, makeup artists and more — all in one place.
+              ShaadiShopping helps couples plan, coordinate, and manage their complete wedding journey with expert guidance and trusted vendors.
             </motion.p>
 
             {/* CTA */}
@@ -415,15 +403,15 @@ export default function HomepageClient() {
                 className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-2xl hover:opacity-90 hover:scale-105 transition-all"
               >
                 <Sparkles className="w-5 h-5" />
-                Plan Your Wedding
+                Start Planning Your Wedding
                 <ArrowRight className="w-5 h-5" />
               </Link>
               <a
-                href="tel:+917070486987"
-                className="lg:hidden inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 text-white px-6 py-3.5 rounded-2xl font-semibold text-base hover:bg-white/25 transition-all"
+                href="tel:+917646028228"
+                className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 text-white px-6 py-3.5 rounded-2xl font-semibold text-base hover:bg-white/25 transition-all"
               >
                 <Phone className="w-5 h-5" />
-                Call Us
+                Talk To Wedding Expert
               </a>
             </motion.div>
 
@@ -449,288 +437,253 @@ export default function HomepageClient() {
         </div>
       </section>
 
-      {/* ── CATEGORIES ── */}
+      {/* ── HOW IT WORKS ── */}
+      <section className="py-16 sm:py-24 bg-[#FEFBEC]">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Title */}
+          <div className="text-center mb-12 lg:mb-16">
+            <div className="flex items-center justify-center gap-3 sm:gap-6 mb-3">
+              <span className="hidden sm:block text-[#C9A96E] text-base tracking-widest select-none">←———→</span>
+              <h2 className="text-3xl sm:text-5xl font-bold text-gray-900 font-[Playfair_Display,serif]">How it works</h2>
+              <span className="hidden sm:block text-[#C9A96E] text-base tracking-widest select-none">←———→</span>
+            </div>
+            <p className="text-gray-500 text-sm sm:text-base">Book your wedding service in 4 easy steps</p>
+          </div>
+
+          {/* Steps + Image */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-24 w-11/12 mx-auto">
+
+            {/* Circular illustration — right on desktop */}
+            <div className="relative h-[240px] w-[240px] sm:h-[360px] sm:w-[360px] lg:h-[480px] lg:w-[480px] flex-shrink-0">
+              <div
+                className="h-full w-full rounded-full p-[2px] shadow-[0px_12px_100px_rgba(255,255,255,0.7)]"
+                style={{ background: 'linear-gradient(to top, #FDF6EA, #D4B896)' }}
+              >
+                <div className="h-full w-full rounded-full bg-[#FCF7C8] overflow-hidden flex items-center justify-center">
+                  <AnimatePresence mode="wait">
+                    {activeStep === 0 && (
+                      <motion.div
+                        key="s1"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.35 }}
+                        className="flex flex-col items-center justify-center h-full w-full px-6 relative"
+                      >
+                        <div className="relative">
+                          <span className="text-[80px] sm:text-[110px] lg:text-[140px] leading-none select-none">📱</span>
+                          <div className="absolute -top-4 -right-2 sm:-top-6 sm:-right-3 lg:-top-10 lg:-right-6 bg-white rounded-2xl shadow-lg px-3 py-2 text-[10px] sm:text-xs lg:text-sm font-medium text-gray-700 max-w-[110px] sm:max-w-[140px] lg:max-w-[170px] text-center border border-gray-100 leading-snug">
+                            I want my wedding in Goa. My budget is 60 Lakhs
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                    {activeStep === 1 && (
+                      <motion.div
+                        key="s2"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.35 }}
+                        className="flex items-center justify-center h-full w-full"
+                      >
+                        <div className="bg-white rounded-2xl lg:rounded-3xl shadow-lg px-5 py-5 lg:px-9 lg:py-8 text-center border border-amber-100">
+                          <div className="text-[#C9A96E] text-xs lg:text-sm mb-2 tracking-[0.3em]">✦&nbsp;✦&nbsp;✦</div>
+                          <p className="font-[Playfair_Display,serif] text-gray-800 text-base sm:text-xl lg:text-3xl font-bold">Rahul</p>
+                          <p className="font-[Playfair_Display,serif] text-gray-400 text-sm sm:text-base lg:text-xl">&amp;</p>
+                          <p className="font-[Playfair_Display,serif] text-gray-800 text-base sm:text-xl lg:text-3xl font-bold">Kajal</p>
+                          <div className="text-[#C9A96E] text-xs lg:text-sm mt-2 tracking-[0.3em]">✦&nbsp;✦&nbsp;✦</div>
+                          <div className="flex justify-center gap-2 mt-3 text-xl lg:text-3xl">🌼 🌼</div>
+                        </div>
+                      </motion.div>
+                    )}
+                    {activeStep === 2 && (
+                      <motion.div
+                        key="s3"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.35 }}
+                        className="flex items-center justify-center h-full w-full relative"
+                      >
+                        <span className="text-[90px] sm:text-[120px] lg:text-[160px] leading-none select-none">🛕</span>
+                        <div className="absolute top-1/4 right-[18%] w-9 h-9 lg:w-14 lg:h-14 rounded-full bg-rose-500 flex items-center justify-center shadow-xl border-2 lg:border-4 border-white">
+                          <span className="text-white font-bold text-sm lg:text-xl">✓</span>
+                        </div>
+                      </motion.div>
+                    )}
+                    {activeStep === 3 && (
+                      <motion.div key="s4" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.35 }} className="flex flex-col items-center justify-center h-full w-full gap-4 px-8">
+                        <span className="text-[80px] sm:text-[110px] lg:text-[140px] leading-none select-none">🎊</span>
+                        <div className="bg-white rounded-2xl shadow-lg px-4 py-3 text-center border border-green-100 text-sm lg:text-base font-semibold text-green-700">
+                          Your wedding, perfectly coordinated ✓
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
+
+            {/* Steps list — left on desktop */}
+            <div className="flex flex-col lg:-order-1 w-full lg:basis-1/2">
+              {[
+                { num: 1, title: 'Tell Us About Your Wedding',       desc: 'Share your date, city, guest count, budget, and wedding style. It takes under 2 minutes.' },
+                { num: 2, title: 'Get Personalized Recommendations', desc: 'We curate venues, vendors, and packages tailored specifically to your preferences and budget.' },
+                { num: 3, title: 'Speak With Your Wedding Consultant', desc: 'Your dedicated consultant reviews your plan and guides you through every decision — for free.' },
+                { num: 4, title: 'Relax While We Coordinate Everything', desc: 'We handle vendor coordination, follow-ups, and logistics so you can enjoy your wedding journey.' },
+              ].map((step, i) => {
+                const isActive = activeStep === i;
+                const isLast = i === 3;
+                return (
+                  <div
+                    key={step.num}
+                    className={`relative pl-8 lg:pl-14 cursor-pointer ${isLast ? '' : 'pb-10 lg:pb-14'}`}
+                    style={!isLast ? {
+                      backgroundImage: 'linear-gradient(to bottom, rgba(82,82,82,0.45) 50%, transparent 0%)',
+                      backgroundSize: '1px 14px',
+                      backgroundPosition: '0 0',
+                      backgroundRepeat: 'repeat-y',
+                    } : undefined}
+                    onClick={() => {
+                      setActiveStep(i);
+                      if (howItWorksTimerRef.current) clearInterval(howItWorksTimerRef.current);
+                      howItWorksTimerRef.current = setInterval(() => setActiveStep((s) => (s + 1) % 4), 3000);
+                    }}
+                  >
+                    {/* Number circle */}
+                    <div
+                      className={`absolute left-0 top-0 z-10 flex h-7 w-7 lg:h-9 lg:w-9 items-center justify-center rounded-full text-xs lg:text-base font-bold transition-all duration-300 ${
+                        isActive ? 'bg-[#8B1A4A] text-white' : 'bg-gray-200 text-gray-400'
+                      }`}
+                      style={{ transform: 'translateX(-50%)' }}
+                    >
+                      {step.num}
+                    </div>
+                    {/* Pulse ring */}
+                    {isActive && (
+                      <motion.div
+                        className="absolute left-0 top-0 h-7 w-7 lg:h-9 lg:w-9 rounded-full bg-[#8B1A4A]/30 z-0"
+                        style={{ transform: 'translateX(-50%)' }}
+                        animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
+                        transition={{ repeat: Infinity, duration: 1.8 }}
+                      />
+                    )}
+                    {/* Step title */}
+                    <p
+                      className={`font-[Playfair_Display,serif] leading-tight transition-all duration-300 ${
+                        isActive
+                          ? 'text-xl sm:text-2xl lg:text-[38px] lg:leading-[1.1] font-semibold text-gray-900'
+                          : 'text-sm lg:text-xl font-semibold text-gray-400'
+                      }`}
+                    >
+                      {step.title}
+                    </p>
+                    {/* Step description */}
+                    <p
+                      className={`text-gray-500 text-sm lg:text-base lg:w-3/4 leading-relaxed transition-all duration-300 overflow-hidden ${
+                        isActive ? 'max-h-24 opacity-100 mt-2' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      {step.desc}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="text-center mt-12 lg:mt-16">
+            <Link
+              href="/plan"
+              className="inline-block bg-[#8B1A4A] text-white font-semibold px-10 py-4 rounded-full hover:opacity-90 transition-all text-sm lg:text-base shadow-lg hover:shadow-xl"
+            >
+              Start my wedding planning
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── GROUPED SERVICES ── */}
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            eyebrow="Browse by Category"
-            title={<>Everything You Need for Your{' '}<span className="gradient-text">Special Day</span></>}
-          />
-
-          {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="skeleton aspect-[4/5] rounded-2xl" />
-              ))}
-            </div>
-          ) : (
-            <motion.div
-              className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3"
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, margin: '-50px' }}
-              variants={stagger(0.07)}
-            >
-              {categories.map((cat) => (
-                <motion.div key={cat.id} variants={scaleUp}>
-                  <CategoryCard category={cat} />
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-        </div>
-      </section>
-
-      {/* ── SPECIAL / ON-DEMAND SERVICES ── */}
-      {(loading || specialServices.length > 0) && (
-        <section className="py-16 sm:py-20 bg-gradient-to-br from-rose-50 to-amber-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <SectionHeader
-              eyebrow="On-Demand"
-              eyebrowColor="text-rose-500"
-              title={<>Special Services <span className="gradient-text">Offered by Us</span></>}
-              subtitle="Additional services we arrange exclusively for your wedding — just tell us what you need"
-            />
-
-            {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="skeleton h-36 rounded-2xl" />
-                ))}
-              </div>
-            ) : (
+          <div className="text-center mb-12">
+            <p className="text-amber-600 text-sm font-semibold uppercase tracking-wider mb-2">Everything In One Place</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+              Complete Wedding Services,<br/><span className="gradient-text">Curated For You</span>
+            </h2>
+            <p className="text-gray-500 mt-3 text-sm max-w-xl mx-auto">We don&apos;t just list vendors — we coordinate your entire wedding across every service category.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+            {[
+              { icon: '📋', label: 'Planning & Coordination', color: 'from-violet-50 to-violet-100 border-violet-200', text: 'text-violet-700', items: ['Wedding Planning', 'Hospitality', 'Legal Documentation'] },
+              { icon: '🏛️', label: 'Venue & Experience', color: 'from-blue-50 to-blue-100 border-blue-200', text: 'text-blue-700', items: ['Wedding Venues', 'Accommodation', 'Transportation'] },
+              { icon: '🍽️', label: 'Food & Entertainment', color: 'from-orange-50 to-orange-100 border-orange-200', text: 'text-orange-700', items: ['Catering', 'DJ', 'Band & Music'] },
+              { icon: '💄', label: 'Beauty & Fashion', color: 'from-pink-50 to-pink-100 border-pink-200', text: 'text-pink-700', items: ['Makeup Artists', 'Bridal Lehenga', 'Jewellery', 'Sherwani'] },
+              { icon: '📸', label: 'Decor & Media', color: 'from-teal-50 to-teal-100 border-teal-200', text: 'text-teal-700', items: ['Photography', 'Decorators', 'Invitations'] },
+            ].map((group) => (
               <motion.div
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, margin: '-50px' }}
-                variants={stagger(0.08)}
+                key={group.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+                className={`bg-gradient-to-br ${group.color} border rounded-2xl p-5`}
               >
-                {specialServices.map((svc) => (
-                  <motion.div key={svc.id} variants={scaleUp}>
-                    <Link
-                      href={`/categories/${svc.id}`}
-                      className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-amber-300 transition-all overflow-hidden flex flex-col h-full"
-                    >
-                      {svc.image && (
-                        <div className="relative h-28 w-full overflow-hidden">
-                          <Image src={svc.image} alt={svc.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                          <span className="absolute bottom-2 left-3 text-2xl">{svc.icon}</span>
-                        </div>
-                      )}
-                      <div className="p-4 flex flex-col gap-2 flex-1">
-                        {!svc.image && (
-                          <div className="w-11 h-11 bg-amber-50 group-hover:bg-amber-100 rounded-xl flex items-center justify-center text-2xl transition-colors mb-1">
-                            {svc.icon}
-                          </div>
-                        )}
-                        <p className="font-bold text-gray-900 text-sm leading-tight group-hover:text-amber-600 transition-colors">{svc.name}</p>
-                        <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{svc.description}</p>
-                        <div className="mt-auto flex items-center gap-1 text-amber-600 text-xs font-semibold pt-1">
-                          View Vendors <ArrowRight className="w-3 h-3" />
-                        </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-
-            <motion.div
-              className="text-center mt-10"
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-              variants={fadeUp}
-            >
-              <Link
-                href="/plan"
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all hover:shadow-lg text-sm"
-              >
-                <Sparkles className="w-4 h-4" /> Start Planning Your Wedding
-              </Link>
-            </motion.div>
-          </div>
-        </section>
-      )}
-
-      {/* ── TOP-RATED VENDORS CAROUSEL ── */}
-      <section className="py-16 sm:py-20 bg-[#FFFAF5]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <motion.div
-            className="mb-8"
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: '-60px' }}
-            variants={fadeUp}
-          >
-            <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">Top Picks</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">Top-Rated Vendors</h2>
-            <p className="text-gray-500 mt-2 text-sm">Handpicked vendors loved by thousands of couples</p>
-          </motion.div>
-
-          {/* Carousel */}
-          {loading ? (
-            <div className="flex gap-5 overflow-hidden">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="skeleton h-80 rounded-2xl flex-none w-full sm:w-[300px]" />
-              ))}
-            </div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.6 }}
-            >
-              <div
-                ref={carouselRef}
-                onScroll={onCarousel1Scroll}
-                onMouseEnter={pauseCarousel1}
-                onMouseLeave={resetCarousel1Timer}
-                className="flex gap-5 overflow-x-auto scrollbar-hide pb-2"
-              >
-                {[...topVendors, ...topVendors].map((vendor, idx) => (
-                  <div key={`${vendor.id}-${idx}`} className="flex-none w-[85vw] sm:w-[calc((100%-56px)/4.1)]">
-                    <VendorCard vendor={vendor} />
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Carousel controls */}
-          <div className="flex items-center justify-center gap-3 mt-6 mb-8">
-            <button
-              onClick={() => handleCarousel1('left')}
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => handleCarousel1('right')}
-              className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          <motion.div
-            className="text-center"
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            variants={fadeUp}
-          >
-            <Link
-              href="/categories/venue"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all hover:shadow-lg text-sm"
-            >
-              View All Vendors <ArrowRight className="w-4 h-4" />
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── FEATURED (Editors' Choice) ── */}
-      {featuredVendors.length > 0 && (
-        <section className="py-16 sm:py-20 bg-gradient-to-br from-amber-50 to-rose-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <SectionHeader
-              eyebrow="Featured"
-              title={<>Our <span className="gradient-text">Editors&apos; Choice</span></>}
-              subtitle="Exceptional vendors with consistently outstanding reviews"
-            />
-
-            {/* Carousel */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.6 }}
-            >
-              <div
-                ref={featuredCarouselRef}
-                onScroll={onCarousel2Scroll}
-                onMouseEnter={pauseCarousel2}
-                onMouseLeave={resetCarousel2Timer}
-                className="flex gap-5 overflow-x-auto scrollbar-hide pb-2"
-              >
-                {[...featuredVendors, ...featuredVendors].map((v, idx) => (
-                  <div key={`${v.id}-${idx}`} className="flex-none w-[85vw] sm:w-[calc((100%-56px)/4.1)] relative pt-3">
-                    <div className="absolute top-0 left-4 z-10 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg flex items-center gap-1">
-                      <Star className="w-3 h-3 fill-current" /> Editor&apos;s Choice
-                    </div>
-                    <VendorCard vendor={v} />
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Controls */}
-            <div className="flex items-center justify-center gap-3 mt-6">
-              <button
-                onClick={() => handleCarousel2('left')}
-                className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handleCarousel2('right')}
-                className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── HOW IT WORKS ── */}
-      <section className="py-16 sm:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionHeader
-            eyebrow="Simple Process"
-            eyebrowColor="text-emerald-600"
-            title={<>How ShaadiShopping <span className="gradient-text">Works</span></>}
-            subtitle="From discovery to your dream day — we handle every detail so you can focus on celebrating."
-          />
-
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 relative"
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: '-60px' }}
-            variants={stagger(0.2)}
-          >
-            {/* Connecting line */}
-            <div className="hidden md:block absolute top-16 left-1/3 right-1/3 h-0.5 bg-gradient-to-r from-amber-300 via-rose-300 to-emerald-300 z-0" />
-
-            {HOW_IT_WORKS.map(({ step, icon: Icon, title, desc, color, bg }) => (
-              <motion.div
-                key={step}
-                variants={fadeUp}
-                className="relative text-center"
-              >
-                <motion.div
-                  className={`relative inline-flex items-center justify-center w-24 h-24 rounded-3xl ${bg} mb-6 mx-auto`}
-                  whileHover={{ scale: 1.08, rotate: 3 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                >
-                  <div className={`absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white text-xs font-bold shadow-lg`}>
-                    {step}
-                  </div>
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center shadow-md`}>
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
-                </motion.div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3 font-[Playfair_Display,serif]">{title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+                <div className="text-3xl mb-3">{group.icon}</div>
+                <p className={`font-bold text-sm mb-3 ${group.text}`}>{group.label}</p>
+                <ul className="space-y-1">
+                  {group.items.map((item) => (
+                    <li key={item} className="text-xs text-gray-600 flex items-center gap-1.5">
+                      <span className="w-1 h-1 rounded-full bg-gray-400 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
+          <div className="text-center mt-10">
+            <Link href="/plan" className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all text-sm shadow-lg">
+              <Sparkles className="w-4 h-4" /> Start Planning — It&apos;s Free
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── WHY SHAADISHOPPING ── */}
+      <section className="py-16 sm:py-20 bg-gradient-to-br from-rose-50 to-amber-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">Our Difference</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+              Why <span className="gradient-text">ShaadiShopping?</span>
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+            {[
+              { icon: '🤝', title: 'One Team Managing Everything', desc: 'A single dedicated team coordinates all your vendors, vendors visits, and logistics end-to-end.' },
+              { icon: '🎯', title: 'Personalized Vendor Coordination', desc: 'We match vendors to your specific style, budget, and city — not just random listings.' },
+              { icon: '💰', title: 'Planning Within Your Budget', desc: 'We build your entire wedding plan around your budget preferences, with no hidden surprises.' },
+              { icon: '⭐', title: 'Expert Guidance Start to Finish', desc: 'Your consultant is available throughout the journey — from first call to your wedding day.' },
+              { icon: '⚡', title: 'Technology + Human Coordination', desc: 'Smart onboarding tools combined with real human expertise for a seamless experience.' },
+            ].map((point, i) => (
+              <motion.div
+                key={point.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className="bg-white rounded-2xl p-6 shadow-sm border border-white/50 text-center"
+              >
+                <div className="text-4xl mb-3">{point.icon}</div>
+                <p className="font-bold text-gray-900 text-sm mb-2 font-[Playfair_Display,serif]">{point.title}</p>
+                <p className="text-gray-500 text-xs leading-relaxed">{point.desc}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -738,9 +691,9 @@ export default function HomepageClient() {
       <section className="py-16 sm:py-20 bg-[#FFFAF5] overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
-            eyebrow="Couples Love Us"
+            eyebrow="Real Weddings"
             eyebrowColor="text-rose-500"
-            title={<>Happy Couples, <span className="gradient-text">Perfect Weddings</span></>}
+            title={<>Trusted By Couples For <span className="gradient-text">Stress-Free Planning</span></>}
           />
 
           <motion.div
@@ -891,21 +844,20 @@ export default function HomepageClient() {
         >
           <div className="max-w-2xl mx-auto">
             <motion.p variants={fadeUp} className="text-amber-300 text-sm font-semibold uppercase tracking-wider mb-4">
-              Start Today — It&apos;s Free
+              Begin Your Journey
             </motion.p>
             <motion.h2 variants={fadeUp} className="text-3xl sm:text-5xl font-bold text-white mb-5 font-[Playfair_Display,serif]">
-              Ready to Plan Your{' '}
-              <span className="shimmer-text">Dream Wedding?</span>
+              Let&apos;s Start Planning<br/><span className="shimmer-text">Your Wedding</span>
             </motion.h2>
             <motion.p variants={fadeUp} className="text-white/70 text-base mb-8">
-              Join 10,000+ couples who planned their perfect wedding with ShaadiShopping. Get expert guidance, compare vendors, and book with confidence.
+              Join thousands of couples who planned their perfect wedding with ShaadiShopping&apos;s expert coordination and trusted vendors.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/plan"
                 className="bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold px-8 py-4 rounded-full hover:opacity-90 transition-all hover:shadow-2xl text-sm"
               >
-                Start Planning — Free
+                Build My Wedding Plan
               </Link>
               <a
                 href="tel:+917070486987"
