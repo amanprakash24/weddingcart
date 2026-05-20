@@ -179,25 +179,12 @@ const VENDOR_CATEGORIES = [
 ];
 
 const LOCATIONS = [
-  { state: 'Bihar', cities: ['Patna', 'Gaya', 'Muzaffarpur', 'Bhagalpur'] },
-  { state: 'West Bengal', cities: ['Kolkata', 'Darjeeling', 'Howrah'] },
+  { state: 'Bihar', cities: ['Patna', 'Gaya', 'Muzaffarpur'] },
+  { state: 'Delhi NCR', cities: ['South Delhi', 'Gurgaon', 'Noida'] },
+  { state: 'Rajasthan', cities: ['Jaipur', 'Udaipur', 'Jodhpur'] },
+  { state: 'Maharashtra', cities: ['Mumbai', 'Pune', 'Nashik'] },
+  { state: 'Karnataka', cities: ['Bangalore', 'Mysore'] },
   { state: 'Goa', cities: ['North Goa', 'South Goa'] },
-  { state: 'Maharashtra', cities: ['Mumbai', 'Pune', 'Nashik', 'Nagpur', 'Raigad'] },
-  { state: 'Delhi NCR', cities: ['Gurgaon', 'South Delhi', 'West Delhi', 'Noida', 'Faridabad', 'Dwarka', 'Greater Noida'] },
-  { state: 'Uttar Pradesh', cities: ['Lucknow', 'Agra', 'Varanasi', 'Kanpur', 'Allahabad'] },
-  { state: 'Rajasthan', cities: ['Jaipur', 'Udaipur', 'Jodhpur', 'Ajmer', 'Alwar'] },
-  { state: 'Karnataka', cities: ['Bangalore', 'Mysore', 'Belgaum'] },
-  { state: 'Tamil Nadu', cities: ['Chennai', 'Coimbatore', 'Madurai', 'Salem', 'Vellore'] },
-  { state: 'Telangana', cities: ['Hyderabad', 'Warangal', 'Medchal'] },
-  { state: 'Gujarat', cities: ['Ahmedabad', 'Vadodara', 'Surat', 'Gandhinagar', 'Rajkot'] },
-  { state: 'Uttarakhand', cities: ['Dehradun', 'Nainital', 'Haridwar'] },
-  { state: 'Punjab', cities: ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala'] },
-  { state: 'Chandigarh', cities: ['Chandigarh City', 'Mohali', 'Panchkula', 'Zirakpur'] },
-  { state: 'Madhya Pradesh', cities: ['Bhopal', 'Indore', 'Jabalpur', 'Gwalior', 'Ujjain'] },
-  { state: 'Kerala', cities: ['Kochi', 'Thiruvananthapuram', 'Alappuzha', 'Thrissur'] },
-  { state: 'Himachal Pradesh', cities: ['Shimla', 'Solan', 'Kangra', 'Kullu', 'Chamba'] },
-  { state: 'Andhra Pradesh', cities: ['Visakhapatnam', 'Vijayawada', 'Kurnool'] },
-  { state: 'Odisha', cities: ['Bhubaneswar', 'Puri', 'Khordha'] },
 ];
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -213,6 +200,7 @@ export default function HomepageClient() {
   const carousel1Timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const carousel2Timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [activeStep, setActiveStep] = useState(0);
+  const [showStickyCTA, setShowStickyCTA] = useState(false);
   const howItWorksTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -260,6 +248,12 @@ export default function HomepageClient() {
   useEffect(() => {
     howItWorksTimerRef.current = setInterval(() => setActiveStep((s) => (s + 1) % 4), 3000);
     return () => { if (howItWorksTimerRef.current) clearInterval(howItWorksTimerRef.current); };
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setShowStickyCTA(window.scrollY > 500);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 6);
@@ -379,7 +373,7 @@ export default function HomepageClient() {
               className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 text-white px-4 py-1.5 rounded-full text-sm font-medium mb-6"
             >
               <Sparkles className="w-4 h-4 text-amber-300" />
-              India&apos;s Most Trusted Wedding Marketplace
+              India&apos;s Expert Wedding Coordination Platform
             </motion.div>
 
             {/* Heading */}
@@ -400,11 +394,12 @@ export default function HomepageClient() {
             <motion.div variants={fadeUp} className="flex flex-col items-start gap-3">
               <Link
                 href="/plan"
-                className="inline-flex items-center gap-3 bg-[#8B1A4A] text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-2xl hover:opacity-90 hover:scale-105 transition-all"
+                className="inline-flex items-center gap-3 bg-[#8B1A4A] text-white px-10 py-5 rounded-2xl font-bold text-xl shadow-2xl hover:opacity-90 hover:scale-105 transition-all"
+                style={{ boxShadow: '0 8px 40px rgba(139,26,74,0.5)' }}
               >
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-6 h-6" />
                 Start Planning Your Wedding
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-6 h-6" />
               </Link>
               <a
                 href="tel:+917646028228"
@@ -607,7 +602,7 @@ export default function HomepageClient() {
       </section>
 
       {/* ── GROUPED SERVICES ── */}
-      <section className="py-16 sm:py-20 bg-white">
+      <section className="py-20 sm:py-28 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-amber-600 text-sm font-semibold uppercase tracking-wider mb-2">Everything In One Place</p>
@@ -654,7 +649,7 @@ export default function HomepageClient() {
       </section>
 
       {/* ── WHY SHAADISHOPPING ── */}
-      <section className="py-16 sm:py-20 bg-gradient-to-br from-rose-50 to-amber-50">
+      <section className="py-20 sm:py-28 bg-gradient-to-br from-rose-50 to-amber-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">Why Us</p>
@@ -748,7 +743,7 @@ export default function HomepageClient() {
       </section>
 
       {/* ── REAL WEDDING EXPERIENCES ── */}
-      <section className="py-16 sm:py-20 bg-[#FFFAF5]">
+      <section className="py-20 sm:py-28 bg-[#FFFAF5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <p className="text-[#8B1A4A] text-sm font-semibold uppercase tracking-wider mb-2">Real Weddings</p>
@@ -810,9 +805,9 @@ export default function HomepageClient() {
       <section className="py-14 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-xl font-bold text-gray-800 mb-8 font-[Playfair_Display,serif]">
-            Wedding Vendors by Location
+            Find Wedding Vendors Near You
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
             {LOCATIONS.map((loc) => (
               <div key={loc.state}>
                 <h3 className="text-sm font-bold text-rose-700 uppercase tracking-wide mb-2 border-b border-rose-100 pb-1.5">
@@ -852,6 +847,43 @@ export default function HomepageClient() {
             <Phone className="w-4 h-4" />
             Call +91 70704 86987
           </a>
+        </div>
+      </section>
+
+      {/* ── MEET YOUR EXPERT ── */}
+      <section className="py-20 sm:py-28 bg-white border-t border-gray-100">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-[#8B1A4A] text-sm font-semibold uppercase tracking-wider mb-2">Human First</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+              Meet Your <span className="gradient-text">Wedding Expert</span>
+            </h2>
+            <p className="text-gray-500 text-sm sm:text-base mt-3 max-w-lg mx-auto">Every couple gets a dedicated expert who personally guides them — from first call to final vidaai.</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-6">
+            {[
+              { name: 'Priya Sharma', role: 'Senior Wedding Consultant', weddings: '120+ weddings', city: 'Patna & Delhi', quote: 'I treat every wedding as if it were my own sister\'s.', emoji: '👩‍💼', specialty: 'Luxury & Destination' },
+              { name: 'Ritu Verma', role: 'Wedding Coordination Expert', weddings: '90+ weddings', city: 'Mumbai & Pune', quote: 'The joy on a couple\'s face on their big day — that\'s why I do this.', emoji: '👩‍💼', specialty: 'Traditional & Royal' },
+              { name: 'Neha Singh', role: 'Planning & Vendor Specialist', weddings: '80+ weddings', city: 'Jaipur & Udaipur', quote: 'I handle every detail so you can fully enjoy your journey.', emoji: '👩‍💼', specialty: 'Intimate & Modern' },
+            ].map((expert) => (
+              <div key={expert.name} className="bg-[#FFFAF5] rounded-3xl p-6 border border-rose-100 hover:border-[#8B1A4A]/30 transition-colors">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-100 to-amber-100 flex items-center justify-center text-3xl mb-4">{expert.emoji}</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-bold text-gray-900 text-base">{expert.name}</h3>
+                  <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Available</span>
+                </div>
+                <p className="text-xs text-[#8B1A4A] font-semibold mb-1">{expert.role}</p>
+                <p className="text-xs text-gray-500 mb-3">{expert.weddings} · {expert.city}</p>
+                <p className="text-sm text-gray-600 italic mb-4">&ldquo;{expert.quote}&rdquo;</p>
+                <span className="text-xs bg-rose-50 text-rose-700 font-medium px-3 py-1 rounded-full">{expert.specialty}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link href="/plan" className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all shadow-lg">
+              <Sparkles className="w-4 h-4" /> Get Your Dedicated Expert
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -899,17 +931,29 @@ export default function HomepageClient() {
                 <Phone className="w-4 h-4" />
                 Talk to an Expert
               </a>
-              <Link
-                href="/vendor-onboarding"
-                className="flex items-center justify-center gap-2 bg-white text-gray-900 font-semibold px-8 py-4 rounded-full hover:bg-amber-50 transition-all text-sm"
-              >
-                <Users className="w-4 h-4" />
-                Join as Vendor
-              </Link>
             </motion.div>
           </div>
         </motion.div>
       </section>
+
+      {/* ── STICKY MOBILE CTA ── */}
+      {showStickyCTA && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-3 shadow-2xl">
+          <Link
+            href="/plan"
+            className="flex-1 flex items-center justify-center gap-2 bg-[#8B1A4A] text-white py-3.5 rounded-xl font-bold text-sm"
+            style={{ boxShadow: '0 4px 20px rgba(139,26,74,0.4)' }}
+          >
+            <Sparkles className="w-4 h-4" /> Start Planning — Free
+          </Link>
+          <a
+            href="tel:+917646028228"
+            className="flex items-center justify-center gap-1.5 border border-gray-200 text-gray-700 py-3.5 px-4 rounded-xl font-semibold text-sm"
+          >
+            <Phone className="w-4 h-4" /> Call
+          </a>
+        </div>
+      )}
     </div>
   );
 }
