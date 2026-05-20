@@ -27,7 +27,7 @@ export default function Footer() {
               <span className="text-xl font-bold text-white font-[Playfair_Display,serif]">ShaadiShopping</span>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-1">
-              India&apos;s premier wedding planning marketplace. Discover, compare, and book top vendors for your dream wedding.
+              India&apos;s managed wedding planning &amp; coordination platform. Expert consultants, trusted vendors, and a stress-free planning experience — all in one place.
             </p>
             <p className="text-gray-500 text-xs mb-5">Founded by <span className="text-amber-400 font-medium">Anisha Kumari</span>, Patna, Bihar.</p>
             <div className="space-y-2.5 text-sm">
@@ -48,7 +48,7 @@ export default function Footer() {
 
           {/* Categories */}
           <div>
-            <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Vendor Categories</h4>
+            <h4 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Wedding Services</h4>
             <ul className="space-y-2">
               {categories.map((c) => (
                 <li key={c.href}>

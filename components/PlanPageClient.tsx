@@ -8,7 +8,7 @@ import WeddingDashboardClient from '@/components/WeddingDashboardClient';
 const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 import { useCart } from '@/context/CartContext';
 
-const STEPS = ['Event Details', 'Services', 'Hospitality', 'Venue Preference', 'Consultation'];
+const STEPS = ['Event Details', 'Services', 'Hospitality', 'Celebration', 'Consultation'];
 
 const SERVICES = [
   // ── Primary 8 categories (in original order) ──
@@ -545,8 +545,8 @@ export default function PlanPageClient() {
             {step === 3 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Venue Preference</h2>
-                  <p className="text-gray-500 text-sm">What type of venue best suits your vision?</p>
+                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">What Kind Of Celebration Do You Envision?</h2>
+                  <p className="text-gray-500 text-sm">Choose a venue style that matches your dream wedding</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {VENUE_TYPES.map((vt) => (

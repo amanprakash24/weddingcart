@@ -246,7 +246,7 @@ export default function HomepageClient() {
       }
       if (vendorData.success) {
         setVendors(vendorData.data);
-        setFeaturedVendors(vendorData.data.filter((v: Vendor) => v.isFeatured).slice(0, 8));
+        setFeaturedVendors(vendorData.data.filter((v: Vendor) => v.isFeatured).slice(0, 6));
       }
     } catch {
       // Use empty arrays if API fails
@@ -262,7 +262,7 @@ export default function HomepageClient() {
     return () => { if (howItWorksTimerRef.current) clearInterval(howItWorksTimerRef.current); };
   }, []);
 
-  const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 12);
+  const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 6);
 
   const scrollCarousel = (dir: 'left' | 'right') => {
     const el = carouselRef.current;
@@ -657,9 +657,9 @@ export default function HomepageClient() {
       <section className="py-16 sm:py-20 bg-gradient-to-br from-rose-50 to-amber-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">Our Difference</p>
+            <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">Why Us</p>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
-              Why <span className="gradient-text">ShaadiShopping?</span>
+              Why Couples Choose <span className="gradient-text">ShaadiShopping</span>
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -744,6 +744,39 @@ export default function HomepageClient() {
               </motion.div>
             ))}
           </motion.div>
+        </div>
+      </section>
+
+      {/* ── REAL WEDDING EXPERIENCES ── */}
+      <section className="py-16 sm:py-20 bg-[#FFFAF5]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-[#8B1A4A] text-sm font-semibold uppercase tracking-wider mb-2">Real Weddings</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+              Weddings We&apos;ve <span className="gradient-text">Coordinated</span>
+            </h2>
+            <p className="text-gray-500 text-sm sm:text-base mt-3 max-w-xl mx-auto">Behind every beautiful wedding is months of expert coordination. Here&apos;s a glimpse into weddings we&apos;ve helped bring to life.</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Royal Palace Wedding', city: 'Jaipur', tag: 'Venue Setup', emoji: '🏰', bg: 'from-rose-100 to-amber-100' },
+              { label: 'Garden Ceremony', city: 'Patna', tag: 'Decor & Floral', emoji: '🌸', bg: 'from-green-100 to-teal-100' },
+              { label: 'Beachside Reception', city: 'Goa', tag: 'Coordination', emoji: '🏖️', bg: 'from-sky-100 to-blue-100' },
+              { label: 'Grand Banquet', city: 'Delhi', tag: 'Catering', emoji: '🍽️', bg: 'from-amber-100 to-yellow-100' },
+              { label: 'Intimate Mehendi', city: 'Mumbai', tag: 'Pre-Events', emoji: '🌿', bg: 'from-lime-100 to-green-100' },
+              { label: 'Destination Wedding', city: 'Udaipur', tag: 'Full Coordination', emoji: '✈️', bg: 'from-purple-100 to-rose-100' },
+              { label: 'Sangeet Night', city: 'Bangalore', tag: 'Entertainment', emoji: '🎵', bg: 'from-indigo-100 to-purple-100' },
+              { label: 'Luxury 5-Star', city: 'Hyderabad', tag: 'Premium Planning', emoji: '👑', bg: 'from-rose-100 to-pink-100' },
+            ].map((w) => (
+              <div key={w.label} className={`rounded-2xl bg-gradient-to-br ${w.bg} p-6 flex flex-col items-center justify-center text-center aspect-square hover:scale-105 transition-transform cursor-pointer`}>
+                <span className="text-4xl mb-3">{w.emoji}</span>
+                <p className="font-semibold text-gray-900 text-sm leading-tight">{w.label}</p>
+                <p className="text-xs text-gray-500 mt-1">{w.city}</p>
+                <span className="mt-2 text-xs bg-white/70 text-gray-700 font-medium px-2 py-0.5 rounded-full">{w.tag}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-6">Real photos coming soon — our team is capturing the magic. ✨</p>
         </div>
       </section>
 
