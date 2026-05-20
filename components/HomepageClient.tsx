@@ -400,7 +400,7 @@ export default function HomepageClient() {
             <motion.div variants={fadeUp} className="flex flex-col items-start gap-3">
               <Link
                 href="/plan"
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-2xl hover:opacity-90 hover:scale-105 transition-all"
+                className="inline-flex items-center gap-3 bg-[#8B1A4A] text-white px-8 py-4 rounded-2xl font-semibold text-lg shadow-2xl hover:opacity-90 hover:scale-105 transition-all"
               >
                 <Sparkles className="w-5 h-5" />
                 Start Planning Your Wedding
@@ -448,7 +448,7 @@ export default function HomepageClient() {
               <h2 className="text-3xl sm:text-5xl font-bold text-gray-900 font-[Playfair_Display,serif]">How it works</h2>
               <span className="hidden sm:block text-[#C9A96E] text-base tracking-widest select-none">←———→</span>
             </div>
-            <p className="text-gray-500 text-sm sm:text-base">Book your wedding service in 4 easy steps</p>
+            <p className="text-gray-500 text-sm sm:text-base">4 simple steps to a stress-free, perfectly coordinated wedding</p>
           </div>
 
           {/* Steps + Image */}
@@ -646,7 +646,7 @@ export default function HomepageClient() {
             ))}
           </div>
           <div className="text-center mt-10">
-            <Link href="/plan" className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all text-sm shadow-lg">
+            <Link href="/plan" className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white px-8 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all text-sm shadow-lg">
               <Sparkles className="w-4 h-4" /> Start Planning — It&apos;s Free
             </Link>
           </div>
@@ -751,7 +751,7 @@ export default function HomepageClient() {
       <section className="py-10 bg-gray-50 border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-xl font-bold text-gray-800 mb-6 font-[Playfair_Display,serif]">
-            Wedding Vendors by Category
+            Explore Vendors by Category
           </h2>
           <div className="space-y-4">
             {VENDOR_CATEGORIES.map((group) => (
@@ -814,7 +814,7 @@ export default function HomepageClient() {
           </div>
           <a
             href="tel:+917070486987"
-            className="flex items-center gap-3 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-8 py-3.5 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm flex-shrink-0"
+            className="flex items-center gap-3 bg-[#8B1A4A] text-white font-semibold px-8 py-3.5 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm flex-shrink-0"
           >
             <Phone className="w-4 h-4" />
             Call +91 70704 86987
@@ -855,7 +855,7 @@ export default function HomepageClient() {
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/plan"
-                className="bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold px-8 py-4 rounded-full hover:opacity-90 transition-all hover:shadow-2xl text-sm"
+                className="bg-[#8B1A4A] text-white font-bold px-8 py-4 rounded-full hover:opacity-90 transition-all hover:shadow-2xl text-sm"
               >
                 Build My Wedding Plan
               </Link>

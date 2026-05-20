@@ -247,12 +247,23 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             </p>
             <p className="text-gray-500 text-sm mt-1">They'll review your full plan, suggest vendors, and answer all your questions.</p>
           </div>
-          <a
-            href={`tel:+917646028228`}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors shrink-0"
-          >
-            <Phone className="w-4 h-4" /> Call Now
-          </a>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <a
+              href="https://wa.me/917646028228"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors"
+              style={{ background: '#25D366' }}
+            >
+              <span>💬</span> WhatsApp
+            </a>
+            <a
+              href="tel:+917646028228"
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors"
+            >
+              <Phone className="w-4 h-4" /> Call Now
+            </a>
+          </div>
         </div>
 
         {/* ── SECTION 2 — Recommended Venues ── */}

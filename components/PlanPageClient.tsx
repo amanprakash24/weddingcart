@@ -8,7 +8,7 @@ import WeddingDashboardClient from '@/components/WeddingDashboardClient';
 const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 import { useCart } from '@/context/CartContext';
 
-const STEPS = ['Event Details', 'Services', 'Meal Plan', 'Venue Preference', 'Consultation'];
+const STEPS = ['Event Details', 'Services', 'Hospitality', 'Venue Preference', 'Consultation'];
 
 const SERVICES = [
   // ── Primary 8 categories (in original order) ──
@@ -203,7 +203,7 @@ export default function PlanPageClient() {
   return (
     <div className="pt-16 min-h-screen bg-[#FFFAF5]">
       {/* Header */}
-      <div className="bg-gradient-to-r from-amber-500 via-rose-400 to-rose-500 py-12 sm:py-16">
+      <div className="py-12 sm:py-16" style={{ background: '#8B1A4A' }}>
         <div className="max-w-3xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 bg-white/20 text-white px-4 py-1.5 rounded-full text-sm font-medium mb-4">
             <Sparkles className="w-4 h-4" /> Free Wedding Planning Wizard
@@ -224,7 +224,7 @@ export default function PlanPageClient() {
                 <div className="flex flex-col items-center">
                   <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     i < step ? 'bg-emerald-500 text-white' :
-                    i === step ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-lg' :
+                    i === step ? 'bg-[#8B1A4A] text-white shadow-lg' :
                     'bg-gray-100 text-gray-400'
                   }`}>
                     {i < step ? <CheckCircle className="w-4 h-4" /> : i + 1}
@@ -251,7 +251,7 @@ export default function PlanPageClient() {
             {step === 0 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Let&apos;s Start Planning Your Celebration</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Let&apos;s Begin Your Wedding Journey</h2>
                   <p className="text-gray-500 text-sm">Tell us about yourself and your dream wedding</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -348,8 +348,8 @@ export default function PlanPageClient() {
                         onClick={() => updateField('weddingStyle', form.weddingStyle === style.id ? '' : style.id)}
                         className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-semibold transition-all ${
                           form.weddingStyle === style.id
-                            ? 'border-amber-400 bg-amber-50 text-amber-700'
-                            : 'border-gray-200 text-gray-600 hover:border-amber-200'
+                            ? 'border-[#8B1A4A] bg-rose-50 text-[#8B1A4A]'
+                            : 'border-gray-200 text-gray-600 hover:border-rose-300'
                         }`}
                       >
                         <span className="text-xl">{style.icon}</span>
@@ -402,8 +402,8 @@ export default function PlanPageClient() {
                         onClick={() => updateField('budgetRange', b.id)}
                         className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-semibold transition-all ${
                           form.budgetRange === b.id
-                            ? 'border-amber-400 bg-amber-50 text-amber-700'
-                            : 'border-gray-200 text-gray-600 hover:border-amber-200'
+                            ? 'border-[#8B1A4A] bg-rose-50 text-[#8B1A4A]'
+                            : 'border-gray-200 text-gray-600 hover:border-rose-300'
                         }`}
                       >
                         <span>{b.icon}</span>
@@ -441,7 +441,7 @@ export default function PlanPageClient() {
             {step === 1 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Select Your Services</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">What Would You Like Help With?</h2>
                   <p className="text-gray-500 text-sm">Choose the services you need — we&apos;ll coordinate everything for you</p>
                 </div>
                 <div className="flex items-center justify-between mb-2">
@@ -499,7 +499,7 @@ export default function PlanPageClient() {
             {step === 2 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Meal Plan</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Wedding Hospitality Planning</h2>
                   <p className="text-gray-500 text-sm">Select meal requirements for each wedding event</p>
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2">
                     💡 We use this information to estimate catering and hospitality requirements for your wedding.
@@ -625,9 +625,9 @@ export default function PlanPageClient() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-amber-50 to-rose-50 border border-amber-200 rounded-2xl p-5">
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-rose-500 rounded-2xl flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: '#8B1A4A' }}>
                       <Sparkles className="w-6 h-6 text-white" />
                     </div>
                     <div>
@@ -721,7 +721,7 @@ export default function PlanPageClient() {
                 setStep((s) => s + 1);
               }}
                 disabled={!canNext()}
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 bg-[#8B1A4A] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue <ChevronRight className="w-4 h-4" />
               </button>
@@ -729,7 +729,7 @@ export default function PlanPageClient() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !canNext()}
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-60"
+                className="flex items-center gap-2 bg-[#8B1A4A] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-60"
               >
                 {submitting ? 'Submitting...' : <><Sparkles className="w-4 h-4" /> Confirm Plan</>}
               </button>
