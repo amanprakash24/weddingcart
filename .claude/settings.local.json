@@ -27,7 +27,11 @@
       "Bash(xargs sed *)",
       "Bash(ffmpeg -version)",
       "Bash(where ffmpeg *)",
-      "WebFetch(domain:www.weddingwire.in)"
+      "WebFetch(domain:www.weddingwire.in)",
+      "Bash(npx next *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
