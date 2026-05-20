@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { ShoppingCart, Menu, X, Phone, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { Menu, X, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText, Phone } from 'lucide-react';
 
 const MEGA_MENU = [
   {
@@ -69,15 +68,14 @@ const MEGA_MENU = [
       { label: 'Astrologers', href: '/categories/planning' },
       { label: 'Legal & Documentation', href: '/categories/planning' },
       { label: 'Wedding Planners', href: '/categories/planning', bold: true, icon: FileText },
-      { label: 'Hospitality', href: '/plan' },
       { label: 'Honeymoon', href: '/categories/venue' },
-      { label: 'Party Places', href: '/categories/venue' },
     ],
   },
 ];
 
 const navLinks = [
   { href: '/', label: 'Home' },
+  { href: '/#how-it-works', label: 'How It Works' },
   { href: '/about', label: 'About Us' },
 ];
 
@@ -87,7 +85,6 @@ export default function Navbar() {
   const [megaOpen, setMegaOpen] = useState(false);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
   const megaRef = useRef<HTMLDivElement>(null);
-  const { itemCount } = useCart();
   const pathname = usePathname();
   const isAdmin = pathname.startsWith('/admin');
   const isHome = pathname === '/';
@@ -103,7 +100,6 @@ export default function Navbar() {
     setMegaOpen(false);
   }, [pathname]);
 
-  // Close mega menu on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (megaRef.current && !megaRef.current.contains(e.target as Node)) {
@@ -125,98 +121,91 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── ANNOUNCEMENT BAR ── */}
-      {!isAdmin && (
-        <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-8 overflow-hidden flex items-center">
-          <div className="flex animate-marquee-fast whitespace-nowrap">
-            {[0, 1].map((idx) => (
-              <span key={idx} className="flex items-center">
-                {[
-                  '✦ Free Wedding Consultation — Call +91 70704 86987',
-                  '✦ Trusted by 10,000+ Couples Across India',
-                  '✦ 500+ Verified Vendors · All Categories Covered',
-                  '✦ Expert Coordination from Engagement to Vidaai',
-                  '✦ Serving Delhi · Mumbai · Jaipur · Patna · Bangalore · Goa',
-                ].map((msg) => (
-                  <span key={msg} className="mx-8 text-[0.65rem] tracking-[0.15em]">{msg}</span>
-                ))}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ── ANNOUNCEMENT BAR — single calm message ── */}
+      <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-9 flex items-center justify-center">
+        <p className="text-[0.62rem] tracking-[0.22em]">
+          <span className="text-[#C9A96E]/45 mr-5">✦</span>
+          Expert Wedding Coordination · From Venue to Vidaai · Across India
+          <span className="text-[#C9A96E]/45 ml-5">✦</span>
+        </p>
+      </div>
 
+      {/* ── MAIN NAV ── */}
       <nav
         style={{ zIndex: 9999 }}
-        className={`fixed inset-x-0 transition-all duration-300 ${isAdmin ? 'top-0' : 'top-8'} ${
+        className={`fixed inset-x-0 transition-all duration-300 top-9 ${
           isTransparent
             ? 'bg-transparent'
-            : 'bg-white/95 backdrop-blur-md shadow-sm border-b border-amber-100/60'
+            : 'bg-white/96 backdrop-blur-md shadow-[0_1px_0_rgba(201,169,110,0.15)]'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 relative">
-            {/* Logo — extreme left */}
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0" style={{ touchAction: 'manipulation' }}>
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
+          <div className="flex items-center justify-between h-[84px]">
+
+            {/* Logo */}
+            <Link href="/" className="flex-shrink-0" style={{ touchAction: 'manipulation' }}>
               <Image
                 src="/logo.png"
-                alt="ShaadiShopping logo"
-                width={220}
-                height={140}
-                className="h-12 w-auto object-contain"
+                alt="ShaadiShopping"
+                width={240}
+                height={150}
+                className="h-[58px] lg:h-[64px] w-auto object-contain"
                 priority
               />
             </Link>
 
-            {/* Desktop Nav */}
-            <div className="hidden lg:flex items-center gap-1">
+            {/* Desktop nav — centered */}
+            <div className="hidden lg:flex items-center gap-7">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  style={{ touchAction: 'manipulation' }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  className={`text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
                     pathname === link.href
-                      ? 'bg-amber-500 text-white'
+                      ? 'text-[#8B1A4A]'
                       : isTransparent
-                      ? 'text-white/90 hover:text-white hover:bg-white/15'
-                      : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                      ? 'text-white/85 hover:text-white'
+                      : 'text-gray-600 hover:text-[#8B1A4A]'
                   }`}
                 >
                   {link.label}
                 </Link>
               ))}
 
-              {/* Services mega menu trigger */}
+              {/* Services dropdown */}
               <div className="relative" ref={megaRef}>
                 <button
                   onClick={() => setMegaOpen((v) => !v)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  className={`flex items-center gap-1.5 text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
                     megaOpen
-                      ? 'bg-amber-500 text-white'
+                      ? 'text-[#8B1A4A]'
                       : isTransparent
-                      ? 'text-white/90 hover:text-white hover:bg-white/15'
-                      : 'text-gray-700 hover:text-amber-600 hover:bg-amber-50'
+                      ? 'text-white/85 hover:text-white'
+                      : 'text-gray-600 hover:text-[#8B1A4A]'
                   }`}
                 >
-                  All Services <ChevronDown className={`w-3.5 h-3.5 transition-transform ${megaOpen ? 'rotate-180' : ''}`} />
+                  Services
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${megaOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {megaOpen && (
-                  <div className="fixed top-16 left-[10%] right-[10%] h-[65vh] bg-white shadow-2xl border border-amber-100/60 rounded-b-2xl animate-fade-in overflow-y-auto z-[9998]">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-full flex flex-col">
-                      <div className="grid grid-cols-3 lg:grid-cols-6 gap-6 flex-1">
+                  <div
+                    className="fixed left-[5%] right-[5%] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.12)] border-t border-[#C9A96E]/15 animate-fade-in overflow-y-auto z-[9998] rounded-b-2xl"
+                    style={{ top: 'calc(36px + 84px)' }}
+                  >
+                    <div className="max-w-7xl mx-auto px-8 py-8">
+                      <div className="grid grid-cols-3 lg:grid-cols-6 gap-8">
                         {MEGA_MENU.map((col) => (
                           <div key={col.heading}>
-                            <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-3 border-b border-amber-100 pb-1.5">{col.heading}</p>
-                            <ul className="space-y-1">
+                            <p className="text-[0.6rem] font-bold text-[#C9A96E] uppercase tracking-[0.25em] mb-4">{col.heading}</p>
+                            <ul className="space-y-2">
                               {col.items.map((item) => (
                                 <li key={item.label}>
                                   <Link
                                     href={item.href}
-                                    className={`flex items-center gap-1.5 text-sm py-1 transition-colors hover:text-amber-600 ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-500'}`}
+                                    className={`flex items-center gap-1.5 text-[0.8rem] py-0.5 transition-colors hover:text-[#8B1A4A] ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-400'}`}
                                   >
-                                    {item.icon && <item.icon className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
+                                    {item.icon && <item.icon className="w-3 h-3 text-[#C9A96E]/70 flex-shrink-0" />}
                                     {item.label}
                                   </Link>
                                 </li>
@@ -225,10 +214,10 @@ export default function Navbar() {
                           </div>
                         ))}
                       </div>
-                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between flex-shrink-0">
-                        <p className="text-xs text-gray-400">Can&apos;t find what you need?</p>
-                        <Link href="/plan" className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 hover:underline">
-                          <Sparkles className="w-3.5 h-3.5" /> Use the Planning Wizard
+                      <div className="mt-8 pt-5 border-t border-gray-100 flex items-center justify-between">
+                        <p className="text-xs text-gray-400">Need help choosing? Our experts will guide you.</p>
+                        <Link href="/plan" className="flex items-center gap-1.5 text-xs font-semibold text-[#8B1A4A] hover:opacity-75 transition-opacity">
+                          <Sparkles className="w-3 h-3" /> Use the Planning Wizard
                         </Link>
                       </div>
                     </div>
@@ -237,48 +226,40 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-1">
+            {/* Right actions */}
+            <div className="flex items-center gap-5">
+              {/* Talk to Expert — desktop only */}
               <a
-                href="tel:+917070486987"
-                style={{ touchAction: 'manipulation' }}
-                className={`hidden lg:flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-full transition-all ${
-                  isTransparent ? 'text-white/90 hover:bg-white/15' : 'text-gray-600 hover:text-amber-600 hover:bg-amber-50'
+                href="tel:+917646028228"
+                className={`hidden lg:flex items-center gap-1.5 text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
+                  isTransparent ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-[#8B1A4A]'
                 }`}
               >
-                <Phone className="w-4 h-4" />
-                <span className="hidden md:inline">70704 86987</span>
+                <Phone className="w-3.5 h-3.5" />
+                Talk to Expert
               </a>
 
-              <Link
-                href="/cart"
-                aria-label="View cart"
-                style={{ touchAction: 'manipulation', minWidth: 44, minHeight: 44 }}
-                className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-all ${
-                  isTransparent ? 'text-white hover:bg-white/15' : 'text-gray-700 hover:bg-amber-50 hover:text-amber-600'
-                }`}
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 flex items-center justify-center bg-rose-500 text-white text-xs font-bold rounded-full pointer-events-none">
-                    {itemCount > 9 ? '9+' : itemCount}
-                  </span>
-                )}
-              </Link>
+              {/* Divider */}
+              <div className={`hidden lg:block w-px h-5 ${isTransparent ? 'bg-white/20' : 'bg-gray-200'}`} />
 
+              {/* Start Planning CTA */}
               <Link
                 href="/plan"
-                style={{ touchAction: 'manipulation' }}
-                className="hidden sm:flex items-center bg-[#8B1A4A] text-white text-sm font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-all hover:shadow-lg"
+                className={`hidden sm:inline-flex items-center text-[0.78rem] font-semibold tracking-[0.06em] px-6 py-2.5 rounded-lg transition-all hover:opacity-88 ${
+                  isTransparent
+                    ? 'bg-white/18 border border-white/30 text-white hover:bg-white/25'
+                    : 'bg-[#8B1A4A] text-white hover:shadow-[0_4px_16px_rgba(139,26,74,0.35)]'
+                }`}
               >
                 Start Planning
               </Link>
 
+              {/* Mobile hamburger */}
               <button
                 onClick={() => setMobileOpen((v) => !v)}
                 style={{ touchAction: 'manipulation', minWidth: 44, minHeight: 44 }}
-                className={`lg:hidden flex items-center justify-center w-11 h-11 rounded-full transition-all ${
-                  isTransparent ? 'text-white hover:bg-white/15' : 'text-gray-700 hover:bg-gray-100'
+                className={`lg:hidden flex items-center justify-center w-11 h-11 rounded-xl transition-all ${
+                  isTransparent ? 'text-white hover:bg-white/12' : 'text-gray-600 hover:bg-gray-100'
                 }`}
                 aria-label="Toggle menu"
                 aria-expanded={mobileOpen}
@@ -286,18 +267,18 @@ export default function Navbar() {
                 {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
+
           </div>
         </div>
 
         {/* Mobile Menu */}
         {mobileOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-100 shadow-xl animate-fade-in max-h-[calc(100vh-4rem)] overflow-y-auto">
-            <div className="px-4 py-3 space-y-1">
+          <div className="lg:hidden bg-white border-t border-[#C9A96E]/10 shadow-xl animate-fade-in max-h-[calc(100vh-7.5rem)] overflow-y-auto">
+            <div className="px-5 py-4 space-y-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  style={{ touchAction: 'manipulation' }}
                   className={`flex items-center px-4 py-3.5 rounded-xl text-sm font-medium transition-all min-h-[48px] ${
                     pathname === link.href
                       ? 'bg-[#8B1A4A] text-white'
@@ -308,11 +289,11 @@ export default function Navbar() {
                 </Link>
               ))}
 
-              {/* Mobile All Services accordion */}
+              {/* Mobile Services accordion */}
               <div>
                 <button
                   onClick={() => setMobileServicesOpen((v) => !v)}
-                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-all min-h-[48px]"
+                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-[#FAF5EE] hover:text-[#8B1A4A] transition-all min-h-[48px]"
                 >
                   All Services
                   <ChevronDown className={`w-4 h-4 transition-transform ${mobileServicesOpen ? 'rotate-180' : ''}`} />
@@ -320,13 +301,13 @@ export default function Navbar() {
                 {mobileServicesOpen && (
                   <div className="ml-4 mt-1 space-y-1 pb-2">
                     {MEGA_MENU.map((col) => (
-                      <div key={col.heading} className="mb-3">
-                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest px-3 py-1">{col.heading}</p>
+                      <div key={col.heading} className="mb-4">
+                        <p className="text-[0.6rem] font-bold text-[#C9A96E] uppercase tracking-[0.25em] px-3 py-1">{col.heading}</p>
                         {col.items.map((item) => (
                           <Link
                             key={item.label}
                             href={item.href}
-                            className={`block px-3 py-2 rounded-lg text-sm transition-colors hover:text-amber-600 hover:bg-amber-50 ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-500'}`}
+                            className={`block px-3 py-2.5 rounded-lg text-sm transition-colors hover:text-[#8B1A4A] hover:bg-rose-50 ${item.bold ? 'font-semibold text-gray-700' : 'text-gray-400'}`}
                           >
                             {item.label}
                           </Link>
@@ -337,23 +318,19 @@ export default function Navbar() {
                 )}
               </div>
 
-              <div className="pt-2 pb-1">
+              <div className="pt-3 pb-1 space-y-2">
                 <Link
                   href="/plan"
-                  style={{ touchAction: 'manipulation' }}
-                  className="flex items-center justify-center w-full bg-[#8B1A4A] text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all min-h-[48px]"
+                  className="flex items-center justify-center w-full bg-[#8B1A4A] text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all min-h-[48px] text-sm tracking-wide"
                 >
                   Start Planning Your Wedding
                 </Link>
-              </div>
-              <div className="pb-2">
                 <a
-                  href="tel:+917070486987"
-                  style={{ touchAction: 'manipulation' }}
-                  className="flex items-center justify-center gap-2 w-full border border-gray-200 text-gray-600 font-medium py-3 rounded-xl text-sm min-h-[48px]"
+                  href="tel:+917646028228"
+                  className="flex items-center justify-center gap-2 w-full border border-gray-200 text-gray-500 font-medium py-3 rounded-xl text-sm min-h-[48px] hover:border-[#C9A96E]/50 transition-colors"
                 >
                   <Phone className="w-4 h-4" />
-                  Call: 70704 86987
+                  Talk to an Expert
                 </a>
               </div>
             </div>
@@ -361,15 +338,15 @@ export default function Navbar() {
         )}
       </nav>
 
+      {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/20"
-          style={{ zIndex: 9998, touchAction: 'manipulation' }}
+          className="fixed inset-0 bg-black/15"
+          style={{ zIndex: 9998 }}
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
-
     </>
   );
 }

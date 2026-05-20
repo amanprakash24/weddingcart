@@ -161,7 +161,7 @@ export default function HomepageClient() {
         <div className="absolute inset-0 hero-overlay" />
         <FloatingPetals />
 
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 sm:pt-40">
           <motion.div className="max-w-3xl" initial="hidden" animate="show" variants={stagger(0.2, 0.15)}>
 
             <motion.div variants={fadeUp} className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white/85 px-5 py-2 rounded-full text-xs font-medium mb-8 tracking-[0.14em] uppercase">
