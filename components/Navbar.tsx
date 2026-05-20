@@ -125,9 +125,30 @@ export default function Navbar() {
 
   return (
     <>
+      {/* ── ANNOUNCEMENT BAR ── */}
+      {!isAdmin && (
+        <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-8 overflow-hidden flex items-center">
+          <div className="flex animate-marquee-fast whitespace-nowrap">
+            {[0, 1].map((idx) => (
+              <span key={idx} className="flex items-center">
+                {[
+                  '✦ Free Wedding Consultation — Call +91 70704 86987',
+                  '✦ Trusted by 10,000+ Couples Across India',
+                  '✦ 500+ Verified Vendors · All Categories Covered',
+                  '✦ Expert Coordination from Engagement to Vidaai',
+                  '✦ Serving Delhi · Mumbai · Jaipur · Patna · Bangalore · Goa',
+                ].map((msg) => (
+                  <span key={msg} className="mx-8 text-[0.65rem] tracking-[0.15em]">{msg}</span>
+                ))}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <nav
         style={{ zIndex: 9999 }}
-        className={`fixed top-0 inset-x-0 transition-all duration-300 ${
+        className={`fixed inset-x-0 transition-all duration-300 ${isAdmin ? 'top-0' : 'top-8'} ${
           isTransparent
             ? 'bg-transparent'
             : 'bg-white/95 backdrop-blur-md shadow-sm border-b border-amber-100/60'
@@ -257,7 +278,7 @@ export default function Navbar() {
               <Link
                 href="/plan"
                 style={{ touchAction: 'manipulation' }}
-                className="hidden sm:flex items-center bg-gradient-to-r from-amber-500 to-rose-500 text-white text-sm font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-all hover:shadow-lg"
+                className="hidden sm:flex items-center bg-[#8B1A4A] text-white text-sm font-semibold px-4 py-2 rounded-full hover:opacity-90 transition-all hover:shadow-lg"
               >
                 Start Planning
               </Link>
@@ -288,8 +309,8 @@ export default function Navbar() {
                   style={{ touchAction: 'manipulation' }}
                   className={`flex items-center px-4 py-3.5 rounded-xl text-sm font-medium transition-all min-h-[48px] ${
                     pathname === link.href
-                      ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white'
-                      : 'text-gray-700 hover:bg-amber-50 hover:text-amber-600'
+                      ? 'bg-[#8B1A4A] text-white'
+                      : 'text-gray-700 hover:bg-rose-50 hover:text-[#8B1A4A]'
                   }`}
                 >
                   {link.label}
@@ -329,7 +350,7 @@ export default function Navbar() {
                 <Link
                   href="/plan"
                   style={{ touchAction: 'manipulation' }}
-                  className="flex items-center justify-center w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all min-h-[48px]"
+                  className="flex items-center justify-center w-full bg-[#8B1A4A] text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all min-h-[48px]"
                 >
                   Start Planning Your Wedding
                 </Link>

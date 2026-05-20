@@ -92,7 +92,7 @@ function FloatingPetals() {
 
 // ── Section header ────────────────────────────────────────────────────────────
 
-function SectionHeader({ eyebrow, eyebrowColor = 'text-amber-600', title, subtitle }: {
+function SectionHeader({ eyebrow, eyebrowColor = 'text-[#C9A96E]', title, subtitle }: {
   eyebrow: string; eyebrowColor?: string; title: React.ReactNode; subtitle?: string;
 }) {
   return (
@@ -103,17 +103,20 @@ function SectionHeader({ eyebrow, eyebrowColor = 'text-amber-600', title, subtit
       viewport={{ once: true, margin: '-60px' }}
       variants={stagger(0.15)}
     >
-      <motion.p variants={fadeUp} className={`${eyebrowColor} text-sm font-semibold uppercase tracking-wider mb-2`}>
+      <motion.p variants={fadeUp} className={`eyebrow-luxury ${eyebrowColor} mb-3`}>
         {eyebrow}
       </motion.p>
-      <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+      <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[var(--font-playfair),Playfair_Display,serif]">
         {title}
       </motion.h2>
       {subtitle && (
-        <motion.p variants={fadeUp} className="text-gray-500 mt-2 text-sm">
+        <motion.p variants={fadeUp} className="text-gray-500 mt-3 text-sm max-w-lg mx-auto leading-relaxed">
           {subtitle}
         </motion.p>
       )}
+      <motion.div variants={fadeUp} className="ornament-line mt-5 max-w-xs mx-auto">
+        <span className="text-[#C9A96E] text-sm">✦</span>
+      </motion.div>
     </motion.div>
   );
 }
@@ -360,7 +363,7 @@ export default function HomepageClient() {
         <FloatingPetals />
 
         {/* Hero content */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32">
           <motion.div
             className="max-w-3xl"
             initial="hidden"
@@ -370,24 +373,29 @@ export default function HomepageClient() {
             {/* Pill badge */}
             <motion.div
               variants={fadeUp}
-              className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 text-white px-4 py-1.5 rounded-full text-sm font-medium mb-6"
+              className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/25 text-white/90 px-5 py-2 rounded-full text-xs font-medium mb-7 tracking-[0.12em] uppercase"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
               India&apos;s Expert Wedding Coordination Platform
             </motion.div>
 
             {/* Heading */}
             <motion.h1
               variants={fadeUp}
-              className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] mb-6 font-[Playfair_Display,serif]"
+              className="text-5xl sm:text-6xl lg:text-7xl xl:text-[82px] font-bold text-white leading-[1.05] mb-3 font-[var(--font-playfair),Playfair_Display,serif]"
             >
-              From Venue to Vidaai —{' '}
-              <span className="shimmer-text">We Handle Everything</span>
+              From Venue to Vidaai
             </motion.h1>
+            <motion.p
+              variants={fadeUp}
+              className="font-cormorant text-3xl sm:text-4xl lg:text-5xl text-white/85 italic mb-7 font-light"
+            >
+              — We Handle <span className="shimmer-text not-italic font-semibold">Everything</span>
+            </motion.p>
 
             {/* Subtitle */}
-            <motion.p variants={fadeUp} className="text-white/80 text-lg sm:text-xl mb-8 max-w-xl">
-              ShaadiShopping helps couples plan, coordinate, and manage their complete wedding journey with expert guidance and trusted vendors.
+            <motion.p variants={fadeUp} className="text-white/75 text-base sm:text-lg mb-8 max-w-lg leading-relaxed font-dm-sans">
+              Expert consultants, verified vendors, and end-to-end coordination — all in one place for your dream Indian wedding.
             </motion.p>
 
             {/* CTA */}
@@ -411,20 +419,15 @@ export default function HomepageClient() {
             </motion.div>
 
             {/* Stats */}
-            <motion.div variants={fadeUp} className="flex flex-wrap gap-6 mt-8">
+            <motion.div variants={fadeUp} className="flex flex-wrap gap-px mt-8 bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl overflow-hidden w-fit">
               {[
-                { icon: Users,  label: '10,000+ Couples', sub: 'Trust Us' },
-                { icon: Award,  label: '500+ Vendors',    sub: 'Verified' },
-                { icon: MapPin, label: '25+ Cities',      sub: 'Covered' },
-              ].map(({ icon: Icon, label, sub }) => (
-                <div key={label} className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20">
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-white font-bold text-sm">{label}</p>
-                    <p className="text-white/60 text-xs">{sub}</p>
-                  </div>
+                { value: '10,000+', label: 'Couples Served' },
+                { value: '500+',    label: 'Verified Vendors' },
+                { value: '25+',     label: 'Cities Covered' },
+              ].map(({ value, label }, i) => (
+                <div key={label} className={`flex flex-col items-center px-6 py-3.5 ${i < 2 ? 'border-r border-white/15' : ''}`}>
+                  <p className="text-white font-bold text-xl sm:text-2xl font-[var(--font-playfair),serif] leading-tight">{value}</p>
+                  <p className="text-white/55 text-[10px] tracking-[0.12em] uppercase mt-0.5">{label}</p>
                 </div>
               ))}
             </motion.div>
@@ -432,16 +435,32 @@ export default function HomepageClient() {
         </div>
       </section>
 
+      {/* ── LUXURY MARQUEE STRIP ── */}
+      <div className="bg-[#1C1208] py-3.5 overflow-hidden border-y border-[#C9A96E]/20">
+        <div className="flex animate-marquee whitespace-nowrap">
+          {[0, 1].map((idx) => (
+            <span key={idx} className="flex items-center">
+              {['Venues', 'Photographers', 'Decorators', 'Mehndi Artists', 'Makeup & Bridal', 'Catering', 'DJ & Bands', 'Wedding Planners', 'Jewellery', 'Invitations', 'Honeymoon', 'Pandits'].map((item) => (
+                <span key={item} className="flex items-center gap-5 mx-5">
+                  <span className="text-[#C9A96E] text-[0.65rem] font-semibold tracking-[0.22em] uppercase">{item}</span>
+                  <span className="text-[#C9A96E]/30 text-base">✦</span>
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* ── HOW IT WORKS ── */}
       <section className="py-16 sm:py-24 bg-[#FEFBEC]">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* Title */}
           <div className="text-center mb-12 lg:mb-16">
-            <div className="flex items-center justify-center gap-3 sm:gap-6 mb-3">
-              <span className="hidden sm:block text-[#C9A96E] text-base tracking-widest select-none">←———→</span>
-              <h2 className="text-3xl sm:text-5xl font-bold text-gray-900 font-[Playfair_Display,serif]">How it works</h2>
-              <span className="hidden sm:block text-[#C9A96E] text-base tracking-widest select-none">←———→</span>
+            <p className="eyebrow-luxury mb-3">Your Journey With Us</p>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 font-[var(--font-playfair),serif] mb-3">How it works</h2>
+            <div className="ornament-line max-w-xs mx-auto mb-3">
+              <span className="text-[#C9A96E] text-sm">✦</span>
             </div>
             <p className="text-gray-500 text-sm sm:text-base">4 simple steps to a stress-free, perfectly coordinated wedding</p>
           </div>
@@ -605,11 +624,14 @@ export default function HomepageClient() {
       <section className="py-20 sm:py-28 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-amber-600 text-sm font-semibold uppercase tracking-wider mb-2">Everything In One Place</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
-              Complete Wedding Services,<br/><span className="gradient-text">Curated For You</span>
+            <p className="eyebrow-luxury mb-3">Everything In One Place</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[var(--font-playfair),serif]">
+              Complete Wedding Services,<br/><span className="gradient-text-maroon">Curated For You</span>
             </h2>
-            <p className="text-gray-500 mt-3 text-sm max-w-xl mx-auto">We don&apos;t just list vendors — we coordinate your entire wedding across every service category.</p>
+            <div className="ornament-line max-w-xs mx-auto my-4">
+              <span className="text-[#C9A96E] text-sm">✦</span>
+            </div>
+            <p className="text-gray-500 text-sm max-w-xl mx-auto">We don&apos;t just list vendors — we coordinate your entire wedding across every service category.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
             {[
@@ -652,29 +674,33 @@ export default function HomepageClient() {
       <section className="py-20 sm:py-28 bg-gradient-to-br from-rose-50 to-amber-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <p className="text-rose-500 text-sm font-semibold uppercase tracking-wider mb-2">Why Us</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
-              Why Couples Choose <span className="gradient-text">ShaadiShopping</span>
+            <p className="eyebrow-luxury mb-3">Why Us</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[var(--font-playfair),serif]">
+              Why Couples Choose <span className="gradient-text-maroon">ShaadiShopping</span>
             </h2>
+            <div className="ornament-line max-w-xs mx-auto mt-4">
+              <span className="text-[#C9A96E] text-sm">✦</span>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             {[
-              { icon: '🤝', title: 'One Team Managing Everything', desc: 'A single dedicated team coordinates all your vendors, vendors visits, and logistics end-to-end.' },
-              { icon: '🎯', title: 'Personalized Vendor Coordination', desc: 'We match vendors to your specific style, budget, and city — not just random listings.' },
-              { icon: '💰', title: 'Planning Within Your Budget', desc: 'We build your entire wedding plan around your budget preferences, with no hidden surprises.' },
-              { icon: '⭐', title: 'Expert Guidance Start to Finish', desc: 'Your consultant is available throughout the journey — from first call to your wedding day.' },
-              { icon: '⚡', title: 'Technology + Human Coordination', desc: 'Smart onboarding tools combined with real human expertise for a seamless experience.' },
+              { num: '01', title: 'One Team Managing Everything', desc: 'A single dedicated team coordinates all your vendors, visits, and logistics end-to-end.' },
+              { num: '02', title: 'Personalized Vendor Coordination', desc: 'We match vendors to your specific style, budget, and city — not random listings.' },
+              { num: '03', title: 'Planning Within Your Budget', desc: 'Your entire wedding plan is built around your budget, with zero hidden surprises.' },
+              { num: '04', title: 'Expert Guidance Start to Finish', desc: 'Your dedicated consultant is with you from first call to the final vidaai.' },
+              { num: '05', title: 'Technology + Human Touch', desc: 'Smart planning tools combined with real human expertise for a flawless experience.' },
             ].map((point, i) => (
               <motion.div
                 key={point.title}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-white/50 text-center"
+                transition={{ duration: 0.55, delay: i * 0.1 }}
+                className="bg-white rounded-2xl p-6 shadow-sm border border-transparent hover:border-[#C9A96E]/30 transition-colors group"
               >
-                <div className="text-4xl mb-3">{point.icon}</div>
-                <p className="font-bold text-gray-900 text-sm mb-2 font-[Playfair_Display,serif]">{point.title}</p>
+                <p className="font-cormorant text-5xl font-light text-[#C9A96E]/30 leading-none mb-3 group-hover:text-[#C9A96E]/50 transition-colors">{point.num}</p>
+                <div className="w-8 h-px bg-[#C9A96E]/40 mb-3" />
+                <p className="font-bold text-gray-900 text-sm mb-2 font-[var(--font-playfair),serif] leading-snug">{point.title}</p>
                 <p className="text-gray-500 text-xs leading-relaxed">{point.desc}</p>
               </motion.div>
             ))}
@@ -683,7 +709,7 @@ export default function HomepageClient() {
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section className="py-16 sm:py-20 bg-[#FFFAF5] overflow-hidden">
+      <section className="py-20 sm:py-28 bg-[#FFFAF5] overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <SectionHeader
             eyebrow="Real Weddings"
@@ -703,37 +729,44 @@ export default function HomepageClient() {
                 name: 'Priya & Rahul', city: 'Delhi', rating: 5,
                 text: 'ShaadiShopping made our wedding planning so effortless! We found our dream venue, photographer, and caterer all in one place. The vendors were professional and delivered beyond expectations.',
                 image: 'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=200&q=80',
+                accent: 'border-rose-200',
               },
               {
                 name: 'Ananya & Vikram', city: 'Mumbai', rating: 5,
                 text: 'Absolutely love ShaadiShopping! The comparison feature helped us find vendors within our budget. The planning wizard saved us weeks of research. Our wedding was a fairy tale!',
                 image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=200&q=80',
+                accent: 'border-amber-200',
               },
               {
                 name: 'Sneha & Arjun', city: 'Jaipur', rating: 5,
                 text: "From mehndi to photography, ShaadiShopping had the perfect vendors for our royal Rajasthani wedding. The team was helpful throughout. Couldn't have asked for a better experience!",
                 image: 'https://images.unsplash.com/photo-1587826080692-f439cd0b70da?w=200&q=80',
+                accent: 'border-purple-200',
               },
             ].map((t, i) => (
               <motion.div
                 key={t.name}
                 variants={i % 2 === 0 ? slideLeft : slideRight}
-                whileHover={{ y: -6, transition: { duration: 0.25 } }}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                whileHover={{ y: -8, transition: { duration: 0.3, ease: [0.22,1,0.36,1] } }}
+                className={`bg-white rounded-3xl p-7 shadow-sm border-2 ${t.accent} hover:shadow-lg transition-shadow relative overflow-hidden`}
               >
-                <div className="flex gap-1 mb-4">
+                {/* Decorative large quote mark */}
+                <div className="absolute top-4 right-5 font-cormorant text-8xl text-gray-100 leading-none select-none pointer-events-none">
+                  &ldquo;
+                </div>
+                <div className="flex gap-0.5 mb-5">
                   {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    <Star key={j} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-5 italic">&quot;{t.text}&quot;</p>
-                <div className="flex items-center gap-3">
-                  <div className="relative w-11 h-11 rounded-full overflow-hidden flex-shrink-0">
-                    <Image src={t.image} alt={t.name} fill sizes="44px" className="object-cover" />
+                <p className="font-cormorant text-[1.25rem] italic leading-relaxed text-gray-700 mb-6 relative z-10">&ldquo;{t.text}&rdquo;</p>
+                <div className="flex items-center gap-3.5 pt-4 border-t border-gray-100">
+                  <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-[#C9A96E]/30">
+                    <Image src={t.image} alt={t.name} fill sizes="48px" className="object-cover" />
                   </div>
                   <div>
-                    <p className="text-gray-900 font-semibold text-sm">{t.name}</p>
-                    <p className="text-gray-400 text-xs">{t.city}</p>
+                    <p className="text-gray-900 font-semibold text-sm font-[var(--font-playfair),serif]">{t.name}</p>
+                    <p className="text-[#C9A96E] text-xs tracking-wider uppercase mt-0.5">{t.city}</p>
                   </div>
                 </div>
               </motion.div>
@@ -746,11 +779,14 @@ export default function HomepageClient() {
       <section className="py-20 sm:py-28 bg-[#FFFAF5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <p className="text-[#8B1A4A] text-sm font-semibold uppercase tracking-wider mb-2">Real Weddings</p>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 font-[Playfair_Display,serif]">
-              Weddings We&apos;ve <span className="gradient-text">Coordinated</span>
+            <p className="eyebrow-luxury mb-3">Real Weddings</p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 font-[var(--font-playfair),serif]">
+              Weddings We&apos;ve <span className="gradient-text-maroon">Coordinated</span>
             </h2>
-            <p className="text-gray-500 text-sm sm:text-base mt-3 max-w-xl mx-auto">Behind every beautiful wedding is months of expert coordination. Here&apos;s a glimpse into weddings we&apos;ve helped bring to life.</p>
+            <div className="ornament-line max-w-xs mx-auto my-4">
+              <span className="text-[#C9A96E] text-sm">✦</span>
+            </div>
+            <p className="text-gray-500 text-sm sm:text-base max-w-xl mx-auto">Behind every beautiful wedding is months of expert coordination. Here&apos;s a glimpse into weddings we&apos;ve helped bring to life.</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
@@ -908,10 +944,10 @@ export default function HomepageClient() {
           variants={stagger(0.14)}
         >
           <div className="max-w-2xl mx-auto">
-            <motion.p variants={fadeUp} className="text-amber-300 text-sm font-semibold uppercase tracking-wider mb-4">
+            <motion.p variants={fadeUp} className="eyebrow-luxury text-[#C9A96E] mb-4">
               Begin Your Journey
             </motion.p>
-            <motion.h2 variants={fadeUp} className="text-3xl sm:text-5xl font-bold text-white mb-5 font-[Playfair_Display,serif]">
+            <motion.h2 variants={fadeUp} className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white mb-5 font-[var(--font-playfair),serif]">
               Let&apos;s Start Planning<br/><span className="shimmer-text">Your Wedding</span>
             </motion.h2>
             <motion.p variants={fadeUp} className="text-white/70 text-base mb-8">

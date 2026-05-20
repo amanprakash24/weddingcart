@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { Playfair_Display, Inter } from 'next/font/google';
+import { Playfair_Display, Cormorant_Garamond, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import Navbar from '@/components/Navbar';
@@ -14,29 +14,38 @@ const playfair = Playfair_Display({
   subsets: ['latin'],
   variable: '--font-playfair',
   display: 'swap',
+  weight: ['400', '500', '600', '700', '800'],
 });
 
-const inter = Inter({
+const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-cormorant',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-dm-sans',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "ShaadiShopping — India's Premier Wedding Planning Marketplace",
+    default: "ShaadiShopping — India's Expert Wedding Planning & Coordination Platform",
     template: '%s | ShaadiShopping',
   },
   description:
-    "Discover, compare, and book top wedding vendors — venues, photographers, caterers, makeup artists, decorators, DJs, and more across India. Start planning your dream wedding today.",
+    "India's managed wedding planning & coordination platform. Expert consultants, trusted vendors, personalized planning wizard, and stress-free execution — from Venue to Vidaai.",
   keywords: [
     'wedding vendors India', 'wedding venue booking', 'bridal makeup artist',
     'wedding photographer', 'wedding catering', 'wedding decorator',
     'mehndi artist', 'wedding DJ', 'wedding band', 'wedding planning',
   ],
   openGraph: {
-    title: "ShaadiShopping — India's Premier Wedding Planning Marketplace",
-    description: "Book top wedding vendors across India. Venues, photographers, caterers, makeup artists and more.",
+    title: "ShaadiShopping — India's Expert Wedding Coordination Platform",
+    description: "Expert-guided wedding planning from Venue to Vidaai. Trusted vendors, personal consultants, stress-free coordination across India.",
     type: 'website',
     locale: 'en_IN',
   },
@@ -50,8 +59,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
-      <body className="bg-[#FFFAF5] text-[#2D2D2D] min-h-screen antialiased" suppressHydrationWarning>
+    <html lang="en" className={`${playfair.variable} ${cormorant.variable} ${dmSans.variable}`}>
+      <body className="bg-[#FFFAF5] text-[#2D2D2D] min-h-screen antialiased font-[family-name:var(--font-dm-sans)]" suppressHydrationWarning>
         <CartProvider>
           <Suspense><ScrollToTop /></Suspense>
           <Navbar />
