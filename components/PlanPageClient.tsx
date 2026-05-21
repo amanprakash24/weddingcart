@@ -137,6 +137,10 @@ export default function PlanPageClient() {
         body: JSON.stringify({ phone: form.phone }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setOtpError(data.message || 'Failed to send OTP. Please try again.');
+        return;
+      }
       if (data.devCode) setDevOtpCode(data.devCode);
       setResendTimer(30);
       setOtpDigits(['', '', '', '', '', '']);
@@ -755,6 +759,12 @@ export default function PlanPageClient() {
                 We&apos;ve sent a 6-digit OTP on <span className="font-semibold text-[#25D366]">WhatsApp</span> to<br />
                 <span className="font-semibold text-gray-900">+91 {maskPhone(form.phone)}</span>
               </p>
+              <button
+                onClick={() => { setShowOtpModal(false); setStep(0); setOtpDigits(['','','','','','']); setOtpError(''); }}
+                className="text-xs text-[#8B1A4A] underline underline-offset-2 mt-2 hover:opacity-75 transition-opacity"
+              >
+                Wrong number? Change it
+              </button>
             </div>
 
             {/* 6 digit inputs */}

@@ -12,79 +12,53 @@ import VendorCard from './VendorCard';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
-  show:   { opacity: 1, y: 0,  transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const } },
-};
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  show:   { opacity: 1, transition: { duration: 0.8 } },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 const slideLeft = {
   hidden: { opacity: 0, x: -50 },
-  show:   { opacity: 1, x: 0,  transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } },
+  show:   { opacity: 1, x: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 const slideRight = {
   hidden: { opacity: 0, x: 50 },
-  show:   { opacity: 1, x: 0,  transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } },
+  show:   { opacity: 1, x: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 function stagger(children = 0.1, delay = 0) {
   return { hidden: {}, show: { transition: { staggerChildren: children, delayChildren: delay } } };
 }
 
-// ── Floating petals ───────────────────────────────────────────────────────────
+// ── Journey steps ─────────────────────────────────────────────────────────────
 
-interface PetalData {
-  id: number; left: number; delay: number; duration: number;
-  size: number; symbol: string; drift: number;
-}
+const JOURNEY_STEPS = [
+  {
+    num: '01',
+    title: 'Tell Us Your Wedding Style',
+    desc: 'Share your wedding city, guest count, budget, and celebration preferences.',
+    img: '/images/journey-01.png',
+  },
+  {
+    num: '02',
+    title: 'Explore Curated Wedding Services',
+    desc: 'Discover handpicked venues, decor, catering, entertainment, and planning solutions.',
+    img: '/images/journey-02.png',
+  },
+  {
+    num: '03',
+    title: 'Connect With Our Wedding Experts',
+    desc: 'Our team helps you choose the perfect services tailored to your vision.',
+    img: '/images/journey-03.png',
+  },
+  {
+    num: '04',
+    title: 'Relax — We Handle Everything',
+    desc: 'From vendor coordination to event logistics, we manage every detail seamlessly so you can enjoy your celebration stress-free.',
+    img: '/images/journey-04.png',
+  },
+];
 
-function FloatingPetals() {
-  const [petals, setPetals] = useState<PetalData[]>([]);
-
-  useEffect(() => {
-    const symbols = ['🌸', '🌺', '🌹', '✿', '❀', '🪷'];
-    setPetals(
-      Array.from({ length: 18 }, (_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 14,
-        duration: 14 + Math.random() * 10,
-        size: 12 + Math.random() * 14,
-        symbol: symbols[Math.floor(Math.random() * symbols.length)],
-        drift: (Math.random() - 0.5) * 160,
-      }))
-    );
-  }, []);
-
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1]">
-      {petals.map((p) => (
-        <span
-          key={p.id}
-          className="absolute top-0 select-none"
-          style={{
-            left: `${p.left}%`,
-            fontSize: `${p.size}px`,
-            animationName: 'petalFall',
-            animationDuration: `${p.duration}s`,
-            animationDelay: `${p.delay}s`,
-            animationTimingFunction: 'linear',
-            animationIterationCount: 'infinite',
-            animationFillMode: 'both',
-            '--drift': `${p.drift}px`,
-          } as React.CSSProperties}
-        >
-          {p.symbol}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// ── Testimonial data ──────────────────────────────────────────────────────────
+// ── Testimonials ──────────────────────────────────────────────────────────────
 
 const TESTIMONIALS = [
   {
@@ -115,7 +89,8 @@ export default function HomepageClient() {
   const [activeStep, setActiveStep] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
-  const howItWorksTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -133,12 +108,12 @@ export default function HomepageClient() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    howItWorksTimerRef.current = setInterval(() => setActiveStep((s) => (s + 1) % 4), 3500);
-    return () => { if (howItWorksTimerRef.current) clearInterval(howItWorksTimerRef.current); };
+    const t = setInterval(() => setActiveTestimonial((s) => (s + 1) % TESTIMONIALS.length), 6000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
-    const t = setInterval(() => setActiveTestimonial((s) => (s + 1) % TESTIMONIALS.length), 6000);
+    const t = setInterval(() => setActiveStep((s) => (s + 1) % JOURNEY_STEPS.length), 2000);
     return () => clearInterval(t);
   }, []);
 
@@ -159,7 +134,6 @@ export default function HomepageClient() {
           <Image src="/images/hero-bg.jpg" alt="Wedding" fill className="object-cover" sizes="100vw" priority />
         </div>
         <div className="absolute inset-0 hero-overlay" />
-        <FloatingPetals />
 
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 sm:pt-40">
           <motion.div className="max-w-3xl" initial="hidden" animate="show" variants={stagger(0.2, 0.15)}>
@@ -244,120 +218,189 @@ export default function HomepageClient() {
         </div>
       </div>
 
-      {/* ── 4. HOW IT WORKS ── */}
-      <section className="py-28 sm:py-36 bg-[#FEFBEC]">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* ── 4. YOUR WEDDING JOURNEY ── */}
+      <section className="bg-[#F8F5EF] py-14 sm:py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          <div className="text-center mb-20">
-            <p className="eyebrow-luxury mb-4">Your Journey</p>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-5">How It Works</h2>
-            <p className="text-gray-400 text-base max-w-sm mx-auto">Four steps. One expert team. Zero stress.</p>
-          </div>
+          {/* Header */}
+          <motion.div
+            className="text-center mb-10 sm:mb-14"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <p className="eyebrow-luxury mb-2.5">The Journey</p>
+            <h2 className="font-[Playfair_Display,serif] font-semibold text-[#1C1208] text-[1.85rem] sm:text-[2.2rem] tracking-tight leading-tight mb-2">
+              Your Wedding Journey
+            </h2>
+            <p className="font-cormorant italic text-[#8A7A6A] text-[1.05rem] max-w-[240px] mx-auto leading-relaxed">
+              From first conversation to final celebration — every detail, handled with care.
+            </p>
+          </motion.div>
 
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-28 w-11/12 mx-auto">
+          {/* Layout: sticky left image + scrolling right steps */}
+          <div className="flex flex-col lg:flex-row lg:gap-10 lg:items-start">
 
-            {/* Circle */}
-            <div className="relative h-[260px] w-[260px] sm:h-[380px] sm:w-[380px] lg:h-[500px] lg:w-[500px] flex-shrink-0">
-              <div className="h-full w-full rounded-full p-[2px]" style={{ background: 'linear-gradient(to top, #FDF6EA, #D4B896)' }}>
-                <div className="h-full w-full rounded-full bg-[#FCF7C8] overflow-hidden flex items-center justify-center">
-                  <AnimatePresence mode="wait">
-                    {activeStep === 0 && (
-                      <motion.div key="s1" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.4 }} className="flex flex-col items-center justify-center h-full w-full px-8 relative">
-                        <span className="text-[90px] sm:text-[120px] lg:text-[150px] leading-none select-none">📱</span>
-                        <div className="absolute -top-4 right-[10%] bg-white rounded-2xl shadow-lg px-3 py-2 text-xs font-medium text-gray-700 max-w-[140px] sm:max-w-[160px] text-center border border-gray-100 leading-snug">
-                          My wedding — Goa, 60 Lakhs
-                        </div>
+            {/* Left — sticky hexagon image panel, desktop only */}
+            <div className="hidden lg:block lg:w-[48%] flex-shrink-0 self-stretch">
+              <div className="sticky top-0 h-screen flex items-center justify-center">
+                {/* Outer wrapper: drop-shadow follows the hexagon contour */}
+                <div
+                  className="w-full"
+                  style={{
+                    filter: 'drop-shadow(0 24px 52px rgba(28,18,8,0.24)) drop-shadow(0 4px 12px rgba(28,18,8,0.1))',
+                  }}
+                >
+                  {/* Hexagon clip */}
+                  <div
+                    className="relative w-full"
+                    style={{
+                      aspectRatio: '1 / 1',
+                      clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                      backgroundColor: '#F8F5EF',
+                    }}
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={activeStep}
+                        className="absolute inset-0 flex items-center justify-center"
+                        initial={{ opacity: 0, filter: 'blur(10px)' }}
+                        animate={{ opacity: 1, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, transition: { duration: 0.25 } }}
+                        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                      >
+                        <Image
+                          src={JOURNEY_STEPS[activeStep].img}
+                          alt={JOURNEY_STEPS[activeStep].title}
+                          fill
+                          sizes="42vw"
+                          className="object-contain"
+                          style={{ transform: 'scale(1.22)' }}
+                          priority
+                        />
+                        <div
+                          className="absolute inset-0"
+                          style={{ background: 'linear-gradient(135deg, rgba(139,26,74,0.06) 0%, rgba(201,169,110,0.10) 100%)' }}
+                        />
                       </motion.div>
-                    )}
-                    {activeStep === 1 && (
-                      <motion.div key="s2" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.4 }} className="flex items-center justify-center h-full w-full">
-                        <div className="bg-white rounded-3xl shadow-lg px-6 py-6 lg:px-10 lg:py-8 text-center border border-amber-100">
-                          <div className="text-[#C9A96E] text-xs mb-3 tracking-[0.3em]">✦&nbsp;✦&nbsp;✦</div>
-                          <p className="font-[Playfair_Display,serif] text-gray-800 text-xl lg:text-3xl font-bold">Rahul</p>
-                          <p className="font-[Playfair_Display,serif] text-gray-400 text-base lg:text-xl">&amp;</p>
-                          <p className="font-[Playfair_Display,serif] text-gray-800 text-xl lg:text-3xl font-bold">Kajal</p>
-                          <div className="text-[#C9A96E] text-xs mt-3 tracking-[0.3em]">✦&nbsp;✦&nbsp;✦</div>
-                        </div>
-                      </motion.div>
-                    )}
-                    {activeStep === 2 && (
-                      <motion.div key="s3" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.4 }} className="flex items-center justify-center h-full w-full relative">
-                        <span className="text-[100px] sm:text-[130px] lg:text-[170px] leading-none select-none">🛕</span>
-                        <div className="absolute top-1/4 right-[18%] w-10 h-10 lg:w-14 lg:h-14 rounded-full bg-rose-500 flex items-center justify-center shadow-xl border-4 border-white">
-                          <span className="text-white font-bold text-base lg:text-xl">✓</span>
-                        </div>
-                      </motion.div>
-                    )}
-                    {activeStep === 3 && (
-                      <motion.div key="s4" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.4 }} className="flex flex-col items-center justify-center h-full w-full gap-5 px-8">
-                        <span className="text-[90px] sm:text-[120px] lg:text-[150px] leading-none select-none">🎊</span>
-                        <div className="bg-white rounded-2xl shadow-lg px-5 py-3 text-center border border-green-100 text-sm lg:text-base font-semibold text-green-700">
-                          Your wedding, perfectly coordinated ✓
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Steps */}
-            <div className="flex flex-col lg:-order-1 w-full lg:basis-1/2">
-              {[
-                { num: 1, title: 'Tell Us About Your Wedding',         desc: 'Date, city, guests, budget — under 2 minutes.' },
-                { num: 2, title: 'Get Personalised Recommendations',   desc: 'We curate venues and vendors tailored to you.' },
-                { num: 3, title: 'Speak With Your Consultant',         desc: 'A dedicated expert reviews and guides your plan.' },
-                { num: 4, title: 'Relax — We Handle Everything',       desc: 'We coordinate vendors and logistics end-to-end.' },
-              ].map((step, i) => {
-                const isActive = activeStep === i;
-                const isLast = i === 3;
-                return (
-                  <div
-                    key={step.num}
-                    className={`relative pl-10 lg:pl-14 cursor-pointer ${isLast ? '' : 'pb-10 lg:pb-14'}`}
-                    style={!isLast ? {
-                      backgroundImage: 'linear-gradient(to bottom, rgba(82,82,82,0.3) 50%, transparent 0%)',
-                      backgroundSize: '1px 12px',
-                      backgroundPosition: '0 0',
-                      backgroundRepeat: 'repeat-y',
-                    } : undefined}
-                    onClick={() => {
-                      setActiveStep(i);
-                      if (howItWorksTimerRef.current) clearInterval(howItWorksTimerRef.current);
-                      howItWorksTimerRef.current = setInterval(() => setActiveStep((s) => (s + 1) % 4), 3500);
-                    }}
-                  >
-                    <div
-                      className={`absolute left-0 top-0 z-10 flex h-7 w-7 lg:h-9 lg:w-9 items-center justify-center rounded-full text-xs lg:text-sm font-bold transition-all duration-300 ${isActive ? 'bg-[#8B1A4A] text-white' : 'bg-gray-200 text-gray-400'}`}
-                      style={{ transform: 'translateX(-50%)' }}
+            {/* Right — scrolling steps */}
+            <div className="flex-1">
+
+              {/* Mobile image — rounded rectangle */}
+              <div className="lg:hidden mb-6">
+                <div className="relative rounded-2xl overflow-hidden" style={{ aspectRatio: '3/2' }}>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeStep}
+                      className="absolute inset-0"
+                      initial={{ opacity: 0, scale: 1.04 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, transition: { duration: 0.22 } }}
+                      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
                     >
-                      {step.num}
-                    </div>
-                    {isActive && (
-                      <motion.div
-                        className="absolute left-0 top-0 h-7 w-7 lg:h-9 lg:w-9 rounded-full bg-[#8B1A4A]/25 z-0"
-                        style={{ transform: 'translateX(-50%)' }}
-                        animate={{ scale: [1, 1.9, 1], opacity: [0.5, 0, 0.5] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                      />
-                    )}
-                    <p className={`font-[Playfair_Display,serif] leading-tight transition-all duration-300 ${isActive ? 'text-2xl sm:text-3xl lg:text-[42px] lg:leading-[1.1] font-semibold text-gray-900' : 'text-base lg:text-xl font-semibold text-gray-400'}`}>
-                      {step.title}
-                    </p>
-                    <p className={`text-gray-400 text-sm lg:text-base leading-relaxed transition-all duration-300 overflow-hidden ${isActive ? 'max-h-12 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
-                      {step.desc}
-                    </p>
-                  </div>
-                );
-              })}
+                      <Image src={JOURNEY_STEPS[activeStep].img} alt="" fill className="object-cover" sizes="100vw" />
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(139,26,74,0.09), rgba(201,169,110,0.13))' }} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#1C1208]/40 to-transparent" />
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="relative">
+
+                {/* Gold gradient vertical line */}
+                <div className="absolute left-3.5 top-3.5 bottom-3.5 w-px bg-[#C9A96E]/15">
+                  <motion.div
+                    className="absolute top-0 left-0 w-full"
+                    animate={{ height: `${((activeStep + 1) / JOURNEY_STEPS.length) * 100}%` }}
+                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ background: 'linear-gradient(to bottom, #C9A96E, #E8D4A0)' }}
+                  />
+                </div>
+
+                {JOURNEY_STEPS.map((step, i) => {
+                  const isActive = activeStep === i;
+                  return (
+                    <motion.div
+                      key={step.num}
+                      ref={(el) => { stepRefs.current[i] = el; }}
+                      onClick={() => setActiveStep(i)}
+                      className="relative flex items-start gap-4 pb-10 last:pb-0 cursor-pointer"
+                      animate={{ opacity: isActive ? 1 : 0.38 }}
+                      transition={{ duration: 0.45 }}
+                    >
+                      {/* Numbered circle on the line */}
+                      <div className="relative flex-shrink-0 z-10 w-7 h-7 flex items-center justify-center">
+                        {isActive && (
+                          <motion.div
+                            className="absolute -inset-2 rounded-full"
+                            style={{ backgroundColor: 'rgba(139,26,74,0.18)' }}
+                            initial={{ scale: 1, opacity: 0.8 }}
+                            animate={{ scale: 1.9, opacity: 0 }}
+                            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut', repeatDelay: 0.3 }}
+                          />
+                        )}
+                        <motion.div
+                          className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-[0.7rem] relative z-10"
+                          animate={{
+                            backgroundColor: isActive ? '#8B1A4A' : '#E5DDD5',
+                            color: isActive ? '#FFFFFF' : '#9A8A7A',
+                          }}
+                          transition={{ duration: 0.35 }}
+                        >
+                          {i + 1}
+                        </motion.div>
+                      </div>
+
+                      {/* Step content */}
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <motion.h3
+                          className="font-[Playfair_Display,serif] font-semibold text-[#1C1208] leading-tight"
+                          animate={{ fontSize: isActive ? '2rem' : '0.95rem' }}
+                          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                        >
+                          {step.title}
+                        </motion.h3>
+                        <AnimatePresence>
+                          {isActive && (
+                            <motion.p
+                              className="text-neutral-500 text-sm leading-relaxed mt-2"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.35, ease: 'easeOut' }}
+                            >
+                              {step.desc}
+                            </motion.p>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* CTA */}
+              <div className="mt-8 pl-11">
+                <Link
+                  href="/plan"
+                  className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white font-semibold px-7 py-3 rounded-full text-sm transition-all shadow-md hover:shadow-[0_6px_24px_rgba(139,26,74,0.4)] hover:scale-[1.02]"
+                >
+                  Speak With A Wedding Expert
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+
             </div>
-
-          </div>
-
-          <div className="text-center mt-16 lg:mt-24">
-            <Link href="/plan" className="inline-block bg-[#8B1A4A] text-white font-semibold px-10 py-4 rounded-full hover:opacity-90 transition-all text-sm shadow-lg hover:shadow-xl">
-              Begin Your Wedding Journey
-            </Link>
           </div>
         </div>
       </section>
@@ -486,12 +529,17 @@ export default function HomepageClient() {
             variants={stagger(0.18)}
           >
             <motion.div variants={slideLeft} className="flex flex-col items-center lg:items-start">
-              <div className="w-52 h-52 rounded-full bg-gradient-to-br from-rose-100 to-amber-50 border-[3px] border-[#C9A96E]/20 flex items-center justify-center text-8xl mb-7 shadow-xl">
-                👩‍💼
+              {/* Elegant avatar — initial-based, no emoji */}
+              <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#F5E9D0] to-[#EDD9B0] border-[3px] border-[#C9A96E]/30 flex items-center justify-center mb-7 shadow-xl">
+                <span className="font-[Playfair_Display,serif] text-7xl font-semibold text-[#8B1A4A]/60 select-none">P</span>
               </div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-xs text-emerald-600 font-semibold tracking-wide">Available for consultation</span>
+                {/* Gold availability indicator — no bright green */}
+                <span className="relative flex w-2 h-2">
+                  <span className="absolute inline-flex w-full h-full rounded-full bg-[#C9A96E]/40 animate-ping" style={{ animationDuration: '2.5s' }} />
+                  <span className="relative inline-flex w-2 h-2 rounded-full bg-[#C9A96E]" />
+                </span>
+                <span className="text-xs text-[#8B6A3E] font-semibold tracking-wide">Available for consultation</span>
               </div>
               <p className="text-gray-400 text-xs">Mon – Sat · 10am to 7pm IST</p>
             </motion.div>

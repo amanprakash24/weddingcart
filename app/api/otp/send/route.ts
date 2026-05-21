@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     if (phoneId && token) {
       const res = await fetch(
-        `https://graph.facebook.com/v19.0/${phoneId}/messages`,
+        `https://graph.facebook.com/v22.0/${phoneId}/messages`,
         {
           method: 'POST',
           headers: {
@@ -46,7 +46,11 @@ export async function POST(req: Request) {
 
       if (!res.ok) {
         const err = await res.json();
-        console.error('[WhatsApp OTP]', JSON.stringify(err));
+        console.error('[WhatsApp OTP error]', JSON.stringify(err));
+        return NextResponse.json(
+          { success: false, message: err?.error?.message || 'Failed to send WhatsApp message' },
+          { status: 500 }
+        );
       }
 
       return NextResponse.json({ success: true });

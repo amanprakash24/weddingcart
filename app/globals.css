@@ -89,19 +89,6 @@ h1, h2, h3, h4, h5, h6 {
   to { transform: rotate(360deg); }
 }
 
-@keyframes petalFall {
-  0% {
-    transform: translateY(-40px) translateX(0) rotate(0deg);
-    opacity: 0;
-  }
-  5% { opacity: 0.85; }
-  95% { opacity: 0.4; }
-  100% {
-    transform: translateY(calc(100vh + 60px)) translateX(var(--drift, 80px)) rotate(720deg);
-    opacity: 0;
-  }
-}
-
 @keyframes shimmerText {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
