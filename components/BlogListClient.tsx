@@ -425,51 +425,70 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
           <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl font-bold text-[#1C0A12]">Browse by Category</h2>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {CATEGORIES.filter(c => c !== 'All').map(cat => {
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
+        {CATEGORIES.filter(c => c !== 'All').map((cat, idx) => {
           const media = CATEGORY_MEDIA[cat];
-          const words = cat.split(' ');
-          const firstWord = words[0];
-          const rest = words.slice(1).join(' ');
+          const num = String(idx + 1).padStart(2, '0');
           return (
             <button
               key={cat}
               onClick={() => onSelect(cat)}
-              className="group flex flex-col items-center cursor-pointer focus:outline-none"
+              className="group flex flex-col cursor-pointer focus:outline-none"
             >
-              {/* Image */}
+              {/* Photo card */}
               <div
-                className="relative w-full rounded-2xl overflow-hidden mb-3 shadow-[0_4px_20px_rgba(0,0,0,0.10)] group-hover:shadow-[0_8px_32px_rgba(197,164,109,0.18)] transition-shadow duration-400"
-                style={{ aspectRatio: '3 / 4' }}
+                className="relative w-full rounded-2xl overflow-hidden transition-all duration-500
+                  shadow-[0_6px_28px_rgba(0,0,0,0.13)]
+                  group-hover:shadow-[0_16px_48px_rgba(197,164,109,0.22)]
+                  group-hover:-translate-y-1.5"
+                style={{
+                  aspectRatio: '3 / 4',
+                  border: '1px solid rgba(197,164,109,0.22)',
+                }}
               >
                 <Image
                   src={media?.src ?? ''}
                   alt={cat}
                   fill
-                  className="object-cover scale-100 group-hover:scale-108 transition-transform duration-[1000ms] ease-out"
+                  className="object-cover scale-100 group-hover:scale-[1.07] transition-transform duration-[1100ms] ease-out"
                   unoptimized
                 />
-                {/* Subtle hover shimmer */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                  style={{ background: 'linear-gradient(135deg, rgba(197,164,109,0.08), transparent 60%)' }} />
-                {/* Gold inset border on hover */}
-                <div className="absolute inset-0 rounded-2xl border border-transparent group-hover:border-[#C5A46D]/35 transition-colors duration-400 pointer-events-none" />
+
+                {/* Frosted label bar at bottom */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 px-3 pt-5 pb-3 flex flex-col items-center"
+                  style={{
+                    background: 'linear-gradient(to top, rgba(12,4,8,0.82) 60%, transparent)',
+                  }}
+                >
+                  <p
+                    className="text-[#FFFCF7] font-bold italic leading-tight text-center transition-colors duration-300 group-hover:text-[#E8D4A0]"
+                    style={{
+                      fontFamily: 'Playfair Display, serif',
+                      fontSize: 'clamp(0.9rem, 1.9vw, 1.15rem)',
+                      textShadow: '0 1px 8px rgba(0,0,0,0.6)',
+                    }}
+                  >
+                    {cat}
+                  </p>
+                  <span
+                    className="mt-1.5 text-[8px] font-bold uppercase tracking-[0.3em] text-[#C5A46D]/80 group-hover:text-[#C5A46D] transition-colors duration-300"
+                  >
+                    EXPLORE
+                  </span>
+                </div>
+
+                {/* Gold corner accents */}
+                <div className="absolute top-2.5 left-2.5 w-4 h-4 border-t border-l border-[#C5A46D]/0 group-hover:border-[#C5A46D]/60 transition-colors duration-500 pointer-events-none rounded-tl-sm" />
+                <div className="absolute top-2.5 right-2.5 w-4 h-4 border-t border-r border-[#C5A46D]/0 group-hover:border-[#C5A46D]/60 transition-colors duration-500 pointer-events-none rounded-tr-sm" />
+                <div className="absolute bottom-2.5 left-2.5 w-4 h-4 border-b border-l border-[#C5A46D]/0 group-hover:border-[#C5A46D]/60 transition-colors duration-500 pointer-events-none rounded-bl-sm" />
+                <div className="absolute bottom-2.5 right-2.5 w-4 h-4 border-b border-r border-[#C5A46D]/0 group-hover:border-[#C5A46D]/60 transition-colors duration-500 pointer-events-none rounded-br-sm" />
               </div>
 
-              {/* Label below image */}
-              <div className="text-center">
-                <p
-                  className="font-bold italic leading-tight text-[#1C0A12] group-hover:text-[#8B1A4A] transition-colors duration-300"
-                  style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(0.95rem, 1.8vw, 1.1rem)' }}
-                >
-                  {firstWord}
-                </p>
-                {rest && (
-                  <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#C5A46D] mt-0.5">
-                    {rest}
-                  </p>
-                )}
-              </div>
+              {/* Number below */}
+              <p className="text-center mt-2.5 text-[10px] font-bold tracking-[0.25em] text-[#C5A46D]/50 group-hover:text-[#C5A46D] transition-colors duration-300">
+                {num}
+              </p>
             </button>
           );
         })}
