@@ -310,12 +310,12 @@ const GUIDE_CARDS = [
     accent: '#C5A46D',
   },
   {
-    title: 'Wedding',
-    subtitle: 'IDEAS',
-    category: 'Wedding Tips',
-    gradient: 'linear-gradient(160deg, #1A1000 0%, #2E1E00 50%, #3D2A00 100%)',
-    shimmer: 'rgba(197,164,109,0.14)',
-    accent: '#E8C96A',
+    title: 'Venue',
+    subtitle: 'GUIDES',
+    category: 'Venue Guides',
+    gradient: 'linear-gradient(160deg, #0A1A24 0%, #0F2B3D 50%, #1A3F5C 100%)',
+    shimmer: 'rgba(110,155,184,0.12)',
+    accent: '#6E9BB8',
   },
 ];
 
