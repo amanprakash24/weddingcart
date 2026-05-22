@@ -510,13 +510,19 @@ export default function HomepageClient() {
       {/* ── 5. SIGNATURE WEDDING STYLES ── */}
       <section className="bg-[#FFFCF7]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-16 sm:py-20 border-b border-[#C5A46D]/10">
-            <div className="max-w-lg">
-              <p className="eyebrow-luxury mb-4">Our Speciality</p>
-              <h2 className="font-semibold text-[#2A1F1B] text-4xl sm:text-5xl leading-tight" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+          <div className="py-10 sm:py-14 border-b border-[#C5A46D]/10">
+            <motion.div
+              className="max-w-lg"
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <p className="eyebrow-luxury mb-3">Our Speciality</p>
+              <h2 className="font-semibold text-[#2A1F1B] text-3xl sm:text-4xl leading-tight" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
                 Every Wedding Style,<br />Beautifully Served
               </h2>
-            </div>
+            </motion.div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 divide-y divide-[#C5A46D]/10">
@@ -527,7 +533,7 @@ export default function HomepageClient() {
                 transition={{ duration: 0.7, delay: i * 0.1 }}
                 className={[
                   'group relative overflow-hidden',
-                  style.video ? 'min-h-[420px] sm:min-h-[480px]' : 'px-8 sm:px-10 lg:px-14 py-12 sm:py-16 hover:bg-[#FAF7F2] transition-colors duration-500',
+                  style.video ? 'min-h-[300px] sm:min-h-[340px]' : 'px-8 sm:px-10 lg:px-14 py-10 sm:py-12 hover:bg-[#FAF7F2] transition-colors duration-500',
                   i >= 2 ? 'border-t border-[#C5A46D]/10' : '',
                   i % 2 === 0 ? 'sm:border-r border-[#C5A46D]/10' : '',
                 ].join(' ')}
@@ -548,15 +554,15 @@ export default function HomepageClient() {
                     {/* Subtle gold glow at bottom */}
                     <div className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none" style={{ background: 'radial-gradient(ellipse at bottom, rgba(197,164,109,0.12) 0%, transparent 70%)' }} />
                     {/* Content */}
-                    <div className="relative z-10 flex flex-col justify-end h-full px-8 sm:px-10 lg:px-14 py-12 sm:py-14">
-                      <p className="eyebrow-luxury text-[#C5A46D]/80 mb-3">{style.num}</p>
+                    <div className="relative z-10 flex flex-col justify-end h-full px-8 sm:px-10 lg:px-14 py-8 sm:py-10">
+                      <p className="eyebrow-luxury text-[#C5A46D]/80 mb-2">{style.num}</p>
                       <h3
-                        className="mb-3 leading-tight text-white"
-                        style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600 }}
+                        className="mb-2 leading-tight text-white"
+                        style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.4rem, 2.5vw, 2rem)', fontWeight: 600 }}
                       >
                         {style.label}
                       </h3>
-                      <p className="text-white/65 text-sm leading-relaxed max-w-xs mb-8">{style.desc}</p>
+                      <p className="text-white/65 text-xs leading-relaxed max-w-xs mb-5">{style.desc}</p>
                       <Link href="/plan" className="inline-flex items-center gap-2 text-[#C5A46D] text-[0.72rem] font-semibold tracking-[0.14em] uppercase group-hover:gap-4 transition-all duration-300">
                         <span>Plan This Wedding</span>
                         <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
