@@ -302,12 +302,12 @@ const GUIDE_CARDS = [
     accent: '#C49EC6',
   },
   {
-    title: 'Real',
-    subtitle: 'WEDDINGS',
-    category: 'Real Weddings',
-    gradient: 'linear-gradient(160deg, #1C0410 0%, #2D0B1F 50%, #4D0E35 100%)',
-    shimmer: 'rgba(197,164,109,0.10)',
-    accent: '#C5A46D',
+    title: 'Photo',
+    subtitle: 'GRAPHY',
+    category: 'Photography',
+    gradient: 'linear-gradient(160deg, #0A0A1A 0%, #141428 50%, #1E1E40 100%)',
+    shimmer: 'rgba(122,136,196,0.12)',
+    accent: '#7A88C4',
   },
   {
     title: 'Venue',
