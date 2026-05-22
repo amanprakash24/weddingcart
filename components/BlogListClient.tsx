@@ -24,18 +24,6 @@ const CATEGORIES = [
   'Destination Weddings', 'Food & Catering', 'Décor & Flowers', 'Photography',
 ];
 
-const CATEGORY_ICONS: Record<string, string> = {
-  'Wedding Tips':         '💡',
-  'Venue Guides':         '🏛️',
-  'Bridal Fashion':       '👗',
-  'Real Weddings':        '💍',
-  'Budget Planning':      '💰',
-  'Traditions & Culture': '🪔',
-  'Destination Weddings': '✈️',
-  'Food & Catering':      '🍽️',
-  'Décor & Flowers':      '🌸',
-  'Photography':          '📷',
-};
 
 const VENDOR_OPTIONS = [
   { label: 'Wedding Venues',          slug: 'venue' },
@@ -425,20 +413,46 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {CATEGORIES.filter(c => c !== 'All').map(cat => (
-          <button
-            key={cat}
-            onClick={() => onSelect(cat)}
-            className="group flex flex-col items-center gap-3 rounded-2xl p-5 text-center transition-all duration-300
-              bg-[#1C0A12] border border-[#C5A46D]/12
-              hover:border-[#C5A46D]/45 hover:bg-[#2D0B1F]
-              hover:shadow-[0_8px_32px_rgba(197,164,109,0.12)]
-              hover:-translate-y-1"
-          >
-            <span className="text-2xl">{CATEGORY_ICONS[cat] ?? '📝'}</span>
-            <span className="text-xs font-semibold text-[#9B8B7D] group-hover:text-[#C5A46D] transition-colors leading-tight">{cat}</span>
-          </button>
-        ))}
+        {CATEGORIES.filter(c => c !== 'All').map(cat => {
+          const words = cat.split(' ');
+          const firstWord = words[0];
+          const rest = words.slice(1).join(' ');
+          return (
+            <button
+              key={cat}
+              onClick={() => onSelect(cat)}
+              className="group relative flex flex-col items-center justify-center rounded-2xl px-3 py-6 text-center transition-all duration-300
+                bg-[#1C0A12] border border-[#C5A46D]/12
+                hover:border-[#C5A46D]/40 hover:bg-[#2D0B1F]
+                hover:shadow-[0_8px_32px_rgba(197,164,109,0.12)]
+                hover:-translate-y-1 overflow-hidden"
+            >
+              {/* Ambient glow on hover */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                style={{ background: 'radial-gradient(ellipse at center, rgba(197,164,109,0.06) 0%, transparent 70%)' }} />
+
+              {/* Gold top accent line */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-px bg-[#C5A46D]/0 group-hover:bg-[#C5A46D]/60 transition-all duration-300 group-hover:w-12" />
+
+              <span
+                className="block font-bold italic leading-none text-[#FFFCF7] transition-colors duration-300 group-hover:text-[#E8D4A0]"
+                style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}
+              >
+                {firstWord}
+              </span>
+              {rest && (
+                <span
+                  className="block text-[10px] font-bold uppercase tracking-[0.22em] mt-1.5 text-[#C5A46D]/60 group-hover:text-[#C5A46D] transition-colors duration-300"
+                >
+                  {rest}
+                </span>
+              )}
+
+              {/* Bottom gold underline */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-px bg-[#C5A46D]/50 group-hover:w-10 transition-all duration-400" />
+            </button>
+          );
+        })}
       </div>
     </section>
   );
