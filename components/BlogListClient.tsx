@@ -425,7 +425,7 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
           <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl font-bold text-[#1C0A12]">Browse by Category</h2>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {CATEGORIES.filter(c => c !== 'All').map(cat => {
           const media = CATEGORY_MEDIA[cat];
           const words = cat.split(' ');
@@ -435,52 +435,40 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
             <button
               key={cat}
               onClick={() => onSelect(cat)}
-              className="group relative rounded-2xl overflow-hidden cursor-pointer focus:outline-none"
-              style={{ aspectRatio: '3 / 4' }}
+              className="group flex flex-col items-center cursor-pointer focus:outline-none"
             >
-              {/* Media background */}
-              {media?.type === 'video' ? (
-                <video
-                  src={media.src}
-                  autoPlay muted loop playsInline
-                  className="absolute inset-0 w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
-                />
-              ) : (
+              {/* Image */}
+              <div
+                className="relative w-full rounded-2xl overflow-hidden mb-3 shadow-[0_4px_20px_rgba(0,0,0,0.10)] group-hover:shadow-[0_8px_32px_rgba(197,164,109,0.18)] transition-shadow duration-400"
+                style={{ aspectRatio: '3 / 4' }}
+              >
                 <Image
                   src={media?.src ?? ''}
                   alt={cat}
                   fill
-                  className="object-cover scale-100 group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
+                  className="object-cover scale-100 group-hover:scale-108 transition-transform duration-[1000ms] ease-out"
                   unoptimized
                 />
-              )}
+                {/* Subtle hover shimmer */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                  style={{ background: 'linear-gradient(135deg, rgba(197,164,109,0.08), transparent 60%)' }} />
+                {/* Gold inset border on hover */}
+                <div className="absolute inset-0 rounded-2xl border border-transparent group-hover:border-[#C5A46D]/35 transition-colors duration-400 pointer-events-none" />
+              </div>
 
-              {/* Dark overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0C0408]/88 via-[#0C0408]/35 to-[#0C0408]/10 group-hover:from-[#0C0408]/75 transition-all duration-500" />
-
-              {/* Gold inset frame */}
-              <div className="absolute inset-2.5 rounded-xl border border-[#C5A46D]/20 group-hover:border-[#C5A46D]/55 transition-colors duration-500 pointer-events-none z-10" />
-
-              {/* Text */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-20 px-3">
-                <span className="text-[9px] tracking-[0.3em] mb-4 text-[#C5A46D]/60 group-hover:text-[#C5A46D] transition-colors duration-300">✦</span>
-                <span
-                  className="block font-bold italic leading-none text-[#FFFCF7] text-center mb-1"
-                  style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.05rem, 2.2vw, 1.3rem)', textShadow: '0 2px 16px rgba(0,0,0,0.7)' }}
+              {/* Label below image */}
+              <div className="text-center">
+                <p
+                  className="font-bold italic leading-tight text-[#1C0A12] group-hover:text-[#8B1A4A] transition-colors duration-300"
+                  style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(0.95rem, 1.8vw, 1.1rem)' }}
                 >
                   {firstWord}
-                </span>
+                </p>
                 {rest && (
-                  <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.22em] mt-1 mb-5 text-[#C5A46D]/70 group-hover:text-[#C5A46D] transition-colors duration-300">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#C5A46D] mt-0.5">
                     {rest}
-                  </span>
+                  </p>
                 )}
-                <span
-                  className="text-[9px] font-bold uppercase tracking-[0.28em] text-[#C5A46D]"
-                  style={{ borderBottom: '1px solid rgba(197,164,109,0.5)', paddingBottom: '2px' }}
-                >
-                  EXPLORE
-                </span>
               </div>
             </button>
           );
