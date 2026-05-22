@@ -701,9 +701,15 @@ export default function HomepageClient() {
       </section>
 
       {/* ── 7. TESTIMONIAL ── */}
-      <section className="py-16 sm:py-24 lg:py-32 bg-[#FAF5EE] overflow-hidden">
+      <section className="py-10 sm:py-14 lg:py-16 bg-[#FAF5EE] overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="eyebrow-luxury text-[#C5A46D] mb-6">What Couples Say</p>
+          <p className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.28em] mb-3">Kind Words</p>
+          <h2
+            className="font-bold text-3xl sm:text-4xl lg:text-5xl text-[#1C0A12] mb-8"
+            style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.01em' }}
+          >
+            What Couples Say
+          </h2>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTestimonial}
