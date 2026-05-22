@@ -283,6 +283,148 @@ function VendorSearchWidget() {
   );
 }
 
+/* ── Browse our Guides ───────────────────────────────────── */
+const GUIDE_CARDS = [
+  {
+    title: 'Décor',
+    subtitle: 'GUIDE',
+    category: 'Décor & Flowers',
+    gradient: 'linear-gradient(160deg, #0B2323 0%, #0F3328 50%, #1A4D3A 100%)',
+    shimmer: 'rgba(110,173,168,0.12)',
+    accent: '#6EADA8',
+  },
+  {
+    title: 'Bridal',
+    subtitle: 'FASHION',
+    category: 'Bridal Fashion',
+    gradient: 'linear-gradient(160deg, #1A0826 0%, #2D0D40 50%, #3D1060 100%)',
+    shimmer: 'rgba(168,124,170,0.12)',
+    accent: '#C49EC6',
+  },
+  {
+    title: 'Real',
+    subtitle: 'WEDDINGS',
+    category: 'Real Weddings',
+    gradient: 'linear-gradient(160deg, #1C0410 0%, #2D0B1F 50%, #4D0E35 100%)',
+    shimmer: 'rgba(197,164,109,0.10)',
+    accent: '#C5A46D',
+  },
+  {
+    title: 'Wedding',
+    subtitle: 'IDEAS',
+    category: 'Wedding Tips',
+    gradient: 'linear-gradient(160deg, #1A1000 0%, #2E1E00 50%, #3D2A00 100%)',
+    shimmer: 'rgba(197,164,109,0.14)',
+    accent: '#E8C96A',
+  },
+];
+
+function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
+  return (
+    <section className="mb-16">
+      {/* Section heading */}
+      <div className="text-center mb-10">
+        <GoldDivider />
+        <div className="mt-7 mb-1">
+          <p className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.28em] mb-2">Explore</p>
+          <h2
+            className="text-3xl sm:text-4xl font-bold text-[#1C0A12]"
+            style={{ fontFamily: 'Playfair Display, serif' }}
+          >
+            Browse our Guides
+          </h2>
+        </div>
+      </div>
+
+      {/* 4-card grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {GUIDE_CARDS.map(card => (
+          <button
+            key={card.category}
+            onClick={() => onSelect(card.category)}
+            className="group relative rounded-2xl overflow-hidden cursor-pointer text-left focus:outline-none"
+            style={{ aspectRatio: '3 / 4' }}
+          >
+            {/* Background gradient */}
+            <div className="absolute inset-0" style={{ background: card.gradient }} />
+
+            {/* Ambient glow */}
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+              style={{ background: `radial-gradient(ellipse at center, ${card.shimmer} 0%, transparent 70%)` }}
+            />
+
+            {/* Subtle dot texture */}
+            <div
+              className="absolute inset-0 opacity-[0.04] pointer-events-none"
+              style={{
+                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)',
+                backgroundSize: '20px 20px',
+              }}
+            />
+
+            {/* Gold inset frame */}
+            <div
+              className="absolute inset-3 rounded-xl border transition-all duration-500 pointer-events-none z-10"
+              style={{ borderColor: `${card.accent}30` }}
+            />
+            <div
+              className="absolute inset-3 rounded-xl border opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none z-10"
+              style={{ borderColor: `${card.accent}70` }}
+            />
+
+            {/* Text content — centered */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-20 px-4">
+              {/* Decorative ornament */}
+              <span
+                className="text-[10px] tracking-[0.3em] mb-5 opacity-60 transition-opacity duration-300 group-hover:opacity-100"
+                style={{ color: card.accent }}
+              >
+                ✦
+              </span>
+
+              {/* Main title */}
+              <h3
+                className="text-3xl sm:text-4xl font-bold italic leading-none mb-1 text-center transition-all duration-300"
+                style={{
+                  fontFamily: 'Playfair Display, serif',
+                  color: '#FFFCF7',
+                  textShadow: '0 2px 20px rgba(0,0,0,0.5)',
+                }}
+              >
+                {card.title}
+              </h3>
+
+              {/* Subtitle */}
+              <p
+                className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.3em] mb-8 transition-colors duration-300"
+                style={{ color: `${card.accent}CC` }}
+              >
+                {card.subtitle}
+              </p>
+
+              {/* Explore link */}
+              <span
+                className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.3em] transition-all duration-300"
+                style={{
+                  color: card.accent,
+                  borderBottom: `1px solid ${card.accent}60`,
+                  paddingBottom: '2px',
+                }}
+              >
+                EXPLORE
+              </span>
+            </div>
+
+            {/* Scale image effect via overlay */}
+            <div className="absolute inset-0 scale-100 group-hover:scale-105 transition-transform duration-700 pointer-events-none" />
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ── Browse by Category ───────────────────────────────────── */
 function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
   return (
@@ -408,6 +550,11 @@ export default function BlogListClient() {
       </section>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        {/* ── Browse Guides ───────────────────────────────── */}
+        <div className="mb-4 mt-2">
+          <BrowseGuides onSelect={setFilter} />
+        </div>
 
         {/* ── Category filter ─────────────────────────────── */}
         <div className="flex flex-wrap gap-2 mb-10">
