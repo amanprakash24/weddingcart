@@ -5,21 +5,21 @@ import Link from 'next/link';
 import { connectDB } from '@/lib/mongodb';
 import BlogModel from '@/lib/models/Blog';
 import { JsonLd } from '@/components/JsonLd';
-import { Calendar, Clock, ArrowLeft, BookOpen, ChevronRight, User } from 'lucide-react';
+import { Calendar, Clock, ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
-const CATEGORY_BADGE: Record<string, string> = {
-  'Wedding Tips':         'bg-amber-50 text-amber-700 border-amber-200',
-  'Venue Guides':         'bg-rose-50 text-rose-700 border-rose-200',
-  'Bridal Fashion':       'bg-purple-50 text-purple-700 border-purple-200',
-  'Real Weddings':        'bg-pink-50 text-pink-700 border-pink-200',
-  'Budget Planning':      'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'Traditions & Culture': 'bg-orange-50 text-orange-700 border-orange-200',
-  'Destination Weddings': 'bg-blue-50 text-blue-700 border-blue-200',
-  'Food & Catering':      'bg-yellow-50 text-yellow-700 border-yellow-200',
-  'Décor & Flowers':      'bg-teal-50 text-teal-700 border-teal-200',
-  'Photography':          'bg-indigo-50 text-indigo-700 border-indigo-200',
+const CATEGORY_COLOR: Record<string, string> = {
+  'Wedding Tips':         '#C5A46D',
+  'Venue Guides':         '#B87E6F',
+  'Bridal Fashion':       '#A87CAA',
+  'Real Weddings':        '#C4758A',
+  'Budget Planning':      '#6E9E7F',
+  'Traditions & Culture': '#C48B5A',
+  'Destination Weddings': '#6E9BB8',
+  'Food & Catering':      '#C4A84E',
+  'Décor & Flowers':      '#6EADA8',
+  'Photography':          '#7A88C4',
 };
 
 interface BlogData {
@@ -108,7 +108,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   if (!blog) notFound();
 
-  const categoryBadge = CATEGORY_BADGE[blog.category] ?? 'bg-gray-100 text-gray-600 border-gray-200';
+  const categoryColor = CATEGORY_COLOR[blog.category] ?? '#C5A46D';
 
   const articleJsonLd = {
     '@context': 'https://schema.org',
@@ -145,56 +145,98 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       <JsonLd data={articleJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
 
-      <div className="min-h-screen bg-[#FAFAFA]">
+      <div className="min-h-screen" style={{ background: '#FFFCF7' }}>
 
-        {/* ── Breadcrumb ── */}
-        <div className="bg-white border-b border-gray-100 pt-24 pb-0">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
-            <nav className="flex items-center gap-2 text-xs text-gray-400">
-              <Link href="/" className="hover:text-amber-600 transition-colors">Home</Link>
+        {/* ── Cinematic hero header ── */}
+        <div
+          className="relative overflow-hidden pt-[81px]"
+          style={{ background: 'linear-gradient(160deg, #0C0408 0%, #1C0A12 55%, #2D0B1F 100%)' }}
+        >
+          {/* dot-grid overlay */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: 'radial-gradient(circle, rgba(197,164,109,0.035) 1px, transparent 1px)',
+              backgroundSize: '28px 28px',
+            }}
+          />
+          {/* ambient glows */}
+          <div className="absolute top-0 left-1/4 w-80 h-80 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(139,26,74,0.12) 0%, transparent 70%)' }} />
+          <div className="absolute bottom-0 right-1/4 w-96 h-64 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(197,164,109,0.08) 0%, transparent 70%)' }} />
+
+          <div className="relative max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-12">
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-2 text-xs mb-8" style={{ color: 'rgba(232,212,160,0.5)' }}>
+              <Link href="/" className="hover:text-[#E8D4A0] transition-colors">Home</Link>
               <ChevronRight className="w-3 h-3" />
-              <Link href="/blog" className="hover:text-amber-600 transition-colors">Blog</Link>
+              <Link href="/blog" className="hover:text-[#E8D4A0] transition-colors">Blog</Link>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-gray-600 line-clamp-1">{blog.title}</span>
+              <span className="line-clamp-1" style={{ color: 'rgba(232,212,160,0.7)' }}>{blog.title}</span>
             </nav>
-          </div>
-        </div>
 
-        {/* ── Article header ── */}
-        <header className="bg-white border-b border-gray-100">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-            <span className={`inline-flex text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full border mb-5 ${categoryBadge}`}>
-              {blog.category}
-            </span>
-            <h1 className="font-[Playfair_Display,serif] text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-5">
+            {/* Category */}
+            <div className="flex items-center gap-2 mb-5">
+              <span className="w-1 h-4 rounded-full" style={{ background: categoryColor }} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: categoryColor }}>
+                {blog.category}
+              </span>
+            </div>
+
+            {/* Title */}
+            <h1
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-5"
+              style={{ fontFamily: 'Playfair Display, serif', color: '#FFFCF7', letterSpacing: '-0.01em' }}
+            >
               {blog.title}
             </h1>
+
+            {/* Excerpt */}
             {blog.excerpt && (
-              <p className="text-gray-500 text-lg leading-relaxed mb-6 max-w-2xl">{blog.excerpt}</p>
+              <p className="text-lg leading-relaxed mb-8 max-w-2xl" style={{ color: 'rgba(255,252,247,0.6)' }}>
+                {blog.excerpt}
+              </p>
             )}
-            <div className="flex flex-wrap items-center gap-5 text-sm text-gray-500 pb-8 border-b border-gray-100">
-              <span className="flex items-center gap-2 font-semibold text-gray-800">
-                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+
+            {/* Meta row */}
+            <div className="flex flex-wrap items-center gap-5 pb-10">
+              <span className="flex items-center gap-2.5">
+                <span
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #C5A46D, #8B1A4A)' }}
+                >
                   {blog.author.charAt(0).toUpperCase()}
                 </span>
-                {blog.author}
+                <span className="text-sm font-semibold" style={{ color: '#E8D4A0' }}>{blog.author}</span>
               </span>
               {blog.publishedAt && (
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-gray-400" /> {formatDate(blog.publishedAt)}
+                <span className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(232,212,160,0.6)' }}>
+                  <Calendar className="w-3.5 h-3.5" style={{ color: '#C5A46D' }} />
+                  {formatDate(blog.publishedAt)}
                 </span>
               )}
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-gray-400" /> {blog.readTime} min read
+              <span className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(232,212,160,0.6)' }}>
+                <Clock className="w-3.5 h-3.5" style={{ color: '#C5A46D' }} />
+                {blog.readTime} min read
               </span>
             </div>
           </div>
-        </header>
+
+          {/* Bottom fade to ivory */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
+            style={{ background: 'linear-gradient(to bottom, transparent, #FFFCF7)' }}
+          />
+        </div>
 
         {/* ── Cover image ── */}
         {blog.coverImage && (
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-            <div className="relative aspect-[16/9] rounded-2xl overflow-hidden shadow-lg">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-1 pb-8">
+            <div
+              className="relative aspect-[16/9] rounded-2xl overflow-hidden"
+              style={{ boxShadow: '0 24px 80px rgba(139,26,74,0.18), 0 8px 32px rgba(0,0,0,0.12)' }}
+            >
               <Image
                 src={blog.coverImage}
                 alt={blog.title}
@@ -203,13 +245,25 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 priority
                 unoptimized
               />
+              {/* subtle gold border */}
+              <div
+                className="absolute inset-0 rounded-2xl pointer-events-none"
+                style={{ boxShadow: 'inset 0 0 0 1px rgba(197,164,109,0.25)' }}
+              />
             </div>
           </div>
         )}
 
-        {/* ── Content ── */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-12">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 sm:px-12 py-10">
+        {/* ── Article content ── */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-16">
+          <div
+            className="rounded-2xl px-6 sm:px-12 py-10"
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid rgba(232,212,160,0.25)',
+              boxShadow: '0 4px_32px rgba(197,164,109,0.06)',
+            }}
+          >
             <div
               className="blog-prose"
               dangerouslySetInnerHTML={{ __html: blog.content }}
@@ -220,22 +274,46 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           {blog.tags && blog.tags.length > 0 && (
             <div className="mt-8 flex flex-wrap gap-2">
               {blog.tags.map(tag => (
-                <span key={tag} className="bg-white border border-gray-200 text-gray-500 text-xs font-medium px-3 py-1.5 rounded-full hover:border-amber-300 hover:text-amber-700 transition-colors cursor-default">
+                <span
+                  key={tag}
+                  className="text-xs font-medium px-3 py-1.5 rounded-full cursor-default transition-colors"
+                  style={{
+                    background: 'rgba(197,164,109,0.08)',
+                    border: '1px solid rgba(197,164,109,0.3)',
+                    color: '#9A7A4A',
+                  }}
+                >
                   #{tag}
                 </span>
               ))}
             </div>
           )}
 
+          {/* Gold divider */}
+          <div className="flex items-center gap-3 mt-12 mb-10">
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.5))' }} />
+            <span className="text-[10px] tracking-[0.3em]" style={{ color: '#C5A46D' }}>✦</span>
+            <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.5))' }} />
+          </div>
+
           {/* Author card */}
-          <div className="mt-10 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-start gap-5">
-            <span className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+          <div
+            className="rounded-2xl p-6 flex items-start gap-5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(197,164,109,0.05), rgba(139,26,74,0.03))',
+              border: '1px solid rgba(197,164,109,0.2)',
+            }}
+          >
+            <span
+              className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #C5A46D, #8B1A4A)' }}
+            >
               {blog.author.charAt(0).toUpperCase()}
             </span>
             <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Written by</p>
-              <p className="font-[Playfair_Display,serif] font-bold text-gray-900 text-lg mb-1">{blog.author}</p>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: '#C5A46D' }}>Written by</p>
+              <p className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}>{blog.author}</p>
+              <p className="text-sm leading-relaxed" style={{ color: '#6B5B4D' }}>
                 Wedding planning expert at ShaadiShopping — helping couples plan their dream weddings across India.
               </p>
             </div>
@@ -245,7 +323,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <div className="mt-8">
             <Link
               href="/blog"
-              className="inline-flex items-center gap-2 text-sm text-gray-500 font-medium hover:text-amber-700 transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-medium transition-colors"
+              style={{ color: '#9A7A4A' }}
             >
               <ArrowLeft className="w-4 h-4" /> Back to all posts
             </Link>
@@ -254,46 +333,103 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
         {/* ── Related Posts ── */}
         {related.length > 0 && (
-          <section className="bg-white border-t border-gray-100 py-14">
+          <section
+            className="py-16"
+            style={{ background: 'linear-gradient(180deg, #FFFCF7 0%, rgba(197,164,109,0.05) 100%)' }}
+          >
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center justify-between mb-8">
+              {/* Section header */}
+              <div className="flex items-end justify-between mb-10">
                 <div>
-                  <p className="text-amber-600 text-xs font-bold uppercase tracking-widest mb-1">Keep Reading</p>
-                  <h2 className="font-[Playfair_Display,serif] text-2xl font-bold text-gray-900">More in {blog.category}</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] mb-2" style={{ color: '#C5A46D' }}>
+                    Keep Reading
+                  </p>
+                  <h2
+                    className="text-2xl sm:text-3xl font-bold"
+                    style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}
+                  >
+                    More in {blog.category}
+                  </h2>
                 </div>
-                <Link href={`/blog?category=${encodeURIComponent(blog.category)}`}
-                  className="hidden sm:flex items-center gap-1.5 text-sm font-semibold text-amber-700 hover:gap-2.5 transition-all">
+                <Link
+                  href={`/blog?category=${encodeURIComponent(blog.category)}`}
+                  className="hidden sm:flex items-center gap-1.5 text-sm font-semibold transition-all hover:gap-2.5"
+                  style={{ color: '#8B1A4A' }}
+                >
                   View all <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
+
+              {/* Gold divider */}
+              <div className="flex items-center gap-3 mb-10">
+                <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.5))' }} />
+                <span className="text-[10px] tracking-[0.3em]" style={{ color: '#C5A46D' }}>✦</span>
+                <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.5))' }} />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {related.map(post => (
-                  <Link
-                    key={post.slug}
-                    href={`/blog/${post.slug}`}
-                    className="group bg-[#FAFAFA] rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                  >
-                    <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-amber-50 to-rose-50">
-                      {post.coverImage ? (
-                        <Image src={post.coverImage} alt={post.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <BookOpen className="w-8 h-8 text-amber-200" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-5">
-                      <h3 className="font-[Playfair_Display,serif] font-bold text-gray-900 text-sm leading-snug mb-2 line-clamp-2 group-hover:text-amber-700 transition-colors">
-                        {post.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                        <span>{formatDate(post.publishedAt)}</span>
-                        <span>·</span>
-                        <span>{post.readTime} min read</span>
+                {related.map(post => {
+                  const postCatColor = CATEGORY_COLOR[post.category] ?? '#C5A46D';
+                  return (
+                    <Link
+                      key={post.slug}
+                      href={`/blog/${post.slug}`}
+                      className="group rounded-2xl overflow-hidden transition-all duration-500"
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid rgba(232,212,160,0.4)',
+                        boxShadow: '0 4px 24px rgba(197,164,109,0.07)',
+                      }}
+                    >
+                      {/* Image */}
+                      <div className="relative aspect-[16/10] overflow-hidden">
+                        {post.coverImage ? (
+                          <Image
+                            src={post.coverImage}
+                            alt={post.title}
+                            fill
+                            className="object-cover transition-transform duration-700 group-hover:scale-105"
+                            unoptimized
+                          />
+                        ) : (
+                          <div
+                            className="absolute inset-0 flex items-center justify-center"
+                            style={{ background: 'linear-gradient(135deg, rgba(197,164,109,0.1), rgba(139,26,74,0.05))' }}
+                          >
+                            <BookOpen className="w-8 h-8" style={{ color: 'rgba(197,164,109,0.3)' }} />
+                          </div>
+                        )}
+                        {/* gold shine on hover */}
+                        <div
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                          style={{ background: 'linear-gradient(135deg, rgba(197,164,109,0.08), transparent 60%)' }}
+                        />
                       </div>
-                    </div>
-                  </Link>
-                ))}
+
+                      {/* Content */}
+                      <div className="p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: postCatColor }} />
+                          <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: postCatColor }}>
+                            {post.category}
+                          </span>
+                        </div>
+                        <h3
+                          className="font-bold text-sm leading-snug mb-3 line-clamp-2 transition-colors duration-300"
+                          style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}
+                        >
+                          {post.title}
+                        </h3>
+                        <div className="flex items-center gap-2 text-[11px]" style={{ color: '#9A8A7A' }}>
+                          <span>{formatDate(post.publishedAt)}</span>
+                          <span style={{ color: '#C5A46D' }}>✦</span>
+                          <Clock className="w-3 h-3" style={{ color: '#C5A46D' }} />
+                          <span>{post.readTime} min read</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </section>
