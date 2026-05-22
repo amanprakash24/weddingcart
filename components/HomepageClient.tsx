@@ -207,38 +207,100 @@ export default function HomepageClient() {
         <div className="absolute inset-0">
           <Image src="/images/hero-bg.jpg" alt="Wedding" fill className="object-cover" sizes="100vw" priority />
         </div>
+        {/* Cinematic warm overlay */}
         <div
           className="absolute inset-0"
           style={{ background: 'linear-gradient(160deg, rgba(42,31,27,0.78) 0%, rgba(0,0,0,0.12) 55%, rgba(42,31,27,0.85) 100%)' }}
         />
+        {/* Floating atmospheric gold glow — slow 20s parallax */}
+        <div
+          className="absolute inset-0 pointer-events-none animate-hero-glow"
+          style={{ background: 'radial-gradient(circle at 40% 45%, rgba(179,142,75,0.15), transparent 60%)' }}
+        />
+        {/* Static gold bloom at bottom */}
         <div
           className="absolute bottom-0 left-1/4 w-1/2 h-[40%] pointer-events-none"
           style={{ background: 'radial-gradient(ellipse at center bottom, rgba(197,164,109,0.13) 0%, transparent 70%)' }}
         />
 
         <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 sm:pt-40">
-          <motion.div className="max-w-3xl" initial="hidden" animate="show" variants={stagger(0.2, 0.15)}>
+          <div className="max-w-3xl">
+
+            {/* Badge */}
             <motion.div
-              variants={fadeUp}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
               className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/15 text-white/80 px-5 py-2 rounded-full text-xs font-medium mb-8 tracking-[0.14em] uppercase"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-[#C5A46D]" />
               India&apos;s Expert Wedding Coordination Platform
             </motion.div>
 
-            <motion.h1
-              variants={fadeUp}
+            {/* ── Cinematic headline — phrase-by-phrase blur reveal ── */}
+            <h1
               className="text-4xl sm:text-5xl lg:text-[3.75rem] font-semibold text-white leading-[1.12] mb-6"
               style={{ fontFamily: 'var(--font-playfair, serif)' }}
             >
-              From Venue to Vidaai<br />— We Handle Everything
-            </motion.h1>
+              {/* Line 1: three phrases, each with its own emotional pause */}
+              <span className="block">
+                <motion.span
+                  className="inline-block"
+                  initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  From Venue&nbsp;
+                </motion.span>
+                <motion.span
+                  className="inline-block"
+                  initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 1.2, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  to&nbsp;
+                </motion.span>
+                {/* "Vidaai" — soft gold shimmer sweeps through once, 0.8s after it fully appears */}
+                <motion.span
+                  className="inline-block relative"
+                  initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 1.2, delay: 1.0, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  Vidaai
+                  <span className="vidaai-shimmer-overlay" aria-hidden="true">Vidaai</span>
+                </motion.span>
+              </span>
+              {/* Line 2: slow, weighted reveal */}
+              <span className="block">
+                <motion.span
+                  className="inline-block"
+                  initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 1.4, delay: 1.4, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  — We Handle Everything
+                </motion.span>
+              </span>
+            </h1>
 
-            <motion.p variants={fadeUp} className="text-white/65 text-lg mb-10 max-w-xl leading-relaxed">
+            {/* Subtext */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.0, delay: 1.85, ease: [0.22, 1, 0.36, 1] }}
+              className="text-white/65 text-lg mb-10 max-w-xl leading-relaxed"
+            >
               Expert consultants. Verified vendors. End-to-end coordination — for your dream Indian wedding.
             </motion.p>
 
-            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-start gap-4">
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.0, delay: 2.15, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col sm:flex-row items-start gap-4"
+            >
               <Link
                 href="/plan"
                 className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white px-9 py-4 rounded-full font-semibold text-sm shadow-xl hover:opacity-90 transition-all"
@@ -253,7 +315,8 @@ export default function HomepageClient() {
                 <Phone className="w-4 h-4" /> Speak With An Expert
               </a>
             </motion.div>
-          </motion.div>
+
+          </div>
         </div>
 
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 opacity-35 pointer-events-none">
