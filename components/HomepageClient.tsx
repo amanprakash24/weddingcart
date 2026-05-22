@@ -554,7 +554,6 @@ export default function HomepageClient() {
                     <div className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none" style={{ background: 'radial-gradient(ellipse at bottom, rgba(197,164,109,0.12) 0%, transparent 70%)' }} />
                     {/* Content */}
                     <div className="relative z-10 flex flex-col justify-end h-full px-8 sm:px-10 lg:px-14 py-8 sm:py-10">
-                      <p className="eyebrow-luxury text-[#C5A46D]/80 mb-2">{style.num}</p>
                       <h3
                         className="mb-2 leading-tight text-white"
                         style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.4rem, 2.5vw, 2rem)', fontWeight: 600 }}
@@ -571,14 +570,6 @@ export default function HomepageClient() {
                 ) : (
                   /* ── Standard card ── */
                   <>
-                    <span
-                      aria-hidden="true"
-                      className="absolute right-6 -top-2 font-cormorant font-light leading-none select-none pointer-events-none"
-                      style={{ fontSize: 'clamp(6rem, 10vw, 10rem)', color: 'rgba(197,164,109,0.07)' }}
-                    >
-                      {style.num}
-                    </span>
-                    <p className="eyebrow-luxury text-[#C5A46D]/80 mb-4">{style.num}</p>
                     <h3
                       className="mb-4 leading-tight transition-colors duration-300 group-hover:text-[#8B1A4A]"
                       style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: '#2A1F1B' }}
