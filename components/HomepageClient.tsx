@@ -106,6 +106,7 @@ const WEDDINGS = [
     desc: 'An intimate 120-guest destination wedding on a private beach. Custom florals, live music, seaside accommodation, and seamless logistics.',
     tags: ['Destination', 'Floral', 'Accommodation', 'Music'],
     img: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=1200&q=85',
+    video: '/videos/goa-wedding.mp4',
   },
   {
     num: '003',
