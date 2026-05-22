@@ -83,6 +83,7 @@ const WEDDING_STYLES = [
     num: '04',
     label: 'Intimate',
     desc: 'Soulful ceremonies of 50 guests or fewer, where every emotion is felt and every moment is personal.',
+    video: '/videos/intimate-wedding.mp4',
   },
 ];
 
