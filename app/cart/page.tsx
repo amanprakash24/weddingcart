@@ -4,6 +4,7 @@ import CartPageClient from '@/components/CartPageClient';
 export const metadata = {
   title: 'Your Wedding Plan Cart',
   description: 'Review your selected vendors and complete your wedding plan.',
+  robots: { index: false, follow: false },
 };
 
 export default function CartPage() {
