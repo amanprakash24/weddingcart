@@ -71,6 +71,7 @@ const WEDDING_STYLES = [
     num: '02',
     label: 'Minimal',
     desc: 'Where restraint becomes luxury. Refined gatherings where every curated detail quietly speaks of quality.',
+    video: '/videos/minimal-wedding.mp4',
   },
   {
     num: '03',
