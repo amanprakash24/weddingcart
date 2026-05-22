@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe } from 'lucide-react';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -476,6 +476,12 @@ export default function AdminClient() {
             </button>
           ))}
         </nav>
+        <div className="px-2 pb-1 border-t border-gray-800 pt-2">
+          <Link href="/admin/blogs" className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all">
+            <FileText className="w-5 h-5 flex-shrink-0" />
+            <span className="hidden sm:block text-sm font-medium">Blog Posts</span>
+          </Link>
+        </div>
         <div className="p-3 border-t border-gray-800">
           {role === 'super_admin' && (
             <>

@@ -15,6 +15,7 @@ const services = [
 
 const company = [
   { label: 'About Us', href: '/about' },
+  { label: 'Blog', href: '/blog' },
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'Start Planning', href: '/plan' },
   { label: 'For Vendors', href: '/vendor-onboarding' },
