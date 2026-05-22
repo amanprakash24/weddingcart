@@ -186,6 +186,75 @@ function BlogCard({ blog }: { blog: Blog }) {
   );
 }
 
+const VENDOR_OPTIONS = [
+  { label: 'Wedding Venues',               slug: 'venue' },
+  { label: 'Bridal Makeup Artists',        slug: 'makeup' },
+  { label: 'Mehndi Artists',               slug: 'mehndi' },
+  { label: 'Wedding Decorators',           slug: 'decorator' },
+  { label: 'Wedding Photographers',        slug: 'photo-video' },
+  { label: 'Wedding Caterers',             slug: 'catering' },
+  { label: 'Wedding DJ',                   slug: 'dj' },
+  { label: 'Wedding Band & Music',         slug: 'band' },
+  { label: 'Wedding Planners',             slug: 'planning' },
+  { label: 'Wedding Invitations',          slug: 'invitations' },
+  { label: 'Bridal Lehenga',              slug: 'bridal-lehenga' },
+  { label: 'Bridal Jewellery',            slug: 'bridal-jewellery' },
+  { label: 'Sherwani & Groom Wear',       slug: 'sherwani' },
+  { label: 'Wedding Transport',            slug: 'transport' },
+  { label: 'Wedding Gifts',               slug: 'gifts' },
+];
+
+function VendorSearchWidget() {
+  const router = useRouter();
+  const [selected, setSelected] = useState('venue');
+
+  return (
+    <section className="my-16">
+      <div className="relative bg-white border border-[#C5A46D]/30 rounded-2xl px-6 sm:px-14 py-10 text-center shadow-sm">
+
+        {/* Decorative corner lines — top */}
+        <div className="absolute top-0 left-0 right-0 flex items-center pointer-events-none" style={{ transform: 'translateY(-1px)' }}>
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#C5A46D]/60 to-[#C5A46D]/60 ml-8 mr-4" />
+          <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[#C5A46D]/60 to-[#C5A46D]/60 ml-4 mr-8" />
+        </div>
+
+        {/* Decorative corner lines — bottom */}
+        <div className="absolute bottom-0 left-0 right-0 flex items-center pointer-events-none" style={{ transform: 'translateY(1px)' }}>
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#C5A46D]/60 to-[#C5A46D]/60 ml-8 mr-4" />
+          <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[#C5A46D]/60 to-[#C5A46D]/60 ml-4 mr-8" />
+        </div>
+
+        <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl font-bold text-gray-900 mb-8 leading-snug">
+          Find the best wedding vendors with<br className="hidden sm:block" /> thousands of trusted reviews
+        </h2>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-0 mb-8">
+          <span className="text-gray-600 font-medium text-base sm:mr-4 whitespace-nowrap">I am looking for</span>
+          <div className="relative">
+            <select
+              value={selected}
+              onChange={e => setSelected(e.target.value)}
+              className="appearance-none bg-transparent border-0 border-b-2 border-gray-400 focus:border-[#8B1A4A] outline-none text-gray-800 font-medium text-base pb-1 pr-7 pl-1 cursor-pointer transition-colors min-w-[220px]"
+            >
+              {VENDOR_OPTIONS.map(opt => (
+                <option key={opt.slug} value={opt.slug}>{opt.label}</option>
+              ))}
+            </select>
+            <span className="absolute right-0 bottom-1.5 text-gray-500 pointer-events-none text-sm font-semibold">∨</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => router.push(`/categories/${selected}`)}
+          className="bg-[#8B1A4A] hover:bg-[#7a1640] text-white font-semibold px-10 py-3 rounded-full text-base transition-all hover:shadow-lg hover:shadow-[#8B1A4A]/30"
+        >
+          Search
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
   return (
     <section className="mt-20 mb-4">
@@ -365,6 +434,9 @@ export default function BlogListClient() {
             )}
           </>
         )}
+
+        {/* Vendor search widget */}
+        {!loading && blogs.length > 0 && <VendorSearchWidget />}
 
         {/* Browse by Category */}
         {category === 'All' && !loading && (
