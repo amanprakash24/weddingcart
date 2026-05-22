@@ -553,11 +553,6 @@ export default function BlogListClient() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-        {/* ── Browse Guides ───────────────────────────────── */}
-        <div className="mb-4 mt-2">
-          <BrowseGuides onSelect={setFilter} />
-        </div>
-
         {/* ── Category filter ─────────────────────────────── */}
         <div className="flex flex-wrap gap-2 mb-10">
           {CATEGORIES.map(cat => {
@@ -650,9 +645,12 @@ export default function BlogListClient() {
         {/* Vendor search */}
         {!loading && <VendorSearchWidget />}
 
-        {/* Browse by Category */}
+        {/* Browse our Guides + Browse by Category */}
         {category === 'All' && !loading && (
-          <BrowseByCategory onSelect={setFilter} />
+          <>
+            <BrowseGuides onSelect={setFilter} />
+            <BrowseByCategory onSelect={setFilter} />
+          </>
         )}
       </div>
     </div>
