@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Calendar, Clock, ArrowRight, BookOpen, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { Clock, ArrowRight, BookOpen, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface Blog {
   _id: string;
@@ -24,19 +24,6 @@ const CATEGORIES = [
   'Destination Weddings', 'Food & Catering', 'Décor & Flowers', 'Photography',
 ];
 
-const CATEGORY_COLORS: Record<string, { pill: string; badge: string }> = {
-  'Wedding Tips':         { pill: 'bg-amber-500 text-white',         badge: 'bg-amber-50 text-amber-700 border-amber-200' },
-  'Venue Guides':         { pill: 'bg-rose-500 text-white',          badge: 'bg-rose-50 text-rose-700 border-rose-200' },
-  'Bridal Fashion':       { pill: 'bg-purple-500 text-white',        badge: 'bg-purple-50 text-purple-700 border-purple-200' },
-  'Real Weddings':        { pill: 'bg-pink-500 text-white',          badge: 'bg-pink-50 text-pink-700 border-pink-200' },
-  'Budget Planning':      { pill: 'bg-emerald-500 text-white',       badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  'Traditions & Culture': { pill: 'bg-orange-500 text-white',        badge: 'bg-orange-50 text-orange-700 border-orange-200' },
-  'Destination Weddings': { pill: 'bg-blue-500 text-white',          badge: 'bg-blue-50 text-blue-700 border-blue-200' },
-  'Food & Catering':      { pill: 'bg-yellow-500 text-white',        badge: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  'Décor & Flowers':      { pill: 'bg-teal-500 text-white',          badge: 'bg-teal-50 text-teal-700 border-teal-200' },
-  'Photography':          { pill: 'bg-indigo-500 text-white',        badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-};
-
 const CATEGORY_ICONS: Record<string, string> = {
   'Wedding Tips':         '💡',
   'Venue Guides':         '🏛️',
@@ -50,135 +37,177 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Photography':          '📷',
 };
 
-function getCategoryBadge(cat: string) {
-  return CATEGORY_COLORS[cat]?.badge ?? 'bg-gray-100 text-gray-600 border-gray-200';
-}
+const VENDOR_OPTIONS = [
+  { label: 'Wedding Venues',          slug: 'venue' },
+  { label: 'Bridal Makeup Artists',   slug: 'makeup' },
+  { label: 'Mehndi Artists',          slug: 'mehndi' },
+  { label: 'Wedding Decorators',      slug: 'decorator' },
+  { label: 'Wedding Photographers',   slug: 'photo-video' },
+  { label: 'Wedding Caterers',        slug: 'catering' },
+  { label: 'Wedding DJ',              slug: 'dj' },
+  { label: 'Wedding Band & Music',    slug: 'band' },
+  { label: 'Wedding Planners',        slug: 'planning' },
+  { label: 'Wedding Invitations',     slug: 'invitations' },
+  { label: 'Bridal Lehenga',         slug: 'bridal-lehenga' },
+  { label: 'Bridal Jewellery',       slug: 'bridal-jewellery' },
+  { label: 'Sherwani & Groom Wear',  slug: 'sherwani' },
+  { label: 'Wedding Transport',       slug: 'transport' },
+  { label: 'Wedding Gifts',          slug: 'gifts' },
+];
 
 function formatDate(d: string | null) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function BlogCardSkeleton() {
+/* ── Gold ornamental divider ─────────────────────────────── */
+function GoldDivider() {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
-      <div className="aspect-[16/10] bg-gray-200" />
-      <div className="p-5 space-y-3">
-        <div className="h-3 bg-gray-100 rounded w-1/4" />
-        <div className="h-5 bg-gray-200 rounded w-4/5" />
-        <div className="h-4 bg-gray-100 rounded w-full" />
-        <div className="h-4 bg-gray-100 rounded w-3/4" />
-        <div className="flex gap-3 pt-2">
-          <div className="h-3 bg-gray-100 rounded w-1/4" />
-          <div className="h-3 bg-gray-100 rounded w-1/4" />
-        </div>
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[#C5A46D]/50" />
+      <span className="text-[#C5A46D] text-[10px] tracking-[0.3em]">✦</span>
+      <div className="flex-1 h-px bg-gradient-to-l from-transparent to-[#C5A46D]/50" />
+    </div>
+  );
+}
+
+/* ── Skeleton ─────────────────────────────────────────────── */
+function Skeleton() {
+  return (
+    <div className="bg-[#FFFCF7] rounded-2xl overflow-hidden border border-[#E8D4A0]/30 animate-pulse">
+      <div className="aspect-[16/10] bg-[#E8D4A0]/30" />
+      <div className="p-6 space-y-3">
+        <div className="h-2.5 bg-[#E8D4A0]/40 rounded w-1/4" />
+        <div className="h-5 bg-[#E8D4A0]/50 rounded w-4/5" />
+        <div className="h-3.5 bg-[#E8D4A0]/30 rounded w-full" />
+        <div className="h-3.5 bg-[#E8D4A0]/30 rounded w-3/4" />
       </div>
     </div>
   );
 }
 
+/* ── Featured (magazine cover) ───────────────────────────── */
 function FeaturedCard({ blog }: { blog: Blog }) {
   return (
     <Link
       href={`/blog/${blog.slug}`}
-      className="group grid grid-cols-1 lg:grid-cols-2 bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500"
+      className="group relative block rounded-3xl overflow-hidden shadow-[0_32px_80px_rgba(28,10,18,0.35)] hover:shadow-[0_40px_100px_rgba(28,10,18,0.5)] transition-all duration-700"
     >
-      {/* Image */}
-      <div className="relative aspect-[4/3] lg:aspect-auto overflow-hidden bg-gradient-to-br from-amber-100 to-rose-100">
+      {/* Background image */}
+      <div className="relative aspect-[16/8] sm:aspect-[21/9]">
         {blog.coverImage ? (
           <Image
             src={blog.coverImage}
             alt={blog.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-700"
+            className="object-cover scale-[1.02] group-hover:scale-[1.07] transition-transform duration-[1200ms] ease-out"
             unoptimized
             priority
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-950 via-rose-950 to-gray-900">
-            <BookOpen className="w-16 h-16 text-white/20" />
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-br from-[#1C0A12] via-[#3D1428] to-[#1C0A12]" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-        <span className="absolute top-4 left-4 bg-amber-500 text-white text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full">
-          Featured
+
+        {/* Cinematic overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0C0408]/95 via-[#0C0408]/40 to-[#0C0408]/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0C0408]/60 via-transparent to-transparent" />
+      </div>
+
+      {/* Text content — overlaid bottom-left */}
+      <div className="absolute bottom-0 left-0 right-0 px-8 sm:px-12 pb-10 sm:pb-12">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="bg-[#C5A46D] text-[#1C0A12] text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 rounded-full">
+            Featured
+          </span>
+          <span className="text-[#C5A46D]/70 text-[11px] font-medium uppercase tracking-widest">
+            {blog.category}
+          </span>
+        </div>
+
+        <h2 className="font-[Playfair_Display,serif] font-bold text-white text-2xl sm:text-3xl lg:text-4xl leading-tight mb-4 max-w-2xl group-hover:text-[#E8D4A0] transition-colors duration-300">
+          {blog.title}
+        </h2>
+
+        {blog.excerpt && (
+          <p className="text-white/55 text-sm leading-relaxed mb-5 max-w-xl hidden sm:block line-clamp-2">
+            {blog.excerpt}
+          </p>
+        )}
+
+        <div className="flex items-center gap-5 text-xs text-white/40 mb-6">
+          <span className="text-white/60 font-semibold">{blog.author}</span>
+          <span className="w-1 h-1 rounded-full bg-[#C5A46D]/50" />
+          {blog.publishedAt && <span>{formatDate(blog.publishedAt)}</span>}
+          <span className="w-1 h-1 rounded-full bg-[#C5A46D]/50" />
+          <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {blog.readTime} min read</span>
+        </div>
+
+        <span className="inline-flex items-center gap-2 text-[#C5A46D] text-sm font-semibold tracking-wide group-hover:gap-3.5 transition-all duration-300">
+          Read Story <ArrowRight className="w-4 h-4" />
         </span>
       </div>
 
-      {/* Content */}
-      <div className="flex flex-col justify-center p-8 lg:p-10">
-        <span className={`inline-flex self-start text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full border mb-4 ${getCategoryBadge(blog.category)}`}>
-          {blog.category}
-        </span>
-        <h2 className="font-[Playfair_Display,serif] font-bold text-gray-900 text-2xl lg:text-3xl leading-snug mb-4 group-hover:text-amber-700 transition-colors">
-          {blog.title}
-        </h2>
-        {blog.excerpt && (
-          <p className="text-gray-500 text-sm leading-relaxed mb-6 line-clamp-3">{blog.excerpt}</p>
-        )}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 mb-6">
-          <span className="flex items-center gap-1.5 font-medium text-gray-600">
-            <User className="w-3.5 h-3.5" /> {blog.author}
-          </span>
-          {blog.publishedAt && (
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> {formatDate(blog.publishedAt)}
-            </span>
-          )}
-          <span className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" /> {blog.readTime} min read
-          </span>
-        </div>
-        <span className="inline-flex items-center gap-2 text-sm font-semibold text-amber-700 group-hover:gap-3 transition-all">
-          Read Article <ArrowRight className="w-4 h-4" />
-        </span>
-      </div>
+      {/* Gold border shimmer on hover */}
+      <div className="absolute inset-0 rounded-3xl border border-[#C5A46D]/0 group-hover:border-[#C5A46D]/25 transition-colors duration-500 pointer-events-none" />
     </Link>
   );
 }
 
+/* ── Blog card ───────────────────────────────────────────── */
 function BlogCard({ blog }: { blog: Blog }) {
   return (
     <Link
       href={`/blog/${blog.slug}`}
-      className="group flex flex-col bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+      className="group flex flex-col bg-[#FFFCF7] rounded-2xl overflow-hidden
+        border border-[#E8D4A0]/40
+        shadow-[0_4px_24px_rgba(197,164,109,0.07)]
+        hover:shadow-[0_12px_48px_rgba(197,164,109,0.18)]
+        hover:border-[#C5A46D]/50
+        hover:-translate-y-1.5
+        transition-all duration-400"
     >
       {/* Image */}
-      <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-amber-50 to-rose-50">
+      <div className="relative aspect-[16/10] overflow-hidden bg-gradient-to-br from-[#F5E9D0] to-[#EFE4D2]">
         {blog.coverImage ? (
           <Image
             src={blog.coverImage}
             alt={blog.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            className="object-cover group-hover:scale-[1.06] transition-transform duration-700"
             unoptimized
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-100 to-rose-100">
-            <BookOpen className="w-10 h-10 text-amber-300" />
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1C0A12] to-[#3D1428]">
+            <BookOpen className="w-10 h-10 text-[#C5A46D]/40" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1C0A12]/30 via-transparent to-transparent" />
       </div>
 
       {/* Content */}
-      <div className="flex flex-col flex-1 p-5">
-        <span className={`inline-flex self-start text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border mb-3 ${getCategoryBadge(blog.category)}`}>
-          {blog.category}
-        </span>
-        <h3 className="font-[Playfair_Display,serif] font-bold text-gray-900 text-base leading-snug mb-2.5 line-clamp-2 group-hover:text-amber-700 transition-colors flex-1">
+      <div className="flex flex-col flex-1 p-6">
+        {/* Category */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#C5A46D] flex-shrink-0" />
+          <span className="text-[#C5A46D] text-[10px] font-bold uppercase tracking-[0.18em]">{blog.category}</span>
+        </div>
+
+        <h3 className="font-[Playfair_Display,serif] font-bold text-[#1C0A12] text-[15px] leading-snug mb-3 line-clamp-2 group-hover:text-[#8B1A4A] transition-colors duration-200 flex-1">
           {blog.title}
         </h3>
+
         {blog.excerpt && (
-          <p className="text-gray-500 text-[13px] leading-relaxed mb-4 line-clamp-2">{blog.excerpt}</p>
+          <p className="text-[#6B5B4D] text-[12.5px] leading-relaxed mb-4 line-clamp-2">{blog.excerpt}</p>
         )}
-        <div className="flex items-center gap-3 text-[11px] text-gray-400 pt-3 border-t border-gray-50 mt-auto">
-          <span className="font-medium text-gray-500 truncate max-w-[80px]">{blog.author}</span>
-          <span className="w-0.5 h-0.5 rounded-full bg-gray-300 flex-shrink-0" />
-          {blog.publishedAt && <span className="flex items-center gap-1">{formatDate(blog.publishedAt)}</span>}
-          <span className="w-0.5 h-0.5 rounded-full bg-gray-300 flex-shrink-0" />
+
+        {/* Meta */}
+        <div className="flex items-center gap-2 text-[11px] text-[#9B8B7D] pt-4 border-t border-[#E8D4A0]/50 mt-auto">
+          <span className="font-medium text-[#6B5B4D] truncate max-w-[90px]">{blog.author}</span>
+          <span className="w-1 h-1 rounded-full bg-[#C5A46D]/50 flex-shrink-0" />
+          {blog.publishedAt && <span className="truncate">{formatDate(blog.publishedAt)}</span>}
+          <span className="w-1 h-1 rounded-full bg-[#C5A46D]/50 flex-shrink-0" />
           <span className="flex items-center gap-1 flex-shrink-0">
-            <Clock className="w-3 h-3" /> {blog.readTime} min
+            <Clock className="w-3 h-3 text-[#C5A46D]" /> {blog.readTime} min
           </span>
         </div>
       </div>
@@ -186,82 +215,83 @@ function BlogCard({ blog }: { blog: Blog }) {
   );
 }
 
-const VENDOR_OPTIONS = [
-  { label: 'Wedding Venues',               slug: 'venue' },
-  { label: 'Bridal Makeup Artists',        slug: 'makeup' },
-  { label: 'Mehndi Artists',               slug: 'mehndi' },
-  { label: 'Wedding Decorators',           slug: 'decorator' },
-  { label: 'Wedding Photographers',        slug: 'photo-video' },
-  { label: 'Wedding Caterers',             slug: 'catering' },
-  { label: 'Wedding DJ',                   slug: 'dj' },
-  { label: 'Wedding Band & Music',         slug: 'band' },
-  { label: 'Wedding Planners',             slug: 'planning' },
-  { label: 'Wedding Invitations',          slug: 'invitations' },
-  { label: 'Bridal Lehenga',              slug: 'bridal-lehenga' },
-  { label: 'Bridal Jewellery',            slug: 'bridal-jewellery' },
-  { label: 'Sherwani & Groom Wear',       slug: 'sherwani' },
-  { label: 'Wedding Transport',            slug: 'transport' },
-  { label: 'Wedding Gifts',               slug: 'gifts' },
-];
-
+/* ── Vendor search widget ─────────────────────────────────── */
 function VendorSearchWidget() {
   const router = useRouter();
   const [selected, setSelected] = useState('venue');
 
   return (
-    <section className="my-16">
-      <div className="relative bg-white border border-[#C5A46D]/30 rounded-2xl px-6 sm:px-14 py-10 text-center shadow-sm">
+    <section className="my-20">
+      <div
+        className="relative rounded-3xl overflow-hidden px-6 sm:px-16 py-14 text-center"
+        style={{ background: 'linear-gradient(135deg, #1C0A12 0%, #2D0B1F 50%, #1C0A12 100%)' }}
+      >
+        {/* Dot grid pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(circle, #C5A46D 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+        />
+        {/* Gold glow blobs */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-[#C5A46D]/8 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-56 h-56 bg-[#8B1A4A]/15 rounded-full blur-[60px] pointer-events-none" />
 
-        {/* Decorative corner lines — top */}
-        <div className="absolute top-0 left-0 right-0 flex items-center pointer-events-none" style={{ transform: 'translateY(-1px)' }}>
-          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#C5A46D]/60 to-[#C5A46D]/60 ml-8 mr-4" />
-          <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[#C5A46D]/60 to-[#C5A46D]/60 ml-4 mr-8" />
-        </div>
+        <div className="relative z-10">
+          <GoldDivider />
 
-        {/* Decorative corner lines — bottom */}
-        <div className="absolute bottom-0 left-0 right-0 flex items-center pointer-events-none" style={{ transform: 'translateY(1px)' }}>
-          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#C5A46D]/60 to-[#C5A46D]/60 ml-8 mr-4" />
-          <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[#C5A46D]/60 to-[#C5A46D]/60 ml-4 mr-8" />
-        </div>
+          <div className="mt-8 mb-3">
+            <p className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.3em] mb-4">Discover</p>
+            <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl lg:text-4xl font-bold text-[#E8D4A0] leading-snug">
+              Find the Best Wedding Vendors<br className="hidden sm:block" />
+              <span className="italic text-[#C5A46D]"> with Trusted Reviews</span>
+            </h2>
+            <p className="text-[#9B8B7D] text-sm mt-3">
+              500+ verified vendors · 25+ cities · Thousands of happy couples
+            </p>
+          </div>
 
-        <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl font-bold text-gray-900 mb-8 leading-snug">
-          Find the best wedding vendors with<br className="hidden sm:block" /> thousands of trusted reviews
-        </h2>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 my-10">
+            <span className="text-[#E8D4A0]/60 font-medium text-base whitespace-nowrap">I am looking for</span>
+            <div className="relative">
+              <select
+                value={selected}
+                onChange={e => setSelected(e.target.value)}
+                className="appearance-none bg-transparent border-0 border-b border-[#C5A46D]/50 focus:border-[#C5A46D] outline-none text-[#E8D4A0] font-semibold text-base pb-2 pr-8 pl-1 cursor-pointer transition-colors min-w-[240px]"
+                style={{ colorScheme: 'dark' }}
+              >
+                {VENDOR_OPTIONS.map(opt => (
+                  <option key={opt.slug} value={opt.slug} className="bg-[#1C0A12] text-[#E8D4A0]">{opt.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-0 bottom-2.5 w-4 h-4 text-[#C5A46D] pointer-events-none" />
+            </div>
+          </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-0 mb-8">
-          <span className="text-gray-600 font-medium text-base sm:mr-4 whitespace-nowrap">I am looking for</span>
-          <div className="relative">
-            <select
-              value={selected}
-              onChange={e => setSelected(e.target.value)}
-              className="appearance-none bg-transparent border-0 border-b-2 border-gray-400 focus:border-[#8B1A4A] outline-none text-gray-800 font-medium text-base pb-1 pr-7 pl-1 cursor-pointer transition-colors min-w-[220px]"
-            >
-              {VENDOR_OPTIONS.map(opt => (
-                <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-              ))}
-            </select>
-            <span className="absolute right-0 bottom-1.5 text-gray-500 pointer-events-none text-sm font-semibold">∨</span>
+          <button
+            onClick={() => router.push(`/categories/${selected}`)}
+            className="inline-flex items-center gap-2.5 font-bold px-12 py-4 rounded-full text-[#1C0A12] text-sm tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_40px_rgba(197,164,109,0.4)]"
+            style={{ background: 'linear-gradient(135deg, #C5A46D, #E8D4A0, #C5A46D)' }}
+          >
+            Search Vendors <ArrowRight className="w-4 h-4" />
+          </button>
+
+          <div className="mt-8">
+            <GoldDivider />
           </div>
         </div>
-
-        <button
-          onClick={() => router.push(`/categories/${selected}`)}
-          className="bg-[#8B1A4A] hover:bg-[#7a1640] text-white font-semibold px-10 py-3 rounded-full text-base transition-all hover:shadow-lg hover:shadow-[#8B1A4A]/30"
-        >
-          Search
-        </button>
       </div>
     </section>
   );
 }
 
+/* ── Browse by Category ───────────────────────────────────── */
 function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
   return (
-    <section className="mt-20 mb-4">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <p className="text-amber-600 text-xs font-bold uppercase tracking-widest mb-1">Explore</p>
-          <h2 className="font-[Playfair_Display,serif] text-2xl font-bold text-gray-900">Browse by Category</h2>
+    <section className="mt-16 mb-4">
+      <div className="text-center mb-10">
+        <GoldDivider />
+        <div className="mt-6">
+          <p className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.25em] mb-2">Explore</p>
+          <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl font-bold text-[#1C0A12]">Browse by Category</h2>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -269,10 +299,14 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
           <button
             key={cat}
             onClick={() => onSelect(cat)}
-            className="group flex flex-col items-center gap-2 bg-white border border-gray-100 rounded-2xl p-4 hover:border-amber-300 hover:shadow-md transition-all duration-200 text-center"
+            className="group flex flex-col items-center gap-3 rounded-2xl p-5 text-center transition-all duration-300
+              bg-[#1C0A12] border border-[#C5A46D]/12
+              hover:border-[#C5A46D]/45 hover:bg-[#2D0B1F]
+              hover:shadow-[0_8px_32px_rgba(197,164,109,0.12)]
+              hover:-translate-y-1"
           >
             <span className="text-2xl">{CATEGORY_ICONS[cat] ?? '📝'}</span>
-            <span className="text-xs font-semibold text-gray-700 group-hover:text-amber-700 transition-colors leading-tight">{cat}</span>
+            <span className="text-xs font-semibold text-[#9B8B7D] group-hover:text-[#C5A46D] transition-colors leading-tight">{cat}</span>
           </button>
         ))}
       </div>
@@ -280,6 +314,7 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
   );
 }
 
+/* ── Main component ───────────────────────────────────────── */
 export default function BlogListClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -287,7 +322,6 @@ export default function BlogListClient() {
   const page = parseInt(searchParams.get('page') ?? '1');
 
   const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -298,7 +332,6 @@ export default function BlogListClient() {
       .then(r => r.json())
       .then(data => {
         setBlogs(data.blogs ?? []);
-        setTotal(data.total ?? 0);
         setPages(data.pages ?? 1);
       })
       .finally(() => setLoading(false));
@@ -320,41 +353,74 @@ export default function BlogListClient() {
   const [featured, ...rest] = blogs;
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
+    <div className="min-h-screen bg-[#FFFCF7]">
 
-      {/* ── Hero ── */}
-      <section className="bg-white border-b border-gray-100 pt-28 pb-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl">
-            <p className="text-amber-600 text-xs font-bold uppercase tracking-widest mb-3">ShaadiShopping Journal</p>
-            <h1 className="font-[Playfair_Display,serif] text-4xl sm:text-5xl font-bold text-gray-900 leading-tight mb-4">
-              Wedding Stories,<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-rose-500">
-                Tips & Inspiration
-              </span>
-            </h1>
-            <p className="text-gray-500 text-base leading-relaxed">
-              Expert guides, real wedding stories and trend reports for couples planning their dream wedding across India.
-            </p>
+      {/* ── CINEMATIC HERO ─────────────────────────────────── */}
+      <section
+        className="relative overflow-hidden pt-28 pb-20"
+        style={{ background: 'linear-gradient(160deg, #0C0408 0%, #1C0A12 45%, #2D0B1F 100%)' }}
+      >
+        {/* Dot pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.035] pointer-events-none"
+          style={{ backgroundImage: 'radial-gradient(circle, #C5A46D 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+        />
+        {/* Ambient blobs */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#8B1A4A]/20 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 w-[300px] h-[300px] bg-[#C5A46D]/8 rounded-full blur-[80px] pointer-events-none" />
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Label */}
+          <div className="flex items-center gap-3 mb-7">
+            <div className="h-px w-10 bg-[#C5A46D]" />
+            <span className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.28em]">ShaadiShopping Journal</span>
+          </div>
+
+          {/* Heading */}
+          <h1 className="font-[Playfair_Display,serif] font-bold text-[#FFFCF7] leading-[1.08] mb-6">
+            <span className="block text-5xl sm:text-6xl lg:text-7xl">Wedding</span>
+            <span
+              className="block text-5xl sm:text-6xl lg:text-7xl italic"
+              style={{ WebkitTextStroke: '1px #C5A46D', color: 'transparent' }}
+            >
+              Stories
+            </span>
+            <span className="block text-5xl sm:text-6xl lg:text-7xl">&amp; Inspiration</span>
+          </h1>
+
+          <p className="text-[#9B8B7D] text-base max-w-md leading-relaxed mb-10">
+            Expert guides, real wedding stories and trend reports for couples planning their dream wedding across India.
+          </p>
+
+          {/* Stats */}
+          <div className="flex items-center gap-8 sm:gap-12">
+            {[['500+', 'Articles'], ['10', 'Categories'], ['Daily', 'Updates']].map(([v, l]) => (
+              <div key={l}>
+                <p className="font-[Playfair_Display,serif] font-bold text-[#C5A46D] text-xl">{v}</p>
+                <p className="text-[#6B5B4D] text-[10px] uppercase tracking-[0.2em] mt-0.5">{l}</p>
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 inset-x-0 h-12 bg-gradient-to-t from-[#FFFCF7] to-transparent pointer-events-none" />
       </section>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-        {/* ── Category filter ── */}
+        {/* ── Category filter ─────────────────────────────── */}
         <div className="flex flex-wrap gap-2 mb-10">
           {CATEGORIES.map(cat => {
             const active = category === cat;
-            const color = CATEGORY_COLORS[cat]?.pill ?? 'bg-gray-800 text-white';
             return (
               <button
                 key={cat}
                 onClick={() => setFilter(cat)}
-                className={`px-4 py-1.5 rounded-full text-[13px] font-medium transition-all ${
+                className={`px-4 py-1.5 rounded-full text-[12.5px] font-semibold transition-all duration-200 ${
                   active
-                    ? (cat === 'All' ? 'bg-gray-900 text-white shadow-sm' : `${color} shadow-sm`)
-                    : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    ? 'bg-[#1C0A12] text-[#C5A46D] border border-[#C5A46D]/40 shadow-[0_2px_12px_rgba(28,10,18,0.2)]'
+                    : 'bg-white border border-[#E8D4A0]/60 text-[#6B5B4D] hover:border-[#C5A46D]/50 hover:text-[#8B1A4A] hover:bg-[#FFFCF7]'
                 }`}
               >
                 {cat}
@@ -363,38 +429,35 @@ export default function BlogListClient() {
           })}
         </div>
 
-        {/* ── Content ── */}
+        {/* ── Content ─────────────────────────────────────── */}
         {loading ? (
           <div className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 bg-white rounded-2xl overflow-hidden border border-gray-100 animate-pulse">
-              <div className="aspect-[4/3] bg-gray-200" />
-              <div className="p-10 space-y-4">
-                <div className="h-3 bg-gray-100 rounded w-1/4" />
-                <div className="h-8 bg-gray-200 rounded w-3/4" />
-                <div className="h-4 bg-gray-100 rounded w-full" />
-                <div className="h-4 bg-gray-100 rounded w-5/6" />
-              </div>
+            <div
+              className="rounded-3xl overflow-hidden animate-pulse"
+              style={{ background: 'linear-gradient(135deg, #1C0A12, #2D0B1F)' }}
+            >
+              <div className="aspect-[21/9] opacity-20 bg-[#C5A46D]" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => <BlogCardSkeleton key={i} />)}
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} />)}
             </div>
           </div>
         ) : blogs.length === 0 ? (
           <div className="text-center py-32">
-            <BookOpen className="w-14 h-14 text-gray-200 mx-auto mb-5" />
-            <h3 className="font-[Playfair_Display,serif] text-xl font-bold text-gray-700 mb-2">No posts yet</h3>
-            <p className="text-gray-400 text-sm">
+            <BookOpen className="w-14 h-14 text-[#C5A46D]/30 mx-auto mb-5" />
+            <h3 className="font-[Playfair_Display,serif] text-xl font-bold text-[#1C0A12] mb-2">No posts yet</h3>
+            <p className="text-[#9B8B7D] text-sm">
               {category !== 'All' ? `No posts in "${category}" yet.` : 'Check back soon for wedding inspiration.'}
             </p>
             {category !== 'All' && (
-              <button onClick={() => setFilter('All')} className="mt-5 text-sm text-amber-600 font-semibold hover:underline">
+              <button onClick={() => setFilter('All')} className="mt-5 text-sm text-[#C5A46D] font-semibold hover:underline underline-offset-2">
                 Browse all posts →
               </button>
             )}
           </div>
         ) : (
           <>
-            {/* Featured post */}
+            {/* Featured */}
             {page === 1 && featured && (
               <div className="mb-10">
                 <FeaturedCard blog={featured} />
@@ -412,21 +475,21 @@ export default function BlogListClient() {
 
             {/* Pagination */}
             {pages > 1 && (
-              <div className="flex items-center justify-center gap-2 py-4">
+              <div className="flex items-center justify-center gap-3 py-4">
                 <button
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 text-gray-600 text-sm font-medium hover:border-amber-400 hover:text-amber-600 disabled:opacity-40 transition-all"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-[#E8D4A0]/60 text-[#6B5B4D] text-sm font-semibold hover:border-[#C5A46D]/60 hover:text-[#8B1A4A] disabled:opacity-30 transition-all"
                 >
-                  <ChevronLeft className="w-4 h-4" /> Prev
+                  <ChevronLeft className="w-4 h-4" /> Previous
                 </button>
-                <span className="px-4 py-2 text-sm text-gray-500">
-                  Page {page} of {pages}
+                <span className="px-4 text-sm text-[#9B8B7D]">
+                  {page} / {pages}
                 </span>
                 <button
                   onClick={() => setPage(page + 1)}
                   disabled={page === pages}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 text-gray-600 text-sm font-medium hover:border-amber-400 hover:text-amber-600 disabled:opacity-40 transition-all"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-[#E8D4A0]/60 text-[#6B5B4D] text-sm font-semibold hover:border-[#C5A46D]/60 hover:text-[#8B1A4A] disabled:opacity-30 transition-all"
                 >
                   Next <ChevronRight className="w-4 h-4" />
                 </button>
@@ -435,8 +498,8 @@ export default function BlogListClient() {
           </>
         )}
 
-        {/* Vendor search widget */}
-        {!loading && blogs.length > 0 && <VendorSearchWidget />}
+        {/* Vendor search */}
+        {!loading && <VendorSearchWidget />}
 
         {/* Browse by Category */}
         {category === 'All' && !loading && (
