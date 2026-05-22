@@ -406,7 +406,7 @@ const CATEGORY_MEDIA: Record<string, { src: string; type: 'image' | 'video' }> =
   'Venue Guides':         { src: '/cat-venue-guides.jpg',    type: 'image' },
   'Bridal Fashion':       { src: '/cat-bridal-fashion.jpg',  type: 'image' },
   'Real Weddings':        { src: '/cat-real-weddings.jpg',   type: 'image' },
-  'Budget Planning':      { src: '/cat-budget-planning.mp4', type: 'video' },
+  'Budget Planning':      { src: '/cat-budget-planning.jpg',  type: 'image' },
   'Traditions & Culture': { src: '/cat-traditions.jpg',      type: 'image' },
   'Destination Weddings': { src: '/cat-destination.jpg',     type: 'image' },
   'Food & Catering':      { src: '/cat-food-catering.jpg',   type: 'image' },
