@@ -97,6 +97,7 @@ const WEDDINGS = [
     desc: 'A 600-guest royal celebration across three palace venues. Eight-cuisine catering, hand-crafted décor, and live entertainment — all coordinated by our team.',
     tags: ['Venue', 'Catering', 'Décor', 'Entertainment'],
     img: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200&q=85',
+    video: '/videos/jaipur-wedding.mp4',
   },
   {
     num: '002',
@@ -647,13 +648,25 @@ export default function HomepageClient() {
                 exit={{ opacity: 0, scale: 1.03, transition: { duration: 0.65 } }}
                 transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
               >
-                <Image
-                  src={WEDDINGS[activeWedding].img}
-                  alt={WEDDINGS[activeWedding].title}
-                  fill sizes="50vw"
-                  className="object-cover"
-                  priority
-                />
+                {WEDDINGS[activeWedding].video ? (
+                  <video
+                    key={WEDDINGS[activeWedding].video}
+                    src={WEDDINGS[activeWedding].video}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={WEDDINGS[activeWedding].img}
+                    alt={WEDDINGS[activeWedding].title}
+                    fill sizes="50vw"
+                    className="object-cover"
+                    priority
+                  />
+                )}
                 {/* Directional cinematic vignette */}
                 <div className="absolute inset-0 bg-gradient-to-r from-[#2A1F1B]/55 via-transparent to-transparent" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#2A1F1B]/70 via-transparent to-[#2A1F1B]/25" />
@@ -823,8 +836,19 @@ export default function HomepageClient() {
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.7, delay: i * 0.1 }}
             >
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-6 img-zoom">
-                <Image src={w.img} fill className="object-cover" alt={w.title} sizes="100vw" />
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-6">
+                {w.video ? (
+                  <video
+                    src={w.video}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <Image src={w.img} fill className="object-cover" alt={w.title} sizes="100vw" />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#2A1F1B]/70 via-[#2A1F1B]/10 to-transparent" />
                 <div className="absolute bottom-5 left-5">
                   <p className="text-[#C5A46D]/60 text-[0.6rem] tracking-[0.25em] uppercase mb-1">{w.city}</p>
