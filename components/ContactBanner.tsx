@@ -23,12 +23,12 @@ export default function ContactBanner() {
   if (pathname.startsWith('/admin') || !visible) return null;
 
   return (
-    <div className="fixed bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end gap-2.5">
+    <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end gap-2.5">
 
       {/* Expanded concierge panel */}
       {expanded && (
         <div
-          className="w-[296px] bg-[#FFFAF5] rounded-2xl border border-[#C9A96E]/20 animate-slide-up"
+          className="w-[296px] bg-[#FFFCF7] rounded-2xl border border-[#C5A46D]/20 animate-slide-up"
           style={{
             boxShadow: '0 8px 40px rgba(28,18,8,0.12), 0 2px 8px rgba(28,18,8,0.06)',
             transformOrigin: 'bottom right',
@@ -37,10 +37,10 @@ export default function ContactBanner() {
           {/* Header */}
           <div className="flex items-start justify-between px-5 pt-5 pb-4">
             <div>
-              <p className="text-[0.6rem] text-[#C9A96E] font-semibold tracking-[0.24em] uppercase mb-1.5">
+              <p className="text-[0.6rem] text-[#C5A46D] font-semibold tracking-[0.24em] uppercase mb-1.5">
                 Wedding Concierge
               </p>
-              <h3 className="font-[Playfair_Display,serif] font-semibold text-[#1C1208] text-[1.05rem] leading-snug">
+              <h3 className="font-[Playfair_Display,serif] font-semibold text-[#2A1F1B] text-[1.05rem] leading-snug">
                 Need Wedding Guidance?
               </h3>
               <p className="text-[#9A8A7A] text-[0.78rem] leading-relaxed mt-1.5">
@@ -49,14 +49,14 @@ export default function ContactBanner() {
             </div>
             <button
               onClick={() => setExpanded(false)}
-              className="flex-shrink-0 ml-3 mt-0.5 w-6 h-6 flex items-center justify-center text-[#C9A96E]/50 hover:text-[#C9A96E] transition-colors rounded-full"
+              className="flex-shrink-0 ml-3 mt-0.5 w-6 h-6 flex items-center justify-center text-[#C5A46D]/50 hover:text-[#C5A46D] transition-colors rounded-full"
               aria-label="Close"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <div className="h-px mx-5 bg-[#C9A96E]/15" />
+          <div className="h-px mx-5 bg-[#C5A46D]/15" />
 
           {/* Actions */}
           <div className="px-5 py-4 space-y-2">
@@ -75,14 +75,14 @@ export default function ContactBanner() {
             <div className="flex gap-2">
               <a
                 href="tel:+917646028228"
-                className="flex-1 flex items-center justify-center gap-1.5 border border-[#C9A96E]/25 text-[#7A6A5A] px-3 py-2.5 rounded-xl text-xs font-medium hover:border-[#C9A96E]/50 hover:text-[#8B1A4A] transition-all"
+                className="flex-1 flex items-center justify-center gap-1.5 border border-[#C5A46D]/25 text-[#7A6A5A] px-3 py-2.5 rounded-xl text-xs font-medium hover:border-[#C5A46D]/50 hover:text-[#8B1A4A] transition-all"
               >
                 <Phone className="w-3.5 h-3.5" />
                 Call
               </a>
               <a
                 href="mailto:hello@shaadishopping.com"
-                className="flex-1 flex items-center justify-center gap-1.5 border border-[#C9A96E]/25 text-[#7A6A5A] px-3 py-2.5 rounded-xl text-xs font-medium hover:border-[#C9A96E]/50 hover:text-[#8B1A4A] transition-all"
+                className="flex-1 flex items-center justify-center gap-1.5 border border-[#C5A46D]/25 text-[#7A6A5A] px-3 py-2.5 rounded-xl text-xs font-medium hover:border-[#C5A46D]/50 hover:text-[#8B1A4A] transition-all"
               >
                 <Mail className="w-3.5 h-3.5" />
                 Email
@@ -96,16 +96,16 @@ export default function ContactBanner() {
       {!expanded && (
         <button
           onClick={() => setExpanded(true)}
-          className="flex items-center gap-2.5 bg-[#1C1208] text-[#C9A96E] pl-3.5 pr-4 py-2.5 rounded-full hover:bg-[#2A1C0E] hover:scale-[1.02] transition-all animate-fade-in"
+          className="flex items-center gap-2.5 bg-[#2A1F1B] text-[#C5A46D] pl-3.5 pr-4 py-2.5 rounded-full hover:bg-[#362416] hover:scale-[1.02] transition-all animate-fade-in"
           style={{ boxShadow: '0 4px 24px rgba(28,18,8,0.28)' }}
         >
           {/* Gold pulse dot — replaces the bright green */}
           <span className="relative flex w-2 h-2 flex-shrink-0">
             <span
-              className="absolute inline-flex w-full h-full rounded-full bg-[#C9A96E]/50 animate-ping"
+              className="absolute inline-flex w-full h-full rounded-full bg-[#C5A46D]/50 animate-ping"
               style={{ animationDuration: '2.5s' }}
             />
-            <span className="relative inline-flex w-2 h-2 rounded-full bg-[#C9A96E]" />
+            <span className="relative inline-flex w-2 h-2 rounded-full bg-[#C5A46D]" />
           </span>
           <span className="text-[0.72rem] font-semibold tracking-[0.06em] whitespace-nowrap">
             Wedding Expert Available

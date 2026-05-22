@@ -124,9 +124,9 @@ export default function Navbar() {
       {/* ── ANNOUNCEMENT BAR — single calm message ── */}
       <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-9 flex items-center justify-center">
         <p className="text-[0.62rem] tracking-[0.22em]">
-          <span className="text-[#C9A96E]/45 mr-5">✦</span>
+          <span className="text-[#C5A46D]/45 mr-5">✦</span>
           Expert Wedding Coordination · From Venue to Vidaai · Across India
-          <span className="text-[#C9A96E]/45 ml-5">✦</span>
+          <span className="text-[#C5A46D]/45 ml-5">✦</span>
         </p>
       </div>
 
@@ -190,14 +190,14 @@ export default function Navbar() {
 
                 {megaOpen && (
                   <div
-                    className="fixed left-[5%] right-[5%] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.12)] border-t border-[#C9A96E]/15 animate-fade-in overflow-y-auto z-[9998] rounded-b-2xl"
+                    className="fixed left-[5%] right-[5%] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.12)] border-t border-[#C5A46D]/15 animate-fade-in overflow-y-auto z-[9998] rounded-b-2xl"
                     style={{ top: 'calc(36px + 84px)' }}
                   >
                     <div className="max-w-7xl mx-auto px-8 py-8">
                       <div className="grid grid-cols-3 lg:grid-cols-6 gap-8">
                         {MEGA_MENU.map((col) => (
                           <div key={col.heading}>
-                            <p className="text-[0.6rem] font-bold text-[#C9A96E] uppercase tracking-[0.25em] mb-4">{col.heading}</p>
+                            <p className="text-[0.6rem] font-bold text-[#C5A46D] uppercase tracking-[0.25em] mb-4">{col.heading}</p>
                             <ul className="space-y-2">
                               {col.items.map((item) => (
                                 <li key={item.label}>
@@ -205,7 +205,7 @@ export default function Navbar() {
                                     href={item.href}
                                     className={`flex items-center gap-1.5 text-[0.8rem] py-0.5 transition-colors hover:text-[#8B1A4A] ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-400'}`}
                                   >
-                                    {item.icon && <item.icon className="w-3 h-3 text-[#C9A96E]/70 flex-shrink-0" />}
+                                    {item.icon && <item.icon className="w-3 h-3 text-[#C5A46D]/70 flex-shrink-0" />}
                                     {item.label}
                                   </Link>
                                 </li>
@@ -273,7 +273,7 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         {mobileOpen && (
-          <div className="lg:hidden bg-white border-t border-[#C9A96E]/10 shadow-xl animate-fade-in max-h-[calc(100vh-7.5rem)] overflow-y-auto">
+          <div className="lg:hidden bg-white border-t border-[#C5A46D]/10 shadow-xl animate-fade-in max-h-[calc(100vh-7.5rem)] overflow-y-auto">
             <div className="px-5 py-4 space-y-1">
               {navLinks.map((link) => (
                 <Link
@@ -302,7 +302,7 @@ export default function Navbar() {
                   <div className="ml-4 mt-1 space-y-1 pb-2">
                     {MEGA_MENU.map((col) => (
                       <div key={col.heading} className="mb-4">
-                        <p className="text-[0.6rem] font-bold text-[#C9A96E] uppercase tracking-[0.25em] px-3 py-1">{col.heading}</p>
+                        <p className="text-[0.6rem] font-bold text-[#C5A46D] uppercase tracking-[0.25em] px-3 py-1">{col.heading}</p>
                         {col.items.map((item) => (
                           <Link
                             key={item.label}
@@ -327,10 +327,10 @@ export default function Navbar() {
                 </Link>
                 <a
                   href="tel:+917646028228"
-                  className="flex items-center justify-center gap-2 w-full border border-gray-200 text-gray-500 font-medium py-3 rounded-xl text-sm min-h-[48px] hover:border-[#C9A96E]/50 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full border border-gray-200 text-gray-500 font-medium py-3 rounded-xl text-sm min-h-[48px] hover:border-[#C5A46D]/50 transition-colors"
                 >
                   <Phone className="w-4 h-4" />
-                  Talk to an Expert
+                  Speak With An Expert
                 </a>
               </div>
             </div>
