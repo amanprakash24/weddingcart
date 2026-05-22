@@ -401,10 +401,23 @@ function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
   );
 }
 
+const CATEGORY_MEDIA: Record<string, { src: string; type: 'image' | 'video' }> = {
+  'Wedding Tips':         { src: '/cat-wedding-tips.jpg',    type: 'image' },
+  'Venue Guides':         { src: '/cat-venue-guides.jpg',    type: 'image' },
+  'Bridal Fashion':       { src: '/cat-bridal-fashion.jpg',  type: 'image' },
+  'Real Weddings':        { src: '/cat-real-weddings.jpg',   type: 'image' },
+  'Budget Planning':      { src: '/cat-budget-planning.mp4', type: 'video' },
+  'Traditions & Culture': { src: '/cat-traditions.jpg',      type: 'image' },
+  'Destination Weddings': { src: '/cat-destination.jpg',     type: 'image' },
+  'Food & Catering':      { src: '/cat-food-catering.jpg',   type: 'image' },
+  'Décor & Flowers':      { src: '/cat-decor-flowers.jpg',   type: 'image' },
+  'Photography':          { src: '/cat-photography.jpg',     type: 'image' },
+};
+
 /* ── Browse by Category ───────────────────────────────────── */
 function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
   return (
-    <section className="mt-16 mb-4">
+    <section className="mt-4 mb-4">
       <div className="text-center mb-10">
         <GoldDivider />
         <div className="mt-6">
@@ -414,6 +427,7 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {CATEGORIES.filter(c => c !== 'All').map(cat => {
+          const media = CATEGORY_MEDIA[cat];
           const words = cat.split(' ');
           const firstWord = words[0];
           const rest = words.slice(1).join(' ');
@@ -421,35 +435,53 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
             <button
               key={cat}
               onClick={() => onSelect(cat)}
-              className="group relative flex flex-col items-center justify-center rounded-2xl px-3 py-6 text-center transition-all duration-300
-                bg-[#1C0A12] border border-[#C5A46D]/12
-                hover:border-[#C5A46D]/40 hover:bg-[#2D0B1F]
-                hover:shadow-[0_8px_32px_rgba(197,164,109,0.12)]
-                hover:-translate-y-1 overflow-hidden"
+              className="group relative rounded-2xl overflow-hidden cursor-pointer focus:outline-none"
+              style={{ aspectRatio: '3 / 4' }}
             >
-              {/* Ambient glow on hover */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at center, rgba(197,164,109,0.06) 0%, transparent 70%)' }} />
-
-              {/* Gold top accent line */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-px bg-[#C5A46D]/0 group-hover:bg-[#C5A46D]/60 transition-all duration-300 group-hover:w-12" />
-
-              <span
-                className="block font-bold italic leading-none text-[#FFFCF7] transition-colors duration-300 group-hover:text-[#E8D4A0]"
-                style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}
-              >
-                {firstWord}
-              </span>
-              {rest && (
-                <span
-                  className="block text-[10px] font-bold uppercase tracking-[0.22em] mt-1.5 text-[#C5A46D]/60 group-hover:text-[#C5A46D] transition-colors duration-300"
-                >
-                  {rest}
-                </span>
+              {/* Media background */}
+              {media?.type === 'video' ? (
+                <video
+                  src={media.src}
+                  autoPlay muted loop playsInline
+                  className="absolute inset-0 w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
+                />
+              ) : (
+                <Image
+                  src={media?.src ?? ''}
+                  alt={cat}
+                  fill
+                  className="object-cover scale-100 group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
+                  unoptimized
+                />
               )}
 
-              {/* Bottom gold underline */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-px bg-[#C5A46D]/50 group-hover:w-10 transition-all duration-400" />
+              {/* Dark overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0C0408]/88 via-[#0C0408]/35 to-[#0C0408]/10 group-hover:from-[#0C0408]/75 transition-all duration-500" />
+
+              {/* Gold inset frame */}
+              <div className="absolute inset-2.5 rounded-xl border border-[#C5A46D]/20 group-hover:border-[#C5A46D]/55 transition-colors duration-500 pointer-events-none z-10" />
+
+              {/* Text */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-20 px-3">
+                <span className="text-[9px] tracking-[0.3em] mb-4 text-[#C5A46D]/60 group-hover:text-[#C5A46D] transition-colors duration-300">✦</span>
+                <span
+                  className="block font-bold italic leading-none text-[#FFFCF7] text-center mb-1"
+                  style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.05rem, 2.2vw, 1.3rem)', textShadow: '0 2px 16px rgba(0,0,0,0.7)' }}
+                >
+                  {firstWord}
+                </span>
+                {rest && (
+                  <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.22em] mt-1 mb-5 text-[#C5A46D]/70 group-hover:text-[#C5A46D] transition-colors duration-300">
+                    {rest}
+                  </span>
+                )}
+                <span
+                  className="text-[9px] font-bold uppercase tracking-[0.28em] text-[#C5A46D]"
+                  style={{ borderBottom: '1px solid rgba(197,164,109,0.5)', paddingBottom: '2px' }}
+                >
+                  EXPLORE
+                </span>
+              </div>
             </button>
           );
         })}
