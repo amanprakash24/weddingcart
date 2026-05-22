@@ -60,8 +60,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${playfair.variable} ${cormorant.variable} ${dmSans.variable}`}>
-      <body className="bg-[#FFFCF7] text-[#1E1E1E] min-h-screen antialiased" suppressHydrationWarning>
+      <body className="bg-[#FFFAF5] text-[#2D2D2D] min-h-screen antialiased" suppressHydrationWarning>
         <CartProvider>
+
           <Suspense><ScrollToTop /></Suspense>
           <Navbar />
           <main className="min-h-screen">{children}</main>

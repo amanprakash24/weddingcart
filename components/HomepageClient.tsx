@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
@@ -65,21 +65,25 @@ const WEDDING_STYLES = [
     num: '01',
     label: 'Royal',
     desc: 'Grand palatial ceremonies — lavish decor, multi-cuisine catering, and complete coordination for 300+ guests.',
+    video: '/videos/royal-wedding.mp4',
   },
   {
     num: '02',
     label: 'Minimal',
     desc: 'Where restraint becomes luxury. Refined gatherings where every curated detail quietly speaks of quality.',
+    video: '/videos/minimal-wedding.mp4',
   },
   {
     num: '03',
     label: 'Destination',
     desc: 'Immersive celebrations in Goa, Rajasthan, Kerala — wherever your story begins, we handle every detail.',
+    video: '/videos/destination-wedding.mp4',
   },
   {
     num: '04',
     label: 'Intimate',
     desc: 'Soulful ceremonies of 50 guests or fewer, where every emotion is felt and every moment is personal.',
+    video: '/videos/intimate-wedding.mp4',
   },
 ];
 
@@ -93,6 +97,7 @@ const WEDDINGS = [
     desc: 'A 600-guest royal celebration across three palace venues. Eight-cuisine catering, hand-crafted décor, and live entertainment — all coordinated by our team.',
     tags: ['Venue', 'Catering', 'Décor', 'Entertainment'],
     img: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200&q=85',
+    video: '/videos/jaipur-wedding.mp4',
   },
   {
     num: '002',
@@ -101,6 +106,7 @@ const WEDDINGS = [
     desc: 'An intimate 120-guest destination wedding on a private beach. Custom florals, live music, seaside accommodation, and seamless logistics.',
     tags: ['Destination', 'Floral', 'Accommodation', 'Music'],
     img: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=1200&q=85',
+    video: '/videos/goa-wedding.mp4',
   },
   {
     num: '003',
@@ -141,12 +147,10 @@ export default function HomepageClient() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeStep, setActiveStep] = useState(0);
-  const [activeWedding, setActiveWedding] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
 
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const weddingRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -180,22 +184,6 @@ export default function HomepageClient() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // IntersectionObserver — activates wedding story when it occupies viewport center
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const idx = weddingRefs.current.findIndex((ref) => ref === entry.target);
-            if (idx !== -1) setActiveWedding(idx);
-          }
-        });
-      },
-      { threshold: 0.55, rootMargin: '-10% 0px -10% 0px' },
-    );
-    weddingRefs.current.forEach((ref) => { if (ref) observer.observe(ref); });
-    return () => observer.disconnect();
-  }, []);
 
   const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 3);
 
@@ -203,7 +191,7 @@ export default function HomepageClient() {
     <div>
 
       {/* ── 1. HERO ── */}
-      <section className="relative h-screen min-h-[620px] max-h-[940px] flex items-center overflow-hidden">
+      <section className="relative h-screen min-h-[640px] max-h-[940px] flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <Image src="/images/hero-bg.jpg" alt="Wedding" fill className="object-cover" sizes="100vw" priority />
         </div>
@@ -223,7 +211,7 @@ export default function HomepageClient() {
           style={{ background: 'radial-gradient(ellipse at center bottom, rgba(197,164,109,0.13) 0%, transparent 70%)' }}
         />
 
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-36 sm:pt-40">
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-36 lg:pt-40" >
           <div className="max-w-3xl">
 
             {/* Badge */}
@@ -231,15 +219,15 @@ export default function HomepageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-              className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/15 text-white/80 px-5 py-2 rounded-full text-xs font-medium mb-8 tracking-[0.14em] uppercase"
+              className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/15 text-white/80 px-4 py-2 rounded-full text-[0.68rem] sm:text-xs font-medium mb-6 sm:mb-8 tracking-[0.1em] sm:tracking-[0.14em] uppercase"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#C5A46D]" />
-              India&apos;s Expert Wedding Coordination Platform
+              <span className="w-1.5 h-1.5 rounded-full bg-[#C5A46D] flex-shrink-0" />
+              India&apos;s Expert Wedding Platform
             </motion.div>
 
             {/* ── Cinematic headline — phrase-by-phrase blur reveal ── */}
             <h1
-              className="text-4xl sm:text-5xl lg:text-[3.75rem] font-semibold text-white leading-[1.12] mb-6"
+              className="text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.75rem] font-semibold text-white leading-[1.14] mb-5 sm:mb-6"
               style={{ fontFamily: 'var(--font-playfair, serif)' }}
             >
               {/* Line 1: three phrases, each with its own emotional pause */}
@@ -271,7 +259,7 @@ export default function HomepageClient() {
                   <span className="vidaai-shimmer-overlay" aria-hidden="true">Vidaai</span>
                 </motion.span>
               </span>
-              {/* Line 2: slow, weighted reveal */}
+              {/* Line 2: slow, weighted reveal — words cycle colours every 2s */}
               <span className="block">
                 <motion.span
                   className="inline-block"
@@ -279,7 +267,8 @@ export default function HomepageClient() {
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.4, delay: 1.4, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  — We Handle Everything
+                  <span className="text-white/50">— </span>
+                  <span className="hero-highlight-cycle">We Handle Everything</span>
                 </motion.span>
               </span>
             </h1>
@@ -289,7 +278,7 @@ export default function HomepageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.0, delay: 1.85, ease: [0.22, 1, 0.36, 1] }}
-              className="text-white/65 text-lg mb-10 max-w-xl leading-relaxed"
+              className="text-white/65 text-sm sm:text-lg mb-8 sm:mb-10 max-w-md sm:max-w-xl leading-relaxed"
             >
               Expert consultants. Verified vendors. End-to-end coordination — for your dream Indian wedding.
             </motion.p>
@@ -299,18 +288,18 @@ export default function HomepageClient() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.0, delay: 2.15, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-col sm:flex-row items-start gap-4"
+              className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-4"
             >
               <Link
                 href="/plan"
-                className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white px-9 py-4 rounded-full font-semibold text-sm shadow-xl hover:opacity-90 transition-all"
+                className="inline-flex items-center justify-center gap-2 bg-[#8B1A4A] text-white px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-semibold text-sm shadow-xl hover:opacity-90 transition-all"
                 style={{ boxShadow: '0 8px 40px rgba(139,26,74,0.45)' }}
               >
                 Start Planning <ArrowRight className="w-4 h-4" />
               </Link>
               <a
                 href="tel:+917646028228"
-                className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white/90 px-7 py-4 rounded-full font-medium text-sm hover:bg-white/14 transition-all"
+                className="inline-flex items-center justify-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white/90 px-6 sm:px-7 py-3.5 sm:py-4 rounded-full font-medium text-sm hover:bg-white/14 transition-all"
               >
                 <Phone className="w-4 h-4" /> Speak With An Expert
               </a>
@@ -354,8 +343,8 @@ export default function HomepageClient() {
               { value: '5',      label: 'Dedicated Experts' },
             ].map(({ value, label }) => (
               <motion.div key={label} variants={fadeUp} className="text-center lg:px-10">
-                <p className="font-cormorant text-5xl sm:text-6xl font-light text-[#8B1A4A] leading-none mb-2">{value}</p>
-                <p className="text-gray-400 text-[0.7rem] tracking-[0.2em] uppercase">{label}</p>
+                <p className="font-cormorant text-4xl sm:text-5xl lg:text-6xl font-light text-[#8B1A4A] leading-none mb-2">{value}</p>
+                <p className="text-gray-400 text-[0.58rem] sm:text-[0.7rem] tracking-[0.1em] sm:tracking-[0.2em] uppercase">{label}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -384,7 +373,7 @@ export default function HomepageClient() {
 
           <div className="flex flex-col lg:flex-row lg:gap-10 lg:items-start">
             <div className="hidden lg:block lg:w-[48%] flex-shrink-0 self-stretch">
-              <div className="sticky top-0 h-screen flex items-center justify-center">
+              <div className="sticky top-0 h-screen flex items-center justify-center" style={{ paddingBottom: '15%' }}>
                 <div style={{ filter: 'drop-shadow(0 24px 52px rgba(28,18,8,0.24)) drop-shadow(0 4px 12px rgba(28,18,8,0.1))' }} className="w-full">
                   <div
                     className="relative w-full"
@@ -504,49 +493,81 @@ export default function HomepageClient() {
       </section>
 
       {/* ── 5. SIGNATURE WEDDING STYLES ── */}
-      <section className="bg-[#FFFCF7]">
+      <section className="bg-[#FFFCF7] overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-16 sm:py-20 border-b border-[#C5A46D]/10">
-            <div className="max-w-lg">
-              <p className="eyebrow-luxury mb-4">Our Speciality</p>
-              <h2 className="font-semibold text-[#2A1F1B] text-4xl sm:text-5xl leading-tight" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+          <div className="py-10 sm:py-14 border-b border-[#C5A46D]/10">
+            <motion.div
+              className="max-w-lg"
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <p className="eyebrow-luxury mb-3">Our Speciality</p>
+              <h2 className="font-semibold text-[#2A1F1B] text-2xl sm:text-4xl leading-tight" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
                 Every Wedding Style,<br />Beautifully Served
               </h2>
-            </div>
+            </motion.div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y divide-[#C5A46D]/10">
+          <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-3 py-5 pb-7 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:py-6 sm:pb-6 sm:overflow-x-visible">
             {WEDDING_STYLES.map((style, i) => (
               <motion.div
                 key={style.label}
                 initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
                 transition={{ duration: 0.7, delay: i * 0.1 }}
+                whileHover={{ scale: 1.015 }}
                 className={[
-                  'group relative overflow-hidden px-8 sm:px-10 lg:px-14 py-12 sm:py-16',
-                  'hover:bg-[#FAF7F2] transition-colors duration-500',
-                  i >= 2 ? 'border-t border-[#C5A46D]/10' : '',
-                  i % 2 === 0 ? 'sm:border-r border-[#C5A46D]/10' : '',
+                  'group relative overflow-hidden rounded-xl sm:rounded-2xl flex-shrink-0 snap-start w-[78vw] sm:w-auto',
+                  style.video ? 'min-h-[260px] sm:min-h-[340px]' : 'px-6 sm:px-10 lg:px-14 py-8 sm:py-12 hover:bg-[#FAF7F2] border border-[#C5A46D]/10 transition-colors duration-500',
                 ].join(' ')}
               >
-                <span
-                  aria-hidden="true"
-                  className="absolute right-6 -top-2 font-cormorant font-light leading-none select-none pointer-events-none"
-                  style={{ fontSize: 'clamp(6rem, 10vw, 10rem)', color: 'rgba(197,164,109,0.07)' }}
-                >
-                  {style.num}
-                </span>
-                <p className="eyebrow-luxury text-[#C5A46D]/80 mb-4">{style.num}</p>
-                <h3
-                  className="mb-4 leading-tight transition-colors duration-300 group-hover:text-[#8B1A4A]"
-                  style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: '#2A1F1B' }}
-                >
-                  {style.label}
-                </h3>
-                <p className="text-[#6B5B4D] text-sm leading-relaxed max-w-xs mb-8">{style.desc}</p>
-                <Link href="/plan" className="inline-flex items-center gap-2 text-[#C5A46D] text-[0.72rem] font-semibold tracking-[0.14em] uppercase group-hover:gap-4 transition-all duration-300">
-                  <span>Plan This Wedding</span>
-                  <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
-                </Link>
+                {style.video ? (
+                  /* ── Video card ── */
+                  <>
+                    <video
+                      src={style.video}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[1800ms] ease-out"
+                    />
+                    {/* Cinematic dark overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1A0E09]/90 via-[#1A0E09]/45 to-[#1A0E09]/20" />
+                    {/* Subtle gold glow at bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none" style={{ background: 'radial-gradient(ellipse at bottom, rgba(197,164,109,0.12) 0%, transparent 70%)' }} />
+                    {/* Content */}
+                    <div className="relative z-10 flex flex-col justify-end h-full px-8 sm:px-10 lg:px-14 py-8 sm:py-10">
+                      <h3
+                        className="mb-2 leading-tight text-white"
+                        style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.4rem, 2.5vw, 2rem)', fontWeight: 600 }}
+                      >
+                        {style.label}
+                      </h3>
+                      <p className="text-white/65 text-xs leading-relaxed max-w-xs mb-5">{style.desc}</p>
+                      <Link href="/plan" className="inline-flex items-center gap-2 text-[#C5A46D] text-[0.72rem] font-semibold tracking-[0.14em] uppercase group-hover:gap-4 transition-all duration-300">
+                        <span>Plan This Wedding</span>
+                        <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  /* ── Standard card ── */
+                  <>
+                    <h3
+                      className="mb-4 leading-tight transition-colors duration-300 group-hover:text-[#8B1A4A]"
+                      style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: '#2A1F1B' }}
+                    >
+                      {style.label}
+                    </h3>
+                    <p className="text-[#6B5B4D] text-sm leading-relaxed max-w-xs mb-8">{style.desc}</p>
+                    <Link href="/plan" className="inline-flex items-center gap-2 text-[#C5A46D] text-[0.72rem] font-semibold tracking-[0.14em] uppercase group-hover:gap-4 transition-all duration-300">
+                      <span>Plan This Wedding</span>
+                      <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
+                    </Link>
+                  </>
+                )}
               </motion.div>
             ))}
           </div>
@@ -562,252 +583,113 @@ export default function HomepageClient() {
           style={{ background: 'radial-gradient(ellipse at top, rgba(197,164,109,0.09) 0%, transparent 65%)' }}
         />
 
-        {/* Section header */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-32 pb-14 sm:pb-20 text-center">
+        {/* ── Section header — restrained luxury ── */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-18 pb-8 sm:pb-12 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }} transition={{ duration: 0.7 }}
+            initial={{ opacity: 0, y: 22, filter: 'blur(6px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           >
             <p className="eyebrow-luxury text-[#C5A46D]/70 mb-4">Wedding Journal</p>
             <h2
-              className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white"
+              className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-[1.2] mb-5"
               style={{ fontFamily: 'var(--font-playfair, serif)' }}
             >
               Celebrations Curated<br />by <span className="text-[#C5A46D]">ShaadiShopping</span>
             </h2>
-            <p className="font-cormorant italic text-[#6B5B4D] text-xl mt-5">
-              Real weddings. Real stories. Real joy.
-            </p>
+            <div className="flex items-center justify-center gap-4">
+              <div className="h-px w-10" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.45))' }} />
+              <p className="font-cormorant italic text-white/40 text-base sm:text-lg">
+                Real weddings. Real stories. Real joy.
+              </p>
+              <div className="h-px w-10" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.45))' }} />
+            </div>
           </motion.div>
         </div>
 
-        {/* ── DESKTOP — sticky left image + scrolling right stories ── */}
-        <div className="hidden lg:grid lg:grid-cols-2 max-w-7xl mx-auto">
-
-          {/* LEFT — sticky cinematic image panel */}
-          <div className="sticky top-0 h-screen overflow-hidden">
-
-            {/* Warm radial glow behind image */}
-            <div
-              className="absolute inset-0 z-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle at center, rgba(197,164,109,0.07) 0%, transparent 60%)' }}
-            />
-
-            {/* Cross-fade image with slow cinematic zoom on enter */}
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeWedding}
-                className="absolute inset-0"
-                initial={{ opacity: 0, scale: 1.06 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.03, transition: { duration: 0.65 } }}
-                transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <Image
-                  src={WEDDINGS[activeWedding].img}
-                  alt={WEDDINGS[activeWedding].title}
-                  fill sizes="50vw"
-                  className="object-cover"
-                  priority
-                />
-                {/* Directional cinematic vignette */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#2A1F1B]/55 via-transparent to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#2A1F1B]/70 via-transparent to-[#2A1F1B]/25" />
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Large editorial number — overlaid on image, very dim */}
-            <div className="absolute bottom-10 left-8 z-20 pointer-events-none overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={activeWedding}
-                  className="font-cormorant font-light leading-none select-none"
-                  style={{ fontSize: '9rem', color: 'rgba(197,164,109,0.14)' }}
-                  initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, y: -20, transition: { duration: 0.4 } }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  {WEDDINGS[activeWedding].num}
-                </motion.p>
-              </AnimatePresence>
-            </div>
-
-            {/* Vertical progress dots — right edge of image */}
-            <div className="absolute right-5 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20">
-              {WEDDINGS.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => weddingRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  aria-label={`Wedding story ${i + 1}`}
-                  className={`rounded-full transition-all duration-500 ${
-                    i === activeWedding
-                      ? 'h-6 w-1.5 bg-[#C5A46D]'
-                      : 'h-1.5 w-1.5 bg-white/20 hover:bg-white/45'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* RIGHT — scrolling story panels */}
-          <div className="relative">
-
-            {/* Animated gold progress line */}
-            <div className="absolute left-0 top-0 bottom-0 w-px bg-[#C5A46D]/10">
-              <motion.div
-                className="absolute top-0 left-0 w-full"
-                animate={{ height: `${((activeWedding + 1) / WEDDINGS.length) * 100}%` }}
-                transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
-                style={{ background: 'linear-gradient(to bottom, #C5A46D, #E8D4A0)' }}
-              />
-            </div>
-
-            {WEDDINGS.map((w, i) => {
-              const isActive = activeWedding === i;
-              return (
-                <div
-                  key={w.num}
-                  ref={(el) => { weddingRefs.current[i] = el; }}
-                  className="min-h-[80vh] flex items-center pl-14 pr-8 lg:pr-12 py-20 cursor-pointer"
-                  onClick={() => weddingRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  style={{ transition: 'opacity 0.7s ease', opacity: isActive ? 1 : 0.22 }}
-                >
-                  <div className="w-full max-w-md">
-
-                    {/* Story number — dims elegantly when inactive */}
-                    <motion.p
-                      className="font-cormorant font-light leading-none mb-5 select-none"
-                      style={{ fontSize: '5.5rem' }}
-                      animate={{ color: isActive ? 'rgba(197,164,109,0.38)' : 'rgba(197,164,109,0.09)' }}
-                      transition={{ duration: 0.55 }}
-                    >
-                      {w.num}
-                    </motion.p>
-
-                    {/* City — blur reveal */}
-                    <motion.p
-                      className="text-[0.65rem] tracking-[0.32em] uppercase mb-3"
-                      animate={{
-                        color: isActive ? 'rgba(197,164,109,0.78)' : 'rgba(197,164,109,0.22)',
-                        filter: isActive ? 'blur(0px)' : 'blur(2px)',
-                        y: isActive ? 0 : 6,
-                      }}
-                      transition={{ duration: 0.6, delay: isActive ? 0.07 : 0 }}
-                    >
-                      {w.city}
-                    </motion.p>
-
-                    {/* Title — blur-to-clear reveal, no font-size animation */}
-                    <motion.h3
-                      className="font-semibold leading-tight mb-5 text-3xl sm:text-4xl"
-                      style={{ fontFamily: 'var(--font-playfair, serif)' }}
-                      animate={{
-                        color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.28)',
-                        filter: isActive ? 'blur(0px)' : 'blur(1.5px)',
-                        y: isActive ? 0 : 10,
-                      }}
-                      transition={{ duration: 0.65, delay: isActive ? 0.14 : 0, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      {w.title}
-                    </motion.h3>
-
-                    {/* Gold divider line — animates width */}
-                    <motion.div
-                      className="h-px mb-6"
-                      style={{ background: 'linear-gradient(to right, #C5A46D, transparent)' }}
-                      animate={{ width: isActive ? '60px' : '18px', opacity: isActive ? 1 : 0.15 }}
-                      transition={{ duration: 0.55, delay: isActive ? 0.22 : 0 }}
-                    />
-
-                    {/* Description — blur-up reveal */}
-                    <AnimatePresence>
-                      {isActive && (
-                        <motion.p
-                          className="text-[#8A7A6A] text-sm leading-relaxed mb-8"
-                          initial={{ opacity: 0, filter: 'blur(8px)', y: 18 }}
-                          animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-                          exit={{ opacity: 0, y: -8, transition: { duration: 0.28 } }}
-                          transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                        >
-                          {w.desc}
-                        </motion.p>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Tags — staggered individual reveal */}
-                    <AnimatePresence>
-                      {isActive && (
-                        <motion.div
-                          className="flex flex-wrap gap-2"
-                          initial={{ opacity: 0, y: 14 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, transition: { duration: 0.22 } }}
-                          transition={{ duration: 0.5, delay: 0.42 }}
-                        >
-                          {w.tags.map((tag, ti) => (
-                            <motion.span
-                              key={tag}
-                              className="text-[10px] text-[#C5A46D]/55 border border-[#C5A46D]/15 px-3 py-1.5 rounded-full tracking-wide"
-                              initial={{ opacity: 0, scale: 0.88 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.4, delay: 0.44 + ti * 0.07 }}
-                            >
-                              {tag}
-                            </motion.span>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                  </div>
-                </div>
-              );
-            })}
-
-          </div>
-        </div>
-
-        {/* ── MOBILE — cinematic card stack (no sticky layout on small screens) ── */}
-        <div className="lg:hidden max-w-7xl mx-auto px-4 pb-16">
-          {WEDDINGS.map((w, i) => (
+        {/* ── Alternating 50/50 wedding sections ── */}
+        {WEDDINGS.map((w, i) => {
+          const flip = i % 2 === 1;
+          return (
             <motion.div
               key={w.num}
-              className="mb-14 last:mb-0"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.7, delay: i * 0.1 }}
+              className="relative z-10 flex flex-col lg:flex-row"
+              style={{ minHeight: '70vh' }}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.8 }}
             >
-              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-6 img-zoom">
-                <Image src={w.img} fill className="object-cover" alt={w.title} sizes="100vw" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#2A1F1B]/70 via-[#2A1F1B]/10 to-transparent" />
-                <div className="absolute bottom-5 left-5">
-                  <p className="text-[#C5A46D]/60 text-[0.6rem] tracking-[0.25em] uppercase mb-1">{w.city}</p>
-                  <p className="font-cormorant text-5xl font-light text-white/12 leading-none">{w.num}</p>
+              {/* Video side */}
+              <div className={`relative w-full lg:w-1/2 min-h-[56vw] sm:min-h-[45vw] lg:min-h-0 overflow-hidden ${flip ? 'lg:order-2' : 'lg:order-1'}`}>
+                <motion.div
+                  className="absolute inset-0"
+                  initial={{ scale: 1.06 }}
+                  whileInView={{ scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {w.video ? (
+                    <video src={w.video} autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" />
+                  ) : (
+                    <Image src={w.img} fill alt={w.title} sizes="50vw" className="object-cover" />
+                  )}
+                </motion.div>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#2A1F1B]/60 via-[#2A1F1B]/10 to-transparent" />
+                <div className="absolute bottom-5 left-6 pointer-events-none">
+                  <p className="font-cormorant font-light leading-none select-none" style={{ fontSize: '5rem', color: 'rgba(197,164,109,0.15)' }}>{w.num}</p>
                 </div>
               </div>
-              <h3
-                className="text-white text-2xl font-semibold mb-3 leading-snug"
-                style={{ fontFamily: 'var(--font-playfair, serif)' }}
-              >
-                {w.title}
-              </h3>
-              <div className="w-10 h-px mb-4" style={{ background: 'linear-gradient(to right, #C5A46D, transparent)' }} />
-              <p className="text-[#6B5B4D] text-sm leading-relaxed mb-5">{w.desc}</p>
-              <div className="flex flex-wrap gap-2">
-                {w.tags.map((tag) => (
-                  <span key={tag} className="text-[10px] text-[#C5A46D]/50 border border-[#C5A46D]/12 px-3 py-1.5 rounded-full tracking-wide">
-                    {tag}
-                  </span>
-                ))}
+
+              {/* Text side — vertically centered */}
+              <div className={`w-full lg:w-1/2 flex items-center justify-center px-6 sm:px-10 lg:px-16 py-10 lg:py-16 ${flip ? 'lg:order-1' : 'lg:order-2'}`}>
+                <motion.div
+                  className="max-w-md w-full text-center lg:text-left"
+                  initial={{ opacity: 0, y: 28, filter: 'blur(6px)' }}
+                  whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.85, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <p className="text-[0.6rem] tracking-[0.32em] uppercase text-[#C5A46D]/70 mb-3">{w.city}</p>
+                  <h3
+                    className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white leading-tight mb-5"
+                    style={{ fontFamily: 'var(--font-playfair, serif)' }}
+                  >
+                    {w.title}
+                  </h3>
+                  <motion.div
+                    className="h-px mb-6 mx-auto lg:mx-0"
+                    style={{ background: 'linear-gradient(to right, #C5A46D, transparent)' }}
+                    initial={{ width: 0 }}
+                    whileInView={{ width: 48 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.3 }}
+                  />
+                  <p className="text-[#8A7A6A] text-sm sm:text-base leading-relaxed mb-7">{w.desc}</p>
+                  <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
+                    {w.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-[10px] text-[#C5A46D]/70 px-3 py-1.5 rounded-full tracking-wide"
+                        style={{
+                          background: 'rgba(197,164,109,0.07)',
+                          backdropFilter: 'blur(8px)',
+                          WebkitBackdropFilter: 'blur(8px)',
+                          border: '1px solid rgba(197,164,109,0.14)',
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
-          ))}
-        </div>
-
+          );
+        })}
         {/* CTA */}
-        <div className="text-center pb-20 sm:pb-28">
+        <div className="text-center pb-20 sm:pb-28" style={{ paddingTop: '30px' }}>
           <Link
             href="/plan"
             className="inline-flex items-center gap-2 text-[#C5A46D] text-sm font-medium hover:opacity-75 transition-opacity tracking-wide"
@@ -819,7 +701,7 @@ export default function HomepageClient() {
       </section>
 
       {/* ── 7. TESTIMONIAL ── */}
-      <section className="py-24 sm:py-32 bg-[#FAF5EE] overflow-hidden">
+      <section className="py-16 sm:py-24 lg:py-32 bg-[#FAF5EE] overflow-hidden">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="eyebrow-luxury text-[#C5A46D] mb-6">What Couples Say</p>
           <AnimatePresence mode="wait">
@@ -860,15 +742,15 @@ export default function HomepageClient() {
       </section>
 
       {/* ── 8. MEET YOUR EXPERT ── */}
-      <section className="py-24 sm:py-32 bg-[#FFFCF7] overflow-hidden">
+      <section className="py-16 sm:py-24 lg:py-32 bg-[#FFFCF7] overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            className="grid lg:grid-cols-2 gap-16 lg:gap-28 items-center"
+            className="grid lg:grid-cols-2 gap-8 lg:gap-28 items-center"
             initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }} variants={stagger(0.18)}
           >
             <motion.div variants={slideLeft} className="flex flex-col items-center lg:items-start">
-              <div className="w-52 h-52 rounded-full bg-gradient-to-br from-[#F5E9D0] to-[#EDD9B0] border-[3px] border-[#C5A46D]/30 flex items-center justify-center mb-7 shadow-xl">
-                <span className="font-semibold text-7xl text-[#8B1A4A]/60 select-none" style={{ fontFamily: 'var(--font-playfair, serif)' }}>P</span>
+              <div className="w-36 h-36 sm:w-52 sm:h-52 rounded-full bg-gradient-to-br from-[#F5E9D0] to-[#EDD9B0] border-[3px] border-[#C5A46D]/30 flex items-center justify-center mb-5 sm:mb-7 shadow-xl">
+                <span className="font-semibold text-5xl sm:text-7xl text-[#8B1A4A]/60 select-none" style={{ fontFamily: 'var(--font-playfair, serif)' }}>P</span>
               </div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="relative flex w-2 h-2">
@@ -882,7 +764,7 @@ export default function HomepageClient() {
 
             <motion.div variants={slideRight}>
               <p className="eyebrow-luxury mb-5">Human First</p>
-              <h2 className="text-4xl sm:text-5xl font-semibold text-gray-900 mb-4 leading-tight" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-900 mb-4 leading-tight" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
                 Meet Priya.<br />Your Wedding Expert.
               </h2>
               <div className="w-12 h-px bg-[#C5A46D]/35 mb-6" />
@@ -913,7 +795,7 @@ export default function HomepageClient() {
 
       {/* ── 9. CURATED VENDORS ── */}
       {!loading && topVendors.length > 0 && (
-        <section className="py-24 sm:py-32 bg-[#FEFBF6]">
+        <section className="py-16 sm:py-24 lg:py-32 bg-[#FEFBF6]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               className="text-center mb-14"
@@ -948,8 +830,30 @@ export default function HomepageClient() {
         </section>
       )}
 
+      {/* ── AS SEEN IN ── */}
+      <div className="bg-[#FAF5EE] border-y border-[#C5A46D]/8 py-8 overflow-hidden">
+        <motion.p
+          className="text-center text-[0.58rem] tracking-[0.3em] uppercase text-[#C5A46D]/45 mb-5"
+          initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+        >
+          Featured In
+        </motion.p>
+        <motion.div
+          className="flex items-center gap-8 sm:gap-14 overflow-x-auto scrollbar-hide px-6 sm:justify-center sm:flex-wrap pb-1"
+          initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+        >
+          {['Vogue India', 'WeddingSutra', 'Brides Today', 'The Wedding Filmer', 'HT Brunch'].map((pub) => (
+            <p key={pub} className="font-cormorant text-base sm:text-xl italic text-[#8B5A6A]/28 whitespace-nowrap select-none flex-shrink-0">
+              {pub}
+            </p>
+          ))}
+        </motion.div>
+      </div>
+
       {/* ── 10. FINAL CTA ── */}
-      <section className="relative py-28 sm:py-40 overflow-hidden">
+      <section className="relative py-20 sm:py-28 lg:py-40 overflow-hidden">
         <div className="absolute inset-0">
           <Image src="https://images.unsplash.com/photo-1478146059778-26028b07395a?w=1920&q=80" alt="Wedding" fill sizes="100vw" className="object-cover" />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(42,31,27,0.94) 0%, rgba(20,10,8,0.72) 100%)' }} />
@@ -961,17 +865,17 @@ export default function HomepageClient() {
           initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }} variants={stagger(0.16)}
         >
           <motion.p variants={fadeUp} className="eyebrow-luxury text-[#C5A46D] mb-5">Begin Your Journey</motion.p>
-          <motion.h2 variants={fadeUp} className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white mb-6 leading-tight" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+          <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl lg:text-6xl font-semibold text-white mb-5 sm:mb-6 leading-tight" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
             Let&apos;s Create Your<br />Once-in-a-Lifetime<br />Celebration
           </motion.h2>
           <motion.p variants={fadeUp} className="text-white/55 text-lg mb-10 max-w-lg mx-auto leading-relaxed">
             Speak with our wedding experts and start planning beautifully.
           </motion.p>
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/plan" className="bg-[#8B1A4A] text-white font-semibold px-10 py-4 rounded-full hover:opacity-90 transition-all hover:shadow-2xl text-sm tracking-wide">
+          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+            <Link href="/plan" className="flex items-center justify-center bg-[#8B1A4A] text-white font-semibold px-8 sm:px-10 py-4 rounded-full hover:opacity-90 transition-all hover:shadow-2xl text-sm tracking-wide">
               Book A Free Consultation
             </Link>
-            <a href="tel:+917070486987" className="flex items-center justify-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white font-medium px-8 py-4 rounded-full hover:bg-white/14 transition-all text-sm">
+            <a href="tel:+917070486987" className="flex items-center justify-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white font-medium px-7 sm:px-8 py-4 rounded-full hover:bg-white/14 transition-all text-sm">
               <Phone className="w-4 h-4" /> Speak With An Expert
             </a>
           </motion.div>
