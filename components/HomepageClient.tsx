@@ -608,23 +608,77 @@ export default function HomepageClient() {
           style={{ background: 'radial-gradient(ellipse at top, rgba(197,164,109,0.09) 0%, transparent 65%)' }}
         />
 
-        {/* Section header */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-32 pb-14 sm:pb-20 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }} transition={{ duration: 0.7 }}
+        {/* ── Section header — cinematic luxury reveal ── */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-10 sm:pb-14 text-center">
+
+          {/* Eyebrow */}
+          <motion.p
+            className="eyebrow-luxury text-[#C5A46D]/70 mb-5"
+            initial={{ opacity: 0, y: 16, filter: 'blur(6px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           >
-            <p className="eyebrow-luxury text-[#C5A46D]/70 mb-4">Wedding Journal</p>
-            <h2
-              className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white"
-              style={{ fontFamily: 'var(--font-playfair, serif)' }}
-            >
-              Celebrations Curated<br />by <span className="text-[#C5A46D]">ShaadiShopping</span>
-            </h2>
-            <p className="font-cormorant italic text-[#6B5B4D] text-xl mt-5">
-              Real weddings. Real stories. Real joy.
-            </p>
+            Wedding Journal
+          </motion.p>
+
+          {/* Heading — two lines, each with its own blur-float reveal */}
+          <motion.h2
+            className="text-3xl sm:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.18]"
+            style={{ fontFamily: 'var(--font-playfair, serif)' }}
+            initial={{ opacity: 0, y: 28, filter: 'blur(8px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.9, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+          >
+            Celebrations Curated
+          </motion.h2>
+          <motion.h2
+            className="text-3xl sm:text-5xl lg:text-[3.5rem] font-semibold leading-[1.18] mb-7"
+            style={{ fontFamily: 'var(--font-playfair, serif)' }}
+            initial={{ opacity: 0, y: 28, filter: 'blur(8px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.9, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          >
+            by <span className="text-[#C5A46D]">ShaadiShopping</span>
+          </motion.h2>
+
+          {/* Ornamental gold divider */}
+          <motion.div
+            className="flex items-center justify-center gap-3 mb-7"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.36 }}
+          >
+            <div className="h-px w-14 sm:w-20" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.7))' }} />
+            <span className="text-[#C5A46D]/50 text-[0.6rem]">✦</span>
+            <div className="h-px w-14 sm:w-20" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.7))' }} />
           </motion.div>
+
+          {/* Glassmorphism tagline chip */}
+          <motion.div
+            initial={{ opacity: 0, y: 14, filter: 'blur(4px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.48, ease: [0.22, 1, 0.36, 1] }}
+            className="inline-flex flex-wrap justify-center items-center gap-2 sm:gap-3 px-5 sm:px-7 py-3 rounded-full"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(197,164,109,0.18)',
+            }}
+          >
+            {['Real weddings.', 'Real stories.', 'Real joy.'].map((phrase, i) => (
+              <span key={phrase} className="flex items-center gap-2 sm:gap-3">
+                <span className="font-cormorant italic text-white/65 text-base sm:text-lg tracking-wide">{phrase}</span>
+                {i < 2 && <span className="text-[#C5A46D]/35 text-[0.55rem]">✦</span>}
+              </span>
+            ))}
+          </motion.div>
+
         </div>
 
         {/* ── DESKTOP — sticky left image + scrolling right stories ── */}
