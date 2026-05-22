@@ -122,11 +122,12 @@ export default function Navbar() {
   return (
     <>
       {/* ── ANNOUNCEMENT BAR — single calm message ── */}
-      <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-9 flex items-center justify-center">
-        <p className="text-[0.62rem] tracking-[0.22em]">
-          <span className="text-[#C5A46D]/45 mr-5">✦</span>
-          Expert Wedding Coordination · From Venue to Vidaai · Across India
-          <span className="text-[#C5A46D]/45 ml-5">✦</span>
+      <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-9 flex items-center justify-center overflow-hidden px-4">
+        <p className="text-[0.62rem] tracking-[0.12em] sm:tracking-[0.22em] whitespace-nowrap truncate text-center">
+          <span className="text-[#C5A46D]/45 mr-3 sm:mr-5">✦</span>
+          <span className="hidden sm:inline">Expert Wedding Coordination · From Venue to Vidaai · Across India</span>
+          <span className="sm:hidden">Expert Wedding Coordination · Across India</span>
+          <span className="text-[#C5A46D]/45 ml-3 sm:ml-5">✦</span>
         </p>
       </div>
 
@@ -139,8 +140,8 @@ export default function Navbar() {
             : 'bg-white/96 backdrop-blur-md shadow-[0_1px_0_rgba(201,169,110,0.15)]'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10">
-          <div className="flex items-center justify-between h-[84px]">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-10">
+          <div className="flex items-center justify-between h-[52px] sm:h-[64px] lg:h-[72px]">
 
             {/* Logo */}
             <Link href="/" className="flex-shrink-0" style={{ touchAction: 'manipulation' }}>
@@ -149,7 +150,7 @@ export default function Navbar() {
                 alt="ShaadiShopping"
                 width={240}
                 height={150}
-                className="h-[58px] lg:h-[64px] w-auto object-contain"
+                className="h-[44px] sm:h-[52px] lg:h-[58px] w-auto object-contain"
                 priority
               />
             </Link>
@@ -191,7 +192,7 @@ export default function Navbar() {
                 {megaOpen && (
                   <div
                     className="fixed left-[5%] right-[5%] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.12)] border-t border-[#C5A46D]/15 animate-fade-in overflow-y-auto z-[9998] rounded-b-2xl"
-                    style={{ top: 'calc(36px + 84px)' }}
+                    style={{ top: 'calc(36px + 72px - 35px)' }}
                   >
                     <div className="max-w-7xl mx-auto px-8 py-8">
                       <div className="grid grid-cols-3 lg:grid-cols-6 gap-8">
@@ -273,7 +274,7 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         {mobileOpen && (
-          <div className="lg:hidden bg-white border-t border-[#C5A46D]/10 shadow-xl animate-fade-in max-h-[calc(100vh-7.5rem)] overflow-y-auto">
+          <div className="lg:hidden bg-white border-t border-[#C5A46D]/10 shadow-xl animate-fade-in max-h-[calc(100vh-5.5rem)] overflow-y-auto">
             <div className="px-5 py-4 space-y-1">
               {navLinks.map((link) => (
                 <Link

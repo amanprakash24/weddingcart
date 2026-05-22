@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { User, Phone, Mail, Calendar, Users, UtensilsCrossed, Building2, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Heart, Clock, X, MapPin } from 'lucide-react';
 import WeddingDashboardClient from '@/components/WeddingDashboardClient';
@@ -59,22 +59,8 @@ export default function PlanPageClient() {
   const { items, total, clearCart } = useCart();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
-  const [otpVerified, setOtpVerified] = useState(false);
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState('');
-  const [resendTimer, setResendTimer] = useState(0);
-  const [devOtpCode, setDevOtpCode] = useState('');
-  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
-
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-    const t = setTimeout(() => setResendTimer((v) => v - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendTimer]);
   const [success, setSuccess] = useState(false);
   const [form, setForm] = useState<FormData>({
     name: '', phone: '', email: '', city: 'Patna', weddingDate: '', days: 1,
@@ -103,78 +89,6 @@ export default function PlanPageClient() {
 
   const isValidPhone = (v: string) => /^\d{10}$/.test(v.replace(/[\s\-\+\(\)]/g, ''));
 
-  const maskPhone = (p: string) => p.slice(0, 2) + 'XXXXXX' + p.slice(-2);
-
-  const handleOtpInput = (value: string, idx: number) => {
-    const digit = value.replace(/\D/g, '').slice(-1);
-    const next = [...otpDigits];
-    next[idx] = digit;
-    setOtpDigits(next);
-    setOtpError('');
-    if (digit && idx < 5) otpInputRefs.current[idx + 1]?.focus();
-  };
-
-  const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
-    if (e.key === 'Backspace' && !otpDigits[idx] && idx > 0) otpInputRefs.current[idx - 1]?.focus();
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    const next = pasted.padEnd(6, '').split('').slice(0, 6);
-    setOtpDigits(next);
-    otpInputRefs.current[Math.min(pasted.length, 5)]?.focus();
-  };
-
-  const sendOtp = async () => {
-    setOtpLoading(true);
-    setOtpError('');
-    setDevOtpCode('');
-    try {
-      const res = await fetch('/api/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: form.phone }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setOtpError(data.message || 'Failed to send OTP. Please try again.');
-        return;
-      }
-      if (data.devCode) setDevOtpCode(data.devCode);
-      setResendTimer(30);
-      setOtpDigits(['', '', '', '', '', '']);
-      setTimeout(() => otpInputRefs.current[0]?.focus(), 80);
-    } finally {
-      setOtpLoading(false);
-    }
-  };
-
-  const verifyOtp = async () => {
-    const code = otpDigits.join('');
-    if (code.length < 6) return;
-    setOtpLoading(true);
-    setOtpError('');
-    try {
-      const res = await fetch('/api/otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: form.phone, code }),
-      });
-      if (res.ok) {
-        setOtpVerified(true);
-        setShowOtpModal(false);
-        setStep(4);
-      } else {
-        const data = await res.json();
-        setOtpError(data.message || 'Invalid OTP. Please try again.');
-        setOtpDigits(['', '', '', '', '', '']);
-        setTimeout(() => otpInputRefs.current[0]?.focus(), 50);
-      }
-    } finally {
-      setOtpLoading(false);
-    }
-  };
 
   const canNext = () => {
     if (step === 0) return form.name && isValidPhone(form.phone) && form.weddingDate && form.city;
@@ -715,15 +629,7 @@ export default function PlanPageClient() {
 
             {step < STEPS.length - 1 ? (
               <button
-                onClick={() => {
-                if (!canNext()) return;
-                if (step === 3 && !otpVerified) {
-                  sendOtp();
-                  setShowOtpModal(true);
-                  return;
-                }
-                setStep((s) => s + 1);
-              }}
+                onClick={() => { if (canNext()) setStep((s) => s + 1); }}
                 disabled={!canNext()}
                 className="flex items-center gap-2 bg-[#8B1A4A] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -742,101 +648,6 @@ export default function PlanPageClient() {
         </div>
       </div>
 
-      {/* ── OTP Verification Modal ── */}
-      {showOtpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl">
-
-            {/* Icon + heading */}
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#25D366' }}>
-                <span className="text-3xl">💬</span>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">
-                Verify via WhatsApp
-              </h3>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                We&apos;ve sent a 6-digit OTP on <span className="font-semibold text-[#25D366]">WhatsApp</span> to<br />
-                <span className="font-semibold text-gray-900">+91 {maskPhone(form.phone)}</span>
-              </p>
-              <button
-                onClick={() => { setShowOtpModal(false); setStep(0); setOtpDigits(['','','','','','']); setOtpError(''); }}
-                className="text-xs text-[#8B1A4A] underline underline-offset-2 mt-2 hover:opacity-75 transition-opacity"
-              >
-                Wrong number? Change it
-              </button>
-            </div>
-
-            {/* 6 digit inputs */}
-            <div className="flex gap-2 justify-center mb-3">
-              {otpDigits.map((digit, i) => (
-                <input
-                  key={i}
-                  ref={(el) => { otpInputRefs.current[i] = el; }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleOtpInput(e.target.value, i)}
-                  onKeyDown={(e) => handleOtpKeyDown(e, i)}
-                  onPaste={i === 0 ? handleOtpPaste : undefined}
-                  className={`w-11 h-12 text-center text-xl font-bold border-2 rounded-xl outline-none transition-all ${
-                    otpError
-                      ? 'border-rose-400 bg-rose-50 text-rose-600'
-                      : digit
-                      ? 'border-amber-400 bg-amber-50 text-amber-700'
-                      : 'border-gray-200 focus:border-amber-400'
-                  }`}
-                />
-              ))}
-            </div>
-
-            {/* Dev mode OTP hint */}
-            {devOtpCode && (
-              <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 mb-3 text-center">
-                <p className="text-xs text-amber-600 font-medium mb-0.5">Dev mode (WhatsApp not configured)</p>
-                <p className="text-base font-bold text-amber-800 tracking-widest">{devOtpCode}</p>
-              </div>
-            )}
-
-            {/* Error message */}
-            {otpError && (
-              <p className="text-center text-rose-500 text-xs mb-3">{otpError}</p>
-            )}
-
-            {/* Verify button */}
-            <button
-              onClick={verifyOtp}
-              disabled={otpDigits.some((d) => !d) || otpLoading}
-              className="w-full text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-50 mb-3 text-sm mt-2"
-              style={{ background: otpDigits.some((d) => !d) || otpLoading ? '#a3d9b1' : '#25D366' }}
-            >
-              {otpLoading ? 'Verifying…' : '✓ Verify & Continue'}
-            </button>
-
-            {/* Resend + cancel */}
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              {resendTimer > 0 ? (
-                <span>Resend in <span className="font-semibold text-amber-600">{resendTimer}s</span></span>
-              ) : (
-                <button
-                  onClick={sendOtp}
-                  disabled={otpLoading}
-                  className="text-amber-600 font-semibold hover:underline disabled:opacity-50"
-                >
-                  Resend OTP
-                </button>
-              )}
-              <button
-                onClick={() => setShowOtpModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
