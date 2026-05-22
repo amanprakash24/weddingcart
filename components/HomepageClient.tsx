@@ -525,17 +525,15 @@ export default function HomepageClient() {
             </motion.div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y divide-[#C5A46D]/10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-6">
             {WEDDING_STYLES.map((style, i) => (
               <motion.div
                 key={style.label}
                 initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
                 transition={{ duration: 0.7, delay: i * 0.1 }}
                 className={[
-                  'group relative overflow-hidden',
-                  style.video ? 'min-h-[300px] sm:min-h-[340px]' : 'px-8 sm:px-10 lg:px-14 py-10 sm:py-12 hover:bg-[#FAF7F2] transition-colors duration-500',
-                  i >= 2 ? 'border-t border-[#C5A46D]/10' : '',
-                  i % 2 === 0 ? 'sm:border-r border-[#C5A46D]/10' : '',
+                  'group relative overflow-hidden rounded-2xl',
+                  style.video ? 'min-h-[300px] sm:min-h-[340px]' : 'px-8 sm:px-10 lg:px-14 py-10 sm:py-12 hover:bg-[#FAF7F2] border border-[#C5A46D]/10 transition-colors duration-500',
                 ].join(' ')}
               >
                 {style.video ? (
