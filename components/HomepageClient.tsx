@@ -65,6 +65,7 @@ const WEDDING_STYLES = [
     num: '01',
     label: 'Royal',
     desc: 'Grand palatial ceremonies — lavish decor, multi-cuisine catering, and complete coordination for 300+ guests.',
+    video: '/videos/royal-wedding.mp4',
   },
   {
     num: '02',
@@ -522,31 +523,67 @@ export default function HomepageClient() {
                 initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
                 transition={{ duration: 0.7, delay: i * 0.1 }}
                 className={[
-                  'group relative overflow-hidden px-8 sm:px-10 lg:px-14 py-12 sm:py-16',
-                  'hover:bg-[#FAF7F2] transition-colors duration-500',
+                  'group relative overflow-hidden',
+                  style.video ? 'min-h-[420px] sm:min-h-[480px]' : 'px-8 sm:px-10 lg:px-14 py-12 sm:py-16 hover:bg-[#FAF7F2] transition-colors duration-500',
                   i >= 2 ? 'border-t border-[#C5A46D]/10' : '',
                   i % 2 === 0 ? 'sm:border-r border-[#C5A46D]/10' : '',
                 ].join(' ')}
               >
-                <span
-                  aria-hidden="true"
-                  className="absolute right-6 -top-2 font-cormorant font-light leading-none select-none pointer-events-none"
-                  style={{ fontSize: 'clamp(6rem, 10vw, 10rem)', color: 'rgba(197,164,109,0.07)' }}
-                >
-                  {style.num}
-                </span>
-                <p className="eyebrow-luxury text-[#C5A46D]/80 mb-4">{style.num}</p>
-                <h3
-                  className="mb-4 leading-tight transition-colors duration-300 group-hover:text-[#8B1A4A]"
-                  style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: '#2A1F1B' }}
-                >
-                  {style.label}
-                </h3>
-                <p className="text-[#6B5B4D] text-sm leading-relaxed max-w-xs mb-8">{style.desc}</p>
-                <Link href="/plan" className="inline-flex items-center gap-2 text-[#C5A46D] text-[0.72rem] font-semibold tracking-[0.14em] uppercase group-hover:gap-4 transition-all duration-300">
-                  <span>Plan This Wedding</span>
-                  <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
-                </Link>
+                {style.video ? (
+                  /* ── Video card (Royal) ── */
+                  <>
+                    <video
+                      src={style.video}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    {/* Cinematic dark overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1A0E09]/90 via-[#1A0E09]/45 to-[#1A0E09]/20" />
+                    {/* Subtle gold glow at bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none" style={{ background: 'radial-gradient(ellipse at bottom, rgba(197,164,109,0.12) 0%, transparent 70%)' }} />
+                    {/* Content */}
+                    <div className="relative z-10 flex flex-col justify-end h-full px-8 sm:px-10 lg:px-14 py-12 sm:py-14">
+                      <p className="eyebrow-luxury text-[#C5A46D]/80 mb-3">{style.num}</p>
+                      <h3
+                        className="mb-3 leading-tight text-white"
+                        style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600 }}
+                      >
+                        {style.label}
+                      </h3>
+                      <p className="text-white/65 text-sm leading-relaxed max-w-xs mb-8">{style.desc}</p>
+                      <Link href="/plan" className="inline-flex items-center gap-2 text-[#C5A46D] text-[0.72rem] font-semibold tracking-[0.14em] uppercase group-hover:gap-4 transition-all duration-300">
+                        <span>Plan This Wedding</span>
+                        <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
+                      </Link>
+                    </div>
+                  </>
+                ) : (
+                  /* ── Standard card ── */
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="absolute right-6 -top-2 font-cormorant font-light leading-none select-none pointer-events-none"
+                      style={{ fontSize: 'clamp(6rem, 10vw, 10rem)', color: 'rgba(197,164,109,0.07)' }}
+                    >
+                      {style.num}
+                    </span>
+                    <p className="eyebrow-luxury text-[#C5A46D]/80 mb-4">{style.num}</p>
+                    <h3
+                      className="mb-4 leading-tight transition-colors duration-300 group-hover:text-[#8B1A4A]"
+                      style={{ fontFamily: 'var(--font-playfair, serif)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: '#2A1F1B' }}
+                    >
+                      {style.label}
+                    </h3>
+                    <p className="text-[#6B5B4D] text-sm leading-relaxed max-w-xs mb-8">{style.desc}</p>
+                    <Link href="/plan" className="inline-flex items-center gap-2 text-[#C5A46D] text-[0.72rem] font-semibold tracking-[0.14em] uppercase group-hover:gap-4 transition-all duration-300">
+                      <span>Plan This Wedding</span>
+                      <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" />
+                    </Link>
+                  </>
+                )}
               </motion.div>
             ))}
           </div>
