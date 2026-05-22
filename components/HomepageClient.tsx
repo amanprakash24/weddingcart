@@ -77,6 +77,7 @@ const WEDDING_STYLES = [
     num: '03',
     label: 'Destination',
     desc: 'Immersive celebrations in Goa, Rajasthan, Kerala — wherever your story begins, we handle every detail.',
+    video: '/videos/destination-wedding.mp4',
   },
   {
     num: '04',
