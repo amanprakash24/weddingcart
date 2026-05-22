@@ -289,33 +289,29 @@ const GUIDE_CARDS = [
     title: 'Décor',
     subtitle: 'GUIDE',
     category: 'Décor & Flowers',
-    gradient: 'linear-gradient(160deg, #0B2323 0%, #0F3328 50%, #1A4D3A 100%)',
-    shimmer: 'rgba(110,173,168,0.12)',
-    accent: '#6EADA8',
+    image: '/guide-decor.jpg',
+    accent: '#C5A46D',
   },
   {
     title: 'Bridal',
     subtitle: 'FASHION',
     category: 'Bridal Fashion',
-    gradient: 'linear-gradient(160deg, #1A0826 0%, #2D0D40 50%, #3D1060 100%)',
-    shimmer: 'rgba(168,124,170,0.12)',
-    accent: '#C49EC6',
+    image: '/guide-bridal.jpg',
+    accent: '#E8D4A0',
   },
   {
     title: 'Photo',
     subtitle: 'GRAPHY',
     category: 'Photography',
-    gradient: 'linear-gradient(160deg, #0A0A1A 0%, #141428 50%, #1E1E40 100%)',
-    shimmer: 'rgba(122,136,196,0.12)',
-    accent: '#7A88C4',
+    image: '/guide-photography.jpg',
+    accent: '#C5A46D',
   },
   {
     title: 'Venue',
     subtitle: 'GUIDES',
     category: 'Venue Guides',
-    gradient: 'linear-gradient(160deg, #0A1A24 0%, #0F2B3D 50%, #1A3F5C 100%)',
-    shimmer: 'rgba(110,155,184,0.12)',
-    accent: '#6E9BB8',
+    image: '/guide-venue.jpg',
+    accent: '#E8D4A0',
   },
 ];
 
@@ -345,39 +341,33 @@ function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
             className="group relative rounded-2xl overflow-hidden cursor-pointer text-left focus:outline-none"
             style={{ aspectRatio: '3 / 4' }}
           >
-            {/* Background gradient */}
-            <div className="absolute inset-0" style={{ background: card.gradient }} />
-
-            {/* Ambient glow */}
-            <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
-              style={{ background: `radial-gradient(ellipse at center, ${card.shimmer} 0%, transparent 70%)` }}
+            {/* Background image */}
+            <Image
+              src={card.image}
+              alt={card.title}
+              fill
+              className="object-cover scale-100 group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
+              unoptimized
             />
 
-            {/* Subtle dot texture */}
-            <div
-              className="absolute inset-0 opacity-[0.04] pointer-events-none"
-              style={{
-                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)',
-                backgroundSize: '20px 20px',
-              }}
-            />
+            {/* Dark cinematic overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0C0408]/90 via-[#0C0408]/40 to-[#0C0408]/20 group-hover:from-[#0C0408]/80 transition-all duration-500" />
 
             {/* Gold inset frame */}
             <div
               className="absolute inset-3 rounded-xl border transition-all duration-500 pointer-events-none z-10"
-              style={{ borderColor: `${card.accent}30` }}
+              style={{ borderColor: `${card.accent}35` }}
             />
             <div
               className="absolute inset-3 rounded-xl border opacity-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none z-10"
-              style={{ borderColor: `${card.accent}70` }}
+              style={{ borderColor: `${card.accent}80` }}
             />
 
             {/* Text content — centered */}
             <div className="absolute inset-0 flex flex-col items-center justify-center z-20 px-4">
-              {/* Decorative ornament */}
+              {/* Ornament */}
               <span
-                className="text-[10px] tracking-[0.3em] mb-5 opacity-60 transition-opacity duration-300 group-hover:opacity-100"
+                className="text-[10px] tracking-[0.3em] mb-5 opacity-60 group-hover:opacity-100 transition-opacity duration-300"
                 style={{ color: card.accent }}
               >
                 ✦
@@ -385,11 +375,11 @@ function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
 
               {/* Main title */}
               <h3
-                className="text-3xl sm:text-4xl font-bold italic leading-none mb-1 text-center transition-all duration-300"
+                className="text-3xl sm:text-4xl font-bold italic leading-none mb-1 text-center"
                 style={{
                   fontFamily: 'Playfair Display, serif',
                   color: '#FFFCF7',
-                  textShadow: '0 2px 20px rgba(0,0,0,0.5)',
+                  textShadow: '0 2px 24px rgba(0,0,0,0.7)',
                 }}
               >
                 {card.title}
@@ -397,27 +387,25 @@ function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
 
               {/* Subtitle */}
               <p
-                className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.3em] mb-8 transition-colors duration-300"
-                style={{ color: `${card.accent}CC` }}
+                className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.3em] mb-8"
+                style={{ color: `${card.accent}CC`, textShadow: '0 1px 8px rgba(0,0,0,0.6)' }}
               >
                 {card.subtitle}
               </p>
 
-              {/* Explore link */}
+              {/* Explore */}
               <span
                 className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.3em] transition-all duration-300"
                 style={{
                   color: card.accent,
-                  borderBottom: `1px solid ${card.accent}60`,
+                  borderBottom: `1px solid ${card.accent}70`,
                   paddingBottom: '2px',
+                  textShadow: '0 1px 8px rgba(0,0,0,0.5)',
                 }}
               >
                 EXPLORE
               </span>
             </div>
-
-            {/* Scale image effect via overlay */}
-            <div className="absolute inset-0 scale-100 group-hover:scale-105 transition-transform duration-700 pointer-events-none" />
           </button>
         ))}
       </div>
