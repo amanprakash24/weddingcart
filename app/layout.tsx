@@ -32,6 +32,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com'),
   title: {
     default: "ShaadiShopping — India's Expert Wedding Planning & Coordination Platform",
     template: '%s | ShaadiShopping',
@@ -42,19 +43,24 @@ export const metadata: Metadata = {
     'wedding vendors India', 'wedding venue booking', 'bridal makeup artist',
     'wedding photographer', 'wedding catering', 'wedding decorator',
     'mehndi artist', 'wedding DJ', 'wedding band', 'wedding planning',
+    'shaadi planning India', 'wedding marketplace India',
   ],
   openGraph: {
     title: "ShaadiShopping — India's Expert Wedding Coordination Platform",
     description: "Expert-guided wedding planning from Venue to Vidaai. Trusted vendors, personal consultants, stress-free coordination across India.",
     type: 'website',
     locale: 'en_IN',
+    siteName: 'ShaadiShopping',
+    images: [{ url: '/images/hero-bg.jpg', width: 1200, height: 630, alt: 'ShaadiShopping — India Wedding Planning Marketplace' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'ShaadiShopping',
     description: "Plan your dream wedding with India's best vendors.",
+    images: ['/images/hero-bg.jpg'],
   },
   robots: { index: true, follow: true },
+  alternates: { canonical: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
