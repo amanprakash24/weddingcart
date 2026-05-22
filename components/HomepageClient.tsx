@@ -107,6 +107,7 @@ const WEDDINGS = [
     tags: ['Destination', 'Floral', 'Accommodation', 'Music'],
     img: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=1200&q=85',
     video: '/videos/goa-wedding.mp4',
+    alt: true,
   },
   {
     num: '003',
@@ -277,7 +278,7 @@ export default function HomepageClient() {
                   <span className="vidaai-shimmer-overlay" aria-hidden="true">Vidaai</span>
                 </motion.span>
               </span>
-              {/* Line 2: slow, weighted reveal */}
+              {/* Line 2: slow, weighted reveal — words cycle colours every 2s */}
               <span className="block">
                 <motion.span
                   className="inline-block"
@@ -285,7 +286,15 @@ export default function HomepageClient() {
                   animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                   transition={{ duration: 1.4, delay: 1.4, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  — We Handle Everything
+                  {['— We', ' Handle', ' Everything'].map((word, i) => (
+                    <span
+                      key={word}
+                      className="animate-word-cycle"
+                      style={{ animationDelay: `${2.8 + i * 0.4}s` }}
+                    >
+                      {word}
+                    </span>
+                  ))}
                 </motion.span>
               </span>
             </h1>
@@ -621,66 +630,129 @@ export default function HomepageClient() {
         {/* ── DESKTOP — sticky left image + scrolling right stories ── */}
         <div className="hidden lg:grid lg:grid-cols-2 max-w-7xl mx-auto">
 
-          {/* LEFT — sticky cinematic image panel */}
+          {/* LEFT — sticky panel: video/image OR text for alt-layout entries */}
           <div className="sticky top-0 h-screen overflow-hidden">
 
-            {/* Warm radial glow behind image */}
+            {/* Warm radial glow */}
             <div
               className="absolute inset-0 z-10 pointer-events-none"
               style={{ background: 'radial-gradient(circle at center, rgba(197,164,109,0.07) 0%, transparent 60%)' }}
             />
 
-            {/* Cross-fade image with slow cinematic zoom on enter */}
             <AnimatePresence mode="wait">
-              <motion.div
-                key={activeWedding}
-                className="absolute inset-0"
-                initial={{ opacity: 0, scale: 1.06 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.03, transition: { duration: 0.65 } }}
-                transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {WEDDINGS[activeWedding].video ? (
-                  <video
-                    key={WEDDINGS[activeWedding].video}
-                    src={WEDDINGS[activeWedding].video}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <Image
-                    src={WEDDINGS[activeWedding].img}
-                    alt={WEDDINGS[activeWedding].title}
-                    fill sizes="50vw"
-                    className="object-cover"
-                    priority
-                  />
-                )}
-                {/* Directional cinematic vignette */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#2A1F1B]/55 via-transparent to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#2A1F1B]/70 via-transparent to-[#2A1F1B]/25" />
-              </motion.div>
+              {WEDDINGS[activeWedding].alt ? (
+                /* ── Alt layout: text content on left panel ── */
+                <motion.div
+                  key={`alt-text-${activeWedding}`}
+                  className="absolute inset-0 flex items-center bg-[#2A1F1B] px-12 lg:px-16"
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20, transition: { duration: 0.5 } }}
+                  transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="w-full max-w-sm">
+                    <motion.p
+                      className="text-[0.65rem] tracking-[0.32em] uppercase mb-4 text-[#C5A46D]/78"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.1 }}
+                    >
+                      {WEDDINGS[activeWedding].city}
+                    </motion.p>
+                    <motion.h3
+                      className="font-semibold leading-tight mb-5 text-3xl lg:text-4xl text-white"
+                      style={{ fontFamily: 'var(--font-playfair, serif)' }}
+                      initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                      transition={{ duration: 0.75, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      {WEDDINGS[activeWedding].title}
+                    </motion.h3>
+                    <motion.div
+                      className="h-px mb-6"
+                      style={{ background: 'linear-gradient(to right, #C5A46D, transparent)' }}
+                      initial={{ width: 18 }}
+                      animate={{ width: 60 }}
+                      transition={{ duration: 0.55, delay: 0.28 }}
+                    />
+                    <motion.p
+                      className="text-[#8A7A6A] text-sm leading-relaxed mb-8"
+                      initial={{ opacity: 0, filter: 'blur(8px)', y: 14 }}
+                      animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                      transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      {WEDDINGS[activeWedding].desc}
+                    </motion.p>
+                    <motion.div
+                      className="flex flex-wrap gap-2"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.48 }}
+                    >
+                      {WEDDINGS[activeWedding].tags.map((tag, ti) => (
+                        <motion.span
+                          key={tag}
+                          className="text-[10px] text-[#C5A46D]/55 border border-[#C5A46D]/15 px-3 py-1.5 rounded-full tracking-wide"
+                          initial={{ opacity: 0, scale: 0.88 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.4, delay: 0.5 + ti * 0.07 }}
+                        >
+                          {tag}
+                        </motion.span>
+                      ))}
+                    </motion.div>
+                  </div>
+                </motion.div>
+              ) : (
+                /* ── Normal layout: video/image on left panel ── */
+                <motion.div
+                  key={activeWedding}
+                  className="absolute inset-0"
+                  initial={{ opacity: 0, scale: 1.06 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.03, transition: { duration: 0.65 } }}
+                  transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  {WEDDINGS[activeWedding].video ? (
+                    <video
+                      key={WEDDINGS[activeWedding].video}
+                      src={WEDDINGS[activeWedding].video}
+                      autoPlay muted loop playsInline
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Image
+                      src={WEDDINGS[activeWedding].img}
+                      alt={WEDDINGS[activeWedding].title}
+                      fill sizes="50vw"
+                      className="object-cover"
+                      priority
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#2A1F1B]/55 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#2A1F1B]/70 via-transparent to-[#2A1F1B]/25" />
+                </motion.div>
+              )}
             </AnimatePresence>
 
-            {/* Large editorial number — overlaid on image, very dim */}
-            <div className="absolute bottom-10 left-8 z-20 pointer-events-none overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={activeWedding}
-                  className="font-cormorant font-light leading-none select-none"
-                  style={{ fontSize: '9rem', color: 'rgba(197,164,109,0.14)' }}
-                  initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, y: -20, transition: { duration: 0.4 } }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  {WEDDINGS[activeWedding].num}
-                </motion.p>
-              </AnimatePresence>
-            </div>
+            {/* Large editorial number — only for normal layout */}
+            {!WEDDINGS[activeWedding].alt && (
+              <div className="absolute bottom-10 left-8 z-20 pointer-events-none overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={activeWedding}
+                    className="font-cormorant font-light leading-none select-none"
+                    style={{ fontSize: '9rem', color: 'rgba(197,164,109,0.14)' }}
+                    initial={{ opacity: 0, y: 30, filter: 'blur(8px)' }}
+                    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, y: -20, transition: { duration: 0.4 } }}
+                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    {WEDDINGS[activeWedding].num}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
+            )}
 
             {/* Vertical progress dots — right edge of image */}
             <div className="absolute right-5 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20">
@@ -714,6 +786,28 @@ export default function HomepageClient() {
 
             {WEDDINGS.map((w, i) => {
               const isActive = activeWedding === i;
+              if (w.alt) {
+                /* ── Alt layout: fullscreen video on right panel ── */
+                return (
+                  <div
+                    key={w.num}
+                    ref={(el) => { weddingRefs.current[i] = el; }}
+                    className="min-h-[80vh] relative overflow-hidden cursor-pointer"
+                    style={{ transition: 'opacity 0.7s ease', opacity: isActive ? 1 : 0.35 }}
+                    onClick={() => weddingRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  >
+                    {w.video && (
+                      <video
+                        src={w.video}
+                        autoPlay muted loop playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#2A1F1B]/25" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#2A1F1B]/50 to-transparent" />
+                  </div>
+                );
+              }
               return (
                 <div
                   key={w.num}

@@ -441,6 +441,16 @@ input[type="checkbox"], input[type="radio"] {
   animation: heroGlowFloat 20s ease-in-out infinite;
 }
 
+/* ── Hero line-2 word colour cycle — white → gold → maroon, every 2s ── */
+@keyframes wordColorCycle {
+  0%, 100% { color: #ffffff; }
+  33%       { color: #C5A46D; }
+  66%       { color: #8B1A4A; }
+}
+.animate-word-cycle {
+  animation: wordColorCycle 6s ease-in-out infinite;
+}
+
 /* ── "Vidaai" gold shimmer — one soft sweep, then fades ── */
 .vidaai-shimmer-overlay {
   position: absolute;
