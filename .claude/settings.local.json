@@ -58,7 +58,20 @@
       "WebFetch(domain:weddingcart-rho.vercel.app)",
       "Bash(dir C:\\\\weddingcart\\\\weddingcart\\\\public *)",
       "Bash(dir C:\\\\weddingcart\\\\weddingcart\\\\public\\\\videos *)",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(git stash *)",
+      "WebFetch(domain:www.wedmegood.com)",
+      "Bash(cp \"C:/Users/anisha/Downloads/IMG_20260522_213447.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/guide-decor.jpg\")",
+      "Bash(cp \"C:/Users/anisha/Downloads/IMG_20260522_213933.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/guide-bridal.jpg\")",
+      "Bash(cp \"C:/Users/anisha/Downloads/shutterclotvisuals_2b7a803b_1.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/guide-photography.jpg\")",
+      "Bash(cp \"C:/Users/anisha/Downloads/IMG_20260522_215710.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/guide-venue.jpg\")",
+      "Bash(cp \"C:/Users/anisha/Downloads/vakratundaevents_3da1f6f2_1.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/cat-wedding-tips.jpg\")",
+      "Bash(cp \"C:/Users/anisha/Downloads/the_stylish_wedding_1b85908d_1.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/cat-venue-guides.jpg\")",
+      "Bash(cp \"C:/Users/anisha/Downloads/wedding_0756_558986f6_2.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/cat-bridal-fashion.jpg\")",
+      "Bash(cp \"C:/Users/anisha/Downloads/wedding_0756_558986f6_1.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/cat-real-weddings.jpg\")",
+      "Bash(cp \"C:/Users/anisha/Downloads/VID_20260522_105231_310.mp4\" \"C:/weddingcart/weddingcart/public/cat-budget-planning.mp4\")",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|mjs|json\\)$\")"
     ]
   }
 }
