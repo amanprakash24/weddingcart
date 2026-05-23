@@ -20,8 +20,4 @@ const CategorySchema = new Schema<ICategory>({
   isSpecial: { type: Boolean, default: false },
 }, { timestamps: true });
 
-if (process.env.NODE_ENV !== 'production') {
-  delete (mongoose.models as Record<string, unknown>).Category;
-}
-
-export default mongoose.models.Category || mongoose.model<ICategory>('Category', CategorySchema);
+export default (mongoose.models.Category as mongoose.Model<ICategory>) || mongoose.model<ICategory>('Category', CategorySchema);

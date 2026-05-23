@@ -39,8 +39,4 @@ const VendorApplicationSchema = new Schema<IVendorApplication>(
   { timestamps: true }
 );
 
-if (process.env.NODE_ENV !== 'production') {
-  delete (mongoose.models as Record<string, unknown>).VendorApplication;
-}
-
-export default mongoose.model<IVendorApplication>('VendorApplication', VendorApplicationSchema);
+export default (mongoose.models.VendorApplication as mongoose.Model<IVendorApplication>) || mongoose.model<IVendorApplication>('VendorApplication', VendorApplicationSchema);

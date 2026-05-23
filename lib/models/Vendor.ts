@@ -52,9 +52,4 @@ const VendorSchema = new Schema<IVendor>({
 VendorSchema.index({ category: 1, city: 1, rating: -1 });
 VendorSchema.index({ name: 'text', description: 'text' });
 
-// Delete cached model in development so schema changes (new fields) take effect without restart
-if (process.env.NODE_ENV !== 'production') {
-  delete (mongoose.models as Record<string, unknown>).Vendor;
-}
-
-export default mongoose.model<IVendor>('Vendor', VendorSchema);
+export default (mongoose.models.Vendor as mongoose.Model<IVendor>) || mongoose.model<IVendor>('Vendor', VendorSchema);
