@@ -401,10 +401,23 @@ function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
   );
 }
 
+const CATEGORY_MEDIA: Record<string, { src: string; type: 'image' | 'video' }> = {
+  'Wedding Tips':         { src: '/cat-wedding-tips.jpg',    type: 'image' },
+  'Venue Guides':         { src: '/cat-venue-guides.jpg',    type: 'image' },
+  'Bridal Fashion':       { src: '/cat-bridal-fashion.jpg',  type: 'image' },
+  'Real Weddings':        { src: '/cat-real-weddings.jpg',   type: 'image' },
+  'Budget Planning':      { src: '/cat-budget-planning.jpg',  type: 'image' },
+  'Traditions & Culture': { src: '/cat-traditions.jpg',      type: 'image' },
+  'Destination Weddings': { src: '/cat-destination.jpg',     type: 'image' },
+  'Food & Catering':      { src: '/cat-food-catering.jpg',   type: 'image' },
+  'Décor & Flowers':      { src: '/cat-decor-flowers.jpg',   type: 'image' },
+  'Photography':          { src: '/cat-photography.jpg',     type: 'image' },
+};
+
 /* ── Browse by Category ───────────────────────────────────── */
 function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
   return (
-    <section className="mt-16 mb-4">
+    <section className="mt-4 mb-4">
       <div className="text-center mb-10">
         <GoldDivider />
         <div className="mt-6">
@@ -412,44 +425,70 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
           <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl font-bold text-[#1C0A12]">Browse by Category</h2>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {CATEGORIES.filter(c => c !== 'All').map(cat => {
-          const words = cat.split(' ');
-          const firstWord = words[0];
-          const rest = words.slice(1).join(' ');
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
+        {CATEGORIES.filter(c => c !== 'All').map((cat, idx) => {
+          const media = CATEGORY_MEDIA[cat];
+          const num = String(idx + 1).padStart(2, '0');
           return (
             <button
               key={cat}
               onClick={() => onSelect(cat)}
-              className="group relative flex flex-col items-center justify-center rounded-2xl px-3 py-6 text-center transition-all duration-300
-                bg-[#1C0A12] border border-[#C5A46D]/12
-                hover:border-[#C5A46D]/40 hover:bg-[#2D0B1F]
-                hover:shadow-[0_8px_32px_rgba(197,164,109,0.12)]
-                hover:-translate-y-1 overflow-hidden"
+              className="group flex flex-col cursor-pointer focus:outline-none"
             >
-              {/* Ambient glow on hover */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at center, rgba(197,164,109,0.06) 0%, transparent 70%)' }} />
-
-              {/* Gold top accent line */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-px bg-[#C5A46D]/0 group-hover:bg-[#C5A46D]/60 transition-all duration-300 group-hover:w-12" />
-
-              <span
-                className="block font-bold italic leading-none text-[#FFFCF7] transition-colors duration-300 group-hover:text-[#E8D4A0]"
-                style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.1rem, 2.5vw, 1.35rem)' }}
+              {/* Photo card */}
+              <div
+                className="relative w-full rounded-2xl overflow-hidden transition-all duration-500
+                  shadow-[0_6px_28px_rgba(0,0,0,0.13)]
+                  group-hover:shadow-[0_16px_48px_rgba(197,164,109,0.22)]
+                  group-hover:-translate-y-1.5"
+                style={{
+                  aspectRatio: '3 / 4',
+                  border: '1px solid rgba(197,164,109,0.22)',
+                }}
               >
-                {firstWord}
-              </span>
-              {rest && (
-                <span
-                  className="block text-[10px] font-bold uppercase tracking-[0.22em] mt-1.5 text-[#C5A46D]/60 group-hover:text-[#C5A46D] transition-colors duration-300"
-                >
-                  {rest}
-                </span>
-              )}
+                <Image
+                  src={media?.src ?? ''}
+                  alt={cat}
+                  fill
+                  className="object-cover scale-100 group-hover:scale-[1.07] transition-transform duration-[1100ms] ease-out"
+                  unoptimized
+                />
 
-              {/* Bottom gold underline */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-px bg-[#C5A46D]/50 group-hover:w-10 transition-all duration-400" />
+                {/* Frosted label bar at bottom */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 px-3 pt-5 pb-3 flex flex-col items-center"
+                  style={{
+                    background: 'linear-gradient(to top, rgba(12,4,8,0.82) 60%, transparent)',
+                  }}
+                >
+                  <p
+                    className="text-[#FFFCF7] font-bold italic leading-tight text-center transition-colors duration-300 group-hover:text-[#E8D4A0]"
+                    style={{
+                      fontFamily: 'Playfair Display, serif',
+                      fontSize: 'clamp(0.9rem, 1.9vw, 1.15rem)',
+                      textShadow: '0 1px 8px rgba(0,0,0,0.6)',
+                    }}
+                  >
+                    {cat}
+                  </p>
+                  <span
+                    className="mt-1.5 text-[8px] font-bold uppercase tracking-[0.3em] text-[#C5A46D]/80 group-hover:text-[#C5A46D] transition-colors duration-300"
+                  >
+                    EXPLORE
+                  </span>
+                </div>
+
+                {/* Gold corner accents */}
+                <div className="absolute top-2.5 left-2.5 w-4 h-4 border-t border-l border-[#C5A46D]/0 group-hover:border-[#C5A46D]/60 transition-colors duration-500 pointer-events-none rounded-tl-sm" />
+                <div className="absolute top-2.5 right-2.5 w-4 h-4 border-t border-r border-[#C5A46D]/0 group-hover:border-[#C5A46D]/60 transition-colors duration-500 pointer-events-none rounded-tr-sm" />
+                <div className="absolute bottom-2.5 left-2.5 w-4 h-4 border-b border-l border-[#C5A46D]/0 group-hover:border-[#C5A46D]/60 transition-colors duration-500 pointer-events-none rounded-bl-sm" />
+                <div className="absolute bottom-2.5 right-2.5 w-4 h-4 border-b border-r border-[#C5A46D]/0 group-hover:border-[#C5A46D]/60 transition-colors duration-500 pointer-events-none rounded-br-sm" />
+              </div>
+
+              {/* Number below */}
+              <p className="text-center mt-2.5 text-[10px] font-bold tracking-[0.25em] text-[#C5A46D]/50 group-hover:text-[#C5A46D] transition-colors duration-300">
+                {num}
+              </p>
             </button>
           );
         })}
@@ -553,11 +592,6 @@ export default function BlogListClient() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-        {/* ── Browse Guides ───────────────────────────────── */}
-        <div className="mb-4 mt-2">
-          <BrowseGuides onSelect={setFilter} />
-        </div>
-
         {/* ── Category filter ─────────────────────────────── */}
         <div className="flex flex-wrap gap-2 mb-10">
           {CATEGORIES.map(cat => {
@@ -650,9 +684,12 @@ export default function BlogListClient() {
         {/* Vendor search */}
         {!loading && <VendorSearchWidget />}
 
-        {/* Browse by Category */}
+        {/* Browse our Guides + Browse by Category */}
         {category === 'All' && !loading && (
-          <BrowseByCategory onSelect={setFilter} />
+          <>
+            <BrowseGuides onSelect={setFilter} />
+            <BrowseByCategory onSelect={setFilter} />
+          </>
         )}
       </div>
     </div>
