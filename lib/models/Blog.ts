@@ -39,8 +39,4 @@ BlogSchema.index({ slug: 1 });
 BlogSchema.index({ status: 1, publishedAt: -1 });
 BlogSchema.index({ category: 1, status: 1 });
 
-if (process.env.NODE_ENV !== 'production') {
-  delete (mongoose.models as Record<string, unknown>).Blog;
-}
-
-export default mongoose.model<IBlog>('Blog', BlogSchema);
+export default (mongoose.models.Blog as mongoose.Model<IBlog>) || mongoose.model<IBlog>('Blog', BlogSchema);
