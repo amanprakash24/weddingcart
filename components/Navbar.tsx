@@ -199,72 +199,17 @@ export default function Navbar() {
                 </Link>
               ))}
 
-              {/* Find Vendors search dropdown */}
-              <div className="relative" ref={searchRef}>
-                <button
-                  onClick={() => { setSearchOpen((v) => !v); setMegaOpen(false); }}
-                  className={`flex items-center gap-1.5 text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
-                    searchOpen
-                      ? 'text-[#8B1A4A]'
-                      : isTransparent
-                      ? 'text-white/85 hover:text-white'
-                      : 'text-gray-600 hover:text-[#8B1A4A]'
-                  }`}
-                >
-                  <Search className="w-3.5 h-3.5" />
-                  Find Vendors
-                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${searchOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {searchOpen && (
-                  <div
-                    className="absolute left-1/2 -translate-x-1/2 mt-3 w-[360px] bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.13)] border border-[#E8D4A0]/50 z-[9998] animate-fade-in overflow-hidden"
-                  >
-                    {/* Header */}
-                    <div
-                      className="px-6 pt-5 pb-4"
-                      style={{ background: 'linear-gradient(135deg, #1C0A12 0%, #2D0B1F 100%)' }}
-                    >
-                      <p className="text-[#C5A46D] text-[10px] font-bold uppercase tracking-[0.28em] mb-1">Discover</p>
-                      <h3
-                        className="text-white font-bold text-base leading-snug"
-                        style={{ fontFamily: 'var(--font-playfair, serif)' }}
-                      >
-                        Find the Best Wedding Vendors
-                        <span className="block italic text-[#C5A46D] font-normal text-sm">with Trusted Reviews</span>
-                      </h3>
-                      <p className="text-white/40 text-[11px] mt-1.5">500+ verified vendors · 25+ cities · Thousands of happy couples</p>
-                    </div>
-
-                    {/* Search area */}
-                    <div className="px-6 py-5 space-y-4">
-                      <div>
-                        <p className="text-[#6B5B4D] text-xs font-medium mb-2">I am looking for</p>
-                        <div className="relative">
-                          <select
-                            value={selectedVendor}
-                            onChange={(e) => setSelectedVendor(e.target.value)}
-                            className="w-full appearance-none border border-[#E8D4A0] rounded-xl px-4 py-3 pr-10 text-sm font-semibold text-[#1C0A12] bg-[#FFFCF7] focus:outline-none focus:border-[#C5A46D] transition-colors cursor-pointer"
-                          >
-                            {VENDOR_OPTIONS.map((opt) => (
-                              <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#C5A46D] pointer-events-none" />
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => { router.push(`/categories/${selectedVendor}`); setSearchOpen(false); }}
-                        className="w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-sm tracking-wide transition-all hover:opacity-90"
-                        style={{ background: 'linear-gradient(135deg, #8B1A4A, #C5A46D)' , color: '#fff' }}
-                      >
-                        Search Vendors <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {/* Vendor Registration */}
+              <Link
+                href="/vendor-onboarding"
+                className={`flex items-center gap-1.5 text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
+                  isTransparent
+                    ? 'text-white/85 hover:text-white'
+                    : 'text-gray-600 hover:text-[#8B1A4A]'
+                }`}
+              >
+                Vendor Registration
+              </Link>
 
               {/* Services dropdown */}
               <div className="relative" ref={megaRef}>
@@ -383,39 +328,14 @@ export default function Navbar() {
                 </Link>
               ))}
 
-              {/* Mobile: Find Vendors search */}
-              <div className="rounded-2xl overflow-hidden border border-[#E8D4A0]/50">
-                <div
-                  className="px-4 py-3"
-                  style={{ background: 'linear-gradient(135deg, #1C0A12 0%, #2D0B1F 100%)' }}
-                >
-                  <p className="text-[#C5A46D] text-[10px] font-bold uppercase tracking-[0.25em] mb-0.5">Discover</p>
-                  <p className="text-white text-sm font-semibold" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-                    Find the Best Wedding Vendors
-                  </p>
-                </div>
-                <div className="bg-[#FFFCF7] px-4 py-3 space-y-3">
-                  <div className="relative">
-                    <select
-                      value={selectedVendor}
-                      onChange={(e) => setSelectedVendor(e.target.value)}
-                      className="w-full appearance-none border border-[#E8D4A0] rounded-xl px-4 py-2.5 pr-10 text-sm font-semibold text-[#1C0A12] bg-white focus:outline-none focus:border-[#C5A46D] transition-colors cursor-pointer"
-                    >
-                      {VENDOR_OPTIONS.map((opt) => (
-                        <option key={opt.slug} value={opt.slug}>{opt.label}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#C5A46D] pointer-events-none" />
-                  </div>
-                  <button
-                    onClick={() => { router.push(`/categories/${selectedVendor}`); setMobileOpen(false); }}
-                    className="w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-sm text-white transition-all"
-                    style={{ background: 'linear-gradient(135deg, #8B1A4A, #C5A46D)' }}
-                  >
-                    Search Vendors <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              {/* Mobile: Vendor Registration */}
+              <Link
+                href="/vendor-onboarding"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 px-4 py-3.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-[#FAF5EE] hover:text-[#8B1A4A] transition-all min-h-[48px]"
+              >
+                Vendor Registration
+              </Link>
 
               {/* Mobile Services accordion */}
               <div>
