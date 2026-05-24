@@ -191,7 +191,7 @@ export default function HomepageClient() {
     <div>
 
       {/* ── 1. HERO ── */}
-      <section className="relative h-screen min-h-[640px] max-h-[940px] flex items-center overflow-hidden">
+      <section className="relative h-screen min-h-[640px] flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <video
             autoPlay
