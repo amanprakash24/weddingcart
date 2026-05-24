@@ -174,16 +174,6 @@ export default function Navbar() {
                 </Link>
               ))}
 
-              {/* Vendor Registration */}
-              <Link
-                href="/vendor-onboarding"
-                className={`text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
-                  isTransparent ? 'text-white/85 hover:text-white' : 'text-gray-600 hover:text-[#8B1A4A]'
-                }`}
-              >
-                Vendor Registration
-              </Link>
-
               {/* Services dropdown */}
               <div className="relative" ref={megaRef}>
                 <button
@@ -253,6 +243,18 @@ export default function Navbar() {
 
               {/* Divider */}
               <div className={`hidden lg:block w-px h-5 ${isTransparent ? 'bg-white/20' : 'bg-gray-200'}`} />
+
+              {/* Vendor Registration */}
+              <Link
+                href="/vendor-onboarding"
+                className={`hidden lg:inline-flex items-center text-[0.78rem] font-semibold tracking-[0.04em] px-4 py-2.5 rounded-lg border transition-all ${
+                  isTransparent
+                    ? 'border-white/30 text-white hover:bg-white/12'
+                    : 'border-[#8B1A4A] text-[#8B1A4A] hover:bg-[#8B1A4A]/10'
+                }`}
+              >
+                Vendor Registration
+              </Link>
 
               {/* Start Planning CTA */}
               <Link
