@@ -256,7 +256,7 @@ export default function Navbar() {
                 Vendor Registration
               </Link>
 
-              {/* Start Planning CTA */}
+              {/* Begin Your Journey CTA */}
               <Link
                 href="/plan"
                 className={`hidden sm:inline-flex items-center text-[0.78rem] font-semibold tracking-[0.06em] px-6 py-2.5 rounded-lg transition-all hover:opacity-88 ${
@@ -265,7 +265,7 @@ export default function Navbar() {
                     : 'bg-[#8B1A4A] text-white hover:shadow-[0_4px_16px_rgba(139,26,74,0.35)]'
                 }`}
               >
-                Start Planning
+                Begin Your Journey
               </Link>
 
               {/* Mobile hamburger */}
@@ -346,7 +346,7 @@ export default function Navbar() {
                   href="/plan"
                   className="flex items-center justify-center w-full bg-[#8B1A4A] text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all min-h-[48px] text-sm tracking-wide"
                 >
-                  Start Planning Your Wedding
+                  Begin Your Journey Your Wedding
                 </Link>
                 <a
                   href="tel:+917646028228"
