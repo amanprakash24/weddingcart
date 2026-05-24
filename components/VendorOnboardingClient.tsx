@@ -48,6 +48,10 @@ export default function VendorOnboardingClient() {
   const [error, setError]           = useState('');
   const [images, setImages]         = useState<[string, string, string]>(['', '', '']);
   const [imgUploading, setImgUploading] = useState<[boolean, boolean, boolean]>([false, false, false]);
+  const [menuImages, setMenuImages]         = useState<[string, string, string]>(['', '', '']);
+  const [menuUploading, setMenuUploading]   = useState<[boolean, boolean, boolean]>([false, false, false]);
+
+  const isVenue = categories.find((c) => c.id === form.category)?.name?.toLowerCase().includes('venue') ?? false;
 
   useEffect(() => {
     fetch('/api/categories')
@@ -80,11 +84,38 @@ export default function VendorOnboardingClient() {
     setImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = ''; return n; });
   };
 
+  const handleMenuUpload = async (index: 0 | 1 | 2, file: File) => {
+    setMenuUploading((prev) => { const n = [...prev] as [boolean,boolean,boolean]; n[index] = true; return n; });
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) {
+        setMenuImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = data.url; return n; });
+      } else {
+        setError('Image upload failed. Please try again.');
+      }
+    } catch {
+      setError('Image upload failed. Please try again.');
+    } finally {
+      setMenuUploading((prev) => { const n = [...prev] as [boolean,boolean,boolean]; n[index] = false; return n; });
+    }
+  };
+
+  const removeMenuImage = (index: 0 | 1 | 2) => {
+    setMenuImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = ''; return n; });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (images.some((url) => !url)) {
-      setError('Please upload all 3 portfolio images before submitting.');
+      setError('Please upload all 3 venue images before submitting.');
+      return;
+    }
+    if (isVenue && menuImages.some((url) => !url)) {
+      setError('Please upload all 3 food menu images before submitting.');
       return;
     }
     setLoading(true);
@@ -97,6 +128,7 @@ export default function VendorOnboardingClient() {
           priceMin: Number(form.priceMin) || 0,
           priceMax: Number(form.priceMax) || 0,
           portfolioImages: images,
+          ...(isVenue && { foodMenuImages: menuImages }),
         }),
       });
       const data = await res.json();
@@ -366,29 +398,29 @@ export default function VendorOnboardingClient() {
             </div>
           </motion.div>
 
-          {/* Portfolio Images */}
+          {/* Venue Images */}
           <motion.div variants={fadeUp}>
             <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
               <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
                 <ImagePlus className="w-4 h-4 text-amber-600" />
               </div>
-              Portfolio Images <span className="text-rose-500">*</span>
+              Venue Images <span className="text-rose-500">*</span>
             </h2>
-            <p className="text-xs text-gray-400 mb-5">Upload exactly 3 photos showcasing your work. All 3 are required.</p>
+            <p className="text-xs text-gray-400 mb-5">Upload 3 photos showcasing your venue. All 3 are required.</p>
             <div className="grid grid-cols-3 gap-4">
               {([0, 1, 2] as const).map((i) => (
                 <div key={i} className="relative">
                   <input
                     type="file"
                     accept="image/*"
-                    id={`portfolio-img-${i}`}
+                    id={`venue-img-${i}`}
                     className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(i, f); e.target.value = ''; }}
                   />
                   {images[i] ? (
                     <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-amber-300">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={images[i]} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover" />
+                      <img src={images[i]} alt={`Venue ${i + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => removeImage(i)}
@@ -399,7 +431,7 @@ export default function VendorOnboardingClient() {
                     </div>
                   ) : (
                     <label
-                      htmlFor={`portfolio-img-${i}`}
+                      htmlFor={`venue-img-${i}`}
                       className="flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all cursor-pointer"
                     >
                       {imgUploading[i] ? (
@@ -407,7 +439,7 @@ export default function VendorOnboardingClient() {
                       ) : (
                         <>
                           <ImagePlus className="w-6 h-6 text-gray-300 mb-1.5" />
-                          <span className="text-xs text-gray-400 font-medium">Photo {i + 1}</span>
+                          <span className="text-xs text-gray-400 font-medium">Image {i + 1}</span>
                         </>
                       )}
                     </label>
@@ -416,6 +448,59 @@ export default function VendorOnboardingClient() {
               ))}
             </div>
           </motion.div>
+
+          {/* Food Menu Images — venue only */}
+          {isVenue && (
+            <motion.div variants={fadeUp} initial="hidden" animate="show">
+              <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+                <div className="w-7 h-7 bg-rose-100 rounded-lg flex items-center justify-center">
+                  <ImagePlus className="w-4 h-4 text-rose-500" />
+                </div>
+                Food Menu Images <span className="text-rose-500">*</span>
+              </h2>
+              <p className="text-xs text-gray-400 mb-5">Upload 3 photos of your food menu / catering options. All 3 are required.</p>
+              <div className="grid grid-cols-3 gap-4">
+                {([0, 1, 2] as const).map((i) => (
+                  <div key={i} className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      id={`menu-img-${i}`}
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMenuUpload(i, f); e.target.value = ''; }}
+                    />
+                    {menuImages[i] ? (
+                      <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-rose-300">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={menuImages[i]} alt={`Menu ${i + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeMenuImage(i)}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor={`menu-img-${i}`}
+                        className="flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer"
+                      >
+                        {menuUploading[i] ? (
+                          <div className="w-6 h-6 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <ImagePlus className="w-6 h-6 text-gray-300 mb-1.5" />
+                            <span className="text-xs text-gray-400 font-medium">Menu {i + 1}</span>
+                          </>
+                        )}
+                      </label>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {error && (
             <motion.p variants={fadeUp} className="text-rose-500 text-sm bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">

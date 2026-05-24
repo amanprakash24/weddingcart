@@ -15,6 +15,7 @@ export interface IVendorApplication extends Document {
   website: string;
   coverImage: string;
   portfolioImages: string[];
+  foodMenuImages: string[];
   status: 'new' | 'approved' | 'rejected';
   vendorId: string; // set once vendor is created on approval
 }
@@ -35,6 +36,7 @@ const VendorApplicationSchema = new Schema<IVendorApplication>(
     website:      { type: String, default: '' },
     coverImage:      { type: String, default: '' },
     portfolioImages: { type: [String], default: [] },
+    foodMenuImages:  { type: [String], default: [] },
     status:          { type: String, enum: ['new', 'approved', 'rejected'], default: 'new' },
     vendorId:     { type: String, default: '' },
   },
