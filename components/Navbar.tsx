@@ -263,7 +263,7 @@ export default function Navbar() {
                   isTransparent ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-[#8B1A4A]'
                 }`}
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-6 h-6 lg:w-4 lg:h-4" />
                 <span className="hidden lg:inline">Talk to Expert</span>
               </a>
 
