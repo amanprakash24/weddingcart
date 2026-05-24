@@ -344,16 +344,18 @@ export default function Navbar() {
                 Vendor Registration
               </Link>
 
-              {/* Begin Your Journey CTA */}
+              {/* Begin Your Wedding Journey CTA */}
               <Link
                 href="/plan"
-                className={`hidden sm:inline-flex items-center text-[0.78rem] font-semibold tracking-[0.06em] px-6 py-2.5 rounded-lg transition-all hover:opacity-88 ${
+                className={`hidden sm:inline-flex items-center gap-2 text-[0.78rem] font-semibold tracking-[0.05em] px-5 py-2.5 rounded-full transition-all duration-300 relative overflow-hidden group ${
                   isTransparent
-                    ? 'bg-white/18 border border-white/30 text-white hover:bg-white/25'
-                    : 'bg-[#8B1A4A] text-white hover:shadow-[0_4px_16px_rgba(139,26,74,0.35)]'
+                    ? 'bg-white/15 border border-white/40 text-white hover:bg-white/25 backdrop-blur-sm'
+                    : 'bg-gradient-to-r from-[#8B1A4A] via-[#A8234E] to-[#C5A46D] text-white hover:shadow-[0_6px_24px_rgba(139,26,74,0.45)] hover:scale-[1.03]'
                 }`}
               >
-                Begin Your Journey
+                <Sparkles className="w-3 h-3 flex-shrink-0 relative z-10" />
+                <span className="relative z-10">Begin Your Wedding Journey</span>
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
               </Link>
 
               {/* Mobile hamburger */}
@@ -440,9 +442,11 @@ export default function Navbar() {
               <div className="pt-3 pb-1 space-y-2">
                 <Link
                   href="/plan"
-                  className="flex items-center justify-center w-full bg-[#8B1A4A] text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all min-h-[48px] text-sm tracking-wide"
+                  className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-[#8B1A4A] via-[#A8234E] to-[#C5A46D] text-white font-semibold py-3.5 rounded-full hover:shadow-[0_4px_20px_rgba(139,26,74,0.4)] hover:scale-[1.02] transition-all min-h-[48px] text-sm tracking-wide relative overflow-hidden group"
                 >
-                  Begin Your Journey
+                  <Sparkles className="w-4 h-4 flex-shrink-0 relative z-10" />
+                  <span className="relative z-10">Begin Your Wedding Journey</span>
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
                 </Link>
                 <a
                   href="tel:+917646028228"
