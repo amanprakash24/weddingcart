@@ -33,7 +33,7 @@ const organizationSchema = {
   logo: `${BASE_URL}/logo.png`,
   contactPoint: {
     '@type': 'ContactPoint',
-    telephone: '+91-70704-86987',
+    telephone: '+91-76460-28228',
     contactType: 'customer service',
     areaServed: 'IN',
     availableLanguage: ['Hindi', 'English'],
