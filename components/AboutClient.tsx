@@ -294,44 +294,102 @@ export default function AboutClient() {
       </section>
 
       {/* ── CONTACT CTA ── */}
-      <section className="py-16 bg-gradient-to-r from-amber-50 to-rose-50 border-t border-amber-100">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div initial="hidden" whileInView="show" viewport={{ once: true }} variants={stagger(0.15)}>
-            <motion.div variants={fadeUp} className="flex justify-center mb-6">
-              <Image src="/logo.jpeg" alt="ShaadiShopping" width={120} height={75} className="object-contain" />
+      <section className="relative py-24 sm:py-32 overflow-hidden" style={{ background: 'linear-gradient(160deg, #100610 0%, #1A0C14 50%, #0E0A08 100%)' }}>
+
+        {/* Ambient gold glow */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(197,164,109,0.07) 0%, transparent 70%)' }} />
+        {/* Top border shimmer */}
+        <div className="absolute top-0 inset-x-0 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.4), transparent)' }} />
+
+        <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div initial="hidden" whileInView="show" viewport={{ once: true }} variants={stagger(0.12)}>
+
+            {/* Eyebrow */}
+            <motion.div variants={fadeUp} className="flex items-center justify-center gap-3 mb-8">
+              <div className="h-px w-14" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.45))' }} />
+              <span className="text-[0.55rem] font-medium tracking-[0.4em] uppercase text-[#C5A46D]/60">Get in Touch</span>
+              <div className="h-px w-14" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.45))' }} />
             </motion.div>
-            <motion.h2 variants={fadeUp} className="text-2xl sm:text-3xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-3">
-              Let&apos;s Plan Your Dream Wedding Together
+
+            {/* Heading */}
+            <motion.h2
+              variants={fadeUp}
+              className="text-3xl sm:text-4xl lg:text-5xl font-semibold leading-[1.15] mb-5"
+              style={{ fontFamily: 'var(--font-playfair, Playfair Display, serif)' }}
+            >
+              <span className="block text-white/80 font-light">Let&apos;s Plan Your Dream</span>
+              <span className="block" style={{ background: 'linear-gradient(135deg, #e8d5b0 0%, #C5A46D 45%, #a07c45 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                Wedding Together
+              </span>
             </motion.h2>
-            <motion.p variants={fadeUp} className="text-gray-500 text-base mb-8 max-w-xl mx-auto">
-              Our team is here Monday to Friday, 10am to 7pm. Reach out and let us help you create memories that last a lifetime.
+
+            <motion.p variants={fadeUp} className="text-white/35 text-sm sm:text-base leading-relaxed mb-12 max-w-lg mx-auto font-light tracking-wide">
+              Our team is here Monday to Friday, 10 am – 7 pm. Reach out and let us help you create memories that last a lifetime.
             </motion.p>
-            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <a
-                href="tel:+917646028228"
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-8 py-3.5 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm"
-              >
-                <Phone className="w-4 h-4" /> +91 76460 28228
-              </a>
-              <a
-                href="tel:+916201732422"
-                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-8 py-3.5 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm"
-              >
-                <Phone className="w-4 h-4" /> +91 62017 32422
-              </a>
+
+            {/* Phone cards */}
+            <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 max-w-xl mx-auto">
+              {[
+                { href: 'tel:+917646028228', label: 'Primary', number: '+91 76460 28228' },
+                { href: 'tel:+916201732422', label: 'Alternate', number: '+91 62017 32422' },
+              ].map((p) => (
+                <a
+                  key={p.href}
+                  href={p.href}
+                  className="group flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 hover:scale-[1.02]"
+                  style={{
+                    background: 'rgba(197,164,109,0.05)',
+                    border: '1px solid rgba(197,164,109,0.15)',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(197,164,109,0.4)'; (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(197,164,109,0.09)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(197,164,109,0.15)'; (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(197,164,109,0.05)'; }}
+                >
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(197,164,109,0.1)', border: '1px solid rgba(197,164,109,0.2)' }}>
+                    <Phone className="w-4 h-4 text-[#C5A46D]/70" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[0.6rem] uppercase tracking-[0.25em] text-[#C5A46D]/40 mb-0.5">{p.label}</p>
+                    <p className="text-white/75 font-medium text-sm tracking-wide">{p.number}</p>
+                  </div>
+                </a>
+              ))}
+            </motion.div>
+
+            {/* Email */}
+            <motion.div variants={fadeUp} className="max-w-xl mx-auto mb-10">
               <a
                 href="mailto:hello@shaadishopping.com"
-                className="flex items-center gap-2 border border-gray-300 text-gray-700 font-semibold px-8 py-3.5 rounded-full hover:border-amber-400 hover:text-amber-600 transition-all text-sm"
+                className="group flex items-center justify-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 hover:scale-[1.01]"
+                style={{ background: 'rgba(197,164,109,0.04)', border: '1px solid rgba(197,164,109,0.12)' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(197,164,109,0.35)'; (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(197,164,109,0.08)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(197,164,109,0.12)'; (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(197,164,109,0.04)'; }}
               >
-                <Mail className="w-4 h-4" /> hello@shaadishopping.com
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(197,164,109,0.1)', border: '1px solid rgba(197,164,109,0.2)' }}>
+                  <Mail className="w-4 h-4 text-[#C5A46D]/70" />
+                </div>
+                <span className="text-white/60 text-sm tracking-wide group-hover:text-white/85 transition-colors">hello@shaadishopping.com</span>
               </a>
+            </motion.div>
+
+            {/* Primary CTA */}
+            <motion.div variants={fadeUp}>
               <Link
                 href="/plan"
-                className="flex items-center gap-2 bg-gray-900 text-white font-semibold px-8 py-3.5 rounded-full hover:bg-gray-800 transition-all text-sm"
+                className="inline-flex items-center gap-3 relative overflow-hidden group rounded-full px-10 py-4 transition-all duration-500 hover:scale-[1.04]"
+                style={{
+                  background: 'linear-gradient(135deg, #8B1A4A 0%, #A8234E 50%, #C5A46D 100%)',
+                  boxShadow: '0 4px 30px rgba(139,26,74,0.35)',
+                }}
               >
-                <Sparkles className="w-4 h-4" /> Begin Your Journey <ArrowRight className="w-4 h-4" />
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
+                <Sparkles className="w-4 h-4 text-white/80 relative z-10 flex-shrink-0" />
+                <span className="relative z-10 text-white font-semibold text-sm tracking-[0.08em]">Begin Your Wedding Journey</span>
+                <ArrowRight className="w-4 h-4 text-white/70 relative z-10 flex-shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
               </Link>
+
+              <p className="mt-5 text-[0.6rem] text-white/18 tracking-[0.25em] uppercase">Every love story deserves to be celebrated</p>
             </motion.div>
+
           </motion.div>
         </div>
       </section>
