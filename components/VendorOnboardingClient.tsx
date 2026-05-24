@@ -48,8 +48,8 @@ export default function VendorOnboardingClient() {
   const [error, setError]           = useState('');
   const [images, setImages]         = useState<[string, string, string]>(['', '', '']);
   const [imgUploading, setImgUploading] = useState<[boolean, boolean, boolean]>([false, false, false]);
-  const [menuImages, setMenuImages]         = useState<[string, string, string]>(['', '', '']);
-  const [menuUploading, setMenuUploading]   = useState<[boolean, boolean, boolean]>([false, false, false]);
+  const [menuImages, setMenuImages]         = useState<[string, string]>(['', '']);
+  const [menuUploading, setMenuUploading]   = useState<[boolean, boolean]>([false, false]);
 
   const isVenue = categories.find((c) => c.id === form.category)?.name?.toLowerCase().includes('venue') ?? false;
 
@@ -84,27 +84,27 @@ export default function VendorOnboardingClient() {
     setImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = ''; return n; });
   };
 
-  const handleMenuUpload = async (index: 0 | 1 | 2, file: File) => {
-    setMenuUploading((prev) => { const n = [...prev] as [boolean,boolean,boolean]; n[index] = true; return n; });
+  const handleMenuUpload = async (index: 0 | 1, file: File) => {
+    setMenuUploading((prev) => { const n = [...prev] as [boolean,boolean]; n[index] = true; return n; });
     try {
       const fd = new FormData();
       fd.append('file', file);
       const res = await fetch('/api/upload', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
-        setMenuImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = data.url; return n; });
+        setMenuImages((prev) => { const n = [...prev] as [string,string]; n[index] = data.url; return n; });
       } else {
         setError('Image upload failed. Please try again.');
       }
     } catch {
       setError('Image upload failed. Please try again.');
     } finally {
-      setMenuUploading((prev) => { const n = [...prev] as [boolean,boolean,boolean]; n[index] = false; return n; });
+      setMenuUploading((prev) => { const n = [...prev] as [boolean,boolean]; n[index] = false; return n; });
     }
   };
 
-  const removeMenuImage = (index: 0 | 1 | 2) => {
-    setMenuImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = ''; return n; });
+  const removeMenuImage = (index: 0 | 1) => {
+    setMenuImages((prev) => { const n = [...prev] as [string,string]; n[index] = ''; return n; });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,7 +115,7 @@ export default function VendorOnboardingClient() {
       return;
     }
     if (isVenue && menuImages.some((url) => !url)) {
-      setError('Please upload all 3 food menu images before submitting.');
+      setError('Please upload both Veg and Non Veg menu images before submitting.');
       return;
     }
     setLoading(true);
@@ -458,46 +458,53 @@ export default function VendorOnboardingClient() {
                 </div>
                 Food Menu Images <span className="text-rose-500">*</span>
               </h2>
-              <p className="text-xs text-gray-400 mb-5">Upload 3 photos of your food menu / catering options. All 3 are required.</p>
-              <div className="grid grid-cols-3 gap-4">
-                {([0, 1, 2] as const).map((i) => (
-                  <div key={i} className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      id={`menu-img-${i}`}
-                      className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMenuUpload(i, f); e.target.value = ''; }}
-                    />
-                    {menuImages[i] ? (
-                      <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-rose-300">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={menuImages[i]} alt={`Menu ${i + 1}`} className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeMenuImage(i)}
-                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+              <p className="text-xs text-gray-400 mb-5">Upload 1 photo each for Veg &amp; Non Veg menus. Both are required.</p>
+              <div className="grid grid-cols-2 gap-4">
+                {([0, 1] as const).map((i) => {
+                  const label = i === 0 ? 'Veg Menu' : 'Non Veg Menu';
+                  const borderColor = i === 0 ? 'border-green-300' : 'border-rose-300';
+                  const hoverBorder = i === 0 ? 'hover:border-green-300 hover:bg-green-50' : 'hover:border-rose-300 hover:bg-rose-50';
+                  const spinColor = i === 0 ? 'border-green-400' : 'border-rose-400';
+                  return (
+                    <div key={i} className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id={`menu-img-${i}`}
+                        className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleMenuUpload(i, f); e.target.value = ''; }}
+                      />
+                      {menuImages[i] ? (
+                        <div className={`relative aspect-square rounded-xl overflow-hidden border-2 ${borderColor}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={menuImages[i]} alt={label} className="w-full h-full object-cover" />
+                          <div className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-xs font-semibold text-center py-1">{label}</div>
+                          <button
+                            type="button"
+                            onClick={() => removeMenuImage(i)}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor={`menu-img-${i}`}
+                          className={`flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 ${hoverBorder} transition-all cursor-pointer`}
                         >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label
-                        htmlFor={`menu-img-${i}`}
-                        className="flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-rose-300 hover:bg-rose-50 transition-all cursor-pointer"
-                      >
-                        {menuUploading[i] ? (
-                          <div className="w-6 h-6 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <ImagePlus className="w-6 h-6 text-gray-300 mb-1.5" />
-                            <span className="text-xs text-gray-400 font-medium">Menu {i + 1}</span>
-                          </>
-                        )}
-                      </label>
-                    )}
-                  </div>
-                ))}
+                          {menuUploading[i] ? (
+                            <div className={`w-6 h-6 border-2 ${spinColor} border-t-transparent rounded-full animate-spin`} />
+                          ) : (
+                            <>
+                              <ImagePlus className="w-6 h-6 text-gray-300 mb-1.5" />
+                              <span className="text-xs text-gray-500 font-semibold">{label}</span>
+                            </>
+                          )}
+                        </label>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
           )}
