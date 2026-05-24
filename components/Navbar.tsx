@@ -328,6 +328,15 @@ export default function Navbar() {
                 </Link>
               ))}
 
+              {/* Mobile: Vendor Registration */}
+              <Link
+                href="/vendor-onboarding"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center px-4 py-3.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-rose-50 hover:text-[#8B1A4A] transition-all min-h-[48px]"
+              >
+                Vendor Registration
+              </Link>
+
               {/* Mobile Services accordion */}
               <div>
                 <button
