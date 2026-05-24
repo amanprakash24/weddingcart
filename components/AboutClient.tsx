@@ -196,7 +196,7 @@ export default function AboutClient() {
 
               <div className="flex flex-wrap gap-4 mt-8">
                 <a
-                  href="tel:+917070486987"
+                  href="tel:+917646028228"
                   className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-6 py-3 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm"
                 >
                   <Phone className="w-4 h-4" /> Talk to Us
@@ -308,10 +308,16 @@ export default function AboutClient() {
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <a
-                href="tel:+917070486987"
+                href="tel:+917646028228"
                 className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-8 py-3.5 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm"
               >
-                <Phone className="w-4 h-4" /> +91 70704 86987
+                <Phone className="w-4 h-4" /> +91 76460 28228
+              </a>
+              <a
+                href="tel:+916201732422"
+                className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-8 py-3.5 rounded-full hover:opacity-90 transition-all hover:shadow-lg text-sm"
+              >
+                <Phone className="w-4 h-4" /> +91 62017 32422
               </a>
               <a
                 href="mailto:hello@shaadishopping.com"
