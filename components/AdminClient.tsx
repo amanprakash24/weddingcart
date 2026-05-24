@@ -82,7 +82,7 @@ function ImageUploadField({
   );
 }
 
-type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings' | 'outside-vendors';
+type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings' | 'outside-vendors' | 'leads';
 
 interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,6 +111,7 @@ export default function AdminClient() {
   const [consultations, setConsultations] = useState<AnyRecord[]>([]);
   const [bookings, setBookings] = useState<AnyRecord[]>([]);
   const [vendorApplications, setVendorApplications] = useState<AnyRecord[]>([]);
+  const [leads, setLeads] = useState<AnyRecord[]>([]);
   const [appFilter, setAppFilter] = useState<'all' | 'new' | 'approved' | 'rejected'>('all');
   const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [consultationFilter, setConsultationFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
@@ -151,7 +152,7 @@ export default function AdminClient() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, vRes, cRes, eRes, conRes, bRes, appRes] = await Promise.all([
+      const [sRes, vRes, cRes, eRes, conRes, bRes, appRes, lRes] = await Promise.all([
         fetch('/api/stats'),
         fetch('/api/vendors?limit=100'),
         fetch('/api/categories'),
@@ -159,8 +160,9 @@ export default function AdminClient() {
         fetch('/api/consultations'),
         fetch('/api/bookings'),
         fetch('/api/vendor-applications'),
+        fetch('/api/leads'),
       ]);
-      const [s, v, c, e, con, b, app] = await Promise.all([sRes.json(), vRes.json(), cRes.json(), eRes.json(), conRes.json(), bRes.json(), appRes.json()]);
+      const [s, v, c, e, con, b, app, l] = await Promise.all([sRes.json(), vRes.json(), cRes.json(), eRes.json(), conRes.json(), bRes.json(), appRes.json(), lRes.json()]);
       if (s.success) setStats(s.data);
       if (v.success) setVendors(v.data);
       if (c.success) setCategories(c.data);
@@ -168,6 +170,7 @@ export default function AdminClient() {
       if (con.success) setConsultations(con.data);
       if (b.success) setBookings(b.data);
       if (app.success) setVendorApplications(app.data);
+      if (l.success) setLeads(l.data);
     } finally {
       setLoading(false);
     }
@@ -446,6 +449,7 @@ export default function AdminClient() {
     { id: 'consultations' as Tab, icon: Phone, label: 'Consultations', badge: stats?.newConsultations, badgeColor: 'bg-rose-500' },
     { id: 'bookings' as Tab, icon: BookOpen, label: 'Bookings', badge: stats?.newBookings, badgeColor: 'bg-emerald-500' },
     { id: 'outside-vendors' as Tab, icon: Users, label: 'Outside Vendors', badge: stats?.newOutsideVendors, badgeColor: 'bg-indigo-500' },
+    { id: 'leads' as Tab, icon: Phone, label: 'Leads', badge: leads.length || undefined, badgeColor: 'bg-green-500' },
   ];
 
   return (
@@ -1696,6 +1700,59 @@ export default function AdminClient() {
               ))}
             </div>
           )}
+          {/* LEADS */}
+          {tab === 'leads' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-gray-400">{leads.length} lead{leads.length !== 1 ? 's' : ''} captured via popup</p>
+              </div>
+              {leads.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  <Phone className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>No leads yet.</p>
+                </div>
+              )}
+              {leads.map((lead) => (
+                <div key={lead._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <Phone className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{lead.phone}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {lead.whatsapp ? '✅ WhatsApp opt-in' : 'No WhatsApp'} · {lead.source ?? 'popup'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {lead.whatsapp && (
+                      <a
+                        href={`https://wa.me/${lead.phone.replace('+', '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-[#25D366] text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-all"
+                      >
+                        WhatsApp
+                      </a>
+                    )}
+                    <a
+                      href={`tel:${lead.phone}`}
+                      className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-all"
+                    >
+                      Call
+                    </a>
+                    {lead.createdAt && (
+                      <span className="text-xs text-gray-400">
+                        {new Date(lead.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
         </div>
       </main>
     </div>

@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import Lead from '@/lib/models/Lead';
 
+export async function GET() {
+  try {
+    await connectDB();
+    const leads = await Lead.find().sort({ createdAt: -1 });
+    return NextResponse.json({ success: true, data: leads });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
