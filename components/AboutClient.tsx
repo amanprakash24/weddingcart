@@ -328,7 +328,7 @@ export default function AboutClient() {
             </motion.p>
 
             {/* Phone cards */}
-            <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 max-w-xl mx-auto">
+            <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10 max-w-xl mx-auto">
               {[
                 { href: 'tel:+917646028228', label: 'Primary', number: '+91 76460 28228' },
                 { href: 'tel:+916201732422', label: 'Alternate', number: '+91 62017 32422' },
@@ -355,21 +355,6 @@ export default function AboutClient() {
               ))}
             </motion.div>
 
-            {/* Email */}
-            <motion.div variants={fadeUp} className="max-w-xl mx-auto mb-10">
-              <a
-                href="mailto:hello@shaadishopping.com"
-                className="group flex items-center justify-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 hover:scale-[1.01]"
-                style={{ background: 'rgba(197,164,109,0.04)', border: '1px solid rgba(197,164,109,0.12)' }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(197,164,109,0.35)'; (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(197,164,109,0.08)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(197,164,109,0.12)'; (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(197,164,109,0.04)'; }}
-              >
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(197,164,109,0.1)', border: '1px solid rgba(197,164,109,0.2)' }}>
-                  <Mail className="w-4 h-4 text-[#C5A46D]/70" />
-                </div>
-                <span className="text-white/60 text-sm tracking-wide group-hover:text-white/85 transition-colors">hello@shaadishopping.com</span>
-              </a>
-            </motion.div>
 
             {/* Primary CTA */}
             <motion.div variants={fadeUp}>
