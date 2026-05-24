@@ -60,19 +60,41 @@ export default function CartPageClient() {
   };
 
   return (
-    <div className="pt-16 min-h-screen bg-[#FFFAF5]">
+    <div className="pt-24 min-h-screen bg-[#FFFAF5]">
       {/* Header */}
       <div className="bg-gradient-to-r from-amber-500 via-rose-400 to-rose-500 py-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 mb-6">
+            {[
+              { step: 1, label: 'Browse Vendors' },
+              { step: 2, label: 'Review Plan' },
+              { step: 3, label: 'Expert Consultation' },
+              { step: 4, label: 'Wedding Day' },
+            ].map(({ step, label }, i) => (
+              <div key={step} className="flex items-center gap-2">
+                <div className={`flex items-center gap-1.5 ${step === 2 ? 'opacity-100' : 'opacity-50'}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 ${step === 2 ? 'bg-white text-amber-500 border-white' : 'bg-white/20 text-white border-white/40'}`}>
+                    {step}
+                  </div>
+                  <span className={`text-xs font-medium hidden sm:block ${step === 2 ? 'text-white' : 'text-white/70'}`}>{label}</span>
+                </div>
+                {i < 3 && <div className="w-6 sm:w-10 h-px bg-white/30 flex-shrink-0" />}
+              </div>
+            ))}
+          </div>
+
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
               <ShoppingCart className="w-5 h-5 text-white" />
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white font-[Playfair_Display,serif]">Your Wedding Plan</h1>
-              <p className="text-white/80 text-sm">{items.length} service{items.length !== 1 ? 's' : ''} selected</p>
+              <p className="text-white/80 text-sm">{items.length} service{items.length !== 1 ? 's' : ''} selected · Review and consult our wedding expert</p>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -179,7 +201,7 @@ export default function CartPageClient() {
                   onClick={() => setShowBooking(true)}
                   className="mt-4 flex items-center justify-center gap-2 w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all hover:shadow-lg text-sm"
                 >
-                  Book Now <ArrowRight className="w-4 h-4" />
+                  Consult Wedding Expert <ArrowRight className="w-4 h-4" />
                 </button>
                 <Link
                   href="/"
@@ -238,115 +260,137 @@ export default function CartPageClient() {
 
       {/* ── Booking Modal ── */}
       {showBooking && !booked && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-7 animate-scale-in relative">
-            <button
-              onClick={() => setShowBooking(false)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-y-auto max-h-[92vh] relative">
 
-            <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Confirm Your Booking</h2>
-            <p className="text-gray-500 text-sm mb-5">Our executive will contact you shortly to confirm all details.</p>
-
-            {/* Order mini-summary */}
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-5 space-y-1.5">
-              {items.map((item) => (
-                <div key={`${item.vendor.id}-${item.package.id}`} className="flex justify-between text-sm">
-                  <span className="text-gray-600 truncate mr-2">{item.vendor.name} — {item.package.name}</span>
-                  <span className="font-semibold text-amber-700 flex-shrink-0">₹{(item.package.price * item.quantity).toLocaleString('en-IN')}</span>
-                </div>
-              ))}
-              <div className="border-t border-amber-200 pt-2 flex justify-between font-bold text-sm">
-                <span>Total</span>
-                <span className="gradient-text">₹{total.toLocaleString('en-IN')}</span>
-              </div>
+            {/* Premium header strip */}
+            <div className="bg-gradient-to-r from-amber-500 to-rose-500 px-7 pt-7 pb-5 rounded-t-3xl">
+              <button
+                onClick={() => setShowBooking(false)}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 rounded-full transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <h2 className="text-xl font-bold text-white font-[Playfair_Display,serif]">Consult a Wedding Expert</h2>
+              <p className="text-white/80 text-sm mt-1">Share your details — our expert will call you shortly.</p>
             </div>
 
-            <form onSubmit={handleBook} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Full Name *</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    required
-                    value={bookingForm.name}
-                    onChange={(e) => setBookingForm({ ...bookingForm, name: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors"
-                    placeholder="Priya Sharma"
-                  />
+            <div className="px-7 py-6">
+              {/* Order mini-summary */}
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 space-y-1.5">
+                {items.map((item) => (
+                  <div key={`${item.vendor.id}-${item.package.id}`} className="flex justify-between text-sm">
+                    <span className="text-gray-600 truncate mr-2">{item.vendor.name} — {item.package.name}</span>
+                    <span className="font-semibold text-amber-700 flex-shrink-0">₹{(item.package.price * item.quantity).toLocaleString('en-IN')}</span>
+                  </div>
+                ))}
+                <div className="border-t border-amber-200 pt-2 flex justify-between font-bold text-sm">
+                  <span>Total</span>
+                  <span className="gradient-text">₹{total.toLocaleString('en-IN')}</span>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Phone Number *</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    required
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    value={bookingForm.phone}
-                    onChange={(e) => setBookingForm({ ...bookingForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                    className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition-colors border ${bookingForm.phone && !isValidPhone(bookingForm.phone) ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
-                    placeholder="10-digit mobile number"
-                  />
-                  {bookingForm.phone && !isValidPhone(bookingForm.phone) && (
-                    <p className="text-xs text-rose-500 mt-1">Enter a valid 10-digit mobile number</p>
-                  )}
+
+              <form onSubmit={handleBook} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Full Name *</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      required
+                      value={bookingForm.name}
+                      onChange={(e) => setBookingForm({ ...bookingForm, name: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors bg-gray-50 focus:bg-white"
+                      placeholder="Priya Sharma"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">City *</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <select
-                    value={bookingForm.city}
-                    onChange={(e) => setBookingForm({ ...bookingForm, city: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors appearance-none"
-                  >
-                    {CITIES.map((c) => <option key={c}>{c}</option>)}
-                  </select>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Phone Number *</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      required
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={bookingForm.phone}
+                      onChange={(e) => setBookingForm({ ...bookingForm, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                      className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition-colors border bg-gray-50 focus:bg-white ${bookingForm.phone && !isValidPhone(bookingForm.phone) ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
+                      placeholder="10-digit mobile number"
+                    />
+                    {bookingForm.phone && !isValidPhone(bookingForm.phone) && (
+                      <p className="text-xs text-rose-500 mt-1">Enter a valid 10-digit mobile number</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting || !isValidPhone(bookingForm.phone)}
-                className="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all disabled:opacity-60 text-sm"
-              >
-                {submitting ? 'Confirming...' : 'Confirm Booking'}
-              </button>
-            </form>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">City *</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <select
+                      value={bookingForm.city}
+                      onChange={(e) => setBookingForm({ ...bookingForm, city: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors appearance-none bg-gray-50 focus:bg-white"
+                    >
+                      {CITIES.map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting || !isValidPhone(bookingForm.phone)}
+                  className="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-4 rounded-xl hover:opacity-90 transition-all disabled:opacity-60 text-sm shadow-lg shadow-amber-200 mt-2"
+                >
+                  {submitting ? 'Confirming...' : 'Confirm & Get Expert Call'}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* ── Success Popup ── */}
       {booked && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center animate-scale-in">
-            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">
-              <CheckCircle className="w-10 h-10 text-emerald-500" />
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+          <div className="bg-white w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-y-auto max-h-[92vh] animate-scale-in">
+
+            {/* Gradient header with logo */}
+            <div className="bg-gradient-to-r from-amber-500 to-rose-500 px-8 pt-8 pb-6 rounded-t-3xl text-center">
+              <div className="bg-white rounded-2xl px-5 py-3 inline-flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Image src="/logo.png" alt="ShaadiShopping" width={120} height={75} className="object-contain h-12 w-auto" />
+              </div>
+              <h2 className="text-2xl font-bold text-white font-[Playfair_Display,serif]">Enquiry Received!</h2>
+              <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mt-1">We&apos;ll reach out shortly</p>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-2">Booking Confirmed! 🎉</h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-2">
-              Your booking is successfully placed.
-            </p>
-            <p className="text-gray-600 text-sm font-medium mb-6">
-              Our executive will connect with you shortly.
-            </p>
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 text-left space-y-1.5">
-              <p className="text-sm text-gray-700"><span className="font-semibold">Name:</span> {bookingForm.name}</p>
-              <p className="text-sm text-gray-700"><span className="font-semibold">Phone:</span> {bookingForm.phone}</p>
-              <p className="text-sm text-gray-700"><span className="font-semibold">City:</span> {bookingForm.city}</p>
+
+            <div className="px-7 py-6 text-center">
+              <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                Thank you, <span className="font-semibold text-gray-700">{bookingForm.name}</span>! Our wedding expert will call you on <span className="font-semibold text-gray-700">{bookingForm.phone}</span> to understand your requirements and help plan your perfect wedding.
+              </p>
+
+              {/* What happens next */}
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 text-left space-y-3">
+                <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">What happens next</p>
+                {[
+                  'Our expert reviews your selected services',
+                  'We call you within 24 hours to discuss details',
+                  'You get a personalised wedding plan & quote',
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</div>
+                    <p className="text-gray-600 text-xs leading-relaxed">{step}</p>
+                  </div>
+                ))}
+              </div>
+
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-8 py-3 rounded-full hover:opacity-90 transition-all text-sm"
+              >
+                Back to Home
+              </Link>
             </div>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-8 py-3 rounded-full hover:opacity-90 transition-all text-sm"
-            >
-              Back to Home
-            </Link>
+
           </div>
         </div>
       )}
