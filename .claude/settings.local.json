@@ -71,7 +71,12 @@
       "Bash(cp \"C:/Users/anisha/Downloads/wedding_0756_558986f6_1.jpg.jpeg\" \"C:/weddingcart/weddingcart/public/cat-real-weddings.jpg\")",
       "Bash(cp \"C:/Users/anisha/Downloads/VID_20260522_105231_310.mp4\" \"C:/weddingcart/weddingcart/public/cat-budget-planning.mp4\")",
       "Bash(Select-Object Name, Mode)",
-      "Bash(grep -E \"\\\\.\\(ts|tsx|mjs|json\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx|mjs|json\\)$\")",
+      "Bash(git cherry-pick *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\weddingcart\\\\weddingcart\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(ConvertTo-Json)",
+      "Bash(copy *)"
     ]
   }
 }

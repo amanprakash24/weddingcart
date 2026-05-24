@@ -251,18 +251,6 @@ export default function Navbar() {
                 Talk to Expert
               </a>
 
-              {/* Vendor Login */}
-              <Link
-                href="/vendor-login"
-                className={`hidden lg:inline-flex items-center text-[0.78rem] font-semibold tracking-[0.04em] px-4 py-2 rounded-lg border transition-all ${
-                  isTransparent
-                    ? 'border-white/30 text-white hover:bg-white/12'
-                    : 'border-[#8B1A4A] text-[#8B1A4A] hover:bg-[#8B1A4A] hover:text-white'
-                }`}
-              >
-                Vendor Login
-              </Link>
-
               {/* Divider */}
               <div className={`hidden lg:block w-px h-5 ${isTransparent ? 'bg-white/20' : 'bg-gray-200'}`} />
 
@@ -320,15 +308,6 @@ export default function Navbar() {
                 className="flex items-center px-4 py-3.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-rose-50 hover:text-[#8B1A4A] transition-all min-h-[48px]"
               >
                 Vendor Registration
-              </Link>
-
-              {/* Mobile: Vendor Login */}
-              <Link
-                href="/vendor-login"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center px-4 py-3.5 rounded-xl text-sm font-semibold text-[#8B1A4A] border border-[#8B1A4A]/30 hover:bg-[#8B1A4A] hover:text-white transition-all min-h-[48px]"
-              >
-                Vendor Login
               </Link>
 
               {/* Mobile Services accordion */}
