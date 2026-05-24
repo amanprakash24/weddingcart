@@ -255,15 +255,16 @@ export default function Navbar() {
 
             {/* Right actions */}
             <div className="flex items-center gap-5">
-              {/* Talk to Expert — desktop only */}
+              {/* Talk to Expert — icon on mobile, full label on desktop */}
               <a
                 href="tel:+917646028228"
-                className={`hidden lg:flex items-center gap-1.5 text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
+                aria-label="Talk to Expert"
+                className={`flex items-center gap-1.5 text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
                   isTransparent ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-[#8B1A4A]'
                 }`}
               >
-                <Phone className="w-3.5 h-3.5" />
-                Talk to Expert
+                <Phone className="w-4 h-4" />
+                <span className="hidden lg:inline">Talk to Expert</span>
               </a>
 
               {/* Divider */}
