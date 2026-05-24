@@ -134,23 +134,22 @@ export default function AboutClient() {
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
               className="relative"
             >
-              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-amber-100 to-rose-100 aspect-[4/5] max-w-sm mx-auto lg:mx-0 shadow-2xl">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
-                      <span className="text-5xl font-bold text-white font-[Playfair_Display,serif]">A</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800 font-[Playfair_Display,serif]">Anisha Kumari</p>
-                    <p className="text-amber-600 font-semibold mt-1 text-sm">Founder & CEO</p>
-                    <div className="flex items-center justify-center gap-1.5 mt-3 text-gray-500 text-sm">
-                      <MapPin className="w-4 h-4 text-rose-400" />
-                      Patna, Bihar, India
-                    </div>
-                    <div className="flex gap-1 justify-center mt-4">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
+              <div className="relative rounded-3xl overflow-hidden aspect-[4/5] max-w-sm mx-auto lg:mx-0 shadow-2xl">
+                <Image
+                  src="/images/anisha.jpg"
+                  alt="Anisha Kumari — Founder & CEO, ShaadiShopping"
+                  fill
+                  className="object-cover object-top"
+                  sizes="(max-width: 1024px) 80vw, 400px"
+                  priority
+                />
+                {/* Name badge overlay at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-6 py-5">
+                  <p className="text-xl font-bold text-white font-[Playfair_Display,serif]">Anisha Kumari</p>
+                  <p className="text-amber-300 font-semibold text-sm">Founder & CEO</p>
+                  <div className="flex items-center gap-1.5 mt-1 text-white/70 text-xs">
+                    <MapPin className="w-3 h-3 text-rose-300" />
+                    Patna, Bihar, India
                   </div>
                 </div>
               </div>
