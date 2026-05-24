@@ -110,7 +110,7 @@ export default function VendorOnboardingClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (images.some((url) => !url)) {
+    if (isVenue && images.some((url) => !url)) {
       setError('Please upload all 3 venue images before submitting.');
       return;
     }
@@ -398,8 +398,8 @@ export default function VendorOnboardingClient() {
             </div>
           </motion.div>
 
-          {/* Venue Images */}
-          <motion.div variants={fadeUp}>
+          {/* Venue Images — venue only */}
+          {isVenue && <motion.div variants={fadeUp} initial="hidden" animate="show">
             <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
               <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
                 <ImagePlus className="w-4 h-4 text-amber-600" />
@@ -447,7 +447,7 @@ export default function VendorOnboardingClient() {
                 </div>
               ))}
             </div>
-          </motion.div>
+          </motion.div>}
 
           {/* Food Menu Images — venue only */}
           {isVenue && (
