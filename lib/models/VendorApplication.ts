@@ -14,6 +14,7 @@ export interface IVendorApplication extends Document {
   instagram: string;
   website: string;
   coverImage: string;
+  portfolioImages: string[];
   status: 'new' | 'approved' | 'rejected';
   vendorId: string; // set once vendor is created on approval
 }
@@ -32,8 +33,9 @@ const VendorApplicationSchema = new Schema<IVendorApplication>(
     description:  { type: String, default: '' },
     instagram:    { type: String, default: '' },
     website:      { type: String, default: '' },
-    coverImage:   { type: String, default: '' },
-    status:       { type: String, enum: ['new', 'approved', 'rejected'], default: 'new' },
+    coverImage:      { type: String, default: '' },
+    portfolioImages: { type: [String], default: [] },
+    status:          { type: String, enum: ['new', 'approved', 'rejected'], default: 'new' },
     vendorId:     { type: String, default: '' },
   },
   { timestamps: true }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowLeft, Sparkles, Phone, Mail, MapPin, Briefcase, IndianRupee, Star, AtSign, Globe, ChevronDown } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Sparkles, Phone, Mail, MapPin, Briefcase, IndianRupee, Star, AtSign, Globe, ChevronDown, ImagePlus, X } from 'lucide-react';
 import { Category } from '@/types';
 
 const CITIES = [
@@ -46,6 +46,8 @@ export default function VendorOnboardingClient() {
   const [loading, setLoading]       = useState(false);
   const [submitted, setSubmitted]   = useState(false);
   const [error, setError]           = useState('');
+  const [images, setImages]         = useState<[string, string, string]>(['', '', '']);
+  const [imgUploading, setImgUploading] = useState<[boolean, boolean, boolean]>([false, false, false]);
 
   useEffect(() => {
     fetch('/api/categories')
@@ -55,9 +57,36 @@ export default function VendorOnboardingClient() {
 
   const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
+  const handleImageUpload = async (index: 0 | 1 | 2, file: File) => {
+    setImgUploading((prev) => { const n = [...prev] as [boolean,boolean,boolean]; n[index] = true; return n; });
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) {
+        setImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = data.url; return n; });
+      } else {
+        setError('Image upload failed. Please try again.');
+      }
+    } catch {
+      setError('Image upload failed. Please try again.');
+    } finally {
+      setImgUploading((prev) => { const n = [...prev] as [boolean,boolean,boolean]; n[index] = false; return n; });
+    }
+  };
+
+  const removeImage = (index: 0 | 1 | 2) => {
+    setImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = ''; return n; });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (images.some((url) => !url)) {
+      setError('Please upload all 3 portfolio images before submitting.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/vendor-applications', {
@@ -67,6 +96,7 @@ export default function VendorOnboardingClient() {
           ...form,
           priceMin: Number(form.priceMin) || 0,
           priceMax: Number(form.priceMax) || 0,
+          portfolioImages: images,
         }),
       });
       const data = await res.json();
@@ -176,7 +206,7 @@ export default function VendorOnboardingClient() {
                   >
                     <option value="">Select category</option>
                     {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -333,6 +363,57 @@ export default function VendorOnboardingClient() {
                   />
                 </div>
               </div>
+            </div>
+          </motion.div>
+
+          {/* Portfolio Images */}
+          <motion.div variants={fadeUp}>
+            <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
+                <ImagePlus className="w-4 h-4 text-amber-600" />
+              </div>
+              Portfolio Images <span className="text-rose-500">*</span>
+            </h2>
+            <p className="text-xs text-gray-400 mb-5">Upload exactly 3 photos showcasing your work. All 3 are required.</p>
+            <div className="grid grid-cols-3 gap-4">
+              {([0, 1, 2] as const).map((i) => (
+                <div key={i} className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id={`portfolio-img-${i}`}
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(i, f); e.target.value = ''; }}
+                  />
+                  {images[i] ? (
+                    <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-amber-300">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={images[i]} alt={`Portfolio ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(i)}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor={`portfolio-img-${i}`}
+                      className="flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all cursor-pointer"
+                    >
+                      {imgUploading[i] ? (
+                        <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <ImagePlus className="w-6 h-6 text-gray-300 mb-1.5" />
+                          <span className="text-xs text-gray-400 font-medium">Photo {i + 1}</span>
+                        </>
+                      )}
+                    </label>
+                  )}
+                </div>
+              ))}
             </div>
           </motion.div>
 
