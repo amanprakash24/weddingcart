@@ -199,18 +199,6 @@ export default function Navbar() {
                 </Link>
               ))}
 
-              {/* Vendor Registration */}
-              <Link
-                href="/vendor-onboarding"
-                className={`flex items-center gap-1.5 text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
-                  isTransparent
-                    ? 'text-white/85 hover:text-white'
-                    : 'text-gray-600 hover:text-[#8B1A4A]'
-                }`}
-              >
-                Vendor Registration
-              </Link>
-
               {/* Services dropdown */}
               <div className="relative" ref={megaRef}>
                 <button
