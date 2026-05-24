@@ -198,8 +198,16 @@ export default function HomepageClient() {
             muted
             loop
             playsInline
-            className="absolute top-1/2 left-1/2 w-full h-full object-cover"
-            style={{ transform: 'translate(-50%, -50%) rotate(90deg) scale(1.78)' }}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              width: '100vh',
+              height: '100vw',
+              transform: 'translate(-50%, -50%) rotate(90deg)',
+              objectFit: 'cover',
+              willChange: 'transform',
+            }}
           >
             <source src="/videos/homepage.mp4" type="video/mp4" />
           </video>
