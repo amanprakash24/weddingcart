@@ -881,7 +881,7 @@ export default function HomepageClient() {
             <Link href="/plan" className="flex items-center justify-center bg-[#8B1A4A] text-white font-semibold px-8 sm:px-10 py-4 rounded-full hover:opacity-90 transition-all hover:shadow-2xl text-sm tracking-wide">
               Book A Free Consultation
             </Link>
-            <a href="tel:+917070486987" className="flex items-center justify-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white font-medium px-7 sm:px-8 py-4 rounded-full hover:bg-white/14 transition-all text-sm">
+            <a href="tel:+917646028228" className="flex items-center justify-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white font-medium px-7 sm:px-8 py-4 rounded-full hover:bg-white/14 transition-all text-sm">
               <Phone className="w-4 h-4" /> Speak With An Expert
             </a>
           </motion.div>

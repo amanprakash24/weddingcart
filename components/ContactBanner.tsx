@@ -62,7 +62,7 @@ export default function ContactBanner() {
           <div className="px-5 py-4 space-y-2">
             {/* WhatsApp — primary */}
             <a
-              href="https://wa.me/917070486987"
+              href="https://wa.me/917646028228"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 w-full bg-[#8B1A4A] text-white px-4 py-3 rounded-xl text-sm font-semibold hover:bg-[#7A1640] transition-colors"

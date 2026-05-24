@@ -36,7 +36,7 @@ const organizationJsonLd = {
   },
   contactPoint: {
     '@type': 'ContactPoint',
-    telephone: '+91-70704-86987',
+    telephone: '+91-76460-28228',
     email: 'hello@shaadishopping.com',
     contactType: 'customer service',
     areaServed: 'IN',
