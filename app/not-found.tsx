@@ -29,7 +29,7 @@ export default function NotFound() {
             href="/plan"
             className="border border-amber-300 text-amber-700 font-semibold px-6 py-3 rounded-full hover:bg-amber-50 transition-all text-sm"
           >
-            Start Planning
+            Begin Your Journey
           </Link>
         </div>
       </div>

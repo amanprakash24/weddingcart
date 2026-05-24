@@ -329,7 +329,7 @@ export default function AboutClient() {
                 href="/plan"
                 className="flex items-center gap-2 bg-gray-900 text-white font-semibold px-8 py-3.5 rounded-full hover:bg-gray-800 transition-all text-sm"
               >
-                <Sparkles className="w-4 h-4" /> Start Planning <ArrowRight className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" /> Begin Your Journey <ArrowRight className="w-4 h-4" />
               </Link>
             </motion.div>
           </motion.div>

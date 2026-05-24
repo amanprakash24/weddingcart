@@ -193,7 +193,15 @@ export default function HomepageClient() {
       {/* ── 1. HERO ── */}
       <section className="relative h-screen min-h-[640px] max-h-[940px] flex items-center overflow-hidden">
         <div className="absolute inset-0">
-          <Image src="/images/hero-bg.jpg" alt="Wedding" fill className="object-cover" sizes="100vw" priority />
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src="/videos/homepage.mp4" type="video/mp4" />
+          </video>
         </div>
         {/* Cinematic warm overlay */}
         <div
@@ -295,7 +303,7 @@ export default function HomepageClient() {
                 className="inline-flex items-center justify-center gap-2 bg-[#8B1A4A] text-white px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-semibold text-sm shadow-xl hover:opacity-90 transition-all"
                 style={{ boxShadow: '0 8px 40px rgba(139,26,74,0.45)' }}
               >
-                Start Planning <ArrowRight className="w-4 h-4" />
+                Begin Your Journey <ArrowRight className="w-4 h-4" />
               </Link>
               <a
                 href="tel:+917646028228"
@@ -896,7 +904,7 @@ export default function HomepageClient() {
             className="flex-1 flex items-center justify-center gap-2 bg-[#8B1A4A] text-white py-3.5 rounded-xl font-semibold text-sm"
             style={{ boxShadow: '0 4px 20px rgba(139,26,74,0.4)' }}
           >
-            Start Planning
+            Begin Your Journey
           </Link>
           <a href="tel:+917646028228" className="flex items-center justify-center gap-1.5 border border-gray-200 text-gray-600 py-3.5 px-4 rounded-xl font-semibold text-sm hover:border-[#C5A46D]/50 transition-colors">
             <Phone className="w-4 h-4" /> Call
