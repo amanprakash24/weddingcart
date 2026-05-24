@@ -193,7 +193,16 @@ export default function HomepageClient() {
       {/* ── 1. HERO ── */}
       <section className="relative h-screen min-h-[640px] max-h-[940px] flex items-center overflow-hidden">
         <div className="absolute inset-0">
-          <Image src="/images/hero-bg.jpg" alt="Wedding" fill className="object-cover" sizes="100vw" priority />
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute top-1/2 left-1/2 w-full h-full object-cover"
+            style={{ transform: 'translate(-50%, -50%) rotate(90deg) scale(1.78)' }}
+          >
+            <source src="/videos/homepage.mp4" type="video/mp4" />
+          </video>
         </div>
         {/* Cinematic warm overlay */}
         <div
