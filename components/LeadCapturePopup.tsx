@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 const STORAGE_KEY = 'ss_lead_dismissed_v2';
-const DISMISS_DAYS = 7;
+const DISMISS_MS = 10 * 60 * 1000; // 10 minutes
 
 const WhatsAppIcon = () => (
   <svg viewBox="0 0 32 32" className="w-4 h-4 fill-[#25D366] flex-shrink-0" xmlns="http://www.w3.org/2000/svg">
@@ -30,13 +30,13 @@ export default function LeadCapturePopup() {
       const until = Number(dismissed);
       if (Date.now() < until) return;
     }
-    const t = setTimeout(() => setVisible(true), 3000);
+    const t = setTimeout(() => setVisible(true), 10000);
     return () => clearTimeout(t);
   }, [pathname]);
 
   const dismiss = (permanent = false) => {
-    const days = permanent ? 365 : DISMISS_DAYS;
-    localStorage.setItem(STORAGE_KEY, String(Date.now() + days * 86400000));
+    const ms = permanent ? 365 * 86400000 : DISMISS_MS;
+    localStorage.setItem(STORAGE_KEY, String(Date.now() + ms));
     setVisible(false);
   };
 
