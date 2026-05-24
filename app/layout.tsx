@@ -9,6 +9,7 @@ import CartDrawer from '@/components/CartDrawer';
 import CartFAB from '@/components/CartFAB';
 import ContactBanner from '@/components/ContactBanner';
 import ScrollToTop from '@/components/ScrollToTop';
+import LeadCapturePopup from '@/components/LeadCapturePopup';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -76,6 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CartDrawer />
           <CartFAB />
           <ContactBanner />
+          <LeadCapturePopup />
         </CartProvider>
       </body>
     </html>
