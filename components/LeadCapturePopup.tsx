@@ -35,7 +35,7 @@ export default function LeadCapturePopup() {
   }, [pathname]);
 
   const dismiss = (permanent = false) => {
-    const ms = permanent ? 365 * 86400000 : DISMISS_MS;
+    const ms = permanent ? 24 * 3600000 : DISMISS_MS;
     localStorage.setItem(STORAGE_KEY, String(Date.now() + ms));
     setVisible(false);
   };
