@@ -114,7 +114,7 @@ export default function VendorOnboardingClient() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-rose-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-gray-950 to-gray-800 py-14 px-4 text-center relative overflow-hidden">
+      <div className="bg-gradient-to-r from-gray-950 to-gray-800 pt-36 pb-14 px-4 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #f59e0b 0%, transparent 50%), radial-gradient(circle at 80% 50%, #f43f5e 0%, transparent 50%)' }}
         />
