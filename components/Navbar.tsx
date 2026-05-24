@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText, Phone, Search, ArrowRight } from 'lucide-react';
+import { Menu, X, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText, Phone, Search, ArrowRight, Gem, MapPin as MapPinIcon } from 'lucide-react';
 
 const VENDOR_OPTIONS = [
   { label: 'Wedding Venues',         slug: 'venue' },
@@ -26,66 +26,77 @@ const VENDOR_OPTIONS = [
 const MEGA_MENU = [
   {
     heading: 'Venues',
+    icon: Home,
+    desc: 'Find the perfect space for your celebration',
     items: [
-      { label: 'Wedding Venues', href: '/categories/venue', bold: true, icon: Home },
-      { label: 'Wedding Lawns & Farmhouses', href: '/categories/venue' },
-      { label: 'Hotels', href: '/categories/venue' },
+      { label: 'Wedding Venues', href: '/categories/venue', tag: 'Popular' },
       { label: 'Banquet Halls', href: '/categories/venue' },
-      { label: 'Marriage Garden', href: '/categories/venue' },
+      { label: 'Farmhouses & Lawns', href: '/categories/venue' },
+      { label: 'Hotels & Resorts', href: '/categories/venue' },
+      { label: 'Marriage Gardens', href: '/categories/venue' },
       { label: 'Kalyana Mandapams', href: '/categories/venue' },
-      { label: 'Wedding Resorts', href: '/categories/venue' },
     ],
   },
   {
-    heading: 'Food & Hospitality',
+    heading: 'Beauty & Styling',
+    icon: Star,
+    desc: 'Look and feel your absolute best',
     items: [
-      { label: 'Caterers', href: '/categories/catering', bold: true, icon: UtensilsCrossed },
+      { label: 'Bridal Makeup Artists', href: '/categories/makeup', tag: 'Popular' },
+      { label: 'Mehndi Artists', href: '/categories/mehndi' },
+      { label: 'Bridal Lehenga', href: '/categories/makeup' },
+      { label: 'Bridal Jewellery', href: '/categories/bridal-jewellery' },
+      { label: 'Sherwani & Groom Wear', href: '/categories/sherwani' },
+      { label: 'Trousseau Packing', href: '/categories/makeup' },
+    ],
+  },
+  {
+    heading: 'Photography & Film',
+    icon: Camera,
+    desc: 'Preserve every precious moment forever',
+    items: [
+      { label: 'Wedding Photographers', href: '/categories/photo-video', tag: 'Popular' },
+      { label: 'Videographers', href: '/categories/photo-video' },
+      { label: 'Drone Coverage', href: '/categories/photo-video' },
+      { label: 'Photobooth', href: '/categories/photo-video' },
+    ],
+  },
+  {
+    heading: 'Catering & Food',
+    icon: UtensilsCrossed,
+    desc: 'Delight every guest with exceptional cuisine',
+    items: [
+      { label: 'Wedding Caterers', href: '/categories/catering', tag: 'Popular' },
+      { label: 'Multi-Cuisine Catering', href: '/categories/catering' },
+      { label: 'Vegetarian Specialist', href: '/categories/catering' },
       { label: 'Wedding Cakes', href: '/categories/catering' },
       { label: 'Accommodation', href: '/categories/venue' },
     ],
   },
   {
-    heading: 'Photography',
+    heading: 'Décor & Entertainment',
+    icon: Palette,
+    desc: 'Create an atmosphere that enchants',
     items: [
-      { label: 'Wedding Photographers', href: '/categories/photo-video', bold: true, icon: Camera },
-      { label: 'Wedding Videography', href: '/categories/photo-video' },
-      { label: 'Photobooth', href: '/categories/photo-video' },
-    ],
-  },
-  {
-    heading: 'Decor & Entertainment',
-    items: [
-      { label: 'Wedding Decorators', href: '/categories/decorator', bold: true, icon: Palette },
+      { label: 'Wedding Decorators', href: '/categories/decorator', tag: 'Popular' },
       { label: 'Florists', href: '/categories/decorator' },
-      { label: 'Wedding Entertainment', href: '/categories/band', bold: true, icon: Music },
       { label: 'Wedding DJ', href: '/categories/dj' },
-      { label: 'Wedding Music / Band', href: '/categories/band' },
-      { label: 'Wedding Choreographers', href: '/categories/band' },
-    ],
-  },
-  {
-    heading: 'Bridal & Groom',
-    items: [
-      { label: 'Bridal Makeup Artists', href: '/categories/makeup', bold: true, icon: Star },
-      { label: 'Mehndi Artists', href: '/categories/mehndi' },
-      { label: 'Bridal Lehenga', href: '/categories/makeup' },
-      { label: 'Trousseau Packing', href: '/categories/makeup' },
-      { label: 'Bridal Jewellery', href: '/categories/makeup' },
-      { label: 'Sherwani / Groom Wear', href: '/categories/makeup' },
-    ],
-  },
-  {
-    heading: 'Logistics & More',
-    items: [
-      { label: 'Wedding Transportation', href: '/categories/transport', bold: true, icon: Car },
+      { label: 'Live Band & Music', href: '/categories/band' },
+      { label: 'Choreographers', href: '/categories/band' },
       { label: 'Tent House', href: '/categories/decorator' },
-      { label: 'Wedding Invitations', href: '/categories/invitations', bold: true, icon: Mail },
-      { label: 'Wedding Gifts', href: '/categories/gifts', bold: true, icon: Gift },
-      { label: 'Pandits', href: '/categories/planning' },
-      { label: 'Astrologers', href: '/categories/planning' },
-      { label: 'Legal & Documentation', href: '/categories/planning' },
-      { label: 'Wedding Planners', href: '/categories/planning', bold: true, icon: FileText },
-      { label: 'Honeymoon', href: '/categories/venue' },
+    ],
+  },
+  {
+    heading: 'Planning & More',
+    icon: FileText,
+    desc: 'Everything else for a seamless wedding',
+    items: [
+      { label: 'Wedding Planners', href: '/categories/planning', tag: 'Popular' },
+      { label: 'Wedding Transportation', href: '/categories/transport' },
+      { label: 'Wedding Invitations', href: '/categories/invitations' },
+      { label: 'Wedding Gifts', href: '/categories/gifts' },
+      { label: 'Pandits & Astrologers', href: '/categories/planning' },
+      { label: 'Honeymoon Packages', href: '/categories/venue' },
     ],
   },
 ];
@@ -101,6 +112,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(0);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState('venue');
@@ -217,36 +229,86 @@ export default function Navbar() {
 
                 {megaOpen && (
                   <div
-                    className="fixed left-[5%] right-[5%] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.12)] border-t border-[#C5A46D]/15 animate-fade-in overflow-y-auto z-[9998] rounded-b-2xl"
-                    style={{ top: 'calc(36px + 72px - 35px)' }}
+                    className="fixed left-[3%] right-[3%] bg-white shadow-[0_32px_80px_rgba(0,0,0,0.16)] animate-fade-in z-[9998] rounded-2xl overflow-hidden"
+                    style={{ top: 'calc(36px + 72px + 4px)' }}
                   >
-                    <div className="max-w-7xl mx-auto px-8 py-8">
-                      <div className="grid grid-cols-3 lg:grid-cols-6 gap-8">
-                        {MEGA_MENU.map((col) => (
-                          <div key={col.heading}>
-                            <p className="text-[0.6rem] font-bold text-[#C5A46D] uppercase tracking-[0.25em] mb-4">{col.heading}</p>
-                            <ul className="space-y-2">
-                              {col.items.map((item) => (
-                                <li key={item.label}>
+                    <div className="flex" style={{ minHeight: 340 }}>
+
+                      {/* Left sidebar — category tabs */}
+                      <div className="w-56 flex-shrink-0 bg-[#2A1F1B] py-6 flex flex-col gap-0.5">
+                        <p className="text-[0.55rem] font-bold text-[#C5A46D]/60 uppercase tracking-[0.3em] px-5 pb-3">Categories</p>
+                        {MEGA_MENU.map((cat, i) => {
+                          const Icon = cat.icon;
+                          return (
+                            <button
+                              key={cat.heading}
+                              onMouseEnter={() => setActiveCategory(i)}
+                              onClick={() => setActiveCategory(i)}
+                              className={`flex items-center gap-3 px-5 py-3 text-left transition-all duration-150 ${
+                                activeCategory === i
+                                  ? 'bg-[#8B1A4A] text-white'
+                                  : 'text-white/60 hover:text-white hover:bg-white/8'
+                              }`}
+                            >
+                              <Icon className={`w-4 h-4 flex-shrink-0 ${activeCategory === i ? 'text-[#C5A46D]' : ''}`} />
+                              <span className="text-[0.8rem] font-medium">{cat.heading}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Right content — sub-items */}
+                      <div className="flex-1 px-8 py-6">
+                        {(() => {
+                          const cat = MEGA_MENU[activeCategory];
+                          return (
+                            <>
+                              <div className="flex items-start justify-between mb-5">
+                                <div>
+                                  <h3 className="text-base font-semibold text-[#2A1F1B]" style={{ fontFamily: 'var(--font-playfair, serif)' }}>{cat.heading}</h3>
+                                  <p className="text-xs text-gray-400 mt-0.5">{cat.desc}</p>
+                                </div>
+                                <Link
+                                  href={cat.items[0].href}
+                                  className="flex items-center gap-1 text-xs font-semibold text-[#8B1A4A] hover:opacity-75 transition-opacity"
+                                >
+                                  View All <ArrowRight className="w-3 h-3" />
+                                </Link>
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                                {cat.items.map((item) => (
                                   <Link
+                                    key={item.label}
                                     href={item.href}
-                                    className={`flex items-center gap-1.5 text-[0.8rem] py-0.5 transition-colors hover:text-[#8B1A4A] ${item.bold ? 'font-semibold text-gray-800' : 'text-gray-400'}`}
+                                    onClick={() => setMegaOpen(false)}
+                                    className="flex items-center justify-between group px-3 py-2.5 rounded-lg hover:bg-[#FAF5EE] transition-all"
                                   >
-                                    {item.icon && <item.icon className="w-3 h-3 text-[#C5A46D]/70 flex-shrink-0" />}
-                                    {item.label}
+                                    <span className="text-[0.82rem] text-gray-600 group-hover:text-[#8B1A4A] transition-colors font-medium">{item.label}</span>
+                                    <div className="flex items-center gap-2">
+                                      {item.tag && (
+                                        <span className="text-[0.55rem] font-bold uppercase tracking-wider text-[#8B1A4A] bg-[#8B1A4A]/10 px-1.5 py-0.5 rounded-full">{item.tag}</span>
+                                      )}
+                                      <ArrowRight className="w-3 h-3 text-gray-300 group-hover:text-[#C5A46D] transition-colors opacity-0 group-hover:opacity-100" />
+                                    </div>
                                   </Link>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
+                                ))}
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
-                      <div className="mt-8 pt-5 border-t border-gray-100 flex items-center justify-between">
-                        <p className="text-xs text-gray-400">Need help choosing? Our experts will guide you.</p>
-                        <Link href="/plan" className="flex items-center gap-1.5 text-xs font-semibold text-[#8B1A4A] hover:opacity-75 transition-opacity">
-                          <Sparkles className="w-3 h-3" /> Use the Planning Wizard
-                        </Link>
-                      </div>
+                    </div>
+
+                    {/* Bottom strip */}
+                    <div className="border-t border-[#C5A46D]/10 bg-[#FFFCF7] px-8 py-3.5 flex items-center justify-between">
+                      <p className="text-xs text-gray-400">Not sure where to start? Our wedding experts will guide you.</p>
+                      <Link
+                        href="/plan"
+                        onClick={() => setMegaOpen(false)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-[#8B1A4A] bg-[#8B1A4A]/8 hover:bg-[#8B1A4A]/15 px-4 py-2 rounded-full transition-all"
+                      >
+                        <Sparkles className="w-3 h-3" /> Use the Planning Wizard
+                      </Link>
                     </div>
                   </div>
                 )}
@@ -349,20 +411,28 @@ export default function Navbar() {
                 </button>
                 {mobileServicesOpen && (
                   <div className="ml-4 mt-1 space-y-1 pb-2">
-                    {MEGA_MENU.map((col) => (
-                      <div key={col.heading} className="mb-4">
-                        <p className="text-[0.6rem] font-bold text-[#C5A46D] uppercase tracking-[0.25em] px-3 py-1">{col.heading}</p>
-                        {col.items.map((item) => (
-                          <Link
-                            key={item.label}
-                            href={item.href}
-                            className={`block px-3 py-2.5 rounded-lg text-sm transition-colors hover:text-[#8B1A4A] hover:bg-rose-50 ${item.bold ? 'font-semibold text-gray-700' : 'text-gray-400'}`}
-                          >
-                            {item.label}
-                          </Link>
-                        ))}
-                      </div>
-                    ))}
+                    {MEGA_MENU.map((col) => {
+                      const Icon = col.icon;
+                      return (
+                        <div key={col.heading} className="mb-4">
+                          <div className="flex items-center gap-2 px-3 py-1.5">
+                            <Icon className="w-3.5 h-3.5 text-[#C5A46D]" />
+                            <p className="text-[0.6rem] font-bold text-[#C5A46D] uppercase tracking-[0.25em]">{col.heading}</p>
+                          </div>
+                          {col.items.map((item) => (
+                            <Link
+                              key={item.label}
+                              href={item.href}
+                              onClick={() => setMobileOpen(false)}
+                              className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm text-gray-600 transition-colors hover:text-[#8B1A4A] hover:bg-rose-50"
+                            >
+                              {item.label}
+                              {item.tag && <span className="text-[0.55rem] font-bold uppercase tracking-wider text-[#8B1A4A] bg-[#8B1A4A]/10 px-1.5 py-0.5 rounded-full">{item.tag}</span>}
+                            </Link>
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -372,7 +442,7 @@ export default function Navbar() {
                   href="/plan"
                   className="flex items-center justify-center w-full bg-[#8B1A4A] text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all min-h-[48px] text-sm tracking-wide"
                 >
-                  Begin Your Journey Your Wedding
+                  Begin Your Journey
                 </Link>
                 <a
                   href="tel:+917646028228"
