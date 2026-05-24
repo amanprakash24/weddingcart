@@ -30,7 +30,7 @@ export default function LeadCapturePopup() {
       const until = Number(dismissed);
       if (Date.now() < until) return;
     }
-    const t = setTimeout(() => setVisible(true), 8000);
+    const t = setTimeout(() => setVisible(true), 3000);
     return () => clearTimeout(t);
   }, [pathname]);
 
