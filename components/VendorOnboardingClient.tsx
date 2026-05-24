@@ -110,8 +110,8 @@ export default function VendorOnboardingClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (isVenue && images.some((url) => !url)) {
-      setError('Please upload all 3 venue images before submitting.');
+    if (images.some((url) => !url)) {
+      setError('Please upload all 3 work images before submitting.');
       return;
     }
     if (isVenue && menuImages.some((url) => !url)) {
@@ -398,15 +398,15 @@ export default function VendorOnboardingClient() {
             </div>
           </motion.div>
 
-          {/* Venue Images — venue only */}
-          {isVenue && <motion.div variants={fadeUp} initial="hidden" animate="show">
+          {/* Work / Venue Images — all categories */}
+          <motion.div variants={fadeUp}>
             <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
               <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
                 <ImagePlus className="w-4 h-4 text-amber-600" />
               </div>
-              Venue Images <span className="text-rose-500">*</span>
+              {isVenue ? 'Venue Images' : 'Work Images'} <span className="text-rose-500">*</span>
             </h2>
-            <p className="text-xs text-gray-400 mb-5">Upload 3 photos showcasing your venue. All 3 are required.</p>
+            <p className="text-xs text-gray-400 mb-5">Upload 3 photos showcasing your work. All 3 are required.</p>
             <div className="grid grid-cols-3 gap-4">
               {([0, 1, 2] as const).map((i) => (
                 <div key={i} className="relative">
@@ -447,7 +447,7 @@ export default function VendorOnboardingClient() {
                 </div>
               ))}
             </div>
-          </motion.div>}
+          </motion.div>
 
           {/* Food Menu Images — venue only */}
           {isVenue && (
