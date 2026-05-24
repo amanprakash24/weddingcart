@@ -111,7 +111,7 @@ export default function VendorOnboardingClient() {
     e.preventDefault();
     setError('');
     if (images.some((url) => !url)) {
-      setError('Please upload all 3 signature portfolio images before submitting.');
+      setError('Please upload all 3 "Our Work" images before submitting.');
       return;
     }
     if (isVenue && menuImages.some((url) => !url)) {
@@ -404,7 +404,7 @@ export default function VendorOnboardingClient() {
               <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
                 <ImagePlus className="w-4 h-4 text-amber-600" />
               </div>
-              {isVenue ? 'Venue Images' : 'Signature Portfolio'} <span className="text-rose-500">*</span>
+              {isVenue ? 'Venue Images' : 'Our Work'} <span className="text-rose-500">*</span>
             </h2>
             <p className="text-xs text-gray-400 mb-5">Upload 3 photos that best represent your craft. All 3 are required.</p>
             <div className="grid grid-cols-3 gap-4">
