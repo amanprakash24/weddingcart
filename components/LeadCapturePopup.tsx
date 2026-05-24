@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 
 const STORAGE_KEY = 'ss_lead_dismissed';
 const DISMISS_DAYS = 7;
@@ -14,6 +15,7 @@ const WhatsAppIcon = () => (
 );
 
 export default function LeadCapturePopup() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [phone, setPhone] = useState('');
   const [whatsapp, setWhatsapp] = useState(true);
@@ -22,6 +24,7 @@ export default function LeadCapturePopup() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (pathname.startsWith('/admin')) return;
     const dismissed = localStorage.getItem(STORAGE_KEY);
     if (dismissed) {
       const until = Number(dismissed);
@@ -29,7 +32,7 @@ export default function LeadCapturePopup() {
     }
     const t = setTimeout(() => setVisible(true), 8000);
     return () => clearTimeout(t);
-  }, []);
+  }, [pathname]);
 
   const dismiss = (permanent = false) => {
     const days = permanent ? 365 : DISMISS_DAYS;
