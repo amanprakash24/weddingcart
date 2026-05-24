@@ -77,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CartDrawer />
           <CartFAB />
           <ContactBanner />
-          <LeadCapturePopup />
+          <Suspense><LeadCapturePopup /></Suspense>
         </CartProvider>
       </body>
     </html>
