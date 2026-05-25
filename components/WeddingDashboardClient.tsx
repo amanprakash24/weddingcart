@@ -273,7 +273,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
               <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Recommended Venues in {form.city}</h2>
               <p className="text-gray-500 text-sm mt-0.5">Shortlisted for {form.guestCount} guests · {form.days} day{form.days > 1 ? 's' : ''}</p>
             </div>
-            <Link href="/vendors" className="text-sm text-rose-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all">
+            <Link href="/categories/venue" className="text-sm text-rose-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all">
               View all <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -443,7 +443,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
         {/* ── CTA Row ── */}
         <div className="grid sm:grid-cols-2 gap-4">
           <Link
-            href="/vendors"
+            href="/categories/venue"
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-6 py-4 rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-rose-200"
           >
             <Building2 className="w-5 h-5" /> Explore Vendors in {form.city}
