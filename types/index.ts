@@ -92,6 +92,7 @@ export interface Consultation {
   name: string;
   phone: string;
   email: string;
+  eventType: string;
   weddingDate: string;
   days: number;
   guestCount: number;

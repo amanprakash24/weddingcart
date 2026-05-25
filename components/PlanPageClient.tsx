@@ -10,6 +10,20 @@ import { useCart } from '@/context/CartContext';
 
 const STEPS = ['Event Details', 'Services', 'Hospitality', 'Celebration', 'Consultation'];
 
+const EVENT_TYPES = [
+  { id: 'wedding',     label: 'Wedding',     icon: '💍' },
+  { id: 'engagement',  label: 'Engagement',  icon: '💑' },
+  { id: 'birthday',    label: 'Birthday',    icon: '🎂' },
+  { id: 'anniversary', label: 'Anniversary', icon: '🥂' },
+  { id: 'corporate',   label: 'Corporate',   icon: '🏢' },
+  { id: 'other',       label: 'Other Event', icon: '🎉' },
+];
+
+const EVENT_LABELS: Record<string, string> = {
+  wedding: 'Wedding', engagement: 'Engagement', birthday: 'Birthday',
+  anniversary: 'Anniversary', corporate: 'Corporate Event', other: 'Event',
+};
+
 const SERVICES = [
   // ── Primary 8 categories (in original order) ──
   { id: 'venue', label: 'Venues', icon: '🏛️', color: 'bg-blue-50 border-blue-200 text-blue-700' },
@@ -50,7 +64,7 @@ const TIMES = ['9:00 AM', '11:00 AM', '1:00 PM', '3:00 PM', '5:00 PM', '7:00 PM'
 interface FormData {
   name: string; phone: string; email: string; city: string; weddingDate: string;
   days: number; guestCount: number; foodPreference: string; weddingStyle: string;
-  budgetRange: string;
+  budgetRange: string; eventType: string;
   services: string[]; meals: Record<number, string[]>;
   venueType: string; consultationDate: string; preferredTime: string; message: string;
 }
@@ -65,8 +79,11 @@ export default function PlanPageClient() {
   const [form, setForm] = useState<FormData>({
     name: '', phone: '', email: '', city: 'Patna', weddingDate: '', days: 1,
     guestCount: 100, foodPreference: 'veg', weddingStyle: '', budgetRange: '',
+    eventType: 'wedding',
     services: [], meals: {}, venueType: '', consultationDate: '', preferredTime: '', message: '',
   });
+
+  const eventLabel = EVENT_LABELS[form.eventType] || 'Event';
 
   const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -169,8 +186,30 @@ export default function PlanPageClient() {
             {step === 0 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Let&apos;s Begin Your Wedding Journey</h2>
-                  <p className="text-gray-500 text-sm">Tell us about yourself and your dream wedding</p>
+                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Let&apos;s Begin Planning Your {eventLabel}</h2>
+                  <p className="text-gray-500 text-sm">Tell us about yourself and your celebration</p>
+                </div>
+
+                {/* Event Type Selector */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">What Are You Planning? *</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {EVENT_TYPES.map((et) => (
+                      <button
+                        key={et.id}
+                        type="button"
+                        onClick={() => updateField('eventType', et.id)}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-semibold transition-all ${
+                          form.eventType === et.id
+                            ? 'border-[#8B1A4A] bg-rose-50 text-[#8B1A4A]'
+                            : 'border-gray-200 text-gray-600 hover:border-rose-300'
+                        }`}
+                      >
+                        <span className="text-xl">{et.icon}</span>
+                        {et.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -216,7 +255,7 @@ export default function PlanPageClient() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Wedding Date *</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">{eventLabel} Date *</label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input required type="date" value={form.weddingDate} onChange={(e) => updateField('weddingDate', e.target.value)} className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 transition-colors" />
@@ -251,7 +290,7 @@ export default function PlanPageClient() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Wedding Style</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Celebration Style</label>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                     {[
                       { id: 'traditional', label: 'Traditional', icon: '🪔' },
@@ -598,7 +637,8 @@ export default function PlanPageClient() {
                   <h4 className="font-bold text-gray-800 text-sm mb-3">Your Wedding Plan Summary</h4>
                   <div className="space-y-2 text-sm text-gray-600">
                     <div className="flex justify-between"><span>Name</span><span className="font-medium text-gray-900">{form.name}</span></div>
-                    <div className="flex justify-between"><span>Wedding Date</span><span className="font-medium text-gray-900">{form.weddingDate || 'Not set'}</span></div>
+                    <div className="flex justify-between"><span>Event Type</span><span className="font-medium text-gray-900">{EVENT_LABELS[form.eventType] || 'Event'}</span></div>
+                    <div className="flex justify-between"><span>{eventLabel} Date</span><span className="font-medium text-gray-900">{form.weddingDate || 'Not set'}</span></div>
                     <div className="flex justify-between"><span>Duration</span><span className="font-medium text-gray-900">{form.days} day{form.days > 1 ? 's' : ''}</span></div>
                     <div className="flex justify-between"><span>Guests</span><span className="font-medium text-gray-900">{form.guestCount}</span></div>
                     <div className="flex justify-between"><span>Services</span><span className="font-medium text-gray-900">{form.services.length} selected</span></div>

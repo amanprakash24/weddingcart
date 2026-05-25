@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Phone } from 'lucide-react';
+import { ArrowRight, Phone, Sparkles } from 'lucide-react';
 import { Vendor } from '@/types';
 import VendorCard from './VendorCard';
 
@@ -593,26 +593,39 @@ export default function HomepageClient() {
         />
 
         {/* ── Section header — restrained luxury ── */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 sm:pt-18 pb-8 sm:pb-12 text-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-22 pb-10 sm:pb-14 text-center">
           <motion.div
             initial={{ opacity: 0, y: 22, filter: 'blur(6px)' }}
             whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             viewport={{ once: true }}
             transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           >
-            <p className="eyebrow-luxury text-[#C5A46D]/70 mb-4">Wedding Journal</p>
+            {/* Ornamental divider */}
+            <div className="flex items-center justify-center gap-3 mb-5">
+              <div className="h-px w-12" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.5))' }} />
+              <span className="text-[#C5A46D]/60 text-[0.55rem] tracking-[0.4em] uppercase font-medium">Wedding Journal</span>
+              <div className="h-px w-12" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.5))' }} />
+            </div>
+
             <h2
-              className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-[1.2] mb-5"
+              className="leading-[1.15] mb-6"
               style={{ fontFamily: 'var(--font-playfair, serif)' }}
             >
-              Celebrations Curated<br />by <span className="text-[#C5A46D]">ShaadiShopping</span>
+              <span className="block text-[2rem] sm:text-[2.6rem] lg:text-[3.4rem] font-light text-white/80 tracking-wide">Celebrations Curated</span>
+              <span className="block text-[2.6rem] sm:text-[3.4rem] lg:text-[4.4rem] font-semibold" style={{ background: 'linear-gradient(135deg, #e8d5b0 0%, #C5A46D 45%, #a07c45 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                by ShaadiShopping
+              </span>
             </h2>
-            <div className="flex items-center justify-center gap-4">
-              <div className="h-px w-10" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.45))' }} />
-              <p className="font-cormorant italic text-white/40 text-base sm:text-lg">
+
+            {/* Decorative diamond + tagline */}
+            <div className="flex items-center justify-center gap-4 mb-1">
+              <div className="h-px w-16" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.35))' }} />
+              <span className="text-[#C5A46D]/30 text-[0.5rem]">◆</span>
+              <p className="font-cormorant italic text-white/35 text-base sm:text-lg tracking-wide">
                 Real weddings. Real stories. Real joy.
               </p>
-              <div className="h-px w-10" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.45))' }} />
+              <span className="text-[#C5A46D]/30 text-[0.5rem]">◆</span>
+              <div className="h-px w-16" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.35))' }} />
             </div>
           </motion.div>
         </div>
@@ -698,14 +711,46 @@ export default function HomepageClient() {
           );
         })}
         {/* CTA */}
-        <div className="text-center pb-20 sm:pb-28" style={{ paddingTop: '30px' }}>
+        <motion.div
+          className="text-center pb-24 sm:pb-32 pt-10 sm:pt-14"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {/* Separator above CTA */}
+          <div className="flex items-center justify-center gap-4 mb-10">
+            <div className="h-px w-20" style={{ background: 'linear-gradient(to right, transparent, rgba(197,164,109,0.25))' }} />
+            <span className="text-[#C5A46D]/25 text-[0.45rem]">◆ ◆ ◆</span>
+            <div className="h-px w-20" style={{ background: 'linear-gradient(to left, transparent, rgba(197,164,109,0.25))' }} />
+          </div>
+
           <Link
             href="/plan"
-            className="inline-flex items-center gap-2 text-[#C5A46D] text-sm font-medium hover:opacity-75 transition-opacity tracking-wide"
+            className="inline-flex items-center gap-3 relative overflow-hidden group rounded-full px-10 py-4 transition-all duration-500 hover:scale-[1.04]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(197,164,109,0.08) 0%, rgba(197,164,109,0.04) 100%)',
+              border: '1px solid rgba(197,164,109,0.35)',
+              boxShadow: '0 0 0 0 rgba(197,164,109,0)',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 0 40px rgba(197,164,109,0.15), inset 0 0 30px rgba(197,164,109,0.05)'; (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(197,164,109,0.6)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.boxShadow = '0 0 0 0 rgba(197,164,109,0)'; (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(197,164,109,0.35)'; }}
           >
-            Begin Your Wedding Journey <ArrowRight className="w-4 h-4" />
+            {/* Shimmer sweep */}
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-[#C5A46D]/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
+
+            <Sparkles className="w-4 h-4 text-[#C5A46D]/70 relative z-10 flex-shrink-0" />
+            <span
+              className="relative z-10 text-sm sm:text-base font-medium tracking-[0.12em] uppercase"
+              style={{ background: 'linear-gradient(135deg, #e8d5b0 0%, #C5A46D 50%, #d4aa6a 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}
+            >
+              Begin Your Wedding Journey
+            </span>
+            <ArrowRight className="w-4 h-4 text-[#C5A46D]/60 relative z-10 flex-shrink-0 group-hover:translate-x-1 transition-transform duration-300" />
           </Link>
-        </div>
+
+          <p className="mt-5 text-[0.65rem] text-white/20 tracking-[0.22em] uppercase">Handcrafted for every love story</p>
+        </motion.div>
 
       </section>
 
