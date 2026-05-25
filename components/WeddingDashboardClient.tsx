@@ -89,7 +89,7 @@ const SERVICE_LABELS: Record<string, string> = {
   transport: 'Transportation', legal: 'Legal Services',
   hospitality: 'Hospitality', planning: 'Wedding Planners',
   'bridal-lehenga': 'Bridal Lehenga', 'bridal-jewellery': 'Jewellery',
-  sherwani: 'Groom Wear', trousseau: 'Trousseau', sfx: 'Special Effects (SFX)', security: 'Guards & Bouncers',
+  sherwani: 'Groom Wear', trousseau: 'Trousseau', sfx: 'SFX Effects', security: 'Security Guards & Bouncers',
 };
 const EST_RANGES: Record<string, string> = {
   venue: '₹1.5–40 L', makeup: '₹15–80 K', mehndi: '₹8–35 K', decorator: '₹50 K–5 L',

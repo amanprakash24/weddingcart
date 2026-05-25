@@ -187,7 +187,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'sfx',
-    name: 'Special Effects (SFX)',
+    name: 'SFX Effects',
     icon: '✨',
     description: 'Cold pyro, confetti cannons, fog machines, laser shows & drone light displays',
     vendorCount: 0,
@@ -196,7 +196,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'security',
-    name: 'Guards & Bouncers',
+    name: 'Security Guards & Bouncers',
     icon: '🛡️',
     description: 'Professional security personnel, event guards & crowd management for safe celebrations',
     vendorCount: 0,

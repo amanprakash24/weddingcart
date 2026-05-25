@@ -46,8 +46,8 @@ const SERVICES = [
   { id: 'bridal-jewellery', label: 'Bridal Jewellery', icon: '💍', color: 'bg-amber-50 border-amber-200 text-amber-700' },
   { id: 'sherwani', label: 'Sherwani / Groom Wear', icon: '🤵', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
   { id: 'trousseau', label: 'Trousseau Packing', icon: '🎀', color: 'bg-lime-50 border-lime-200 text-lime-700' },
-  { id: 'sfx',      label: 'Special Effects (SFX)', icon: '✨', color: 'bg-cyan-50 border-cyan-200 text-cyan-700' },
-  { id: 'security', label: 'Guards & Bouncers',    icon: '🛡️', color: 'bg-slate-50 border-slate-200 text-slate-700' },
+  { id: 'sfx',      label: 'SFX Effects', icon: '✨', color: 'bg-cyan-50 border-cyan-200 text-cyan-700' },
+  { id: 'security', label: 'Security Guards & Bouncers',    icon: '🛡️', color: 'bg-slate-50 border-slate-200 text-slate-700' },
 ];
 
 const VENUE_TYPES = [

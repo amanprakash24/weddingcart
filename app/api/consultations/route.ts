@@ -27,7 +27,7 @@ const SERVICE_LABELS: Record<string, string> = {
   hospitality: 'Hospitality', planning: 'Wedding Planning',
   'bridal-lehenga': 'Bridal Lehenga', 'bridal-jewellery': 'Bridal Jewellery',
   sherwani: 'Sherwani / Groom Wear', trousseau: 'Trousseau Packing',
-  sfx: 'Special Effects (SFX)', security: 'Guards & Bouncers',
+  sfx: 'SFX Effects', security: 'Security Guards & Bouncers',
 };
 
 const BUDGET_LABELS: Record<string, string> = {

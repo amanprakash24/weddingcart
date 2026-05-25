@@ -21,8 +21,8 @@ const VENDOR_OPTIONS = [
   { label: 'Sherwani & Groom Wear',  slug: 'sherwani' },
   { label: 'Wedding Transport',      slug: 'transport' },
   { label: 'Wedding Gifts',          slug: 'gifts' },
-  { label: 'Special Effects (SFX)', slug: 'sfx' },
-  { label: 'Guards & Bouncers',    slug: 'security' },
+  { label: 'SFX Effects', slug: 'sfx' },
+  { label: 'Security Guards & Bouncers',    slug: 'security' },
 ];
 
 const MEGA_MENU = [
@@ -84,7 +84,7 @@ const MEGA_MENU = [
       { label: 'Florists', href: '/categories/decorator' },
       { label: 'Wedding DJ', href: '/categories/dj' },
       { label: 'Live Band & Music', href: '/categories/band' },
-      { label: 'Special Effects (SFX)', href: '/categories/sfx' },
+      { label: 'SFX Effects', href: '/categories/sfx' },
       { label: 'Tent House', href: '/categories/decorator' },
     ],
   },
@@ -97,7 +97,7 @@ const MEGA_MENU = [
       { label: 'Wedding Transportation', href: '/categories/transport' },
       { label: 'Wedding Invitations', href: '/categories/invitations' },
       { label: 'Wedding Gifts', href: '/categories/gifts' },
-      { label: 'Guards & Bouncers', href: '/categories/security' },
+      { label: 'Security Guards & Bouncers', href: '/categories/security' },
       { label: 'Pandits & Astrologers', href: '/categories/planning' },
     ],
   },
