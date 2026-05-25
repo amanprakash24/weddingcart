@@ -194,6 +194,15 @@ export const CATEGORIES: Category[] = [
     image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
     isSpecial: true,
   },
+  {
+    id: 'security',
+    name: 'Guards & Bouncers',
+    icon: '🛡️',
+    description: 'Professional security personnel, event guards & crowd management for safe celebrations',
+    vendorCount: 0,
+    image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80',
+    isSpecial: true,
+  },
 ];
 
 export const VENDORS: Vendor[] = [

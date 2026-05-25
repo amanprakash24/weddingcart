@@ -22,6 +22,7 @@ const VENDOR_OPTIONS = [
   { label: 'Wedding Transport',      slug: 'transport' },
   { label: 'Wedding Gifts',          slug: 'gifts' },
   { label: 'Special Effects (SFX)', slug: 'sfx' },
+  { label: 'Guards & Bouncers',    slug: 'security' },
 ];
 
 const MEGA_MENU = [
@@ -96,8 +97,8 @@ const MEGA_MENU = [
       { label: 'Wedding Transportation', href: '/categories/transport' },
       { label: 'Wedding Invitations', href: '/categories/invitations' },
       { label: 'Wedding Gifts', href: '/categories/gifts' },
+      { label: 'Guards & Bouncers', href: '/categories/security' },
       { label: 'Pandits & Astrologers', href: '/categories/planning' },
-      { label: 'Honeymoon Packages', href: '/categories/venue' },
     ],
   },
 ];

@@ -19,7 +19,8 @@ export type CategoryType =
   | 'bridal-jewellery'
   | 'sherwani'
   | 'trousseau'
-  | 'sfx';
+  | 'sfx'
+  | 'security';
 
 export interface Package {
   id: string;
