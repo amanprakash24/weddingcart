@@ -86,6 +86,7 @@ const MEGA_MENU = [
       { label: 'Live Band & Music', href: '/categories/band' },
       { label: 'SFX Effects', href: '/categories/sfx' },
       { label: 'Fireworks', href: '/categories/sfx' },
+      { label: 'Choreographers', href: '/categories/band' },
       { label: 'Tent House', href: '/categories/decorator' },
     ],
   },
