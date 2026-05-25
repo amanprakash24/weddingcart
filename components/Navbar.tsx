@@ -21,6 +21,7 @@ const VENDOR_OPTIONS = [
   { label: 'Sherwani & Groom Wear',  slug: 'sherwani' },
   { label: 'Wedding Transport',      slug: 'transport' },
   { label: 'Wedding Gifts',          slug: 'gifts' },
+  { label: 'Special Effects (SFX)', slug: 'sfx' },
 ];
 
 const MEGA_MENU = [
@@ -82,7 +83,7 @@ const MEGA_MENU = [
       { label: 'Florists', href: '/categories/decorator' },
       { label: 'Wedding DJ', href: '/categories/dj' },
       { label: 'Live Band & Music', href: '/categories/band' },
-      { label: 'Choreographers', href: '/categories/band' },
+      { label: 'Special Effects (SFX)', href: '/categories/sfx' },
       { label: 'Tent House', href: '/categories/decorator' },
     ],
   },

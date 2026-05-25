@@ -46,6 +46,7 @@ const SERVICES = [
   { id: 'bridal-jewellery', label: 'Bridal Jewellery', icon: '💍', color: 'bg-amber-50 border-amber-200 text-amber-700' },
   { id: 'sherwani', label: 'Sherwani / Groom Wear', icon: '🤵', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
   { id: 'trousseau', label: 'Trousseau Packing', icon: '🎀', color: 'bg-lime-50 border-lime-200 text-lime-700' },
+  { id: 'sfx', label: 'Special Effects (SFX)', icon: '✨', color: 'bg-cyan-50 border-cyan-200 text-cyan-700' },
 ];
 
 const VENUE_TYPES = [
@@ -422,7 +423,7 @@ export default function PlanPageClient() {
                     { group: '🏛️ Venue & Experience', ids: ['venue', 'accommodation', 'transport'] },
                     { group: '🍽️ Food & Entertainment', ids: ['catering', 'dj', 'band'] },
                     { group: '💄 Beauty & Fashion', ids: ['makeup', 'mehndi', 'bridal-lehenga', 'bridal-jewellery', 'sherwani', 'trousseau'] },
-                    { group: '📸 Decor & Media', ids: ['decorator', 'photo-video', 'invitations', 'gifts'] },
+                    { group: '📸 Decor & Media', ids: ['decorator', 'photo-video', 'invitations', 'gifts', 'sfx'] },
                   ].map((groupItem) => (
                     <div key={groupItem.group}>
                       <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{groupItem.group}</p>

@@ -79,7 +79,7 @@ const SERVICE_ICONS: Record<string, string> = {
   dj: '🎧', catering: '🍽️', 'photo-video': '📸', accommodation: '🏨',
   gifts: '🎁', invitations: '✉️', transport: '🚗', legal: '📋',
   hospitality: '🤝', planning: '📝', 'bridal-lehenga': '👗',
-  'bridal-jewellery': '💍', sherwani: '🤵', trousseau: '🎀',
+  'bridal-jewellery': '💍', sherwani: '🤵', trousseau: '🎀', sfx: '✨',
 };
 const SERVICE_LABELS: Record<string, string> = {
   venue: 'Venues', makeup: 'Makeup Artists', mehndi: 'Mehndi Artists',
@@ -89,7 +89,7 @@ const SERVICE_LABELS: Record<string, string> = {
   transport: 'Transportation', legal: 'Legal Services',
   hospitality: 'Hospitality', planning: 'Wedding Planners',
   'bridal-lehenga': 'Bridal Lehenga', 'bridal-jewellery': 'Jewellery',
-  sherwani: 'Groom Wear', trousseau: 'Trousseau',
+  sherwani: 'Groom Wear', trousseau: 'Trousseau', sfx: 'Special Effects (SFX)',
 };
 const EST_RANGES: Record<string, string> = {
   venue: '₹1.5–40 L', makeup: '₹15–80 K', mehndi: '₹8–35 K', decorator: '₹50 K–5 L',
@@ -98,7 +98,7 @@ const EST_RANGES: Record<string, string> = {
   gifts: '₹500–5000/guest', invitations: '₹30–150/card', transport: '₹10–40 K',
   legal: '₹5–20 K', hospitality: '₹50–200/guest', planning: '₹50 K–3 L',
   'bridal-lehenga': '₹30 K–5 L', 'bridal-jewellery': '₹50 K–20 L',
-  sherwani: '₹15–1 L', trousseau: '₹10–40 K',
+  sherwani: '₹15–1 L', trousseau: '₹10–40 K', sfx: '₹25–2 L',
 };
 
 // ── Checklist items ──────────────────────────────────────────────────────────

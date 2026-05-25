@@ -185,6 +185,15 @@ export const CATEGORIES: Category[] = [
     image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=80',
     isSpecial: true,
   },
+  {
+    id: 'sfx',
+    name: 'Special Effects (SFX)',
+    icon: '✨',
+    description: 'Cold pyro, confetti cannons, fog machines, laser shows & drone light displays',
+    vendorCount: 0,
+    image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
+    isSpecial: true,
+  },
 ];
 
 export const VENDORS: Vendor[] = [
