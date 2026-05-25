@@ -59,8 +59,11 @@ function buildAdminMessage(data: Record<string, unknown>) {
 
   const budget = BUDGET_LABELS[data.budgetRange as string] || (data.budgetRange as string) || 'Not specified';
 
+  const eventType = (data.eventType as string) || 'wedding';
+  const eventLabel = eventType.charAt(0).toUpperCase() + eventType.slice(1);
+
   return (
-    `📋 *New Wedding Plan Submitted — Action Required!*\n\n` +
+    `📋 *New ${eventLabel} Plan Submitted — Action Required!*\n\n` +
 
     `👰 *Client Details*\n` +
     `• Name: ${data.name}\n` +
@@ -68,8 +71,9 @@ function buildAdminMessage(data: Record<string, unknown>) {
     `• Email: ${data.email || 'Not provided'}\n` +
     `• City: ${data.city}\n\n` +
 
-    `💍 *Wedding Details*\n` +
-    `• Wedding Date: ${fmtDate(data.weddingDate as string)}\n` +
+    `💍 *Event Details*\n` +
+    `• Event Type: ${eventLabel}\n` +
+    `• Event Date: ${fmtDate(data.weddingDate as string)}\n` +
     `• Duration: ${data.days} day(s)\n` +
     `• Guests: ${data.guestCount}\n` +
     `• Style: ${(data.weddingStyle as string) ? (data.weddingStyle as string).charAt(0).toUpperCase() + (data.weddingStyle as string).slice(1) : 'Not specified'}\n` +
@@ -101,12 +105,15 @@ function buildUserMessage(data: Record<string, unknown>, expertName: string) {
     ? `📅 *Date:* ${consultDate}\n⏰ *Time:* ${consultTime}`
     : `Our expert will reach out to confirm a convenient time for you.`;
 
+  const evtType = (data.eventType as string) || 'wedding';
+  const evtLabel = evtType.charAt(0).toUpperCase() + evtType.slice(1);
+
   return (
     `💍 *ShaadiShopping — Consultation Confirmed!*\n\n` +
     `Dear ${(data.name as string).split(' ')[0]},\n\n` +
-    `Your wedding planning consultation has been received and a dedicated expert has been assigned to you. We are so excited to be part of your special journey! 🌸\n\n` +
+    `Your ${evtLabel.toLowerCase()} planning consultation has been received and a dedicated expert has been assigned to you. We are so excited to be part of your special journey! 🌸\n\n` +
 
-    `👨‍💼 *Your Dedicated Wedding Expert*\n` +
+    `👨‍💼 *Your Dedicated Event Expert*\n` +
     `*${expertName}*\n` +
     `Senior Wedding Consultant\n` +
     `500+ weddings coordinated ⭐\n\n` +

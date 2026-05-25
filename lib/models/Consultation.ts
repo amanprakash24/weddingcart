@@ -5,6 +5,7 @@ export interface IConsultation extends Document {
   phone: string;
   email: string;
   city?: string;
+  eventType: string;
   weddingDate: string;
   days: number;
   guestCount: number;
@@ -24,6 +25,7 @@ const ConsultationSchema = new Schema<IConsultation>({
   phone: { type: String, required: true },
   email: { type: String, required: true },
   city: String,
+  eventType: { type: String, default: 'wedding' },
   weddingDate: { type: String, required: true },
   days: { type: Number, required: true },
   guestCount: { type: Number, required: true },

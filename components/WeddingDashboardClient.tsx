@@ -11,10 +11,15 @@ import {
 interface FormData {
   name: string; phone: string; email: string; city: string; weddingDate: string;
   days: number; guestCount: number; foodPreference: string; weddingStyle: string;
-  budgetRange: string;
+  budgetRange: string; eventType: string;
   services: string[]; meals: Record<number, string[]>;
   venueType: string; consultationDate: string; preferredTime: string; message: string;
 }
+
+const EVENT_LABELS: Record<string, string> = {
+  wedding: 'Wedding', engagement: 'Engagement', birthday: 'Birthday',
+  anniversary: 'Anniversary', corporate: 'Corporate Event', other: 'Event',
+};
 
 interface Props {
   form: FormData;
@@ -162,6 +167,7 @@ const STYLE_COLORS: Record<string, string> = {
 export default function WeddingDashboardClient({ form, cartTotal }: Props) {
   const [checklistExpanded, setChecklistExpanded] = useState(false);
 
+  const eventLabel = EVENT_LABELS[form.eventType] || 'Event';
   const venues = VENUE_SUGGESTIONS[form.city] || DEFAULT_VENUES;
   const catering = CATERING_RATES[form.foodPreference] || CATERING_RATES['veg'];
   const minCatering = catering.min * form.guestCount;
@@ -186,7 +192,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
               👰
             </div>
             <div>
-              <p className="text-white/80 text-sm font-medium mb-1">Your wedding plan is ready</p>
+              <p className="text-white/80 text-sm font-medium mb-1">Your {eventLabel.toLowerCase()} plan is ready</p>
               <h1 className="text-2xl sm:text-3xl font-bold text-white font-[Playfair_Display,serif]">
                 Congratulations, {form.name.split(' ')[0]}! 🎉
               </h1>
@@ -197,7 +203,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             {form.weddingDate && (
               <div className="bg-white/15 backdrop-blur rounded-2xl p-4">
                 <Calendar className="w-5 h-5 text-white/70 mb-1" />
-                <p className="text-white/70 text-xs mb-0.5">Wedding Date</p>
+                <p className="text-white/70 text-xs mb-0.5">{eventLabel} Date</p>
                 <p className="text-white font-semibold text-sm">{formatDate(form.weddingDate)}</p>
                 {daysLeft && <p className="text-amber-200 text-xs mt-1">{daysLeft} days to go</p>}
               </div>
@@ -270,7 +276,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Recommended Venues in {form.city}</h2>
+              <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Recommended Venues for Your {eventLabel} in {form.city}</h2>
               <p className="text-gray-500 text-sm mt-0.5">Shortlisted for {form.guestCount} guests · {form.days} day{form.days > 1 ? 's' : ''}</p>
             </div>
             <Link href="/categories/venue" className="text-sm text-rose-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all">
@@ -344,7 +350,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Services You've Selected</h2>
-                <p className="text-gray-500 text-sm mt-0.5">We'll find top-rated vendors in {form.city} for each</p>
+                <p className="text-gray-500 text-sm mt-0.5">We'll find top-rated vendors in {form.city} for your {eventLabel.toLowerCase()}</p>
               </div>
               <span className="text-xs font-semibold bg-rose-100 text-rose-700 px-3 py-1 rounded-full">{selectedServices.length} services</span>
             </div>
@@ -446,7 +452,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             href="/categories/venue"
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-6 py-4 rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-rose-200"
           >
-            <Building2 className="w-5 h-5" /> Explore Vendors in {form.city}
+            <Building2 className="w-5 h-5" /> Explore {eventLabel} Vendors in {form.city}
           </Link>
           <Link
             href="/"
