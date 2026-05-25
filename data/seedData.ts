@@ -189,7 +189,7 @@ export const CATEGORIES: Category[] = [
     id: 'sfx',
     name: 'SFX Effects',
     icon: '✨',
-    description: 'Cold pyro, confetti cannons, fog machines, laser shows & drone light displays',
+    description: 'Fireworks, cold pyro, confetti cannons, fog machines, laser shows & drone light displays',
     vendorCount: 0,
     image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&q=80',
     isSpecial: true,
