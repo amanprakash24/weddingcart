@@ -50,10 +50,50 @@ const organizationJsonLd = {
   },
 };
 
+const aboutFaqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'What is ShaadiShopping?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: "ShaadiShopping is India's most trusted wedding planning platform, connecting couples with 500+ verified wedding vendors across 25+ cities. Founded by Anisha Kumari in Patna, Bihar.",
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'How does ShaadiShopping work?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Browse verified vendors across 20+ categories, compare packages and pricing, book consultations, and plan your entire wedding through one platform. Our expert team also offers personalised planning assistance.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is ShaadiShopping free to use?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Yes — browsing vendors, comparing quotes, and booking consultations on ShaadiShopping is completely free for couples.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'How many cities does ShaadiShopping serve?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'ShaadiShopping serves couples across 25+ cities in India including Delhi, Mumbai, Bangalore, Hyderabad, Chennai, Kolkata, Jaipur, Patna, Lucknow, and more.',
+      },
+    },
+  ],
+};
+
 export default function AboutPage() {
   return (
     <>
       <JsonLd data={organizationJsonLd} />
+      <JsonLd data={aboutFaqJsonLd} />
       <AboutClient />
     </>
   );

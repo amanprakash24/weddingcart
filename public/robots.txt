@@ -2,5 +2,13 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 Disallow: /api/
+Disallow: /cart
+
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /cart
+Crawl-delay: 1
 
 Sitemap: https://www.shaadishopping.com/sitemap.xml

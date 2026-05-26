@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import BlogListClient from '@/components/BlogListClient';
+import { JsonLd } from '@/components/JsonLd';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
@@ -19,10 +20,27 @@ export const metadata: Metadata = {
   },
 };
 
+const blogCollectionJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'Wedding Blog — ShaadiShopping',
+  description:
+    'Expert wedding advice, trends, and inspiration for couples planning their dream wedding in India.',
+  url: `${BASE_URL}/blog`,
+  publisher: {
+    '@type': 'Organization',
+    name: 'ShaadiShopping',
+    url: BASE_URL,
+  },
+};
+
 export default function BlogPage() {
   return (
-    <Suspense>
-      <BlogListClient />
-    </Suspense>
+    <>
+      <JsonLd data={blogCollectionJsonLd} />
+      <Suspense>
+        <BlogListClient />
+      </Suspense>
+    </>
   );
 }

@@ -28,6 +28,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   'bridal-jewellery': 'Bridal Jewellery',
   sherwani: 'Sherwani',
   trousseau: 'Trousseau',
+  sfx: 'SFX Effects',
+  security: 'Security Guards & Bouncers',
 };
 
 interface VendorMeta {
