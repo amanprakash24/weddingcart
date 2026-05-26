@@ -51,6 +51,7 @@ export interface Vendor {
   features: string[];
   packages: Package[];
   isFeatured?: boolean;
+  address?: string;
 }
 
 export interface Category {

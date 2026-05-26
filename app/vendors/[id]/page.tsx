@@ -36,6 +36,8 @@ interface VendorMeta {
   id: string;
   name: string;
   city: string;
+  address?: string;
+  ownerPhone?: string;
   category: string;
   description: string;
   priceMin: number;
@@ -49,7 +51,7 @@ async function getVendorMeta(id: string): Promise<VendorMeta | null> {
   try {
     await connectDB();
     const vendor = await VendorModel.findOne({ id })
-      .select('id name city category description priceMin priceMax rating reviewCount image')
+      .select('id name city address ownerPhone category description priceMin priceMax rating reviewCount image')
       .lean<VendorMeta>();
     return vendor;
   } catch {
@@ -96,16 +98,18 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
   const jsonLd = vendor
     ? {
         '@context': 'https://schema.org',
-        '@type': 'LocalBusiness',
+        '@type': vendor.category === 'venue' ? ['LocalBusiness', 'EventVenue'] : 'LocalBusiness',
         name: vendor.name,
         description: vendor.description,
         image: vendor.image,
         url: `${BASE_URL}/vendors/${id}`,
         address: {
           '@type': 'PostalAddress',
+          ...(vendor.address && { streetAddress: vendor.address }),
           addressLocality: vendor.city,
           addressCountry: 'IN',
         },
+        ...(vendor.ownerPhone && { telephone: vendor.ownerPhone }),
         priceRange: `₹${vendor.priceMin.toLocaleString('en-IN')} – ₹${vendor.priceMax.toLocaleString('en-IN')}`,
         ...(vendor.reviewCount > 0 && {
           aggregateRating: {

@@ -17,6 +17,7 @@ export interface IVendor extends Document {
   ownerEmail: string;
   category: string;
   city: string;
+  address?: string;
   priceMin: number;
   priceMax: number;
   rating: number;
@@ -37,6 +38,7 @@ const VendorSchema = new Schema<IVendor>({
   ownerEmail: { type: String, default: '' },
   category: { type: String, required: true },
   city: { type: String, required: true },
+  address: { type: String, default: '' },
   priceMin: { type: Number, required: true },
   priceMax: { type: Number, required: true },
   rating: { type: Number, default: 4.5 },

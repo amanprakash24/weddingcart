@@ -206,6 +206,63 @@ export const CATEGORIES: Category[] = [
 ];
 
 export const VENDORS: Vendor[] = [
+  // ── FEATURED — OWNED PROPERTY ────────────────────────────────────────────────
+  {
+    id: 'swayamvar-hall-patna',
+    name: 'Swayamvar Hall & Home Stay',
+    ownerPhone: '+91-76460-28228',
+    category: 'venue',
+    city: 'Patna',
+    address: 'T Point, Gola Rd, near Danapur, Chanakya Puri, Danapur, Patna, Bihar 801503',
+    priceMin: 150000,
+    priceMax: 300000,
+    rating: 4.8,
+    reviewCount: 52,
+    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80',
+      'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80',
+      'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=80',
+      'https://images.unsplash.com/photo-1502635385003-ee1e6a1a742d?w=800&q=80',
+    ],
+    description: 'Swayamvar Hall & Home Stay is a premium wedding banquet in Danapur, Patna — conveniently located on Gola Road near Chanakya Puri. The venue combines a beautifully decorated banquet hall with comfortable in-house home stay rooms, making it ideal for multi-day celebrations and out-of-town guests. With modern amenities, ample parking, and a dedicated event management team, Swayamvar Hall is Patna\'s trusted choice for weddings, engagement ceremonies, and family gatherings.',
+    features: [
+      'AC Banquet Hall',
+      'In-house Home Stay Rooms',
+      'Ample Parking',
+      'Bridal Suite',
+      'Modern Sound System',
+      'Catering Kitchen',
+      'Mandap Setup',
+      'Backup Power',
+    ],
+    isFeatured: true,
+    packages: [
+      {
+        id: 'swh-p1',
+        name: 'Starter Package',
+        description: 'Perfect for intimate ceremonies up to 300 guests',
+        price: 150000,
+        features: ['Up to 300 guests', 'Decorated Hall', 'Basic Lighting', 'Ample Parking', '10 hours'],
+      },
+      {
+        id: 'swh-p2',
+        name: 'Premium Package',
+        description: 'Our most popular all-inclusive wedding package',
+        price: 200000,
+        features: ['Up to 500 guests', 'Floral Décor', 'LED Lighting', 'Bridal Suite', 'Home Stay (2 rooms)', '14 hours'],
+        isPopular: true,
+      },
+      {
+        id: 'swh-p3',
+        name: 'Grand Package',
+        description: 'Complete multi-day wedding experience',
+        price: 300000,
+        features: ['Up to 700 guests', 'Designer Décor', 'Full Lighting', 'Bridal Suite', 'Home Stay (5 rooms)', 'Multi-day Access', 'Backup Power'],
+      },
+    ],
+  },
+
   // VENUES
   {
     id: 'venue-1',
