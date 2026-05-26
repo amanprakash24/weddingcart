@@ -3,6 +3,11 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/JsonLd';
 import CityPageClient from '@/components/CityPageClient';
+import { connectDB } from '@/lib/mongodb';
+import VendorModel from '@/lib/models/Vendor';
+import type { Vendor } from '@/types';
+
+export const revalidate = 3600;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
@@ -65,6 +70,21 @@ function defaultFaqs(name: string, state: string) {
   ];
 }
 
+// ── SSR: pre-fetch initial vendors ───────────────────────────────────────────
+
+async function getInitialVendors(cityName: string): Promise<Vendor[]> {
+  try {
+    await connectDB();
+    const vendors = await VendorModel.find({ city: cityName })
+      .sort({ isFeatured: -1, rating: -1 })
+      .limit(6)
+      .lean();
+    return JSON.parse(JSON.stringify(vendors)) as Vendor[];
+  } catch {
+    return [];
+  }
+}
+
 // ── Static params (pre-renders all city pages at build time) ─────────────────
 
 export function generateStaticParams() {
@@ -118,6 +138,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
   const { name, state, heroImage } = meta;
   const url = `${BASE_URL}/cities/${city}`;
   const faqs = CITY_FAQS[city.toLowerCase()] ?? defaultFaqs(name, state);
+  const initialVendors = await getInitialVendors(name);
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -175,6 +196,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
           stateName={state}
           faqs={faqs}
           heroImage={heroImage}
+          initialVendors={initialVendors}
         />
       </Suspense>
     </>

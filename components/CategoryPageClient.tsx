@@ -32,15 +32,16 @@ interface Props {
   initialCoverImage?: string;
   initialName?: string;
   initialDescription?: string;
+  initialVendors?: Vendor[];
 }
 
-export default function CategoryPageClient({ slug, initialCoverImage, initialName, initialDescription }: Props) {
+export default function CategoryPageClient({ slug, initialCoverImage, initialName, initialDescription, initialVendors }: Props) {
   const searchParams = useSearchParams();
   const info = CATEGORY_INFO[slug] || { name: slug, desc: '', image: '' };
 
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>(initialVendors ?? []);
   const [category, setCategory] = useState<Category | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!(initialVendors?.length));
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [city, setCity] = useState(searchParams.get('city') || 'All Cities');
   const [sort, setSort] = useState('rating');

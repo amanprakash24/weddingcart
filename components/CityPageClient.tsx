@@ -42,6 +42,7 @@ interface Props {
   stateName: string;
   faqs: FAQ[];
   heroImage: string;
+  initialVendors?: Vendor[];
 }
 
 function FAQItem({ q, a }: FAQ) {
@@ -66,9 +67,9 @@ function FAQItem({ q, a }: FAQ) {
   );
 }
 
-export default function CityPageClient({ cityName, stateName, faqs, heroImage }: Props) {
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function CityPageClient({ cityName, stateName, faqs, heroImage, initialVendors }: Props) {
+  const [vendors, setVendors] = useState<Vendor[]>(initialVendors ?? []);
+  const [loading, setLoading] = useState(!(initialVendors?.length));
   const [activeCategory, setActiveCategory] = useState('all');
 
   useEffect(() => {

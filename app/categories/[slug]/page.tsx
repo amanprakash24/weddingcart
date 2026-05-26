@@ -4,6 +4,10 @@ import CategoryPageClient from '@/components/CategoryPageClient';
 import { JsonLd } from '@/components/JsonLd';
 import { connectDB } from '@/lib/mongodb';
 import CategoryModel from '@/lib/models/Category';
+import VendorModel from '@/lib/models/Vendor';
+import type { Vendor } from '@/types';
+
+export const revalidate = 3600; // ISR: rebuild every hour
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
@@ -138,6 +142,18 @@ interface CategoryMeta {
   updatedAt?: Date;
 }
 
+async function getInitialVendors(slug: string): Promise<Vendor[]> {
+  try {
+    const vendors = await VendorModel.find({ category: slug })
+      .sort({ isFeatured: -1, rating: -1 })
+      .limit(6)
+      .lean();
+    return JSON.parse(JSON.stringify(vendors)) as Vendor[];
+  } catch {
+    return [];
+  }
+}
+
 async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
   try {
     await connectDB();
@@ -184,7 +200,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const cat = await getCategoryMeta(slug);
+  const [cat, initialVendors] = await Promise.all([
+    getCategoryMeta(slug),
+    getInitialVendors(slug),
+  ]);
   const name = cat?.name ?? SLUG_TO_NAME[slug] ?? slug;
   const url = `${BASE_URL}/categories/${slug}`;
   const description = cat?.description ?? `Top wedding ${name.toLowerCase()} in India`;
@@ -246,6 +265,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           initialCoverImage={cat?.image}
           initialName={cat?.name}
           initialDescription={cat?.description}
+          initialVendors={initialVendors}
         />
       </Suspense>
     </>
