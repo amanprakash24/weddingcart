@@ -166,16 +166,25 @@ async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
   }
 }
 
+export function generateStaticParams() {
+  return [
+    'venue', 'makeup', 'mehndi', 'decorator', 'band', 'dj',
+    'catering', 'photo-video', 'accommodation', 'gifts', 'invitations',
+    'transport', 'legal', 'hospitality', 'planning', 'astro',
+    'bridal-lehenga', 'bridal-jewellery', 'sherwani', 'trousseau', 'sfx', 'security',
+  ].map((slug) => ({ slug }));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const cat = await getCategoryMeta(slug);
   const name = cat?.name ?? SLUG_TO_NAME[slug] ?? slug;
   const url = `${BASE_URL}/categories/${slug}`;
 
-  const title = `${name} — Book Top Wedding ${name} in India`;
+  const title = `${name} in India — Compare & Book Top Wedding ${name} | ShaadiShopping`;
   const description =
     cat?.description ||
-    `Compare and book the best wedding ${name.toLowerCase()} in India. Browse packages, read reviews, and get free quotes from verified vendors.`;
+    `Find and book the best ${name.toLowerCase()} for your wedding in India. Compare verified vendors, browse packages, read real reviews, and get free quotes. Patna, Delhi, Mumbai & more.`;
 
   return {
     title,

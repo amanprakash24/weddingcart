@@ -6,7 +6,20 @@ import BlogModel from '@/lib/models/Blog';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
+const CITY_SLUGS = ['patna', 'delhi', 'mumbai', 'jaipur', 'bangalore', 'chennai', 'hyderabad', 'kolkata', 'udaipur', 'goa'];
+const CATEGORY_SLUGS = ['venue', 'makeup', 'mehndi', 'decorator', 'band', 'dj', 'catering', 'photo-video', 'planning'];
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // City+category combo pages — highest SEO priority after homepage
+  const cityCategoryRoutes: MetadataRoute.Sitemap = CITY_SLUGS.flatMap((city) =>
+    CATEGORY_SLUGS.map((category) => ({
+      url: `${BASE_URL}/cities/${city}/${category}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: city === 'patna' ? 0.95 : 0.85,
+    }))
+  );
+
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE_URL,                          lastModified: new Date(), changeFrequency: 'daily',   priority: 1.0 },
     { url: `${BASE_URL}/blog`,                lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
@@ -69,5 +82,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Sitemap generation error:', err);
   }
 
-  return [...staticRoutes, ...categoryRoutes, ...vendorRoutes, ...blogRoutes];
+  return [...cityCategoryRoutes, ...staticRoutes, ...categoryRoutes, ...vendorRoutes, ...blogRoutes];
 }

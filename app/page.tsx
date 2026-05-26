@@ -6,9 +6,14 @@ import { JsonLd } from '@/components/JsonLd';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
-  title: "ShaadiShopping — India's #1 Wedding Planning Marketplace",
+  title: "ShaadiShopping — India's #1 Wedding Planning & Vendor Booking Platform",
   description:
-    'Discover, compare, and book top wedding vendors across India. Find perfect venues, photographers, caterers, makeup artists, and more for your dream wedding.',
+    'Book top wedding vendors across India — venues, photographers, caterers, makeup artists, mehndi, decorators & more. Specialising in Patna, Bihar weddings. Free quotes, verified vendors, expert coordination.',
+  keywords: [
+    'wedding vendors Patna', 'wedding venues Bihar', 'wedding planning Patna',
+    'bridal makeup Patna', 'wedding caterers Patna', 'wedding decorators Patna',
+    'shaadi vendors Patna', 'best wedding vendors India', 'wedding booking platform India',
+  ],
   alternates: { canonical: BASE_URL },
 };
 

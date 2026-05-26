@@ -23,7 +23,7 @@ export async function POST() {
       if (!exists) {
         await BlogModel.create({
           ...post,
-          publishedAt: post.status === 'published' ? new Date('2025-05-20') : null,
+          publishedAt: post.status === 'published' ? new Date() : null,
         });
         blogsInserted++;
       }

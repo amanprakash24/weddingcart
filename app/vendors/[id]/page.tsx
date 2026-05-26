@@ -5,6 +5,8 @@ import { JsonLd } from '@/components/JsonLd';
 import { connectDB } from '@/lib/mongodb';
 import VendorModel from '@/lib/models/Vendor';
 
+export const revalidate = 3600;
+
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -45,6 +47,16 @@ interface VendorMeta {
   rating: number;
   reviewCount: number;
   image: string;
+}
+
+export async function generateStaticParams() {
+  try {
+    await connectDB();
+    const vendors = await VendorModel.find({}).select('id').lean<{ id: string }[]>();
+    return vendors.map((v) => ({ id: v.id }));
+  } catch {
+    return [];
+  }
 }
 
 async function getVendorMeta(id: string): Promise<VendorMeta | null> {
