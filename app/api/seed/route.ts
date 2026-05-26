@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import CategoryModel from '@/lib/models/Category';
 import VendorModel from '@/lib/models/Vendor';
+import BlogModel from '@/lib/models/Blog';
 import { CATEGORIES, VENDORS } from '@/data/seedData';
+import { BLOG_POSTS } from '@/data/blogSeedData';
 
 export async function POST() {
   try {
@@ -14,9 +16,22 @@ export async function POST() {
     await CategoryModel.insertMany(CATEGORIES);
     await VendorModel.insertMany(VENDORS);
 
+    // Upsert blog posts by slug — never overwrites manually edited posts
+    let blogsInserted = 0;
+    for (const post of BLOG_POSTS) {
+      const exists = await BlogModel.findOne({ slug: post.slug });
+      if (!exists) {
+        await BlogModel.create({
+          ...post,
+          publishedAt: post.status === 'published' ? new Date('2025-05-20') : null,
+        });
+        blogsInserted++;
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Seeded ${CATEGORIES.length} categories and ${VENDORS.length} vendors`,
+      message: `Seeded ${CATEGORIES.length} categories, ${VENDORS.length} vendors, ${blogsInserted} blog posts`,
     });
   } catch (error) {
     console.error('Seed error:', error);
