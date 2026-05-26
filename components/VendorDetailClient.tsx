@@ -3,13 +3,22 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Star, MapPin, ChevronLeft, ChevronRight, CheckCircle, Phone, Calendar, Users, X, ShoppingCart, ChevronRight as CR, Check } from 'lucide-react';
+import { Star, MapPin, ChevronLeft, ChevronRight, CheckCircle, Phone, Calendar, Users, X, ShoppingCart, ChevronRight as CR, Check, MessageCircle } from 'lucide-react';
 
 const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 // Categories where guest count makes sense
 const GUEST_COUNT_CATEGORIES = new Set(['venue', 'catering', 'accommodation', 'hospitality', 'planning', 'decorator']);
 import { Vendor, Package } from '@/types';
 import { useCart } from '@/context/CartContext';
+
+function whatsappUrl(phone: string, vendorName: string) {
+  const digits = phone.replace(/\D/g, '').replace(/^0/, '');
+  const number = digits.startsWith('91') ? digits : `91${digits}`;
+  const text = encodeURIComponent(
+    `Hi! I found ${vendorName} on ShaadiShopping and I'm interested in booking. Could you please share availability and package details?`
+  );
+  return `https://wa.me/${number}?text=${text}`;
+}
 
 interface Props { id: string }
 
@@ -294,12 +303,36 @@ export default function VendorDetailClient({ id }: Props) {
               {/* Quick actions */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
                 <h3 className="font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">Quick Actions</h3>
+
+                {/* WhatsApp — primary CTA if phone available */}
+                {vendor.ownerPhone && (
+                  <a
+                    href={whatsappUrl(vendor.ownerPhone, vendor.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold py-3 rounded-xl mb-3 transition-all text-sm shadow-sm"
+                  >
+                    <MessageCircle className="w-4 h-4" /> WhatsApp Now
+                  </a>
+                )}
+
                 <button
                   onClick={() => setShowEnquiry(true)}
                   className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3 rounded-xl mb-3 hover:opacity-90 transition-all text-sm"
                 >
                   <Phone className="w-4 h-4" /> Send Enquiry
                 </button>
+
+                {/* Call button */}
+                {vendor.ownerPhone && (
+                  <a
+                    href={`tel:${vendor.ownerPhone.replace(/\s/g, '')}`}
+                    className="w-full flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 font-semibold py-3 rounded-xl mb-3 hover:border-amber-400 hover:text-amber-600 transition-all text-sm"
+                  >
+                    <Phone className="w-4 h-4" /> Call Vendor
+                  </a>
+                )}
+
                 <Link
                   href="/plan"
                   className="flex items-center justify-center gap-2 w-full border-2 border-amber-400 text-amber-600 font-semibold py-3 rounded-xl hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all text-sm"
@@ -359,6 +392,18 @@ export default function VendorDetailClient({ id }: Props) {
             </>
           )}
         </div>
+      )}
+
+      {/* Floating WhatsApp button — mobile */}
+      {vendor.ownerPhone && (
+        <a
+          href={whatsappUrl(vendor.ownerPhone, vendor.name)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-6 right-6 z-40 lg:hidden flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold px-5 py-3.5 rounded-full shadow-2xl transition-all text-sm"
+        >
+          <MessageCircle className="w-5 h-5" /> WhatsApp
+        </a>
       )}
 
       {/* Enquiry Modal */}
