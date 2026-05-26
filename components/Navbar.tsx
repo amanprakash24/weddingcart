@@ -37,6 +37,7 @@ const MEGA_MENU = [
       { label: 'Hotels & Resorts', href: '/categories/venue' },
       { label: 'Marriage Gardens', href: '/categories/venue' },
       { label: 'Kalyana Mandapams', href: '/categories/venue' },
+      { label: 'Venues in Patna', href: '/cities/patna', tag: 'Bihar' },
     ],
   },
   {
@@ -101,6 +102,7 @@ const MEGA_MENU = [
       { label: 'Wedding Gifts', href: '/categories/gifts' },
       { label: 'Security Guards & Bouncers', href: '/categories/security' },
       { label: 'Pandits & Astrologers', href: '/categories/planning' },
+      { label: 'Wedding Planning in Patna', href: '/cities/patna', tag: 'Bihar' },
     ],
   },
 ];
