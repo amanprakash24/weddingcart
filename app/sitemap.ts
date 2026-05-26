@@ -13,6 +13,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/about`,               lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/plan`,                lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/vendor-onboarding`,   lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+    // City landing pages — Patna is the primary market
+    { url: `${BASE_URL}/cities/patna`,        lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.9 },
+    { url: `${BASE_URL}/cities/delhi`,        lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${BASE_URL}/cities/mumbai`,       lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${BASE_URL}/cities/jaipur`,       lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${BASE_URL}/cities/bangalore`,    lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${BASE_URL}/cities/chennai`,      lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${BASE_URL}/cities/hyderabad`,    lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${BASE_URL}/cities/kolkata`,      lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${BASE_URL}/cities/udaipur`,      lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${BASE_URL}/cities/goa`,          lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
   ];
 
   let categoryRoutes: MetadataRoute.Sitemap = [];
