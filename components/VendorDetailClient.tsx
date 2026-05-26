@@ -11,9 +11,15 @@ const GUEST_COUNT_CATEGORIES = new Set(['venue', 'catering', 'accommodation', 'h
 import { Vendor, Package } from '@/types';
 import { useCart } from '@/context/CartContext';
 
-function whatsappUrl(phone: string, vendorName: string) {
-  const digits = phone.replace(/\D/g, '').replace(/^0/, '');
-  const number = digits.startsWith('91') ? digits : `91${digits}`;
+const SHAADI_PHONES = ['7646028228', '6201732422', '7070486987'];
+
+function getShaadiPhone(vendorId: string) {
+  const sum = vendorId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return SHAADI_PHONES[sum % SHAADI_PHONES.length];
+}
+
+function whatsappUrl(vendorId: string, vendorName: string) {
+  const number = `91${getShaadiPhone(vendorId)}`;
   const text = encodeURIComponent(
     `Hi! I found ${vendorName} on ShaadiShopping and I'm interested in booking. Could you please share availability and package details?`
   );
@@ -304,17 +310,15 @@ export default function VendorDetailClient({ id }: Props) {
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
                 <h3 className="font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">Quick Actions</h3>
 
-                {/* WhatsApp — primary CTA if phone available */}
-                {vendor.ownerPhone && (
-                  <a
-                    href={whatsappUrl(vendor.ownerPhone, vendor.name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold py-3 rounded-xl mb-3 transition-all text-sm shadow-sm"
-                  >
-                    <MessageCircle className="w-4 h-4" /> WhatsApp Now
-                  </a>
-                )}
+                {/* WhatsApp — primary CTA */}
+                <a
+                  href={whatsappUrl(vendor.id, vendor.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold py-3 rounded-xl mb-3 transition-all text-sm shadow-sm"
+                >
+                  <MessageCircle className="w-4 h-4" /> WhatsApp Now
+                </a>
 
                 <button
                   onClick={() => setShowEnquiry(true)}
@@ -324,14 +328,12 @@ export default function VendorDetailClient({ id }: Props) {
                 </button>
 
                 {/* Call button */}
-                {vendor.ownerPhone && (
-                  <a
-                    href={`tel:${vendor.ownerPhone.replace(/\s/g, '')}`}
-                    className="w-full flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 font-semibold py-3 rounded-xl mb-3 hover:border-amber-400 hover:text-amber-600 transition-all text-sm"
-                  >
-                    <Phone className="w-4 h-4" /> Call Vendor
-                  </a>
-                )}
+                <a
+                  href={`tel:+91${getShaadiPhone(vendor.id)}`}
+                  className="w-full flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 font-semibold py-3 rounded-xl mb-3 hover:border-amber-400 hover:text-amber-600 transition-all text-sm"
+                >
+                  <Phone className="w-4 h-4" /> Call Now
+                </a>
 
                 <Link
                   href="/plan"
@@ -395,16 +397,14 @@ export default function VendorDetailClient({ id }: Props) {
       )}
 
       {/* Floating WhatsApp button — mobile */}
-      {vendor.ownerPhone && (
-        <a
-          href={whatsappUrl(vendor.ownerPhone, vendor.name)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-40 lg:hidden flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold px-5 py-3.5 rounded-full shadow-2xl transition-all text-sm"
-        >
-          <MessageCircle className="w-5 h-5" /> WhatsApp
-        </a>
-      )}
+      <a
+        href={whatsappUrl(vendor.id, vendor.name)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-40 lg:hidden flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold px-5 py-3.5 rounded-full shadow-2xl transition-all text-sm"
+      >
+        <MessageCircle className="w-5 h-5" /> WhatsApp
+      </a>
 
       {/* Enquiry Modal */}
       {showEnquiry && (
