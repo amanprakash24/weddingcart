@@ -1,0 +1,17 @@
+{
+  "name": "ShaadiShopping",
+  "short_name": "ShaadiShopping",
+  "description": "India's Expert Wedding Planning & Coordination Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFCF7",
+  "theme_color": "#8B1A4A",
+  "icons": [
+    {
+      "src": "/logo.jpeg",
+      "sizes": "any",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

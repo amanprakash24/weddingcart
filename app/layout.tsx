@@ -46,6 +46,12 @@ export const metadata: Metadata = {
     'mehndi artist', 'wedding DJ', 'wedding band', 'wedding planning',
     'shaadi planning India', 'wedding marketplace India',
   ],
+  icons: {
+    icon: '/logo.jpeg',
+    apple: '/logo.jpeg',
+    shortcut: '/logo.jpeg',
+  },
+  manifest: '/manifest.json',
   openGraph: {
     title: "ShaadiShopping — India's Expert Wedding Coordination Platform",
     description: "Expert-guided wedding planning from Venue to Vidaai. Trusted vendors, personal consultants, stress-free coordination across India.",
@@ -53,12 +59,14 @@ export const metadata: Metadata = {
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
     url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — India's Expert Wedding Coordination Platform" }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'ShaadiShopping — India\'s Expert Wedding Coordination Platform',
     description: "Expert-guided wedding planning from Venue to Vidaai. Trusted vendors, personal consultants, stress-free coordination across India.",
     site: '@ShaadiShopping',
+    images: ['/opengraph-image'],
   },
   robots: { index: true, follow: true },
   alternates: { canonical: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com' },
