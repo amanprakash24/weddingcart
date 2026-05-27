@@ -898,6 +898,48 @@ export default function HomepageClient() {
         </div>
       </section>
 
+      {/* ── Popular Searches in Patna ── */}
+      <section className="py-12 sm:py-16 bg-white border-t border-[#C5A46D]/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+            <div>
+              <p className="eyebrow-luxury mb-2">Most Searched</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#2A1F1B]" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+                Popular Wedding Services in Patna
+              </h2>
+            </div>
+            <Link href="/cities/patna" className="text-[#8B1A4A] text-sm font-semibold hover:underline flex-shrink-0">
+              All Patna Services →
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {[
+              { label: 'Wedding Venues in Patna', href: '/cities/patna/venue', icon: '🏛️' },
+              { label: 'Banquet Halls in Patna', href: '/blog/best-banquet-halls-patna-wedding-marriage-hall', icon: '🎪' },
+              { label: 'Makeup Artists in Patna', href: '/cities/patna/makeup', icon: '💄' },
+              { label: 'Caterers in Patna', href: '/cities/patna/catering', icon: '🍽️' },
+              { label: 'Photographers in Patna', href: '/cities/patna/photo-video', icon: '📸' },
+              { label: 'Decorators in Patna', href: '/cities/patna/decorator', icon: '✨' },
+              { label: 'Mehndi Artists in Patna', href: '/cities/patna/mehndi', icon: '🌿' },
+              { label: 'DJ Services in Patna', href: '/cities/patna/dj', icon: '🎵' },
+              { label: 'Wedding Planners Patna', href: '/cities/patna/planning', icon: '📋' },
+              { label: 'Bands in Patna', href: '/cities/patna/band', icon: '🎺' },
+            ].map(({ label, href, icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="group flex items-center gap-3 bg-[#FAF5EE] hover:bg-[#F0E8D8] border border-[#C5A46D]/15 hover:border-[#C5A46D]/40 rounded-xl px-4 py-3.5 transition-all duration-200"
+              >
+                <span className="text-xl flex-shrink-0">{icon}</span>
+                <span className="text-[#2A1F1B] text-xs sm:text-sm font-medium leading-tight group-hover:text-[#8B1A4A] transition-colors">
+                  {label}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── 9. MEET YOUR EXPERT ── */}
       <section className="py-16 sm:py-24 lg:py-32 bg-[#FFFCF7] overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">

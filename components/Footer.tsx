@@ -11,6 +11,32 @@ const services = [
   { label: 'Decorators', href: '/categories/decorator' },
   { label: 'Catering', href: '/categories/catering' },
   { label: 'Photo & Video', href: '/categories/photo-video' },
+  { label: 'DJ Services', href: '/categories/dj' },
+  { label: 'Band & Music', href: '/categories/band' },
+  { label: 'Wedding Planners', href: '/categories/planning' },
+];
+
+const patnaLinks = [
+  { label: 'Wedding Venues in Patna', href: '/cities/patna/venue' },
+  { label: 'Makeup Artists in Patna', href: '/cities/patna/makeup' },
+  { label: 'Caterers in Patna', href: '/cities/patna/catering' },
+  { label: 'Photographers in Patna', href: '/cities/patna/photo-video' },
+  { label: 'Decorators in Patna', href: '/cities/patna/decorator' },
+  { label: 'Mehndi Artists in Patna', href: '/cities/patna/mehndi' },
+  { label: 'DJ Services in Patna', href: '/cities/patna/dj' },
+  { label: 'Bands in Patna', href: '/cities/patna/band' },
+  { label: 'Wedding Planners Patna', href: '/cities/patna/planning' },
+];
+
+const cityLinks = [
+  { label: 'Patna', href: '/cities/patna' },
+  { label: 'Delhi', href: '/cities/delhi' },
+  { label: 'Mumbai', href: '/cities/mumbai' },
+  { label: 'Jaipur', href: '/cities/jaipur' },
+  { label: 'Bangalore', href: '/cities/bangalore' },
+  { label: 'Goa', href: '/cities/goa' },
+  { label: 'Udaipur', href: '/cities/udaipur' },
+  { label: 'Kolkata', href: '/cities/kolkata' },
 ];
 
 const company = [
@@ -94,10 +120,10 @@ export default function Footer() {
 
       {/* ── MAIN FOOTER ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 lg:gap-10">
 
-          {/* Brand */}
-          <div className="sm:col-span-2 lg:col-span-1">
+          {/* Brand — spans 2 cols on mobile, 1 on lg */}
+          <div className="col-span-2 sm:col-span-3 lg:col-span-1">
             <div className="flex items-center gap-2 mb-1">
               <Heart className="w-5 h-5 fill-[#8B1A4A] text-[#8B1A4A]" />
               <span className="text-lg font-bold text-white tracking-wide" style={{ fontFamily: 'var(--font-playfair, serif)' }}>ShaadiShopping</span>
@@ -133,6 +159,34 @@ export default function Footer() {
                 <li key={s.href}>
                   <Link href={s.href} className="text-sm text-gray-500 hover:text-[#C5A46D] transition-colors hover:pl-1.5 duration-200 block">
                     {s.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Popular in Patna */}
+          <div>
+            <h4 className="text-[#C5A46D] font-semibold mb-5 text-[0.6rem] uppercase tracking-[0.25em]">Popular in Patna</h4>
+            <ul className="space-y-3">
+              {patnaLinks.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-sm text-gray-500 hover:text-[#C5A46D] transition-colors hover:pl-1.5 duration-200 block">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Cities */}
+          <div>
+            <h4 className="text-[#C5A46D] font-semibold mb-5 text-[0.6rem] uppercase tracking-[0.25em]">Cities We Serve</h4>
+            <ul className="space-y-3 mb-8">
+              {cityLinks.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className="text-sm text-gray-500 hover:text-[#C5A46D] transition-colors hover:pl-1.5 duration-200 block">
+                    {l.label}
                   </Link>
                 </li>
               ))}

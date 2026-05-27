@@ -275,6 +275,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           initialName={cat?.name}
           initialDescription={cat?.description}
           initialVendors={initialVendors}
+          faqs={faqs}
         />
       </Suspense>
     </>

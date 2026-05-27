@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { Search, MapPin, SlidersHorizontal, Star, ChevronDown, X, ChevronRight, Grid, List } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, Star, ChevronDown, X, ChevronRight, Grid, List, Plus, Minus } from 'lucide-react';
 import { Vendor, Category } from '@/types';
 import VendorCard from './VendorCard';
 
@@ -27,15 +27,18 @@ const SORTS = [
   { value: 'price-desc', label: 'Price: High to Low' },
 ];
 
+interface FAQ { q: string; a: string }
+
 interface Props {
   slug: string;
   initialCoverImage?: string;
   initialName?: string;
   initialDescription?: string;
   initialVendors?: Vendor[];
+  faqs?: FAQ[];
 }
 
-export default function CategoryPageClient({ slug, initialCoverImage, initialName, initialDescription, initialVendors }: Props) {
+export default function CategoryPageClient({ slug, initialCoverImage, initialName, initialDescription, initialVendors, faqs = [] }: Props) {
   const searchParams = useSearchParams();
   const info = CATEGORY_INFO[slug] || { name: slug, desc: '', image: '' };
 
@@ -48,6 +51,7 @@ export default function CategoryPageClient({ slug, initialCoverImage, initialNam
   const [minRating, setMinRating] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const fetchVendors = useCallback(async () => {
     setLoading(true);
@@ -237,6 +241,41 @@ export default function CategoryPageClient({ slug, initialCoverImage, initialNam
           </>
         )}
       </div>
+
+      {/* FAQ Section */}
+      {faqs.length > 0 && (
+        <section className="bg-gray-50 border-t border-gray-100">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-2">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-gray-500 text-sm mb-8">
+              Everything you need to know about booking {initialName || info.name.toLowerCase()} for your wedding.
+            </p>
+            <div className="space-y-3">
+              {faqs.map((faq, i) => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <button
+                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                    className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left"
+                  >
+                    <span className="font-semibold text-gray-800 text-sm sm:text-base leading-snug">{faq.q}</span>
+                    {openFaq === i
+                      ? <Minus className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      : <Plus className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    }
+                  </button>
+                  {openFaq === i && (
+                    <div className="px-6 pb-5">
+                      <p className="text-gray-600 text-sm leading-relaxed">{faq.a}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
