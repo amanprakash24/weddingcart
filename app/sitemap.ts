@@ -4,6 +4,8 @@ import VendorModel from '@/lib/models/Vendor';
 import CategoryModel from '@/lib/models/Category';
 import BlogModel from '@/lib/models/Blog';
 
+export const dynamic = 'force-dynamic';
+
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 const CITY_SLUGS = ['patna', 'delhi', 'mumbai', 'jaipur', 'bangalore', 'chennai', 'hyderabad', 'kolkata', 'udaipur', 'goa'];
