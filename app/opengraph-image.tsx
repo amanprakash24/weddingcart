@@ -1,10 +1,14 @@
 import { ImageResponse } from 'next/og';
+import { readFile } from 'fs/promises';
+import path from 'path';
 
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
-export const runtime = 'edge';
 
-export default function Image() {
+export default async function Image() {
+  const logoData = await readFile(path.join(process.cwd(), 'public/logo.jpeg'));
+  const logoSrc = `data:image/jpeg;base64,${logoData.toString('base64')}`;
+
   return new ImageResponse(
     (
       <div
@@ -55,34 +59,12 @@ export default function Image() {
           }}
         />
 
-        {/* Heart + Logo name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              background: '#8B1A4A',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-            }}
-          >
-            ♥
-          </div>
-          <div
-            style={{
-              fontSize: '64px',
-              fontWeight: '700',
-              color: '#FFFFFF',
-              letterSpacing: '-1px',
-              fontFamily: 'Georgia, serif',
-            }}
-          >
-            ShaadiShopping
-          </div>
-        </div>
+        {/* Actual logo */}
+        <img
+          src={logoSrc}
+          alt="ShaadiShopping"
+          style={{ width: '200px', height: '160px', objectFit: 'contain', marginBottom: '20px' }}
+        />
 
         {/* Gold divider */}
         <div
