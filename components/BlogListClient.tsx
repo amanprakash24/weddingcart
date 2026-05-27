@@ -74,69 +74,111 @@ function Skeleton() {
   );
 }
 
-/* ── Featured (magazine cover) ───────────────────────────── */
+/* ── Featured (split editorial layout) ──────────────────── */
 function FeaturedCard({ blog }: { blog: Blog }) {
   return (
     <Link
       href={`/blog/${blog.slug}`}
-      className="group relative block rounded-3xl overflow-hidden shadow-[0_32px_80px_rgba(28,10,18,0.35)] hover:shadow-[0_40px_100px_rgba(28,10,18,0.5)] transition-all duration-700"
+      className="group block rounded-3xl overflow-hidden shadow-[0_24px_80px_rgba(28,10,18,0.3)] hover:shadow-[0_36px_100px_rgba(28,10,18,0.45)] transition-all duration-700"
     >
-      {/* Background image */}
-      <div className="relative aspect-[16/8] sm:aspect-[21/9]">
-        {blog.coverImage ? (
-          <Image
-            src={blog.coverImage}
-            alt={blog.title}
-            fill
-            className="object-cover scale-[1.02] group-hover:scale-[1.07] transition-transform duration-[1200ms] ease-out"
-            unoptimized
-            priority
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr]" style={{ minHeight: '400px' }}>
+
+        {/* ── Left: dark content panel ── */}
+        <div
+          className="relative flex flex-col justify-between px-8 sm:px-12 py-10 sm:py-12"
+          style={{ background: 'linear-gradient(145deg, #0C0408 0%, #1C0A12 60%, #2D0B1F 100%)' }}
+        >
+          {/* Subtle dot grid */}
+          <div
+            className="absolute inset-0 opacity-[0.03] pointer-events-none"
+            style={{ backgroundImage: 'radial-gradient(circle, #C5A46D 1px, transparent 1px)', backgroundSize: '24px 24px' }}
           />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1C0A12] via-[#3D1428] to-[#1C0A12]" />
-        )}
+          {/* Ambient rose glow */}
+          <div className="absolute bottom-0 right-0 w-56 h-56 bg-[#8B1A4A]/15 rounded-full blur-[70px] pointer-events-none" />
 
-        {/* Cinematic overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0C0408]/95 via-[#0C0408]/40 to-[#0C0408]/10" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0C0408]/60 via-transparent to-transparent" />
-      </div>
+          <div className="relative z-10">
+            {/* Featured + category badges */}
+            <div className="flex items-center gap-3 mb-6">
+              <span className="bg-[#C5A46D] text-[#1C0A12] text-[10px] font-bold uppercase tracking-[0.22em] px-3 py-1.5 rounded-full">
+                Featured
+              </span>
+              <span className="text-[#C5A46D]/60 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                {blog.category}
+              </span>
+            </div>
 
-      {/* Text content — overlaid bottom-left */}
-      <div className="absolute bottom-0 left-0 right-0 px-8 sm:px-12 pb-10 sm:pb-12">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="bg-[#C5A46D] text-[#1C0A12] text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 rounded-full">
-            Featured
-          </span>
-          <span className="text-[#C5A46D]/70 text-[11px] font-medium uppercase tracking-widest">
-            {blog.category}
-          </span>
+            {/* Title */}
+            <h2
+              className="font-bold text-[#FFFCF7] leading-[1.18] mb-5 group-hover:text-[#E8D4A0] transition-colors duration-400"
+              style={{
+                fontFamily: 'Playfair Display, serif',
+                fontSize: 'clamp(1.45rem, 3vw, 2.15rem)',
+              }}
+            >
+              {blog.title}
+            </h2>
+
+            {/* Gold rule */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-px w-8 bg-[#C5A46D]/60" />
+              <span className="text-[#C5A46D]/50 text-[9px] tracking-[0.3em]">✦</span>
+              <div className="flex-1 h-px bg-[#C5A46D]/20" />
+            </div>
+
+            {/* Excerpt */}
+            {blog.excerpt && (
+              <p className="text-[#9B8B7D] text-[13.5px] leading-relaxed line-clamp-3 mb-7">
+                {blog.excerpt}
+              </p>
+            )}
+          </div>
+
+          {/* Bottom: meta + CTA */}
+          <div className="relative z-10">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#6B5B4D] mb-6">
+              <span className="text-[#9B8B7D] font-semibold">{blog.author}</span>
+              <span className="w-1 h-1 rounded-full bg-[#C5A46D]/40 flex-shrink-0" />
+              {blog.publishedAt && <span>{formatDate(blog.publishedAt)}</span>}
+              <span className="w-1 h-1 rounded-full bg-[#C5A46D]/40 flex-shrink-0" />
+              <span className="flex items-center gap-1 text-[#6B5B4D]">
+                <Clock className="w-3 h-3 text-[#C5A46D]" /> {blog.readTime} min read
+              </span>
+            </div>
+
+            <span
+              className="inline-flex items-center gap-2.5 text-[#C5A46D] text-sm font-semibold tracking-wide group-hover:gap-4 transition-all duration-300"
+            >
+              Read Story <ArrowRight className="w-4 h-4" />
+            </span>
+          </div>
+
+          {/* Gold left-edge accent */}
+          <div className="absolute top-6 left-0 w-0.5 h-16 bg-gradient-to-b from-transparent via-[#C5A46D]/60 to-transparent" />
         </div>
 
-        <h2 className="font-[Playfair_Display,serif] font-bold text-white text-2xl sm:text-3xl lg:text-4xl leading-tight mb-4 max-w-2xl group-hover:text-[#E8D4A0] transition-colors duration-300">
-          {blog.title}
-        </h2>
-
-        {blog.excerpt && (
-          <p className="text-white/55 text-sm leading-relaxed mb-5 max-w-xl hidden sm:block line-clamp-2">
-            {blog.excerpt}
-          </p>
-        )}
-
-        <div className="flex items-center gap-5 text-xs text-white/40 mb-6">
-          <span className="text-white/60 font-semibold">{blog.author}</span>
-          <span className="w-1 h-1 rounded-full bg-[#C5A46D]/50" />
-          {blog.publishedAt && <span>{formatDate(blog.publishedAt)}</span>}
-          <span className="w-1 h-1 rounded-full bg-[#C5A46D]/50" />
-          <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {blog.readTime} min read</span>
+        {/* ── Right: image panel ── */}
+        <div className="relative overflow-hidden" style={{ minHeight: '280px' }}>
+          {blog.coverImage ? (
+            <Image
+              src={blog.coverImage}
+              alt={blog.title}
+              fill
+              className="object-cover scale-[1.02] group-hover:scale-[1.07] transition-transform duration-[1400ms] ease-out"
+              unoptimized
+              priority
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-[#2D0B1F] to-[#1C0A12]" />
+          )}
+          {/* Left fade to blend with dark content panel */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0C0408]/70 via-[#0C0408]/10 to-transparent" />
+          {/* Bottom scrim */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0C0408]/40 via-transparent to-transparent" />
+          {/* Gold border on hover */}
+          <div className="absolute inset-0 border border-[#C5A46D]/0 group-hover:border-[#C5A46D]/20 transition-colors duration-500 pointer-events-none" />
         </div>
 
-        <span className="inline-flex items-center gap-2 text-[#C5A46D] text-sm font-semibold tracking-wide group-hover:gap-3.5 transition-all duration-300">
-          Read Story <ArrowRight className="w-4 h-4" />
-        </span>
       </div>
-
-      {/* Gold border shimmer on hover */}
-      <div className="absolute inset-0 rounded-3xl border border-[#C5A46D]/0 group-hover:border-[#C5A46D]/25 transition-colors duration-500 pointer-events-none" />
     </Link>
   );
 }
