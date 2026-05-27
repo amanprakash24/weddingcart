@@ -163,8 +163,8 @@ function FeaturedCard({ blog }: { blog: Blog }) {
               src={blog.coverImage}
               alt={blog.title}
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover scale-[1.02] group-hover:scale-[1.07] transition-transform duration-[1400ms] ease-out"
-              unoptimized
               priority
             />
           ) : (
@@ -203,8 +203,8 @@ function BlogCard({ blog }: { blog: Blog }) {
             src={blog.coverImage}
             alt={blog.title}
             fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover group-hover:scale-[1.06] transition-transform duration-700"
-            unoptimized
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1C0A12] to-[#3D1428]">
@@ -376,8 +376,8 @@ function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
               src={card.image}
               alt={card.title}
               fill
+              sizes="(max-width: 1024px) 50vw, 25vw"
               className="object-cover scale-100 group-hover:scale-110 transition-transform duration-[1200ms] ease-out"
-              unoptimized
             />
 
             {/* Dark cinematic overlay */}
@@ -492,8 +492,8 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
                   src={media?.src ?? ''}
                   alt={cat}
                   fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                   className="object-cover scale-100 group-hover:scale-[1.07] transition-transform duration-[1100ms] ease-out"
-                  unoptimized
                 />
 
                 {/* Frosted label bar at bottom */}

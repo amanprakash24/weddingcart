@@ -17,6 +17,13 @@ export const metadata: Metadata = {
     url: `${BASE_URL}/blog`,
     type: 'website',
     locale: 'en_IN',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'ShaadiShopping Wedding Blog' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Wedding Blog — Tips, Trends & Real Weddings | ShaadiShopping',
+    description: 'Expert wedding advice, trends, and inspiration for couples planning their dream wedding in India.',
+    images: ['/opengraph-image'],
   },
 };
 

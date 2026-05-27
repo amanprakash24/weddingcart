@@ -15,6 +15,21 @@ export const metadata: Metadata = {
     'shaadi vendors Patna', 'best wedding vendors India', 'wedding booking platform India',
   ],
   alternates: { canonical: BASE_URL },
+  openGraph: {
+    title: "ShaadiShopping — India's #1 Wedding Planning & Vendor Booking Platform",
+    description: 'Book top wedding vendors across India — venues, photographers, caterers, makeup artists, mehndi, decorators & more. Specialising in Patna, Bihar weddings.',
+    url: BASE_URL,
+    type: 'website',
+    locale: 'en_IN',
+    siteName: 'ShaadiShopping',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — India's #1 Wedding Planning Platform" }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "ShaadiShopping — India's #1 Wedding Planning & Vendor Booking Platform",
+    description: 'Book top wedding vendors across India — venues, photographers, caterers, makeup artists, mehndi, decorators & more.',
+    images: ['/opengraph-image'],
+  },
 };
 
 const websiteSchema = {

@@ -374,6 +374,38 @@ export default function VendorDetailClient({ id }: Props) {
         </div>
       </div>
 
+      {/* Related categories for same city */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">
+            Other Wedding Services in {vendor.city}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { slug: 'venue', label: 'Venues' },
+              { slug: 'makeup', label: 'Makeup Artists' },
+              { slug: 'catering', label: 'Caterers' },
+              { slug: 'decorator', label: 'Decorators' },
+              { slug: 'photo-video', label: 'Photographers' },
+              { slug: 'mehndi', label: 'Mehndi Artists' },
+              { slug: 'dj', label: 'DJ Services' },
+              { slug: 'band', label: 'Band & Music' },
+              { slug: 'planning', label: 'Wedding Planners' },
+            ]
+              .filter((c) => c.slug !== vendor.category)
+              .map((c) => (
+                <Link
+                  key={c.slug}
+                  href={`/cities/${vendor.city.toLowerCase()}/${c.slug}`}
+                  className="px-4 py-1.5 rounded-full border border-amber-200 bg-white text-amber-700 text-sm font-medium hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all"
+                >
+                  {c.label} in {vendor.city}
+                </Link>
+              ))}
+          </div>
+        </div>
+      </div>
+
       {/* Lightbox */}
       {lightbox !== null && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
