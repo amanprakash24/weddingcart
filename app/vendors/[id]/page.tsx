@@ -85,6 +85,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description,
+    keywords: [
+      `${vendor.name}`, `${catLabel} in ${vendor.city}`,
+      `${catLabel} ${vendor.city}`, `book ${catLabel} ${vendor.city}`,
+      `wedding vendors ${vendor.city}`, `${vendor.city} wedding services`,
+    ],
     alternates: { canonical: url },
     openGraph: {
       title,

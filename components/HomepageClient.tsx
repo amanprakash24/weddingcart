@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -155,6 +155,30 @@ const TESTIMONIALS = [
   },
 ];
 
+// ── Lazy video — only loads & plays when scrolled into view ──────────────────
+
+function LazyVideo({ src, className, style }: { src: string; className?: string; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          if (!el.src) el.src = src;
+          el.play().catch(() => {});
+        } else {
+          el.pause();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [src]);
+  return <video ref={ref} muted loop playsInline preload="none" className={className} style={style} />;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function HomepageClient() {
@@ -212,7 +236,8 @@ export default function HomepageClient() {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="none"
+            poster="/images/hero-bg.jpg"
             className="absolute inset-0 w-full h-full object-cover"
           >
             <source src="/videos/homepage.mp4" type="video/mp4" />
@@ -291,7 +316,9 @@ export default function HomepageClient() {
                   transition={{ duration: 1.4, delay: 1.4, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <span className="text-white/50">— </span>
-                  <span className="hero-highlight-cycle">We Handle Everything</span>
+                  <span className="hero-highlight-cycle-wrap">
+                    <span className="hero-highlight-cycle">We Handle Everything</span>
+                  </span>
                 </motion.span>
               </span>
             </h1>
@@ -548,12 +575,8 @@ export default function HomepageClient() {
                 {style.video ? (
                   /* ── Video card ── */
                   <>
-                    <video
+                    <LazyVideo
                       src={style.video}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
                       className="absolute inset-0 w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-[1800ms] ease-out"
                     />
                     {/* Cinematic dark overlay */}
@@ -667,7 +690,7 @@ export default function HomepageClient() {
                   transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {w.video ? (
-                    <video src={w.video} autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" />
+                    <LazyVideo src={w.video} className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <Image src={w.img} fill alt={w.title} sizes="50vw" className="object-cover" />
                   )}

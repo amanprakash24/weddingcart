@@ -79,6 +79,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
+    keywords: blog.tags?.length ? blog.tags : ['wedding tips', 'wedding planning India', 'ShaadiShopping blog'],
     alternates: { canonical: url },
     openGraph: {
       title,

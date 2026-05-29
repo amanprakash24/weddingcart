@@ -146,6 +146,15 @@ export async function generateMetadata({
   const description = `Find the best ${cat.plural} in ${city.name}, ${city.state}. Compare verified ${cat.desc} with real packages, photos & pricing. ${cat.priceNote}. Get free quotes from top ${cat.plural} in ${city.name}.`;
   const url = `${BASE_URL}/cities/${citySlug}/${catSlug}`;
 
+  // Non-Patna cities: noindex until we have real vendor listings there
+  if (citySlug !== 'patna') {
+    return {
+      title,
+      description,
+      robots: { index: false, follow: false },
+    };
+  }
+
   return {
     title,
     description,
@@ -162,11 +171,13 @@ export async function generateMetadata({
       type: 'website',
       locale: 'en_IN',
       siteName: 'ShaadiShopping',
+      images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: ['/opengraph-image'],
     },
   };
 }

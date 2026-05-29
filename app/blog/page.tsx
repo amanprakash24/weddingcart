@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   title: 'Wedding Blog — Tips, Trends & Real Weddings | ShaadiShopping',
   description:
     'Explore wedding tips, venue guides, bridal fashion trends, real wedding stories, and budget planning advice from India\'s top wedding planning experts.',
+  keywords: [
+    'wedding tips India', 'wedding planning advice', 'bridal fashion trends',
+    'real wedding stories', 'wedding budget planning', 'venue guides India',
+    'wedding traditions India', 'wedding photography tips',
+  ],
   alternates: { canonical: `${BASE_URL}/blog` },
   openGraph: {
     title: 'Wedding Blog — Tips, Trends & Real Weddings | ShaadiShopping',
