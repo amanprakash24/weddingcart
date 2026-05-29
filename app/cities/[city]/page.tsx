@@ -106,10 +106,26 @@ export async function generateMetadata({
   const url = `${BASE_URL}/cities/${city}`;
   const title = `Wedding Vendors in ${name} — Venues, Makeup, Catering & More | ShaadiShopping`;
   const description = `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from 50+ wedding vendors in ${name}.`;
+  const ogImage = meta.heroImage.split('?')[0] + '?w=1200&h=630&fit=crop&q=80';
+
+  // Non-Patna cities: noindex until we have real vendor listings there
+  if (city.toLowerCase() !== 'patna') {
+    return {
+      title,
+      description,
+      robots: { index: false, follow: false },
+    };
+  }
 
   return {
     title,
     description,
+    keywords: [
+      `wedding vendors ${name}`, `wedding venues ${name}`,
+      `wedding planning ${name}`, `bridal makeup ${name}`,
+      `wedding caterers ${name}`, `wedding photographers ${name}`,
+      `wedding decorators ${name}`, `${name} wedding services`,
+    ],
     alternates: { canonical: url },
     openGraph: {
       title,
@@ -117,13 +133,13 @@ export async function generateMetadata({
       url,
       type: 'website',
       locale: 'en_IN',
-      images: [{ url: meta.heroImage, width: 1920, height: 1080, alt: `Wedding vendors in ${name}` }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: `Wedding vendors in ${name}` }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [meta.heroImage],
+      images: [ogImage],
     },
   };
 }

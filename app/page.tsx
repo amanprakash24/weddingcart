@@ -37,12 +37,7 @@ const websiteSchema = {
   '@type': 'WebSite',
   name: 'ShaadiShopping',
   url: BASE_URL,
-  description: "India's #1 wedding planning marketplace — discover and book trusted vendors.",
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: `${BASE_URL}/categories/{search_term_string}`,
-    'query-input': 'required name=search_term_string',
-  },
+  description: "India's #1 wedding planning & coordination platform — expert-guided from Venue to Vidaai.",
 };
 
 const organizationSchema = {

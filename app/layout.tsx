@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     'wedding vendors India', 'wedding venue booking', 'bridal makeup artist',
     'wedding photographer', 'wedding catering', 'wedding decorator',
     'mehndi artist', 'wedding DJ', 'wedding band', 'wedding planning',
-    'shaadi planning India', 'wedding marketplace India',
+    'shaadi planning India', 'wedding platform India',
   ],
   icons: {
     icon: '/logo.jpeg',
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${cormorant.variable} ${dmSans.variable}`}>
+    <html lang="en-IN" className={`${playfair.variable} ${cormorant.variable} ${dmSans.variable}`}>
       <body className="bg-[#FFFAF5] text-[#2D2D2D] min-h-screen antialiased" suppressHydrationWarning>
         <CartProvider>
 

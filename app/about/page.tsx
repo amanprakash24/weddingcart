@@ -5,17 +5,24 @@ import { JsonLd } from '@/components/JsonLd';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
-  title: 'About ShaadiShopping — India\'s Most Trusted Wedding Marketplace',
+  title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
   description:
     'Learn about ShaadiShopping — founded by Anisha Kumari in Patna, Bihar. We connect 10,000+ couples with 500+ verified wedding vendors across 25+ cities in India.',
   alternates: { canonical: `${BASE_URL}/about` },
   openGraph: {
-    title: 'About ShaadiShopping — India\'s Most Trusted Wedding Marketplace',
+    title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
     description:
-      'Our story, mission, and the team behind India\'s favourite wedding planning platform. Helping couples plan their dream weddings since day one.',
+      "Our story, mission, and the team behind India's favourite wedding planning platform. Helping couples plan their dream weddings since day one.",
     url: `${BASE_URL}/about`,
     type: 'website',
     locale: 'en_IN',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "About ShaadiShopping — India's Wedding Planning Platform" }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
+    description: "Our story, mission, and the team behind India's favourite wedding planning platform.",
+    images: ['/opengraph-image'],
   },
 };
 
