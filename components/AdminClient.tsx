@@ -956,7 +956,7 @@ export default function AdminClient() {
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-100">
                       <tr>
-                        {['Icon', 'Name', 'ID', 'Description', 'Vendors', 'Image', 'Actions'].map((h) => (
+                        {['Name', 'ID', 'Description', 'Vendors', 'Image', 'Actions'].map((h) => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
@@ -964,7 +964,6 @@ export default function AdminClient() {
                     <tbody className="divide-y divide-gray-50">
                       {regularCategories.map((c) => (
                         <tr key={c._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-2xl">{c.icon}</td>
                           <td className="px-4 py-3 text-sm font-semibold text-gray-900">{c.name}</td>
                           <td className="px-4 py-3"><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-mono">{c.id}</span></td>
                           <td className="px-4 py-3 text-sm text-gray-500 max-w-xs line-clamp-1">{c.description}</td>
@@ -1063,7 +1062,7 @@ export default function AdminClient() {
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b border-gray-100">
                         <tr>
-                          {['Icon', 'Name', 'ID', 'Description', 'Vendors', 'Image', 'Actions'].map((h) => (
+                          {['Name', 'ID', 'Description', 'Vendors', 'Image', 'Actions'].map((h) => (
                             <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                           ))}
                         </tr>
@@ -1071,7 +1070,6 @@ export default function AdminClient() {
                       <tbody className="divide-y divide-gray-50">
                         {specialCategories.map((c) => (
                           <tr key={c._id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 text-2xl">{c.icon}</td>
                             <td className="px-4 py-3 text-sm font-semibold text-gray-900">{c.name}</td>
                             <td className="px-4 py-3"><span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-mono">{c.id}</span></td>
                             <td className="px-4 py-3 text-sm text-gray-500 max-w-xs line-clamp-1">{c.description}</td>
