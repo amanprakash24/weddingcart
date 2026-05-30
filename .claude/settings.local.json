@@ -76,7 +76,18 @@
       "Bash(Get-ChildItem -Path \"C:\\\\weddingcart\\\\weddingcart\" -Directory)",
       "Bash(Select-Object Name)",
       "Bash(ConvertTo-Json)",
-      "Bash(copy *)"
+      "Bash(copy *)",
+      "PowerShell(Get-Item *)",
+      "Bash(git rebase *)",
+      "Bash(Get-Content \"C:\\\\weddingcart\\\\weddingcart\\\\data\\\\blogSeedData.ts\")",
+      "Bash(Select-Object -Last 5)",
+      "Bash(timeout 120 bash *)",
+      "Bash(git fetch *)",
+      "Bash(xargs wc -l)",
+      "Bash(grep -r \"description.*[0-9]\\\\{140,\\\\}\\\\|description.*[0-9]\\\\{160,\\\\}\" ./app --include=\"*.tsx\")",
+      "WebFetch(domain:shaadishopping.com)",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && grep -q \"export const metadata\\\\|export async function generateMetadata\" \"{}\" && echo \"HAS METADATA\" || echo \"NO METADATA\"')",
+      "WebFetch(domain:www.shaadishopping.com)"
     ]
   }
 }

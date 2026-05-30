@@ -24,11 +24,8 @@ export async function GET(req: NextRequest) {
     if (city) query.city = city;
     if (featured === 'true') query.isFeatured = true;
     if (minRating) query.rating = { $gte: parseFloat(minRating) };
-    if (minPrice || maxPrice) {
-      query.priceMin = {};
-      if (minPrice) query.priceMin.$gte = parseInt(minPrice);
-      if (maxPrice) query.priceMin.$lte = parseInt(maxPrice);
-    }
+    if (minPrice) query.priceMin = { $gte: parseInt(minPrice) };
+    if (maxPrice) query.priceMax = { $lte: parseInt(maxPrice) };
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
