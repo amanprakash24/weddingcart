@@ -113,6 +113,7 @@ export default function AdminClient() {
   const [vendorApplications, setVendorApplications] = useState<AnyRecord[]>([]);
   const [leads, setLeads] = useState<AnyRecord[]>([]);
   const [appFilter, setAppFilter] = useState<'all' | 'new' | 'approved' | 'rejected'>('all');
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [consultationFilter, setConsultationFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [loading, setLoading] = useState(false);
@@ -437,6 +438,15 @@ export default function AdminClient() {
   const handleDeleteLead = async (id: string) => {
     if (!confirm('Delete this lead?')) return;
     await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+    setSelectedLeads((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    fetchAll();
+  };
+
+  const handleDeleteSelectedLeads = async () => {
+    if (selectedLeads.size === 0) return;
+    if (!confirm(`Delete ${selectedLeads.size} selected lead${selectedLeads.size > 1 ? 's' : ''}?`)) return;
+    await Promise.all([...selectedLeads].map((id) => fetch(`/api/leads/${id}`, { method: 'DELETE' })));
+    setSelectedLeads(new Set());
     fetchAll();
   };
 
@@ -1710,7 +1720,24 @@ export default function AdminClient() {
           {tab === 'leads' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs text-gray-400">{leads.length} lead{leads.length !== 1 ? 's' : ''} captured via popup</p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 accent-rose-500 cursor-pointer"
+                    checked={leads.length > 0 && selectedLeads.size === leads.length}
+                    ref={(el) => { if (el) el.indeterminate = selectedLeads.size > 0 && selectedLeads.size < leads.length; }}
+                    onChange={(e) => setSelectedLeads(e.target.checked ? new Set(leads.map((l: AnyRecord) => l._id)) : new Set())}
+                  />
+                  <p className="text-xs text-gray-400">{leads.length} lead{leads.length !== 1 ? 's' : ''} captured via popup</p>
+                </div>
+                {selectedLeads.size > 0 && (
+                  <button
+                    onClick={handleDeleteSelectedLeads}
+                    className="flex items-center gap-1.5 text-xs font-semibold bg-rose-500 text-white px-3 py-1.5 rounded-lg hover:bg-rose-600 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete {selectedLeads.size} selected
+                  </button>
+                )}
               </div>
               {leads.length === 0 && (
                 <div className="text-center py-12 text-gray-400">
@@ -1718,9 +1745,19 @@ export default function AdminClient() {
                   <p>No leads yet.</p>
                 </div>
               )}
-              {leads.map((lead) => (
-                <div key={lead._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+              {leads.map((lead: AnyRecord) => (
+                <div key={lead._id} className={`bg-white rounded-2xl border shadow-sm px-5 py-4 flex items-center justify-between gap-4 flex-wrap transition-colors ${selectedLeads.has(lead._id) ? 'border-rose-200 bg-rose-50/40' : 'border-gray-100'}`}>
                   <div className="flex items-center gap-4">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 accent-rose-500 cursor-pointer flex-shrink-0"
+                      checked={selectedLeads.has(lead._id)}
+                      onChange={(e) => setSelectedLeads((prev) => {
+                        const next = new Set(prev);
+                        e.target.checked ? next.add(lead._id) : next.delete(lead._id);
+                        return next;
+                      })}
+                    />
                     <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
                       <Phone className="w-4 h-4 text-green-600" />
                     </div>
