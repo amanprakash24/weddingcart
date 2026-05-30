@@ -434,6 +434,12 @@ export default function AdminClient() {
     fetchAll();
   };
 
+  const handleDeleteLead = async (id: string) => {
+    if (!confirm('Delete this lead?')) return;
+    await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+    fetchAll();
+  };
+
   const handleStatusChange = async (type: 'enquiries' | 'consultations', id: string, status: string) => {
     await fetch(`/api/${type}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
     fetchAll();
@@ -1747,6 +1753,13 @@ export default function AdminClient() {
                         {new Date(lead.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     )}
+                    <button
+                      onClick={() => handleDeleteLead(lead._id)}
+                      className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Delete lead"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
