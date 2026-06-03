@@ -44,15 +44,17 @@ const organizationJsonLd = {
   contactPoint: {
     '@type': 'ContactPoint',
     telephone: '+91-76460-28228',
-    email: 'hello@shaadishopping.com',
+    email: 'shaadi.shopping51@gmail.com',
     contactType: 'customer service',
     areaServed: 'IN',
     availableLanguage: ['Hindi', 'English'],
   },
   address: {
     '@type': 'PostalAddress',
+    streetAddress: 'T Point, Gola Rd, near Danapur',
     addressLocality: 'Patna',
     addressRegion: 'Bihar',
+    postalCode: '801503',
     addressCountry: 'IN',
   },
 };

@@ -55,11 +55,13 @@ const organizationSchema = {
   },
   address: {
     '@type': 'PostalAddress',
+    streetAddress: 'T Point, Gola Rd, near Danapur',
     addressLocality: 'Patna',
     addressRegion: 'Bihar',
+    postalCode: '801503',
     addressCountry: 'IN',
   },
-  email: 'hello@shaadishopping.com',
+  email: 'shaadi.shopping51@gmail.com',
 };
 
 export default function HomePage() {

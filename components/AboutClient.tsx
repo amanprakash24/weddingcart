@@ -202,7 +202,7 @@ export default function AboutClient() {
                   <Phone className="w-4 h-4" /> Talk to Us
                 </a>
                 <a
-                  href="mailto:hello@shaadishopping.com"
+                  href="mailto:shaadi.shopping51@gmail.com"
                   className="flex items-center gap-2 border border-amber-300 text-amber-700 font-semibold px-6 py-3 rounded-full hover:bg-amber-50 transition-all text-sm"
                 >
                   <Mail className="w-4 h-4" /> Email Us
