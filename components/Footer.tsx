@@ -142,12 +142,28 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-3.5 h-3.5 text-[#C5A46D] flex-shrink-0" />
-                <a href="mailto:hello@shaadishopping.com" className="hover:text-[#C5A46D] transition-colors">hello@shaadishopping.com</a>
+                <a href="mailto:shaadi.shopping51@gmail.com" className="hover:text-[#C5A46D] transition-colors">shaadi.shopping51@gmail.com</a>
               </div>
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-3.5 h-3.5 text-[#C5A46D] flex-shrink-0 mt-0.5" />
-                <span className="text-gray-500">Patna, Bihar, India</span>
+                <span className="text-gray-500">T Point, Gola Rd, near Danapur,<br />Patna, Bihar 801503</span>
               </div>
+              <a
+                href="https://maps.google.com/?q=T+Point,+Gola+Rd,+near+Danapur,+Patna,+Bihar+801503"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 block rounded-xl overflow-hidden border border-[#C5A46D]/20 hover:border-[#C5A46D]/50 transition-colors"
+              >
+                <iframe
+                  title="ShaadiShopping Location"
+                  src="https://maps.google.com/maps?q=T+Point,+Gola+Rd,+near+Danapur,+Patna,+Bihar+801503&output=embed&z=15"
+                  width="100%"
+                  height="140"
+                  style={{ border: 0, display: 'block', filter: 'grayscale(0.4) contrast(1.1)' }}
+                  loading="lazy"
+                  allowFullScreen
+                />
+              </a>
             </div>
           </div>
 
