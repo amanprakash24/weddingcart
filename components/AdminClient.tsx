@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText } from 'lucide-react';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText, Copy, Link2 } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -120,6 +120,15 @@ export default function AdminClient() {
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
   const [role, setRole] = useState<'admin' | 'super_admin' | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyPortfolioLink = (vendorId: string) => {
+    const url = `${window.location.origin}/portfolio/${vendorId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(vendorId);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  };
 
   // Vendor form
   const [showAddVendor, setShowAddVendor] = useState(false);
@@ -880,6 +889,13 @@ export default function AdminClient() {
                               <button onClick={() => openEditVendor(v)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                                 <Edit className="w-4 h-4" />
                               </button>
+                              <button
+                                onClick={() => copyPortfolioLink(v.id)}
+                                className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold ${copiedId === v.id ? 'text-emerald-600 bg-emerald-50' : 'text-violet-500 hover:bg-violet-50'}`}
+                                title="Copy Portfolio Link"
+                              >
+                                {copiedId === v.id ? <CheckCircle className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+                              </button>
                               <button onClick={() => handleDeleteVendor(v.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -1321,6 +1337,13 @@ export default function AdminClient() {
                                 </Link>
                                 <button onClick={() => openEditSpecialVendor(v)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                                   <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => copyPortfolioLink(v.id)}
+                                  className={`p-1.5 rounded-lg transition-colors ${copiedId === v.id ? 'text-emerald-600 bg-emerald-50' : 'text-violet-500 hover:bg-violet-50'}`}
+                                  title="Copy Portfolio Link"
+                                >
+                                  {copiedId === v.id ? <CheckCircle className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
                                 </button>
                                 <button onClick={() => handleDeleteVendor(v.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Delete">
                                   <Trash2 className="w-4 h-4" />
