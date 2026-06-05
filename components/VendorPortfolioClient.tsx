@@ -34,17 +34,58 @@ const stagger = (delay = 0.1) => ({
 
 function EnquiryModal({ vendor, onClose }: { vendor: Vendor; onClose: () => void }) {
   const [form, setForm] = useState({ name: '', phone: '', eventDate: '', guestCount: '', message: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [step, setStep] = useState<'form' | 'otp' | 'done'>('form');
+  const [otp, setOtp] = useState('');
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
 
-  const isValid = (p: string) => /^\d{10}$/.test(p.replace(/[\s\-\+\(\)]/g, ''));
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const t = setTimeout(() => setResendTimer((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendTimer]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isValid(form.phone)) { setError('Enter a valid 10-digit phone number.'); return; }
-    setSubmitting(true); setError('');
+  const digits = form.phone.replace(/[\s\-\+\(\)]/g, '');
+  const isValidPhone = /^\d{10}$/.test(digits);
+
+  const sendOtp = async () => {
+    setSending(true); setError('');
     try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: digits }),
+      });
+      const data = await res.json();
+      if (!data.success) { setError(data.message || 'Failed to send OTP.'); return; }
+      setStep('otp');
+      setResendTimer(30);
+    } catch { setError('Something went wrong. Please try again.'); }
+    finally { setSending(false); }
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isValidPhone) { setError('Enter a valid 10-digit phone number.'); return; }
+    await sendOtp();
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length !== 6) { setOtpError('Enter the 6-digit OTP.'); return; }
+    setVerifying(true); setOtpError('');
+    try {
+      const vRes = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: digits, code: otp }),
+      });
+      const vData = await vRes.json();
+      if (!vData.success) { setOtpError(vData.message || 'Invalid OTP. Please try again.'); return; }
+
       await fetch('/api/enquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -55,9 +96,9 @@ function EnquiryModal({ vendor, onClose }: { vendor: Vendor; onClose: () => void
           ...form,
         }),
       });
-      setDone(true);
-    } catch { setError('Something went wrong. Please call us directly.'); }
-    finally { setSubmitting(false); }
+      setStep('done');
+    } catch { setOtpError('Verification failed. Please try again.'); }
+    finally { setVerifying(false); }
   };
 
   return (
@@ -77,7 +118,7 @@ function EnquiryModal({ vendor, onClose }: { vendor: Vendor; onClose: () => void
             <X className="w-4 h-4 text-gray-500" />
           </button>
 
-          {done ? (
+          {step === 'done' && (
             <div className="text-center py-6">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-500" />
@@ -88,14 +129,16 @@ function EnquiryModal({ vendor, onClose }: { vendor: Vendor; onClose: () => void
                 Close
               </button>
             </div>
-          ) : (
+          )}
+
+          {step === 'form' && (
             <>
               <div className="mb-5">
                 <p className="text-[#C5A46D] text-[0.6rem] font-bold uppercase tracking-[0.2em] mb-1">Send Enquiry</p>
                 <h3 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>{vendor.name}</h3>
                 <p className="text-gray-400 text-xs mt-0.5">{CATEGORY_LABELS[vendor.category]} · {vendor.city}</p>
               </div>
-              <form onSubmit={handleSubmit} className="space-y-3">
+              <form onSubmit={handleFormSubmit} className="space-y-3">
                 <input required placeholder="Your Name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B1A4A]/20 focus:border-[#8B1A4A]" />
                 <input required type="tel" placeholder="Phone Number * (10 digits)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -112,11 +155,49 @@ function EnquiryModal({ vendor, onClose }: { vendor: Vendor; onClose: () => void
                 <textarea rows={2} placeholder="Message (optional)" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B1A4A]/20 focus:border-[#8B1A4A] resize-none" />
                 {error && <p className="text-rose-500 text-xs">{error}</p>}
-                <button type="submit" disabled={submitting}
+                <button type="submit" disabled={sending}
                   className="w-full bg-[#8B1A4A] text-white font-bold py-3.5 rounded-xl text-sm hover:opacity-90 disabled:opacity-60 transition-all"
                   style={{ boxShadow: '0 4px 20px rgba(139,26,74,0.35)' }}>
-                  {submitting ? 'Sending...' : 'Send Enquiry'}
+                  {sending ? 'Sending OTP…' : 'Send OTP to Verify'}
                 </button>
+              </form>
+            </>
+          )}
+
+          {step === 'otp' && (
+            <>
+              <div className="mb-5">
+                <p className="text-[#C5A46D] text-[0.6rem] font-bold uppercase tracking-[0.2em] mb-1">Verify Your Number</p>
+                <h3 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>Enter OTP</h3>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  Sent via WhatsApp to <span className="font-semibold text-gray-600">+91 {digits}</span>
+                  {' · '}
+                  <button onClick={() => { setStep('form'); setOtp(''); setOtpError(''); }} className="text-[#8B1A4A] hover:underline">Change</button>
+                </p>
+              </div>
+              <form onSubmit={handleVerify} className="space-y-3">
+                <input
+                  required
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="6-digit OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-center tracking-[0.5em] font-bold text-lg focus:outline-none focus:ring-2 focus:ring-[#8B1A4A]/20 focus:border-[#8B1A4A]"
+                />
+                {otpError && <p className="text-rose-500 text-xs">{otpError}</p>}
+                <button type="submit" disabled={verifying}
+                  className="w-full bg-[#8B1A4A] text-white font-bold py-3.5 rounded-xl text-sm hover:opacity-90 disabled:opacity-60 transition-all"
+                  style={{ boxShadow: '0 4px 20px rgba(139,26,74,0.35)' }}>
+                  {verifying ? 'Verifying…' : 'Verify & Submit Enquiry'}
+                </button>
+                <p className="text-center text-xs text-gray-400">
+                  {resendTimer > 0
+                    ? `Resend OTP in ${resendTimer}s`
+                    : <button type="button" onClick={sendOtp} className="text-[#8B1A4A] font-semibold hover:underline">Resend OTP</button>
+                  }
+                </p>
               </form>
             </>
           )}
