@@ -32,7 +32,7 @@ const CITY_FAQS: Record<string, { q: string; a: string }[]> = {
   patna: [
     {
       q: 'What are the best wedding venues in Patna?',
-      a: 'Top wedding venues in Patna include Swayamvar Hall & Home Stay in Danapur, premium banquet halls on Bailey Road, garden lawns in Phulwari Sharif, and riverside properties. ShaadiShopping lists all verified venues with real packages and pricing.',
+      a: 'Top wedding venues in Patna include Sayamwar Hall & Homestay in Danapur, premium banquet halls on Bailey Road, garden lawns in Phulwari Sharif, and riverside properties. ShaadiShopping lists all verified venues with real packages and pricing.',
     },
     {
       q: 'How much does a wedding cost in Patna, Bihar?',

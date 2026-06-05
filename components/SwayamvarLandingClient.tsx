@@ -44,7 +44,7 @@ export default function SwayamvarLandingClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vendorId: 'swayamvar-hall',
-          vendorName: 'Swayamvar Hall & Home Stay',
+          vendorName: 'Sayamwar Hall & Homestay',
           vendorCategory: 'venue',
           name: form.name,
           phone: form.phone,
@@ -72,7 +72,7 @@ export default function SwayamvarLandingClient() {
         <div className="absolute inset-0">
           <Image
             src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1600&q=85"
-            alt="Swayamvar Hall & Home Stay — Banquet Hall Patna"
+            alt="Sayamwar Hall & Homestay — Banquet Hall Patna"
             fill
             className="object-cover"
             priority
@@ -104,9 +104,9 @@ export default function SwayamvarLandingClient() {
               </div>
 
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-                Swayamvar Hall<br />
+                Sayamwar Hall<br />
                 <span style={{ background: 'linear-gradient(135deg, #e8d5b0, #C5A46D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                  & Home Stay
+                  & Homestay
                 </span>
               </h1>
 
@@ -330,7 +330,7 @@ export default function SwayamvarLandingClient() {
             </div>
             <div className="rounded-2xl overflow-hidden border border-[#C5A46D]/20 shadow-lg">
               <iframe
-                title="Swayamvar Hall Location"
+                title="Sayamwar Hall Location"
                 src="https://maps.google.com/maps?q=T+Point,+Gola+Rd,+near+Danapur,+Patna,+Bihar+801503&output=embed&z=15"
                 width="100%"
                 height="280"

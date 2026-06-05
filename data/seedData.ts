@@ -209,7 +209,7 @@ export const VENDORS: Vendor[] = [
   // ── FEATURED — OWNED PROPERTY ────────────────────────────────────────────────
   {
     id: 'swayamvar-hall-patna',
-    name: 'Swayamvar Hall & Home Stay',
+    name: 'Sayamwar Hall & Homestay',
     ownerPhone: '+91-76460-28228',
     category: 'venue',
     city: 'Patna',
@@ -225,7 +225,7 @@ export const VENDORS: Vendor[] = [
       'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=80',
       'https://images.unsplash.com/photo-1502635385003-ee1e6a1a742d?w=800&q=80',
     ],
-    description: 'Swayamvar Hall & Home Stay is a premium wedding banquet in Danapur, Patna — conveniently located on Gola Road near Chanakya Puri. The venue combines a beautifully decorated banquet hall with comfortable in-house home stay rooms, making it ideal for multi-day celebrations and out-of-town guests. With modern amenities, ample parking, and a dedicated event management team, Swayamvar Hall is Patna\'s trusted choice for weddings, engagement ceremonies, and family gatherings.',
+    description: 'Sayamwar Hall & Homestay is a premium wedding banquet in Danapur, Patna — conveniently located on Gola Road near Chanakya Puri. The venue combines a beautifully decorated banquet hall with comfortable in-house home stay rooms, making it ideal for multi-day celebrations and out-of-town guests. With modern amenities, ample parking, and a dedicated event management team, Sayamwar Hall is Patna\'s trusted choice for weddings, engagement ceremonies, and family gatherings.',
     features: [
       'AC Banquet Hall',
       'In-house Home Stay Rooms',
