@@ -2546,6 +2546,188 @@ At sunrise in winter, the morning mist over the Ganges from the bridge creates e
     `.trim(),
   },
 
+  // ── POST 36 — WEDDING BANQUETS ───────────────────────────────────────────────
+  {
+    title: 'Wedding Banquets in Patna 2025 — Packages, Costs & How to Book the Perfect Hall',
+    slug: 'wedding-banquet-guide-patna-2025',
+    excerpt: 'Everything you need to know about wedding banquets in Patna — hall packages, per-plate catering costs, decoration styles, seating capacity, and how to book the right banquet venue for your wedding.',
+    category: 'Venue Guides',
+    author: 'ShaadiShopping Team',
+    tags: [
+      'wedding banquet patna', 'wedding banquet hall near me', 'banquet hall for wedding',
+      'wedding banquet packages', 'wedding banquet cost', 'marriage banquet hall patna',
+      'wedding reception banquet', 'banquet hall booking', 'wedding banquet decoration',
+      'wedding banquet menu', 'shaadi banquet hall',
+    ],
+    seoTitle: 'Wedding Banquets in Patna 2025 — Packages, Costs & Booking Guide | ShaadiShopping',
+    seoDescription: 'Complete guide to wedding banquets in Patna — banquet hall packages from ₹80,000, per-plate costs (₹450–₹1,200), seating styles, decoration trends & how to book the best banquet hall for your wedding.',
+    coverImage: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&q=80',
+    status: 'published',
+    readTime: 9,
+    content: `
+<h2>What Is a Wedding Banquet — and Why It Matters Most</h2>
+<p>A wedding banquet is the centrepiece of your celebration — the grand feast, the decorated hall, the moment where 300 guests witness your love story unfold over lights, flowers, and a lavish spread. In Patna and across Bihar, the wedding banquet is not just dinner. It is the primary event by which a wedding is remembered: the ambience of the hall, the quality of the food, the grandeur of the stage, and the warmth of hospitality.</p>
+<p>Choosing the right <strong>wedding banquet hall in Patna</strong> — and booking the right package — is the single most important decision you'll make during your wedding planning journey. This guide covers everything: hall types, package inclusions, per-plate catering costs, decoration styles, seating arrangements, and a step-by-step booking checklist.</p>
+
+<h2>Types of Wedding Banquet Styles — Which Is Right for You?</h2>
+
+<h3>1. Grand Buffet Banquet (Most Popular in Patna)</h3>
+<p>The buffet banquet is the most widely chosen format for weddings in Bihar. Guests move freely between stations — starters, main course, desserts, live counters — creating a vibrant, social atmosphere. Ideal for 200–700 guests where individual plating would be logistically complex.</p>
+<ul>
+  <li><strong>Best for:</strong> 200–700 guests, 3–4 hour events</li>
+  <li><strong>Per-plate cost:</strong> ₹500 – ₹900 (veg) / ₹700 – ₹1,200 (non-veg)</li>
+  <li><strong>Why guests love it:</strong> Freedom to eat at their pace; variety; live counters (chaat, biryani, ice cream) are crowd-pleasers</li>
+</ul>
+
+<h3>2. Sit-Down Plated Banquet (Premium & Formal)</h3>
+<p>A sit-down plated banquet assigns every guest a seat and serves courses to the table — starters, soup, main course, dessert. This format is chosen by premium Patna weddings and is common at hotel venues on Fraser Road and Maurya Lok. It signals elevated status and allows greater control over food quality.</p>
+<ul>
+  <li><strong>Best for:</strong> 100–300 guests, hotel venues</li>
+  <li><strong>Per-plate cost:</strong> ₹900 – ₹1,800</li>
+  <li><strong>Why families choose it:</strong> Prestigious; controlled portion presentation; pairs well with formal décor</li>
+</ul>
+
+<h3>3. Reception Cocktail Banquet (Modern & Stylish)</h3>
+<p>A cocktail-style wedding reception features high tables, finger foods, mocktail bars, and a roaming spread — ideal for engagement parties, post-wedding receptions with a younger crowd, and corporate-style wedding events. This format is growing in popularity in Patna for receptions with 100–200 guests.</p>
+<ul>
+  <li><strong>Best for:</strong> Receptions, engagements, 80–250 guests</li>
+  <li><strong>Per-plate cost:</strong> ₹400 – ₹700</li>
+  <li><strong>Why it works:</strong> More socialising, less sitting; cost-effective; great for evening events</li>
+</ul>
+
+<h3>4. Traditional Multi-Ceremony Banquet (Bihar Weddings)</h3>
+<p>Many Bihari families book a hall for 2–4 consecutive days — mehndi on Day 1, sangeet on Day 2, wedding banquet on Day 3, and reception on Day 4. This multi-ceremony banquet format spreads the celebration and is the most traditional format in Patna. Halls that offer this as a bundled package offer significant cost savings.</p>
+<ul>
+  <li><strong>Best for:</strong> Full multi-day wedding celebrations</li>
+  <li><strong>Package cost:</strong> ₹2,50,000 – ₹6,00,000 for 3–4 days</li>
+</ul>
+
+<div style="background: linear-gradient(135deg, #FDF8F2, #FAF0E6); border: 1px solid #C5A46D40; border-left: 4px solid #C5A46D; border-radius: 12px; padding: 20px 24px; margin: 28px 0;">
+  <p style="font-weight: 700; color: #8B1A4A; margin: 0 0 6px; font-size: 0.95rem;">🏛️ Not sure which banquet style suits your guest count and budget?</p>
+  <p style="color: #5C4033; margin: 0 0 14px; font-size: 0.9rem;">Our Patna wedding consultants will shortlist the right halls and packages for you — completely free.</p>
+  <a href="/plan" style="display: inline-block; background: #8B1A4A; color: #fff; font-weight: 700; font-size: 0.85rem; padding: 10px 22px; border-radius: 999px; text-decoration: none;">Get Free Venue Shortlist →</a>
+</div>
+
+<h2>What's Included in a Wedding Banquet Package in Patna?</h2>
+<p>Most banquet halls in Patna offer bundled wedding packages rather than itemised pricing. Here is what a standard mid-range <strong>wedding banquet package</strong> typically includes:</p>
+<ul>
+  <li><strong>Hall rental</strong> — AC banquet hall for 8–12 hours with basic stage setup</li>
+  <li><strong>Catering</strong> — Vegetarian or mixed buffet menu for the agreed guest count (per-plate contract)</li>
+  <li><strong>Basic decoration</strong> — Flower arrangement, stage backdrop, entry gate flowers, table centrepieces</li>
+  <li><strong>Sound system</strong> — PA system, microphone setup for ceremonies and DJ if included</li>
+  <li><strong>Lighting</strong> — Ambient hall lighting; uplights and fairy lights in premium packages</li>
+  <li><strong>Parking</strong> — Parking space for 50–200 vehicles depending on venue</li>
+  <li><strong>Backup power</strong> — Generator covering full hall and kitchen</li>
+  <li><strong>Changing room</strong> — Bridal and groom changing room / green room</li>
+  <li><strong>Catering staff</strong> — Serving staff, buffet attendants, and clean-up crew</li>
+</ul>
+<p><strong>Not typically included:</strong> External DJ, bar setup, photography, mehndi and makeup artists, customised stage design, floral ceiling décor, and fireworks. Always confirm exactly what is in the package before signing.</p>
+
+<h2>Wedding Banquet Cost in Patna — 2025 Price Guide</h2>
+<table>
+  <tr><th>Guest Count</th><th>Hall Type</th><th>Hall Rental</th><th>Catering (veg)</th><th>Total Estimate</th></tr>
+  <tr><td>100–200</td><td>Small banquet / hotel</td><td>₹60,000 – ₹1,00,000</td><td>₹90,000 – ₹1,80,000</td><td>₹1.5 – 3 lakh</td></tr>
+  <tr><td>200–350</td><td>Mid-size banquet hall</td><td>₹1,00,000 – ₹1,80,000</td><td>₹1,40,000 – ₹3,15,000</td><td>₹2.5 – 5 lakh</td></tr>
+  <tr><td>350–600</td><td>Large banquet hall</td><td>₹1,80,000 – ₹3,00,000</td><td>₹2,45,000 – ₹5,40,000</td><td>₹4 – 8.5 lakh</td></tr>
+  <tr><td>600–1,000</td><td>Premium hall / lawn</td><td>₹2,50,000 – ₹5,00,000</td><td>₹4,20,000 – ₹9,00,000</td><td>₹7 – 14 lakh</td></tr>
+  <tr><td>1,000+</td><td>Convention centre</td><td>₹4,00,000 – ₹8,00,000</td><td>₹7,00,000+</td><td>₹12 lakh+</td></tr>
+</table>
+<p><em>Note: Catering costs calculated at ₹700 mid-range veg rate. Non-veg adds approximately 30–40% to per-plate cost. Decoration costs (₹50,000 – ₹3,00,000) are additional unless bundled.</em></p>
+
+<h2>Per-Plate Banquet Catering Costs in Patna (2025)</h2>
+<table>
+  <tr><th>Menu Type</th><th>Budget</th><th>Mid-Range</th><th>Premium</th></tr>
+  <tr><td>Pure Vegetarian</td><td>₹450 – ₹550</td><td>₹600 – ₹800</td><td>₹900 – ₹1,400</td></tr>
+  <tr><td>Veg + Non-Veg</td><td>₹600 – ₹750</td><td>₹800 – ₹1,100</td><td>₹1,200 – ₹1,800</td></tr>
+  <tr><td>Non-Veg Focus</td><td>₹700 – ₹900</td><td>₹1,000 – ₹1,300</td><td>₹1,400 – ₹2,000</td></tr>
+  <tr><td>Jain Menu</td><td>₹500 – ₹600</td><td>₹700 – ₹900</td><td>₹1,000 – ₹1,400</td></tr>
+</table>
+
+<h2>Featured Wedding Banquet Venue: Swayamvar Hall &amp; Home Stay, Danapur</h2>
+<p>Among Patna's most trusted and complete wedding banquet venues, <a href="/vendors/swayamvar-hall-patna">Swayamvar Hall &amp; Home Stay</a> on Gola Road (T Point, near Chanakya Puri, Danapur) stands out for a rare combination that most halls in the city cannot offer: a fully equipped banquet hall paired with in-house home stay accommodation — all under one property.</p>
+<ul>
+  <li><strong>Capacity:</strong> Up to 700 guests (main banquet hall)</li>
+  <li><strong>Location:</strong> T Point, Gola Road, Danapur, Patna — 25 minutes from city centre</li>
+  <li><strong>In-house accommodation:</strong> Multiple rooms available for outstation family members — no hotel booking needed</li>
+  <li><strong>Multi-ceremony ready:</strong> Handles mehndi, sangeet, wedding, and reception on consecutive days</li>
+  <li><strong>Facilities:</strong> Bridal suite, backup generator, modern sound system, dedicated parking</li>
+  <li><strong>Starting packages:</strong> From ₹1,50,000</li>
+  <li><strong>Contact:</strong> +91 76460 28228</li>
+</ul>
+<p>The in-house accommodation is particularly valuable for Bihari families whose relatives travel from across the state and country. Having a home stay on the venue property means the entire wedding party can stay together — a rare and cherished advantage.</p>
+
+<h2>Wedding Banquet Decoration Trends in Patna — 2025</h2>
+<p>Your banquet hall decoration sets the emotional tone of the entire event. The leading <strong>wedding banquet decoration</strong> trends in Patna for 2025 include:</p>
+<ul>
+  <li><strong>Floral ceiling installations</strong> — Cascading roses, marigolds, and orchids from ceiling frames; the most-Instagrammed décor element</li>
+  <li><strong>LED backdrop walls</strong> — Digital LED panels behind the stage showing animated couple monograms and wedding videos</li>
+  <li><strong>Gold and ivory palette</strong> — Champagne, ivory, and antique gold dominate premium Patna banquets in 2025</li>
+  <li><strong>Entrance tunnel arrangements</strong> — Floral or LED tunnels at the hall entrance creating a grand first impression</li>
+  <li><strong>Maroon and gold traditional theme</strong> — Deep maroon drapes with gold accents remain the #1 theme for traditional Bihari weddings</li>
+  <li><strong>Table centrepiece floral towers</strong> — Tall centrepieces of white and blush flowers at every guest table</li>
+  <li><strong>Outdoor-lit entry pathway</strong> — Lantern or fairy-light lined entry from parking to the hall</li>
+</ul>
+<p>Decoration budgets in Patna range from ₹75,000 (simple hall décor) to ₹5,00,000+ (full premium decoration including ceiling, stage, entrance, and all tables).</p>
+
+<div style="background: linear-gradient(135deg, #FDF8F2, #FAF0E6); border: 1px solid #C5A46D40; border-left: 4px solid #8B1A4A; border-radius: 12px; padding: 20px 24px; margin: 28px 0;">
+  <p style="font-weight: 700; color: #8B1A4A; margin: 0 0 6px; font-size: 0.95rem;">💐 Want a venue + decoration package in one?</p>
+  <p style="color: #5C4033; margin: 0 0 14px; font-size: 0.9rem;">ShaadiShopping connects you with banquet halls that offer bundled decoration, catering, and hall in one transparent package — no hidden costs.</p>
+  <a href="/categories/venue" style="display: inline-block; background: #8B1A4A; color: #fff; font-weight: 700; font-size: 0.85rem; padding: 10px 22px; border-radius: 999px; text-decoration: none;">Browse Venues in Patna →</a>
+</div>
+
+<h2>Wedding Banquet Seating Arrangements — A Practical Guide</h2>
+<p>The seating arrangement at a wedding banquet determines how comfortable your guests feel and how smoothly the event flows. Here are the most common formats used in Patna banquets:</p>
+<ul>
+  <li><strong>Round table (8–10 per table):</strong> The most social format; allows guests at each table to converse easily; takes more floor space</li>
+  <li><strong>Long rectangular tables:</strong> Space-efficient; commonly used in halls with limited floor width; traditional for family ceremonies</li>
+  <li><strong>Theatre-style rows:</strong> Used for ceremony seating (nikah, vivah) before the banquet; converted to dining tables after</li>
+  <li><strong>Family block seating:</strong> Common at Bihari weddings — specific hall sections reserved for families, bride's side vs groom's side</li>
+</ul>
+<p><strong>Pro tip:</strong> Always confirm with the hall that the seated capacity matches your guest count. A hall that claims "1,000 capacity" may seat only 650 at round tables. Ask for the seated banquet layout diagram before booking.</p>
+
+<h2>Wedding Banquet Menu Planning — What to Include</h2>
+<p>The food at your wedding banquet will be the most talked-about element afterward. A well-planned <strong>wedding banquet menu</strong> in Bihar typically includes:</p>
+<ul>
+  <li><strong>Welcome drinks:</strong> Sharbat, nimbu pani, soft drinks, aam panna at the entrance</li>
+  <li><strong>Starters / snacks:</strong> Samosa, pakoda, tandoori items, chaat counters, dahi bhalle</li>
+  <li><strong>Live cooking counters:</strong> Biryani counter, pav bhaji, pasta station, or dosa — these are crowd favourites and add energy to the buffet</li>
+  <li><strong>Main course (veg):</strong> Dal tadka, paneer dish, sabzi, aloo preparation, rice, 3–4 breads</li>
+  <li><strong>Main course (non-veg):</strong> Mutton or chicken curry, biryani, fish fry (Bihar weddings frequently serve this)</li>
+  <li><strong>Bihar specials:</strong> Litti chokha, sattu sherbet, and khaja are popular local additions for Bihari weddings</li>
+  <li><strong>Desserts:</strong> Gulab jamun, rasgulla, kheer, ice cream counter, and mithai selection</li>
+  <li><strong>Mocktail bar:</strong> Increasingly popular; adds premium feel without alcohol</li>
+</ul>
+
+<h2>How to Choose the Best Wedding Banquet Hall in Patna — 10-Point Checklist</h2>
+<ol>
+  <li><strong>Confirm seated capacity</strong> — Ask for the banquet table layout, not just the maximum standing figure</li>
+  <li><strong>Visit on a day when an event is running</strong> — The best way to judge lighting, acoustics, and cleanliness is to see a live event</li>
+  <li><strong>Check catering policy</strong> — Is catering in-house only, or can you bring an outside caterer? In-house is convenient; outside gives more menu flexibility</li>
+  <li><strong>Verify generator capacity</strong> — Ask specifically: does the generator run the full AC, kitchen, and audio-visual system simultaneously?</li>
+  <li><strong>Confirm decoration flexibility</strong> — Can you bring an outside decorator, or is in-house the only option?</li>
+  <li><strong>Check muhurat date availability</strong> — Popular dates in November–January are booked 5–8 months ahead</li>
+  <li><strong>Parking headcount</strong> — For 500 guests, expect 80–120 cars. Confirm the parking lot capacity</li>
+  <li><strong>Ask about noise/DJ rules</strong> — Some halls have a 10pm noise cutoff or restrictions on dhol players</li>
+  <li><strong>Accommodation for family</strong> — If hosting outstation relatives, ask about nearby hotels or (better) a venue like Swayamvar Hall with in-house rooms</li>
+  <li><strong>Multi-day discount</strong> — If you need the hall for mehndi + sangeet + wedding (3 days), always ask for a bundled rate</li>
+</ol>
+
+<h2>When to Book Your Wedding Banquet Hall — Booking Timeline</h2>
+<p>In Patna, the best banquet halls for <strong>peak-season wedding dates</strong> (November, December, January) are booked <strong>5–9 months in advance</strong>. The most popular muhurat dates — auspicious days in the Hindu and Bihar calendar — can be fully booked within 2–3 weeks of being announced by astrologers.</p>
+<ul>
+  <li><strong>12+ months ahead:</strong> If your wedding falls on a major muhurat in November–January — act immediately after fixing the date</li>
+  <li><strong>6–9 months ahead:</strong> Normal booking window for peak-season premium halls</li>
+  <li><strong>3–6 months ahead:</strong> Feasible for mid-range halls, good availability in off-season (March–October)</li>
+  <li><strong>Under 3 months:</strong> Very limited choice for peak dates; off-season options available</li>
+</ul>
+
+<h2>Book Your Wedding Banquet with ShaadiShopping</h2>
+<p>ShaadiShopping is Patna's trusted wedding planning platform — helping couples across Bihar discover, compare, and book verified <a href="/categories/venue">wedding banquet halls</a> with transparent pricing, real photos, and direct contact with venue managers.</p>
+<p>Our Patna-based consultants know every locality — Bailey Road, Boring Road, Danapur, Kankarbagh, Rajendra Nagar, Saguna More, and Phulwari Sharif — and can shortlist the exact venues that match your guest count, date, budget, and style in minutes.</p>
+<p><a href="/plan">Start your free wedding plan</a> today and get a personalised banquet venue shortlist from our Patna team — no fees, no pressure, just expert guidance from people who know Bihar weddings inside out.</p>
+    `.trim(),
+  },
+
   // ── POST 35 ──────────────────────────────────────────────────────────────────
   {
     title: 'How to Plan a Bihari Wedding — Complete Step-by-Step Guide 2025',
