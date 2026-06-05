@@ -7,6 +7,7 @@ const PackageSchema = new Schema({
   price: Number,
   features: [String],
   isPopular: Boolean,
+  image: { type: String, default: '' },
 });
 
 export interface IVendor extends Document {
