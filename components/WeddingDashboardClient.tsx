@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { Vendor } from '@/types';
 import {
   CheckCircle, Calendar, Users, MapPin, Phone, Star,
   ChevronRight, Heart, Sparkles, Clock, Utensils, Building2,
@@ -26,44 +28,6 @@ interface Props {
   cartTotal: number;
 }
 
-// ── Venue data per city ─────────────────────────────────────────────────────
-const VENUE_SUGGESTIONS: Record<string, { name: string; type: string; capacity: string; price: string; rating: number; tag: string }[]> = {
-  Patna: [
-    { name: 'Hotel Maurya', type: '5-Star Hotel', capacity: '50–800 guests', price: '₹3–8 L/day', rating: 4.7, tag: 'Most Booked' },
-    { name: 'Chanakya Hotel', type: 'Banquet Hall', capacity: '100–500 guests', price: '₹1.5–4 L/day', rating: 4.5, tag: 'Best Value' },
-    { name: 'Green Valley Farms', type: 'Farm House', capacity: '200–1000 guests', price: '₹2–5 L/day', rating: 4.6, tag: 'Outdoor Fav' },
-  ],
-  Delhi: [
-    { name: 'The Leela Palace', type: '5-Star Hotel', capacity: '50–1200 guests', price: '₹10–25 L/day', rating: 4.9, tag: 'Premium Pick' },
-    { name: 'Ambience Club', type: 'Banquet Hall', capacity: '100–600 guests', price: '₹3–8 L/day', rating: 4.6, tag: 'Most Booked' },
-    { name: 'Qutub Resort', type: 'Resort', capacity: '200–800 guests', price: '₹5–12 L/day', rating: 4.7, tag: 'Best Value' },
-  ],
-  Mumbai: [
-    { name: 'The Taj Mahal Palace', type: '5-Star Hotel', capacity: '50–1000 guests', price: '₹12–30 L/day', rating: 4.9, tag: 'Premium Pick' },
-    { name: 'Nehru Centre', type: 'Banquet Hall', capacity: '200–700 guests', price: '₹4–10 L/day', rating: 4.5, tag: 'Best Value' },
-    { name: 'Alibaug Beachside', type: 'Beach Venue', capacity: '100–400 guests', price: '₹6–14 L/day', rating: 4.8, tag: 'Destination' },
-  ],
-  Jaipur: [
-    { name: 'Rambagh Palace', type: 'Palace', capacity: '50–600 guests', price: '₹15–40 L/day', rating: 4.9, tag: 'Royal Choice' },
-    { name: 'Samode Haveli', type: 'Palace', capacity: '30–200 guests', price: '₹8–20 L/day', rating: 4.8, tag: 'Heritage' },
-    { name: 'Dera Amer', type: 'Resort', capacity: '100–500 guests', price: '₹5–12 L/day', rating: 4.7, tag: 'Most Booked' },
-  ],
-  Udaipur: [
-    { name: 'Taj Lake Palace', type: 'Palace', capacity: '50–400 guests', price: '₹20–50 L/day', rating: 5.0, tag: 'Iconic' },
-    { name: 'Fateh Garh', type: 'Palace', capacity: '100–600 guests', price: '₹8–18 L/day', rating: 4.8, tag: 'Royal Choice' },
-    { name: 'Devigarh Palace', type: 'Palace', capacity: '30–250 guests', price: '₹12–28 L/day', rating: 4.9, tag: 'Boutique' },
-  ],
-  Goa: [
-    { name: 'Caravela Beach Resort', type: 'Beach Venue', capacity: '50–500 guests', price: '₹6–15 L/day', rating: 4.7, tag: 'Beach View' },
-    { name: 'Vivanta Panaji', type: '5-Star Hotel', capacity: '100–600 guests', price: '₹5–12 L/day', rating: 4.6, tag: 'Most Booked' },
-    { name: 'Dudhsagar Plantation', type: 'Resort', capacity: '200–800 guests', price: '₹4–9 L/day', rating: 4.5, tag: 'Nature' },
-  ],
-};
-const DEFAULT_VENUES = [
-  { name: 'City Grand Hotel', type: '5-Star Hotel', capacity: '100–800 guests', price: '₹4–10 L/day', rating: 4.6, tag: 'Top Rated' },
-  { name: 'Royal Banquet', type: 'Banquet Hall', capacity: '150–500 guests', price: '₹1.5–4 L/day', rating: 4.4, tag: 'Best Value' },
-  { name: 'Greenfield Farms', type: 'Farm House', capacity: '200–1000 guests', price: '₹2–6 L/day', rating: 4.5, tag: 'Popular' },
-];
 
 // ── Catering price-per-plate by food pref ───────────────────────────────────
 const CATERING_RATES: Record<string, { label: string; min: number; max: number; icon: string }> = {
@@ -166,9 +130,17 @@ const STYLE_COLORS: Record<string, string> = {
 
 export default function WeddingDashboardClient({ form, cartTotal }: Props) {
   const [checklistExpanded, setChecklistExpanded] = useState(false);
+  const [venues, setVenues] = useState<Vendor[]>([]);
+  const [venuesLoading, setVenuesLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/vendors?category=venue&city=${encodeURIComponent(form.city)}&limit=3&sort=rating`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setVenues(d.data); })
+      .finally(() => setVenuesLoading(false));
+  }, [form.city]);
 
   const eventLabel = EVENT_LABELS[form.eventType] || 'Event';
-  const venues = VENUE_SUGGESTIONS[form.city] || DEFAULT_VENUES;
   const catering = CATERING_RATES[form.foodPreference] || CATERING_RATES['veg'];
   const minCatering = catering.min * form.guestCount;
   const maxCatering = catering.max * form.guestCount;
@@ -283,29 +255,53 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
               View all <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="grid sm:grid-cols-3 gap-4">
-            {venues.map((v) => (
-              <div key={v.name} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
-                <div className="h-28 bg-gradient-to-br from-amber-100 to-rose-100 flex items-center justify-center text-5xl group-hover:scale-105 transition-transform">
-                  {v.type.includes('5-Star') ? '🏨' : v.type.includes('Palace') ? '🏰' : v.type.includes('Beach') ? '🏖️' : v.type.includes('Farm') ? '🌾' : v.type.includes('Resort') ? '🌴' : '🏛️'}
-                </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className="font-semibold text-gray-900 text-sm leading-tight">{v.name}</p>
-                    <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full shrink-0">{v.tag}</span>
-                  </div>
-                  <p className="text-xs text-gray-500 mb-2">{v.type} · {v.capacity}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span className="text-xs font-semibold text-gray-700">{v.rating}</span>
+          {venuesLoading ? (
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 h-48 animate-pulse" />
+              ))}
+            </div>
+          ) : venues.length > 0 ? (
+            <div className="grid sm:grid-cols-3 gap-4">
+              {venues.map((v) => {
+                const tag = v.isFeatured ? 'Featured' : v.rating >= 4.8 ? 'Top Rated' : v.rating >= 4.5 ? 'Highly Rated' : 'Verified';
+                const price = `₹${(v.priceMin / 100000).toFixed(1)}–${(v.priceMax / 100000).toFixed(1)} L`;
+                return (
+                  <Link key={v.id} href={`/vendors/${v.id}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group block">
+                    <div className="relative h-28 overflow-hidden">
+                      {v.image ? (
+                        <Image src={v.image} alt={v.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 640px) 100vw, 33vw" />
+                      ) : (
+                        <div className="h-full bg-gradient-to-br from-amber-100 to-rose-100 flex items-center justify-center text-5xl">🏛️</div>
+                      )}
                     </div>
-                    <span className="text-xs font-semibold text-rose-600">{v.price}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className="font-semibold text-gray-900 text-sm leading-tight">{v.name}</p>
+                        <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full shrink-0">{tag}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">{v.city}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          <span className="text-xs font-semibold text-gray-700">{v.rating}</span>
+                        </div>
+                        <span className="text-xs font-semibold text-rose-600">{price}</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+              <p className="text-amber-800 font-semibold text-sm mb-1">No venues listed for {form.city} yet</p>
+              <p className="text-gray-500 text-xs mb-3">Our expert will personally recommend the best venues for your celebration.</p>
+              <Link href="/categories/venue" className="inline-flex items-center gap-1 text-rose-600 font-semibold text-sm hover:underline">
+                Browse all venues <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* ── SECTION 3 — Catering Estimates ── */}
