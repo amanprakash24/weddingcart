@@ -47,10 +47,10 @@ const MEGA_MENU = [
     items: [
       { label: 'Bridal Makeup Artists', href: '/categories/makeup', tag: 'Popular' },
       { label: 'Mehndi Artists', href: '/categories/mehndi' },
-      { label: 'Bridal Lehenga', href: '/categories/makeup' },
+      { label: 'Bridal Lehenga', href: '/categories/bridal-lehenga' },
       { label: 'Bridal Jewellery', href: '/categories/bridal-jewellery' },
       { label: 'Sherwani & Groom Wear', href: '/categories/sherwani' },
-      { label: 'Trousseau Packing', href: '/categories/makeup' },
+      { label: 'Trousseau Packing', href: '/categories/trousseau' },
     ],
   },
   {
