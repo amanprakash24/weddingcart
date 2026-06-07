@@ -352,14 +352,20 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {selectedServices.map((svc) => (
-                <div key={svc} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3 hover:border-rose-200 transition-colors">
+                <Link
+                  key={svc}
+                  href={`/cities/${form.city.toLowerCase()}/${svc}`}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3 hover:border-rose-300 hover:shadow-md transition-all group"
+                >
                   <span className="text-2xl shrink-0">{SERVICE_ICONS[svc] || '✨'}</span>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm truncate">{SERVICE_LABELS[svc]}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 text-sm truncate group-hover:text-rose-600 transition-colors">{SERVICE_LABELS[svc]}</p>
                     <p className="text-xs text-rose-600 font-medium mt-0.5">{EST_RANGES[svc]}</p>
-                    <p className="text-xs text-gray-400 mt-1">Vendors in {form.city}</p>
+                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-0.5">
+                      Browse in {form.city} <ChevronRight className="w-3 h-3" />
+                    </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
             <p className="text-xs text-gray-400 mt-3 text-center">

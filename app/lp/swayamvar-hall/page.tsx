@@ -5,16 +5,16 @@ import SwayamvarLandingClient from '@/components/SwayamvarLandingClient';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
-  title: 'Swayamvar Hall & Home Stay — Premium Banquet & Wedding Venue in Patna',
-  description: 'Book Swayamvar Hall & Home Stay in Patna for your wedding, reception or corporate event. AC banquet hall, in-house catering, home stay accommodation. Get a free quote today.',
+  title: 'Sayamwar Hall & Homestay — Premium Banquet & Wedding Venue in Patna',
+  description: 'Book Sayamwar Hall & Homestay in Patna for your wedding, reception or corporate event. AC banquet hall, in-house catering, home stay accommodation. Get a free quote today.',
   keywords: [
-    'Swayamvar Hall Patna', 'banquet hall Patna', 'wedding venue Patna',
-    'Swayamvar Hall & Home Stay', 'marriage hall Patna', 'event venue Patna Bihar',
+    'Sayamwar Hall Patna', 'banquet hall Patna', 'wedding venue Patna',
+    'Sayamwar Hall & Homestay', 'marriage hall Patna', 'event venue Patna Bihar',
     'banquet hall near Danapur', 'wedding hall Gola Road Patna',
   ],
   alternates: { canonical: `${BASE_URL}/lp/swayamvar-hall` },
   openGraph: {
-    title: 'Swayamvar Hall & Home Stay — Premium Banquet Venue in Patna',
+    title: 'Sayamwar Hall & Homestay — Premium Banquet Venue in Patna',
     description: 'Premium banquet hall for weddings & receptions in Patna. AC hall, in-house catering, home stay. Book now via ShaadiShopping.',
     url: `${BASE_URL}/lp/swayamvar-hall`,
     type: 'website',
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 const localBusinessSchema = {
   '@context': 'https://schema.org',
   '@type': ['LocalBusiness', 'EventVenue'],
-  name: 'Swayamvar Hall & Home Stay',
+  name: 'Sayamwar Hall & Homestay',
   description: 'Premium banquet hall and home stay for weddings, receptions and events in Patna, Bihar.',
   url: `${BASE_URL}/lp/swayamvar-hall`,
   telephone: '+91-76460-28228',

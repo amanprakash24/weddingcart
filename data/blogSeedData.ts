@@ -33,8 +33,8 @@ export const BLOG_POSTS = [
 <p>Patna's hotel wedding venues — particularly along Fraser Road and near Gandhi Maidan — offer premium amenities, in-house accommodation for outstation guests, and dedicated event management teams. They're best suited for receptions and engagements with 100–300 guests.</p>
 <p><strong>Price range:</strong> ₹1,50,000 – ₹5,00,000 per event.</p>
 
-<h2>Featured Venue: Swayamvar Hall &amp; Home Stay, Danapur</h2>
-<p><a href="/vendors/swayamvar-hall-patna">Swayamvar Hall &amp; Home Stay</a> on Gola Road, near Chanakya Puri in Danapur, is one of Patna's most trusted wedding venues. What sets it apart is the combination of a fully decorated banquet hall with in-house home stay rooms — ideal for families travelling from across Bihar and beyond.</p>
+<h2>Featured Venue: Sayamwar Hall &amp; Homestay, Danapur</h2>
+<p><a href="/vendors/swayamvar-hall-patna">Sayamwar Hall &amp; Homestay</a> on Gola Road, near Chanakya Puri in Danapur, is one of Patna's most trusted wedding venues. What sets it apart is the combination of a fully decorated banquet hall with in-house home stay rooms — ideal for families travelling from across Bihar and beyond.</p>
 <ul>
   <li>Capacity: Up to 700 guests</li>
   <li>In-house home stay accommodation</li>
@@ -176,7 +176,7 @@ export const BLOG_POSTS = [
     tags: ['banquet halls danapur', 'danapur wedding venues', 'patna banquet hall', 'wedding venue danapur patna'],
     seoTitle: 'Banquet Halls in Danapur, Patna 2025 — Top Picks & Pricing Guide',
     seoDescription:
-      'Find the best banquet halls in Danapur, Patna for your wedding. Compare venue capacity, pricing, and amenities. Swayamvar Hall & Home Stay and more top picks.',
+      'Find the best banquet halls in Danapur, Patna for your wedding. Compare venue capacity, pricing, and amenities. Sayamwar Hall & Homestay and more top picks.',
     coverImage: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1200&q=80',
     status: 'published',
     readTime: 6,
@@ -196,11 +196,11 @@ export const BLOG_POSTS = [
   <li><strong>Accommodation on-site or nearby</strong> — Multi-day weddings benefit greatly from having rooms available for the wedding party.</li>
 </ul>
 
-<h2>Featured: Swayamvar Hall &amp; Home Stay, Gola Road, Danapur</h2>
-<p><a href="/vendors/swayamvar-hall-patna">Swayamvar Hall &amp; Home Stay</a> stands out among Danapur's banquet halls for one key reason: it combines a full-capacity wedding hall with in-house accommodation — a rarity in Patna's venue market.</p>
+<h2>Featured: Sayamwar Hall &amp; Homestay, Gola Road, Danapur</h2>
+<p><a href="/vendors/swayamvar-hall-patna">Sayamwar Hall &amp; Homestay</a> stands out among Danapur's banquet halls for one key reason: it combines a full-capacity wedding hall with in-house accommodation — a rarity in Patna's venue market.</p>
 <p>Located on Gola Road near Chanakya Puri, the venue is easily accessible from the Danapur railway station and sits on the NH-30 corridor, making it convenient for guests arriving from any direction.</p>
 
-<h3>What Swayamvar Hall Offers</h3>
+<h3>What Sayamwar Hall Offers</h3>
 <ul>
   <li>Capacity up to 700 guests</li>
   <li>Fully air-conditioned banquet hall with modern lighting</li>
@@ -212,7 +212,7 @@ export const BLOG_POSTS = [
   <li>Mandap setup support</li>
 </ul>
 
-<h3>Packages at Swayamvar Hall</h3>
+<h3>Packages at Sayamwar Hall</h3>
 <ul>
   <li><strong>Starter Package</strong> — ₹1,50,000 (up to 300 guests, 10 hours)</li>
   <li><strong>Premium Package</strong> — ₹2,00,000 (up to 500 guests, home stay for 2 rooms, 14 hours)</li>
@@ -1639,7 +1639,7 @@ At sunrise in winter, the morning mist over the Ganges from the bridge creates e
 <p>The Boring Road corridor has halls for every budget, from ₹60,000 halls for 250 guests to ₹2.5 lakh premium banquets. Budget halls here fill up fast during the November–February wedding season.</p>
 
 <h3>Danapur</h3>
-<p>Danapur has several well-established marriage halls including Swayamvar Hall — one of the best value options in Patna. Prices in Danapur are competitive and halls are slightly larger than comparable options in the city centre.</p>
+<p>Danapur has several well-established marriage halls including Sayamwar Hall — one of the best value options in Patna. Prices in Danapur are competitive and halls are slightly larger than comparable options in the city centre.</p>
 
 <h3>Phulwari Sharif & Outskirts</h3>
 <p>Areas just outside the Patna city limits — Phulwari Sharif, Khagaul, Maner Road — offer budget halls and garden lawns at the lowest per-event rates. If your family and guests can manage the commute, you can save 30–40% compared to central Patna.</p>
@@ -2482,8 +2482,8 @@ At sunrise in winter, the morning mist over the Ganges from the bridge creates e
   <li><strong>Price range:</strong> ₹1,50,000 – ₹3,00,000</li>
 </ul>
 
-<h3>5. Swayamvar Hall & Home Stay — Danapur</h3>
-<p><a href="/vendors/swayamvar-hall-patna">Swayamvar Hall & Home Stay</a> in Danapur is unique among Patna banquet halls for combining a fully decorated wedding hall with in-house accommodation — ideal for outstation family. Located on Gola Road near Chanakya Puri.</p>
+<h3>5. Sayamwar Hall & Homestay — Danapur</h3>
+<p><a href="/vendors/swayamvar-hall-patna">Sayamwar Hall & Homestay</a> in Danapur is unique among Patna banquet halls for combining a fully decorated wedding hall with in-house accommodation — ideal for outstation family. Located on Gola Road near Chanakya Puri.</p>
 <ul>
   <li><strong>Capacity:</strong> Up to 700 guests</li>
   <li><strong>Location:</strong> Danapur, near Chanakya Puri</li>
@@ -2643,8 +2643,8 @@ At sunrise in winter, the morning mist over the Ganges from the bridge creates e
   <tr><td>Jain Menu</td><td>₹500 – ₹600</td><td>₹700 – ₹900</td><td>₹1,000 – ₹1,400</td></tr>
 </table>
 
-<h2>Featured Wedding Banquet Venue: Swayamvar Hall &amp; Home Stay, Danapur</h2>
-<p>Among Patna's most trusted and complete wedding banquet venues, <a href="/vendors/swayamvar-hall-patna">Swayamvar Hall &amp; Home Stay</a> on Gola Road (T Point, near Chanakya Puri, Danapur) stands out for a rare combination that most halls in the city cannot offer: a fully equipped banquet hall paired with in-house home stay accommodation — all under one property.</p>
+<h2>Featured Wedding Banquet Venue: Sayamwar Hall &amp; Homestay, Danapur</h2>
+<p>Among Patna's most trusted and complete wedding banquet venues, <a href="/vendors/swayamvar-hall-patna">Sayamwar Hall &amp; Homestay</a> on Gola Road (T Point, near Chanakya Puri, Danapur) stands out for a rare combination that most halls in the city cannot offer: a fully equipped banquet hall paired with in-house home stay accommodation — all under one property.</p>
 <ul>
   <li><strong>Capacity:</strong> Up to 700 guests (main banquet hall)</li>
   <li><strong>Location:</strong> T Point, Gola Road, Danapur, Patna — 25 minutes from city centre</li>
@@ -2708,7 +2708,7 @@ At sunrise in winter, the morning mist over the Ganges from the bridge creates e
   <li><strong>Check muhurat date availability</strong> — Popular dates in November–January are booked 5–8 months ahead</li>
   <li><strong>Parking headcount</strong> — For 500 guests, expect 80–120 cars. Confirm the parking lot capacity</li>
   <li><strong>Ask about noise/DJ rules</strong> — Some halls have a 10pm noise cutoff or restrictions on dhol players</li>
-  <li><strong>Accommodation for family</strong> — If hosting outstation relatives, ask about nearby hotels or (better) a venue like Swayamvar Hall with in-house rooms</li>
+  <li><strong>Accommodation for family</strong> — If hosting outstation relatives, ask about nearby hotels or (better) a venue like Sayamwar Hall with in-house rooms</li>
   <li><strong>Multi-day discount</strong> — If you need the hall for mehndi + sangeet + wedding (3 days), always ask for a bundled rate</li>
 </ol>
 
