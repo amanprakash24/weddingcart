@@ -247,60 +247,108 @@ export default function VendorDetailClient({ id }: Props) {
             )}
 
             {/* Packages */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-5 font-[Playfair_Display,serif]">Packages & Pricing</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {vendor.packages.map((pkg) => (
-                  <div
-                    key={pkg.id}
-                    className={`relative rounded-2xl border-2 p-5 transition-all ${
-                      pkg.isPopular
-                        ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-rose-50'
-                        : 'border-gray-200 bg-gray-50 hover:border-amber-300'
+            {(() => {
+              const isPerPlate = (pkg: Package) =>
+                pkg.features.some((f) => f.toLowerCase().includes('per plate'));
+
+              const vegPkgs = vendor.packages.filter(
+                (p) => !p.id.toLowerCase().includes('non-veg') && !p.name.toLowerCase().includes('non-veg')
+              );
+              const nonVegPkgs = vendor.packages.filter(
+                (p) => p.id.toLowerCase().includes('non-veg') || p.name.toLowerCase().includes('non-veg')
+              );
+              const isGrouped = vegPkgs.length > 0 && nonVegPkgs.length > 0;
+
+              const PackageCard = (pkg: Package) => (
+                <div
+                  key={pkg.id}
+                  className={`relative rounded-2xl border-2 p-5 transition-all ${
+                    pkg.isPopular
+                      ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-rose-50'
+                      : 'border-gray-200 bg-gray-50 hover:border-amber-300'
+                  }`}
+                >
+                  {pkg.isPopular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                      Most Popular
+                    </div>
+                  )}
+                  <div className="mb-3">
+                    <h3 className="font-bold text-gray-900 text-base">{pkg.name}</h3>
+                    <p className="text-gray-500 text-xs mt-0.5">{pkg.description}</p>
+                  </div>
+                  <div className="mb-4">
+                    <p className="text-amber-600 font-bold text-2xl">
+                      ₹{pkg.price.toLocaleString('en-IN')}
+                      {isPerPlate(pkg) && (
+                        <span className="text-sm font-medium text-gray-400 ml-1">/plate</span>
+                      )}
+                    </p>
+                    {isPerPlate(pkg) && (
+                      <p className="text-xs text-gray-400 mt-0.5">Final cost depends on guest count</p>
+                    )}
+                  </div>
+                  <ul className="space-y-2 mb-5">
+                    {pkg.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => handleAddToCart(pkg)}
+                    className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                      isInCart(pkg.id)
+                        ? 'bg-emerald-500 text-white hover:bg-rose-500'
+                        : pkg.isPopular
+                        ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:opacity-90'
+                        : 'bg-white border-2 border-amber-400 text-amber-600 hover:bg-amber-500 hover:text-white hover:border-amber-500'
                     }`}
                   >
-                    {pkg.isPopular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-                        Most Popular
-                      </div>
+                    {isInCart(pkg.id) ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Check className="w-4 h-4" /> Added — Click to Remove
+                      </span>
+                    ) : isPerPlate(pkg) ? (
+                      'Request Quote'
+                    ) : (
+                      'Add to Plan'
                     )}
-                    <div className="mb-3">
-                      <h3 className="font-bold text-gray-900 text-base">{pkg.name}</h3>
-                      <p className="text-gray-500 text-xs mt-0.5">{pkg.description}</p>
+                  </button>
+                </div>
+              );
+
+              return (
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                  <h2 className="text-xl font-bold text-gray-900 mb-5 font-[Playfair_Display,serif]">Packages & Pricing</h2>
+                  {isGrouped ? (
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-700 mb-3 flex items-center gap-1.5">
+                          🌿 Vegetarian Packages
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {vegPkgs.map(PackageCard)}
+                        </div>
+                      </div>
+                      <div className="border-t border-gray-100 pt-6">
+                        <p className="text-sm font-semibold text-rose-700 mb-3 flex items-center gap-1.5">
+                          🍗 Non-Vegetarian Packages
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {nonVegPkgs.map(PackageCard)}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-amber-600 font-bold text-2xl mb-4">
-                      ₹{pkg.price.toLocaleString('en-IN')}
-                    </p>
-                    <ul className="space-y-2 mb-5">
-                      {pkg.features.map((f) => (
-                        <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                          <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      onClick={() => handleAddToCart(pkg)}
-                      className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                        isInCart(pkg.id)
-                          ? 'bg-emerald-500 text-white hover:bg-rose-500'
-                          : pkg.isPopular
-                          ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:opacity-90'
-                          : 'bg-white border-2 border-amber-400 text-amber-600 hover:bg-amber-500 hover:text-white hover:border-amber-500'
-                      }`}
-                    >
-                      {isInCart(pkg.id) ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Check className="w-4 h-4" /> Added — Click to Remove
-                        </span>
-                      ) : (
-                        'Add to Plan'
-                      )}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {vendor.packages.map(PackageCard)}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* RIGHT: Sticky sidebar */}
