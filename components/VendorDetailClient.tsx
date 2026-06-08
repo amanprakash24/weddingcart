@@ -268,35 +268,54 @@ export default function VendorDetailClient({ id }: Props) {
                       <h3 className="font-bold text-gray-900 text-base">{pkg.name}</h3>
                       <p className="text-gray-500 text-xs mt-0.5">{pkg.description}</p>
                     </div>
-                    <p className="text-amber-600 font-bold text-2xl mb-4">
-                      ₹{pkg.price.toLocaleString('en-IN')}
-                    </p>
-                    <ul className="space-y-2 mb-5">
-                      {pkg.features.map((f) => (
-                        <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                          <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      onClick={() => handleAddToCart(pkg)}
-                      className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                        isInCart(pkg.id)
-                          ? 'bg-emerald-500 text-white hover:bg-rose-500'
-                          : pkg.isPopular
-                          ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:opacity-90'
-                          : 'bg-white border-2 border-amber-400 text-amber-600 hover:bg-amber-500 hover:text-white hover:border-amber-500'
-                      }`}
-                    >
-                      {isInCart(pkg.id) ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Check className="w-4 h-4" /> Added — Click to Remove
-                        </span>
-                      ) : (
-                        'Add to Plan'
-                      )}
-                    </button>
+                    {(() => {
+                      const isPerPlate = pkg.features.some((f) =>
+                        f.toLowerCase().includes('per plate')
+                      );
+                      return (
+                        <>
+                          <div className="mb-4">
+                            <p className="text-amber-600 font-bold text-2xl">
+                              ₹{pkg.price.toLocaleString('en-IN')}
+                              {isPerPlate && (
+                                <span className="text-sm font-medium text-gray-400 ml-1">/plate</span>
+                              )}
+                            </p>
+                            {isPerPlate && (
+                              <p className="text-xs text-gray-400 mt-0.5">Final cost depends on guest count</p>
+                            )}
+                          </div>
+                          <ul className="space-y-2 mb-5">
+                            {pkg.features.map((f) => (
+                              <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                                <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                                {f}
+                              </li>
+                            ))}
+                          </ul>
+                          <button
+                            onClick={() => handleAddToCart(pkg)}
+                            className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                              isInCart(pkg.id)
+                                ? 'bg-emerald-500 text-white hover:bg-rose-500'
+                                : pkg.isPopular
+                                ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white hover:opacity-90'
+                                : 'bg-white border-2 border-amber-400 text-amber-600 hover:bg-amber-500 hover:text-white hover:border-amber-500'
+                            }`}
+                          >
+                            {isInCart(pkg.id) ? (
+                              <span className="flex items-center justify-center gap-2">
+                                <Check className="w-4 h-4" /> Added — Click to Remove
+                              </span>
+                            ) : isPerPlate ? (
+                              'Request Quote'
+                            ) : (
+                              'Add to Plan'
+                            )}
+                          </button>
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
