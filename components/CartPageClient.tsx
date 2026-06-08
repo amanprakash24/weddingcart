@@ -9,6 +9,12 @@ import { Category } from '@/types';
 
 const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 
+const GST_RATE = 0.18;
+
+function isPerPlateItem(features?: string[]) {
+  return features?.some((f) => f.toLowerCase().includes('per plate')) ?? false;
+}
+
 export default function CartPageClient() {
   const { items, total, removeItem, updateQty, clearCart } = useCart();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -16,6 +22,24 @@ export default function CartPageClient() {
   const [bookingForm, setBookingForm] = useState({ name: '', phone: '', city: 'Patna' });
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState(false);
+  const [guestCounts, setGuestCounts] = useState<Record<string, number>>({});
+
+  const itemKey = (item: { vendor: { id: string }; package: { id: string } }) =>
+    `${item.vendor.id}-${item.package.id}`;
+  const getGuests = (key: string) => guestCounts[key] ?? 100;
+  const setGuests = (key: string, val: number) =>
+    setGuestCounts((prev) => ({ ...prev, [key]: Math.max(1, val) }));
+
+  // Per-plate items: price × guests + 18% GST; regular items: price × qty
+  const calcItemTotal = (item: typeof items[0]) => {
+    const key = itemKey(item);
+    if (isPerPlateItem(item.package.features)) {
+      const food = item.package.price * getGuests(key);
+      return food + food * GST_RATE;
+    }
+    return item.package.price * item.quantity;
+  };
+  const calculatedTotal = items.reduce((sum, item) => sum + calcItemTotal(item), 0);
 
   useEffect(() => {
     fetch('/api/categories')
@@ -49,7 +73,7 @@ export default function CartPageClient() {
             price: i.package.price,
             quantity: i.quantity,
           })),
-          total,
+          total: Math.round(calculatedTotal),
         }),
       });
       setBooked(true);
@@ -150,27 +174,56 @@ export default function CartPageClient() {
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateQty(item.vendor.id, item.package.id, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 disabled:opacity-40 transition-all"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQty(item.vendor.id, item.package.id, item.quantity + 1)}
-                        className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 transition-all"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
+                  {isPerPlateItem(item.package.features) ? (
+                    <div className="px-4 py-3 bg-amber-50 border-t border-amber-100 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <label className="text-xs font-semibold text-amber-800">No. of Guests</label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setGuests(itemKey(item), getGuests(itemKey(item)) - 10)}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all text-xs font-bold"
+                          >−</button>
+                          <input
+                            type="number"
+                            min={1}
+                            value={getGuests(itemKey(item))}
+                            onChange={(e) => setGuests(itemKey(item), parseInt(e.target.value) || 1)}
+                            className="w-16 text-center text-sm font-bold border border-amber-200 rounded-lg py-1 outline-none focus:border-amber-400 bg-white"
+                          />
+                          <button
+                            onClick={() => setGuests(itemKey(item), getGuests(itemKey(item)) + 10)}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all text-xs font-bold"
+                          >+</button>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 flex justify-between">
+                        <span>₹{item.package.price.toLocaleString('en-IN')}/plate × {getGuests(itemKey(item))} guests</span>
+                        <span className="font-semibold text-gray-700">₹{(item.package.price * getGuests(itemKey(item))).toLocaleString('en-IN')}</span>
+                      </div>
                     </div>
-                    <span className="font-bold text-gray-900 text-sm">
-                      ₹{(item.package.price * item.quantity).toLocaleString('en-IN')}
-                    </span>
-                  </div>
+                  ) : (
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateQty(item.vendor.id, item.package.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 disabled:opacity-40 transition-all"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQty(item.vendor.id, item.package.id, item.quantity + 1)}
+                          className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-amber-50 hover:border-amber-300 transition-all"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <span className="font-bold text-gray-900 text-sm">
+                        ₹{(item.package.price * item.quantity).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -178,23 +231,54 @@ export default function CartPageClient() {
             {/* ── Right: Summary ── */}
             <div className="space-y-4">
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-24">
-                <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
+                <h3 className="font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">Order Summary</h3>
 
-                <div className="space-y-2 mb-4">
-                  {items.map((item) => (
-                    <div key={`${item.vendor.id}-${item.package.id}`} className="flex justify-between text-sm">
-                      <span className="text-gray-500 truncate mr-2">{item.vendor.name}</span>
-                      <span className="font-medium text-gray-900 flex-shrink-0">₹{(item.package.price * item.quantity).toLocaleString('en-IN')}</span>
-                    </div>
-                  ))}
+                <div className="space-y-4 mb-4">
+                  {items.map((item) => {
+                    const key = itemKey(item);
+                    const perPlate = isPerPlateItem(item.package.features);
+                    const guests = getGuests(key);
+                    const foodCost = perPlate ? item.package.price * guests : item.package.price * item.quantity;
+                    const gst = perPlate ? foodCost * GST_RATE : 0;
+                    return (
+                      <div key={key} className="space-y-1.5">
+                        <p className="text-xs font-semibold text-gray-700 truncate">{item.vendor.name} — {item.package.name}</p>
+                        {perPlate ? (
+                          <>
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>Rental Cost</span>
+                              <span className="text-emerald-600 font-medium">Included</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>Food (₹{item.package.price.toLocaleString('en-IN')} × {guests} guests)</span>
+                              <span>₹{foodCost.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>GST @18%</span>
+                              <span>₹{Math.round(gst).toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-semibold text-gray-800 border-t border-dashed border-gray-200 pt-1">
+                              <span>Item Total</span>
+                              <span>₹{Math.round(foodCost + gst).toLocaleString('en-IN')}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>{item.package.name}</span>
+                            <span className="font-medium text-gray-800">₹{foodCost.toLocaleString('en-IN')}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="border-t border-gray-100 pt-3 mb-1">
+                <div className="border-t border-gray-200 pt-3 mb-1 space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-700">Estimated Total</span>
-                    <span className="text-2xl font-bold gradient-text">₹{total.toLocaleString('en-IN')}</span>
+                    <span className="font-semibold text-gray-700 text-sm">Estimated Total</span>
+                    <span className="text-2xl font-bold gradient-text">₹{Math.round(calculatedTotal).toLocaleString('en-IN')}</span>
                   </div>
-                  <p className="text-gray-400 text-xs mt-1">* Final pricing confirmed by our planners</p>
+                  <p className="text-gray-400 text-[11px]">* Includes 18% GST on food. Final pricing confirmed by our planners.</p>
                 </div>
 
                 <button
@@ -279,14 +363,14 @@ export default function CartPageClient() {
               {/* Order mini-summary */}
               <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 space-y-1.5">
                 {items.map((item) => (
-                  <div key={`${item.vendor.id}-${item.package.id}`} className="flex justify-between text-sm">
+                  <div key={itemKey(item)} className="flex justify-between text-sm">
                     <span className="text-gray-600 truncate mr-2">{item.vendor.name} — {item.package.name}</span>
-                    <span className="font-semibold text-amber-700 flex-shrink-0">₹{(item.package.price * item.quantity).toLocaleString('en-IN')}</span>
+                    <span className="font-semibold text-amber-700 flex-shrink-0">₹{Math.round(calcItemTotal(item)).toLocaleString('en-IN')}</span>
                   </div>
                 ))}
                 <div className="border-t border-amber-200 pt-2 flex justify-between font-bold text-sm">
-                  <span>Total</span>
-                  <span className="gradient-text">₹{total.toLocaleString('en-IN')}</span>
+                  <span>Total (incl. GST)</span>
+                  <span className="gradient-text">₹{Math.round(calculatedTotal).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
