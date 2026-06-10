@@ -307,8 +307,8 @@ export default function HomepageClient() {
                   <span className="vidaai-shimmer-overlay" aria-hidden="true">Vidaai</span>
                 </motion.span>
               </span>
-              {/* Line 2: slow, weighted reveal — words cycle colours every 2s */}
-              <span className="block">
+              {/* Line 2: hidden on mobile to keep hero clean */}
+              <span className="hidden sm:block">
                 <motion.span
                   className="inline-block"
                   initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
