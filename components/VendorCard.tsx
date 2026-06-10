@@ -19,7 +19,12 @@ const CATEGORY_NAMES: Record<string, string> = {
 };
 
 export default function VendorCard({ vendor }: Props) {
-  const startingPrice = Math.min(...vendor.packages.map((p) => p.price));
+  const hasPerPlate = vendor.packages.some(
+    (p) => p.isPerPlate === true || p.features.some((f) => f.toLowerCase().includes('per plate'))
+  );
+  const startingPrice = hasPerPlate
+    ? vendor.priceMin
+    : Math.min(...vendor.packages.map((p) => p.price));
 
   return (
     <Link href={`/vendors/${vendor.id}`} className="block group vendor-card-luxury">

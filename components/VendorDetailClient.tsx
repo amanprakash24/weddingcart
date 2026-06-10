@@ -116,7 +116,12 @@ export default function VendorDetailClient({ id }: Props) {
   );
 
   const images = vendor.images?.length ? vendor.images : [vendor.image];
-  const startingPrice = Math.min(...vendor.packages.map((p) => p.price));
+  const hasPerPlate = vendor.packages.some(
+    (p) => p.isPerPlate === true || p.features.some((f) => f.toLowerCase().includes('per plate'))
+  );
+  const startingPrice = hasPerPlate
+    ? vendor.priceMin
+    : Math.min(...vendor.packages.map((p) => p.price));
 
   return (
     <div className="pt-16">
