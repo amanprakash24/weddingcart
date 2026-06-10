@@ -30,12 +30,13 @@ export default function CartPageClient() {
   const setGuests = (key: string, val: number) =>
     setGuestCounts((prev) => ({ ...prev, [key]: Math.max(1, val) }));
 
-  // Per-plate items: price × guests + 18% GST; regular items: price × qty
+  // Per-plate items: rentalMax + (price × guests) + 18% GST on food; regular: price × qty
   const calcItemTotal = (item: typeof items[0]) => {
     const key = itemKey(item);
     if (isPerPlateItem(item.package.features)) {
+      const rental = item.vendor.priceMax ?? 0;
       const food = item.package.price * getGuests(key);
-      return food + food * GST_RATE;
+      return rental + food + food * GST_RATE;
     }
     return item.package.price * item.quantity;
   };
@@ -180,7 +181,7 @@ export default function CartPageClient() {
                         <label className="text-xs font-semibold text-amber-800">No. of Guests</label>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => setGuests(itemKey(item), getGuests(itemKey(item)) - 10)}
+                            onClick={() => setGuests(itemKey(item), getGuests(itemKey(item)) - 50)}
                             className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all text-xs font-bold"
                           >−</button>
                           <input
@@ -188,10 +189,11 @@ export default function CartPageClient() {
                             min={1}
                             value={getGuests(itemKey(item))}
                             onChange={(e) => setGuests(itemKey(item), parseInt(e.target.value) || 1)}
-                            className="w-16 text-center text-sm font-bold border border-amber-200 rounded-lg py-1 outline-none focus:border-amber-400 bg-white"
+                            onFocus={(e) => e.target.select()}
+                            className="w-20 text-center text-sm font-bold border border-amber-200 rounded-lg py-1 outline-none focus:border-amber-400 bg-white"
                           />
                           <button
-                            onClick={() => setGuests(itemKey(item), getGuests(itemKey(item)) + 10)}
+                            onClick={() => setGuests(itemKey(item), getGuests(itemKey(item)) + 50)}
                             className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all text-xs font-bold"
                           >+</button>
                         </div>
@@ -246,20 +248,21 @@ export default function CartPageClient() {
                         {perPlate ? (
                           <>
                             <div className="flex justify-between text-xs text-gray-500">
-                              <span>Rental Cost</span>
-                              <span className="text-emerald-600 font-medium">Included</span>
+                              <span>Rental &amp; Decoration</span>
+                              <span className="font-medium text-gray-700">₹{(item.vendor.priceMax ?? 0).toLocaleString('en-IN')}</span>
                             </div>
+                            <p className="text-[10px] text-amber-600 -mt-0.5 italic">* Rate negotiable — final cost on discussion</p>
                             <div className="flex justify-between text-xs text-gray-500">
                               <span>Food (₹{item.package.price.toLocaleString('en-IN')} × {guests} guests)</span>
                               <span>₹{foodCost.toLocaleString('en-IN')}</span>
                             </div>
                             <div className="flex justify-between text-xs text-gray-500">
-                              <span>GST @18%</span>
+                              <span>GST @18% (on food)</span>
                               <span>₹{Math.round(gst).toLocaleString('en-IN')}</span>
                             </div>
                             <div className="flex justify-between text-xs font-semibold text-gray-800 border-t border-dashed border-gray-200 pt-1">
                               <span>Item Total</span>
-                              <span>₹{Math.round(foodCost + gst).toLocaleString('en-IN')}</span>
+                              <span>₹{Math.round((item.vendor.priceMax ?? 0) + foodCost + gst).toLocaleString('en-IN')}</span>
                             </div>
                           </>
                         ) : (
