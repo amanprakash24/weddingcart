@@ -7,6 +7,7 @@ const PackageSchema = new Schema({
   price: Number,
   features: [String],
   isPopular: Boolean,
+  isPerPlate: { type: Boolean, default: false },
   image: { type: String, default: '' },
 });
 
@@ -19,6 +20,7 @@ export interface IVendor extends Document {
   category: string;
   city: string;
   address?: string;
+  mapEmbedUrl?: string;
   priceMin: number;
   priceMax: number;
   rating: number;
@@ -40,6 +42,7 @@ const VendorSchema = new Schema<IVendor>({
   category: { type: String, required: true },
   city: { type: String, required: true },
   address: { type: String, default: '' },
+  mapEmbedUrl: { type: String, default: '' },
   priceMin: { type: Number, required: true },
   priceMax: { type: Number, required: true },
   rating: { type: Number, default: 4.5 },

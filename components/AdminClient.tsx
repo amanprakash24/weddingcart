@@ -121,7 +121,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
   pandit: '🙏',
 };
 
-const EMPTY_VENDOR = { name: '', ownerName: '', ownerPhone: '', ownerEmail: '', category: 'venue', city: 'Patna', priceMin: '', priceMax: '', rating: '4.5', reviewCount: '', description: '', features: '', isFeatured: false };
+const EMPTY_VENDOR = { name: '', ownerName: '', ownerPhone: '', ownerEmail: '', category: 'venue', city: 'Patna', priceMin: '', priceMax: '', rating: '4.5', reviewCount: '', description: '', features: '', isFeatured: false, mapEmbedUrl: '' };
 const EMPTY_CATEGORY = { id: '', name: '', icon: '🏛️', description: '', image: '' };
 
 export default function AdminClient() {
@@ -262,6 +262,7 @@ export default function AdminClient() {
       priceMin: v.priceMin, priceMax: v.priceMax, rating: v.rating,
       reviewCount: v.reviewCount, description: v.description,
       features: (v.features || []).join(', '), isFeatured: v.isFeatured,
+      mapEmbedUrl: v.mapEmbedUrl || '',
     });
     const imgs = v.images?.length ? v.images : v.image ? [v.image] : [''];
     setVendorImages(imgs);
@@ -412,6 +413,7 @@ export default function AdminClient() {
       priceMin: v.priceMin, priceMax: v.priceMax, rating: v.rating,
       reviewCount: v.reviewCount, description: v.description,
       features: (v.features || []).join(', '), isFeatured: v.isFeatured,
+      mapEmbedUrl: v.mapEmbedUrl || '',
     });
     const imgs = v.images?.length ? v.images : v.image ? [v.image] : [''];
     setVendorImages(imgs);
@@ -781,6 +783,10 @@ export default function AdminClient() {
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-semibold text-gray-500 mb-1">Features (comma-separated)</label>
                         <input value={vendorForm.features} onChange={(e) => setVendorForm({ ...vendorForm, features: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="AC Hall, Parking, Catering" />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Google Maps Embed URL <span className="text-gray-400 font-normal">(optional — Google Maps → Share → Embed a map → copy iframe src)</span></label>
+                        <input value={vendorForm.mapEmbedUrl} onChange={(e) => setVendorForm({ ...vendorForm, mapEmbedUrl: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="https://www.google.com/maps/embed?pb=..." />
                       </div>
                       <div className="flex items-center gap-2">
                         <input type="checkbox" id="featured" checked={vendorForm.isFeatured} onChange={(e) => setVendorForm({ ...vendorForm, isFeatured: e.target.checked })} className="w-4 h-4" />
@@ -1274,6 +1280,10 @@ export default function AdminClient() {
                         <div className="sm:col-span-2">
                           <label className="block text-xs font-semibold text-gray-500 mb-1">Features <span className="text-gray-400 font-normal">(comma-separated)</span></label>
                           <input value={vendorForm.features} onChange={(e) => setVendorForm({ ...vendorForm, features: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Home delivery, Trial session, Pan India" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Google Maps Embed URL <span className="text-gray-400 font-normal">(optional — Google Maps → Share → Embed a map → copy iframe src)</span></label>
+                          <input value={vendorForm.mapEmbedUrl} onChange={(e) => setVendorForm({ ...vendorForm, mapEmbedUrl: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="https://www.google.com/maps/embed?pb=..." />
                         </div>
                         <div className="flex items-center gap-2">
                           <input type="checkbox" id="special-vendor-featured" checked={vendorForm.isFeatured} onChange={(e) => setVendorForm({ ...vendorForm, isFeatured: e.target.checked })} className="w-4 h-4" />

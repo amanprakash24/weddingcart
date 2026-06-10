@@ -251,6 +251,33 @@ export default function VendorDetailClient({ id }: Props) {
               </div>
             )}
 
+            {/* Google Maps embed */}
+            {vendor.mapEmbedUrl && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 pt-5 pb-3 flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Location</h2>
+                  <a
+                    href={`https://www.google.com/maps/search/${encodeURIComponent(vendor.name + ' ' + vendor.city)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-amber-600 hover:underline flex items-center gap-1"
+                  >
+                    <MapPin className="w-3.5 h-3.5" /> View on Google Maps
+                  </a>
+                </div>
+                <iframe
+                  src={vendor.mapEmbedUrl}
+                  width="100%"
+                  height="320"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title={`${vendor.name} location map`}
+                />
+              </div>
+            )}
+
             {/* Packages */}
             {(() => {
               const isPerPlate = (pkg: Package) =>

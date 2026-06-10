@@ -53,6 +53,7 @@ export interface Vendor {
   packages: Package[];
   isFeatured?: boolean;
   address?: string;
+  mapEmbedUrl?: string;
 }
 
 export interface Category {
