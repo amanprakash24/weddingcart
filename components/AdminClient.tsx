@@ -95,7 +95,30 @@ const EMPTY_PACKAGE: PackageForm = { name: '', price: '', description: '', featu
 const STATUS_COLORS = {
   new: 'bg-blue-100 text-blue-700',
   contacted: 'bg-amber-100 text-amber-700',
+  confirmed: 'bg-emerald-100 text-emerald-700',
   closed: 'bg-gray-100 text-gray-500',
+};
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  venue: '🏛️',
+  photography: '📸',
+  'wedding-photography': '📸',
+  videography: '🎬',
+  catering: '🍽️',
+  decoration: '🌸',
+  'floral-decoration': '🌸',
+  'bridal-wear': '👗',
+  'bridal-lehenga': '👗',
+  mehendi: '🖐️',
+  makeup: '💄',
+  'bridal-makeup': '💄',
+  music: '🎵',
+  'band-baja': '🎺',
+  transport: '🚗',
+  invitation: '📨',
+  jewellery: '💍',
+  cake: '🎂',
+  pandit: '🙏',
 };
 
 const EMPTY_VENDOR = { name: '', ownerName: '', ownerPhone: '', ownerEmail: '', category: 'venue', city: 'Patna', priceMin: '', priceMax: '', rating: '4.5', reviewCount: '', description: '', features: '', isFeatured: false };
@@ -1470,108 +1493,142 @@ export default function AdminClient() {
               {(bookingFilter === 'all' ? bookings : bookings.filter((b) => b.status === bookingFilter)).length === 0 && (
                 <div className="text-center py-12 text-gray-400"><p>No {bookingFilter === 'all' ? '' : bookingFilter} bookings.</p></div>
               )}
-              {(bookingFilter === 'all' ? bookings : bookings.filter((b) => b.status === bookingFilter)).map((b) => (
-                <div key={b._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                  {/* Header row */}
-                  <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <h4 className="font-bold text-gray-900">{b.name}</h4>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[b.status as keyof typeof STATUS_COLORS] || 'bg-gray-100 text-gray-500'}`}>
-                          {b.status}
-                        </span>
-                      </div>
-                      <p className="text-gray-500 text-xs">📞 {b.phone}{b.city ? ` · 📍 ${b.city}` : ''}</p>
-                      {b.email && <p className="text-gray-500 text-xs mt-0.5">✉️ {b.email}</p>}
-                    </div>
-                    {/* Booking time — prominent */}
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Booked at</p>
-                      <p className="text-xs font-semibold text-gray-700">
-                        {new Date(b.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </p>
-                      <p className="text-sm font-bold text-amber-600">
-                        {new Date(b.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Booked items with vendor details */}
-                  <div className="space-y-3 mb-4">
-                    {b.items?.map((item: AnyRecord, i: number) => {
-                      const vendorData = vendors.find((v) => v.id === item.vendorId)
-                        || vendors.find((v) => v.name === item.vendorName && v.category === item.vendorCategory)
-                        || vendors.find((v) => v.name === item.vendorName);
-                      return (
-                        <div key={i} className="rounded-xl border border-gray-100 overflow-hidden">
-                          {/* Item header */}
-                          <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
-                            <div>
-                              <span className="text-sm font-semibold text-gray-900">{item.vendorName}</span>
-                              <span className="text-xs text-gray-400 capitalize ml-2">({item.vendorCategory?.replace(/-/g, ' ')})</span>
-                            </div>
-                            <span className="text-xs font-bold text-amber-600">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
-                          </div>
-                          <div className="px-3 py-1.5 text-xs text-gray-500">
-                            Package: <span className="font-medium text-gray-700">{item.packageName}</span>
-                            {item.quantity > 1 && <span className="ml-2 text-gray-400">× {item.quantity}</span>}
-                            {item.guestCount && <span className="ml-2 text-gray-400">· 👥 {item.guestCount} guests</span>}
-                          </div>
-                          {/* Vendor contact — only if found */}
-                          {vendorData && (
-                            <div className="bg-amber-50 border-t border-amber-100 px-3 py-2 flex flex-wrap gap-3">
-                              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider w-full">Vendor Contact</p>
-                              {vendorData.ownerName && (
-                                <span className="text-xs text-gray-700 flex items-center gap-1">👤 {vendorData.ownerName}</span>
-                              )}
-                              {vendorData.ownerPhone && (
-                                <a href={`tel:${vendorData.ownerPhone}`} className="text-xs font-semibold text-amber-700 hover:underline flex items-center gap-1">
-                                  📞 {vendorData.ownerPhone}
-                                </a>
-                              )}
-                              {vendorData.ownerEmail && (
-                                <a href={`mailto:${vendorData.ownerEmail}`} className="text-xs text-gray-600 hover:underline flex items-center gap-1">
-                                  ✉️ {vendorData.ownerEmail}
-                                </a>
-                              )}
-                              {vendorData.city && (
-                                <span className="text-xs text-gray-500">📍 {vendorData.city}</span>
-                              )}
-                            </div>
-                          )}
+              {(bookingFilter === 'all' ? bookings : bookings.filter((b) => b.status === bookingFilter)).map((b) => {
+                const guestPhone = b.phone?.replace(/\D/g, '') || '';
+                const waPhone = guestPhone.startsWith('91') ? guestPhone : `91${guestPhone}`;
+                return (
+                  <div key={b._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <h4 className="font-bold text-gray-900">{b.name}</h4>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[b.status as keyof typeof STATUS_COLORS] || 'bg-gray-100 text-gray-500'}`}>
+                            {b.status}
+                          </span>
+                          <span className="text-[10px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
+                            #{b._id?.toString().slice(-6).toUpperCase()}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="flex items-center gap-3 flex-wrap text-xs text-gray-500">
+                          <a href={`tel:${b.phone}`} className="hover:text-amber-600 transition-colors">📞 {b.phone}</a>
+                          {b.city && <span>📍 {b.city}</span>}
+                          <span className="text-gray-400">{b.items?.length ?? 0} service{(b.items?.length ?? 0) !== 1 ? 's' : ''}</span>
+                        </div>
+                        {b.email && <p className="text-gray-500 text-xs mt-0.5">✉️ {b.email}</p>}
+                      </div>
+                      {/* Right: date + quick-action buttons */}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-right">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Booked at</p>
+                          <p className="text-xs font-semibold text-gray-700">
+                            {new Date(b.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                          <p className="text-sm font-bold text-amber-600">
+                            {new Date(b.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`https://wa.me/${waPhone}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg hover:bg-emerald-100 transition-colors"
+                          >
+                            💬 WhatsApp
+                          </a>
+                          <a
+                            href={`tel:${b.phone}`}
+                            className="flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg hover:bg-blue-100 transition-colors"
+                          >
+                            📞 Call
+                          </a>
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* Total + status controls */}
-                  <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-gray-100">
-                    <p className="text-amber-600 font-bold text-base">Total: ₹{b.total?.toLocaleString('en-IN')}</p>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {(['new', 'contacted', 'confirmed', 'closed'] as const).map((s) => (
-                        <button
-                          key={s}
-                          onClick={async () => {
-                            await fetch(`/api/bookings/${b._id}`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ status: s }),
-                            });
-                            fetchAll();
-                          }}
-                          className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize flex items-center gap-1 ${
-                            b.status === s ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300'
-                          }`}
-                          title={s === 'contacted' ? 'Mark contacted & send WhatsApp to guest' : undefined}
-                        >
-                          {s === 'contacted' && <span className="text-[10px]">💬</span>}
-                          {s}
-                        </button>
-                      ))}
+                    {/* Booked items with vendor details */}
+                    <div className="space-y-3 mb-4">
+                      {b.items?.map((item: AnyRecord, i: number) => {
+                        const vendorData = vendors.find((v) => v.id === item.vendorId)
+                          || vendors.find((v) => v.name === item.vendorName && v.category === item.vendorCategory)
+                          || vendors.find((v) => v.name === item.vendorName);
+                        const catEmoji = CATEGORY_EMOJI[item.vendorCategory] || '🏷️';
+                        return (
+                          <div key={i} className="rounded-xl border border-gray-100 overflow-hidden">
+                            {/* Item header */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
+                              <div className="flex items-center gap-2">
+                                <span className="text-base leading-none">{catEmoji}</span>
+                                <div>
+                                  <span className="text-sm font-semibold text-gray-900">{item.vendorName}</span>
+                                  <span className="text-xs text-gray-400 capitalize ml-2">({item.vendorCategory?.replace(/-/g, ' ')})</span>
+                                </div>
+                              </div>
+                              <span className="text-xs font-bold text-amber-600">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="px-3 py-2 text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5">
+                              <span>Package: <span className="font-medium text-gray-700">{item.packageName}</span></span>
+                              {item.quantity > 1 && <span>Qty: <span className="font-medium text-gray-700">{item.quantity}</span></span>}
+                              {item.guestCount && <span>👥 <span className="font-medium text-gray-700">{item.guestCount} guests</span></span>}
+                              <span>Rate: <span className="font-medium text-gray-700">₹{item.price?.toLocaleString('en-IN')}</span></span>
+                            </div>
+                            {/* Vendor contact — only if found */}
+                            {vendorData && (
+                              <div className="bg-amber-50 border-t border-amber-100 px-3 py-2 flex flex-wrap gap-3">
+                                <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider w-full">Vendor Contact</p>
+                                {vendorData.ownerName && (
+                                  <span className="text-xs text-gray-700 flex items-center gap-1">👤 {vendorData.ownerName}</span>
+                                )}
+                                {vendorData.ownerPhone && (
+                                  <a href={`tel:${vendorData.ownerPhone}`} className="text-xs font-semibold text-amber-700 hover:underline flex items-center gap-1">
+                                    📞 {vendorData.ownerPhone}
+                                  </a>
+                                )}
+                                {vendorData.ownerEmail && (
+                                  <a href={`mailto:${vendorData.ownerEmail}`} className="text-xs text-gray-600 hover:underline flex items-center gap-1">
+                                    ✉️ {vendorData.ownerEmail}
+                                  </a>
+                                )}
+                                {vendorData.city && (
+                                  <span className="text-xs text-gray-500">📍 {vendorData.city}</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Total + status controls */}
+                    <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-gray-100">
+                      <p className="text-amber-600 font-bold text-base">Total: ₹{b.total?.toLocaleString('en-IN')}</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {(['new', 'contacted', 'confirmed', 'closed'] as const).map((s) => (
+                          <button
+                            key={s}
+                            onClick={async () => {
+                              await fetch(`/api/bookings/${b._id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: s }),
+                              });
+                              fetchAll();
+                            }}
+                            className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize flex items-center gap-1 ${
+                              b.status === s ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300'
+                            }`}
+                            title={s === 'contacted' ? 'Mark contacted & send WhatsApp to guest' : undefined}
+                          >
+                            {s === 'contacted' && <span className="text-[10px]">💬</span>}
+                            {s}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
