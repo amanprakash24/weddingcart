@@ -119,7 +119,7 @@ export default function PlanPageClient() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await fetch('/api/consultations', {
+      const res = await fetch('/api/consultations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -128,8 +128,15 @@ export default function PlanPageClient() {
           totalBudget: total,
         }),
       });
-      setSuccess(true);
-      clearCart();
+      const data = await res.json();
+      if (data.success) {
+        setSuccess(true);
+        clearCart();
+      } else {
+        alert('Something went wrong. Please try again.');
+      }
+    } catch {
+      alert('Network error. Please check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
