@@ -116,6 +116,7 @@ export default function AdminClient() {
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [consultationFilter, setConsultationFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
+  const [bookingFilter, setBookingFilter] = useState<'all' | 'new' | 'contacted' | 'confirmed' | 'closed'>('all');
   const [loading, setLoading] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
@@ -1452,8 +1453,24 @@ export default function AdminClient() {
           {/* BOOKINGS */}
           {tab === 'bookings' && (
             <div className="space-y-4">
-              {bookings.length === 0 && <div className="text-center py-12 text-gray-400"><p>No bookings yet.</p></div>}
-              {bookings.map((b) => (
+              {/* Filter bar */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filter:</span>
+                {(['all', 'new', 'contacted', 'confirmed', 'closed'] as const).map((f) => {
+                  const count = f === 'all' ? bookings.length : bookings.filter((b) => b.status === f).length;
+                  return (
+                    <button key={f} onClick={() => setBookingFilter(f)}
+                      className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
+                        bookingFilter === f ? 'bg-amber-500 text-white border-amber-500' : 'border-gray-200 text-gray-600 hover:border-amber-300 bg-white'
+                      }`}
+                    >{f} ({count})</button>
+                  );
+                })}
+              </div>
+              {(bookingFilter === 'all' ? bookings : bookings.filter((b) => b.status === bookingFilter)).length === 0 && (
+                <div className="text-center py-12 text-gray-400"><p>No {bookingFilter === 'all' ? '' : bookingFilter} bookings.</p></div>
+              )}
+              {(bookingFilter === 'all' ? bookings : bookings.filter((b) => b.status === bookingFilter)).map((b) => (
                 <div key={b._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   {/* Header row */}
                   <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
@@ -1465,6 +1482,7 @@ export default function AdminClient() {
                         </span>
                       </div>
                       <p className="text-gray-500 text-xs">📞 {b.phone}{b.city ? ` · 📍 ${b.city}` : ''}</p>
+                      {b.email && <p className="text-gray-500 text-xs mt-0.5">✉️ {b.email}</p>}
                     </div>
                     {/* Booking time — prominent */}
                     <div className="text-right">
@@ -1497,6 +1515,7 @@ export default function AdminClient() {
                           <div className="px-3 py-1.5 text-xs text-gray-500">
                             Package: <span className="font-medium text-gray-700">{item.packageName}</span>
                             {item.quantity > 1 && <span className="ml-2 text-gray-400">× {item.quantity}</span>}
+                            {item.guestCount && <span className="ml-2 text-gray-400">· 👥 {item.guestCount} guests</span>}
                           </div>
                           {/* Vendor contact — only if found */}
                           {vendorData && (
@@ -1529,12 +1548,25 @@ export default function AdminClient() {
                   <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-gray-100">
                     <p className="text-amber-600 font-bold text-base">Total: ₹{b.total?.toLocaleString('en-IN')}</p>
                     <div className="flex gap-1.5 flex-wrap">
-                      {['new', 'contacted', 'confirmed', 'closed'].map((s) => (
-                        <button key={s} onClick={async () => { await fetch(`/api/bookings/${b._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: s }) }); fetchAll(); }}
-                          className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
+                      {(['new', 'contacted', 'confirmed', 'closed'] as const).map((s) => (
+                        <button
+                          key={s}
+                          onClick={async () => {
+                            await fetch(`/api/bookings/${b._id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ status: s }),
+                            });
+                            fetchAll();
+                          }}
+                          className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize flex items-center gap-1 ${
                             b.status === s ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300'
                           }`}
-                        >{s}</button>
+                          title={s === 'contacted' ? 'Mark contacted & send WhatsApp to guest' : undefined}
+                        >
+                          {s === 'contacted' && <span className="text-[10px]">💬</span>}
+                          {s}
+                        </button>
                       ))}
                     </div>
                   </div>
