@@ -185,11 +185,15 @@ export default function CartPageClient() {
                             className="w-7 h-7 flex items-center justify-center rounded-full bg-white border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all text-xs font-bold"
                           >−</button>
                           <input
-                            type="number"
-                            min={1}
+                            type="text"
+                            inputMode="numeric"
                             value={getGuests(itemKey(item))}
-                            onChange={(e) => setGuests(itemKey(item), parseInt(e.target.value) || 1)}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value.replace(/\D/g, ''));
+                              if (!isNaN(v)) setGuests(itemKey(item), v);
+                            }}
                             onFocus={(e) => e.target.select()}
+                            onClick={(e) => (e.target as HTMLInputElement).select()}
                             className="w-20 text-center text-sm font-bold border border-amber-200 rounded-lg py-1 outline-none focus:border-amber-400 bg-white"
                           />
                           <button
