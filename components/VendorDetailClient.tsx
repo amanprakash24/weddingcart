@@ -11,7 +11,7 @@ const GUEST_COUNT_CATEGORIES = new Set(['venue', 'catering', 'accommodation', 'h
 import { Vendor, Package } from '@/types';
 import { useCart } from '@/context/CartContext';
 
-const SHAADI_PHONES = ['7646028228', '6201732422', '7070486987'];
+const SHAADI_PHONES = ['7646028228', '9942972484'];
 
 function getShaadiPhone(vendorId: string) {
   const sum = vendorId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
