@@ -11,8 +11,8 @@ const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'H
 
 const GST_RATE = 0.18;
 
-function isPerPlateItem(features?: string[]) {
-  return features?.some((f) => f.toLowerCase().includes('per plate')) ?? false;
+function isPerPlateItem(pkg: { isPerPlate?: boolean; features?: string[] }) {
+  return pkg.isPerPlate === true || (pkg.features?.some((f) => f.toLowerCase().includes('per plate')) ?? false);
 }
 
 export default function CartPageClient() {
@@ -33,7 +33,7 @@ export default function CartPageClient() {
   // Per-plate items: rentalMax + (price × guests) + 18% GST on food; regular: price × qty
   const calcItemTotal = (item: typeof items[0]) => {
     const key = itemKey(item);
-    if (isPerPlateItem(item.package.features)) {
+    if (isPerPlateItem(item.package)) {
       const rental = item.vendor.priceMax ?? 0;
       const food = item.package.price * getGuests(key);
       return rental + food + food * GST_RATE;
@@ -175,7 +175,7 @@ export default function CartPageClient() {
                     </button>
                   </div>
 
-                  {isPerPlateItem(item.package.features) ? (
+                  {isPerPlateItem(item.package) ? (
                     <div className="px-4 py-3 bg-amber-50 border-t border-amber-100 space-y-2">
                       <div className="flex items-center justify-between gap-3">
                         <label className="text-xs font-semibold text-amber-800">No. of Guests</label>
@@ -242,7 +242,7 @@ export default function CartPageClient() {
                 <div className="space-y-4 mb-4">
                   {items.map((item) => {
                     const key = itemKey(item);
-                    const perPlate = isPerPlateItem(item.package.features);
+                    const perPlate = isPerPlateItem(item.package);
                     const guests = getGuests(key);
                     const foodCost = perPlate ? item.package.price * guests : item.package.price * item.quantity;
                     const gst = perPlate ? foodCost * GST_RATE : 0;

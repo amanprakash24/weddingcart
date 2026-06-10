@@ -29,6 +29,7 @@ export interface Package {
   price: number;
   features: string[];
   isPopular?: boolean;
+  isPerPlate?: boolean;
   image?: string;
 }
 

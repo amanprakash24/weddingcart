@@ -249,7 +249,7 @@ export default function VendorDetailClient({ id }: Props) {
             {/* Packages */}
             {(() => {
               const isPerPlate = (pkg: Package) =>
-                pkg.features.some((f) => f.toLowerCase().includes('per plate'));
+                pkg.isPerPlate === true || pkg.features.some((f) => f.toLowerCase().includes('per plate'));
 
               const vegPkgs = vendor.packages.filter(
                 (p) => !p.id.toLowerCase().includes('non-veg') && !p.name.toLowerCase().includes('non-veg')

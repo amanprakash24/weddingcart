@@ -88,9 +88,9 @@ interface Stats { vendors: number; categories: number; enquiries: number; consul
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
 
-interface PackageForm { name: string; price: string; description: string; features: string; isPopular: boolean; image: string; }
+interface PackageForm { name: string; price: string; description: string; features: string; isPopular: boolean; isPerPlate: boolean; image: string; }
 
-const EMPTY_PACKAGE: PackageForm = { name: '', price: '', description: '', features: '', isPopular: false, image: '' };
+const EMPTY_PACKAGE: PackageForm = { name: '', price: '', description: '', features: '', isPopular: false, isPerPlate: false, image: '' };
 
 const STATUS_COLORS = {
   new: 'bg-blue-100 text-blue-700',
@@ -272,6 +272,7 @@ export default function AdminClient() {
             description: p.description || '',
             features: (p.features || []).join(', '),
             isPopular: p.isPopular || false,
+            isPerPlate: p.isPerPlate || false,
             image: p.image || '',
           }))
         : [{ ...EMPTY_PACKAGE }]
@@ -290,6 +291,7 @@ export default function AdminClient() {
         description: p.description,
         features: p.features.split(',').map((f) => f.trim()).filter(Boolean),
         isPopular: p.isPopular,
+        isPerPlate: p.isPerPlate,
         ...(p.image ? { image: p.image } : {}),
       }));
 
@@ -420,6 +422,7 @@ export default function AdminClient() {
             description: p.description || '',
             features: (p.features || []).join(', '),
             isPopular: p.isPopular || false,
+            isPerPlate: p.isPerPlate || false,
             image: p.image || '',
           }))
         : [{ ...EMPTY_PACKAGE }]
@@ -436,6 +439,7 @@ export default function AdminClient() {
         description: p.description,
         features: p.features.split(',').map((f) => f.trim()).filter(Boolean),
         isPopular: p.isPopular,
+        isPerPlate: p.isPerPlate,
         ...(p.image ? { image: p.image } : {}),
       }));
     const cleanImages = vendorImages.map((u) => u.trim()).filter(Boolean);
@@ -828,10 +832,21 @@ export default function AdminClient() {
                                   placeholder="Upload package image (optional)"
                                 />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <input type="checkbox" id={`popular-${i}`} checked={pkg.isPopular} onChange={(e) => updatePackage(i, 'isPopular', e.target.checked)} className="w-4 h-4" />
-                                <label htmlFor={`popular-${i}`} className="text-xs text-gray-600 font-medium">Mark as Popular</label>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <input type="checkbox" id={`popular-${i}`} checked={pkg.isPopular} onChange={(e) => updatePackage(i, 'isPopular', e.target.checked)} className="w-4 h-4" />
+                                  <label htmlFor={`popular-${i}`} className="text-xs text-gray-600 font-medium">Mark as Popular</label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input type="checkbox" id={`perplate-${i}`} checked={pkg.isPerPlate} onChange={(e) => updatePackage(i, 'isPerPlate', e.target.checked)} className="w-4 h-4 accent-amber-500" />
+                                  <label htmlFor={`perplate-${i}`} className="text-xs text-amber-700 font-semibold">Per-Plate Pricing 🍽️</label>
+                                </div>
                               </div>
+                              {pkg.isPerPlate && (
+                                <p className="sm:col-span-2 text-[11px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                                  Price = per-plate rate. Rental &amp; Decoration cost is taken from the vendor&apos;s <strong>Max Price</strong> field. Cart will calculate: Rental + (Rate × Guests) + 18% GST.
+                                </p>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -1301,10 +1316,21 @@ export default function AdminClient() {
                                   <label className="block text-xs font-semibold text-gray-500 mb-1">Package Image <span className="text-gray-400 font-normal">(optional)</span></label>
                                   <ImageUploadField value={pkg.image} onChange={(u) => updatePackage(i, 'image', u)} placeholder="Upload package image (optional)" />
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <input type="checkbox" id={`spl-popular-${i}`} checked={pkg.isPopular} onChange={(e) => updatePackage(i, 'isPopular', e.target.checked)} className="w-4 h-4" />
-                                  <label htmlFor={`spl-popular-${i}`} className="text-xs text-gray-600 font-medium">Mark as Popular</label>
+                                <div className="flex items-center gap-4">
+                                  <div className="flex items-center gap-2">
+                                    <input type="checkbox" id={`spl-popular-${i}`} checked={pkg.isPopular} onChange={(e) => updatePackage(i, 'isPopular', e.target.checked)} className="w-4 h-4" />
+                                    <label htmlFor={`spl-popular-${i}`} className="text-xs text-gray-600 font-medium">Mark as Popular</label>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <input type="checkbox" id={`spl-perplate-${i}`} checked={pkg.isPerPlate} onChange={(e) => updatePackage(i, 'isPerPlate', e.target.checked)} className="w-4 h-4 accent-amber-500" />
+                                    <label htmlFor={`spl-perplate-${i}`} className="text-xs text-amber-700 font-semibold">Per-Plate Pricing 🍽️</label>
+                                  </div>
                                 </div>
+                                {pkg.isPerPlate && (
+                                  <p className="sm:col-span-2 text-[11px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                                    Price = per-plate rate. Rental &amp; Decoration cost is taken from the vendor&apos;s <strong>Max Price</strong> field. Cart will calculate: Rental + (Rate × Guests) + 18% GST.
+                                  </p>
+                                )}
                               </div>
                             </div>
                           ))}
