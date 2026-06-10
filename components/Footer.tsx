@@ -162,7 +162,7 @@ export default function Footer() {
                   title="ShaadiShopping Location"
                   src="https://maps.google.com/maps?q=Shaadi+Shopping+Patna&cid=12393945489471302150&output=embed&z=17"
                   width="100%"
-                  height="140"
+                  height="200"
                   style={{ border: 0, display: 'block', filter: 'grayscale(0.4) contrast(1.1)' }}
                   loading="lazy"
                   allowFullScreen
