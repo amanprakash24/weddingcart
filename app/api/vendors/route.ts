@@ -35,10 +35,10 @@ export async function GET(req: NextRequest) {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let sortQuery: any = { rating: -1 };
-    if (sort === 'price-asc') sortQuery = { priceMin: 1 };
-    else if (sort === 'price-desc') sortQuery = { priceMin: -1 };
-    else if (sort === 'reviews') sortQuery = { reviewCount: -1 };
+    let sortQuery: any = { isFeatured: -1, rating: -1, reviewCount: -1 };
+    if (sort === 'price-asc') sortQuery = { isFeatured: -1, priceMin: 1 };
+    else if (sort === 'price-desc') sortQuery = { isFeatured: -1, priceMin: -1 };
+    else if (sort === 'reviews') sortQuery = { isFeatured: -1, reviewCount: -1, rating: -1 };
 
     const vendors = await VendorModel.find(query).sort(sortQuery).limit(limit).lean();
     return NextResponse.json({ success: true, data: vendors, total: vendors.length });
