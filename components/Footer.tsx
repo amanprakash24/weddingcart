@@ -160,7 +160,7 @@ export default function Footer() {
               >
                 <iframe
                   title="ShaadiShopping Location"
-                  src="https://maps.google.com/maps?ftid=0x39ed57b681c929a5:0xac0023c1b97dea06&output=embed&z=17"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d200!2d85.0549148!3d25.6292319!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39ed57b681c929a5%3A0xac0023c1b97dea06!2sShaadi%20Shopping!5e0!3m2!1sen!2sin!4v1749560000000"
                   width="100%"
                   height="140"
                   style={{ border: 0, display: 'block', filter: 'grayscale(0.4) contrast(1.1)' }}
