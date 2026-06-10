@@ -160,7 +160,7 @@ export default function Footer() {
               >
                 <iframe
                   title="ShaadiShopping Location"
-                  src="https://maps.google.com/maps?q=25.6293819,85.0549802&output=embed&z=17"
+                  src="https://maps.google.com/maps?ftid=0x39ed57b681c929a5:0xac0023c1b97dea06&output=embed&z=17"
                   width="100%"
                   height="140"
                   style={{ border: 0, display: 'block', filter: 'grayscale(0.4) contrast(1.1)' }}
