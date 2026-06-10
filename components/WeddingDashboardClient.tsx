@@ -465,7 +465,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
         </div>
 
         <p className="text-center text-xs text-gray-400 pb-8">
-          Need help? Call us at <a href="tel:+917646028228" className="text-rose-500 font-medium">+91 76460 28228</a> or <a href="tel:+916201732422" className="text-rose-500 font-medium">+91 62017 32422</a>
+          Need help? Call us at <a href="tel:+917646028228" className="text-rose-500 font-medium">+91 76460 28228</a> or <a href="tel:+919942972484" className="text-rose-500 font-medium">+91 99429 72484</a>
         </p>
       </div>
     </div>
