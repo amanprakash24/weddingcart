@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Heart, Phone, Mail, MapPin, Instagram, Youtube, CheckCircle } from 'lucide-react';
+import { Heart, Phone, Mail, MapPin, Instagram, Youtube, Facebook, CheckCircle } from 'lucide-react';
 
 const services = [
   { label: 'Wedding Venues', href: '/categories/venue' },
@@ -51,6 +51,7 @@ const company = [
 
 const socials = [
   { Icon: Instagram, href: 'https://www.instagram.com/shaadi.shopping/', label: 'Instagram' },
+  { Icon: Facebook, href: 'https://www.facebook.com/profile.php?id=61590307323528', label: 'Facebook' },
   { Icon: Youtube, href: 'https://youtube.com/@shaadishopping', label: 'YouTube' },
 ];
 
