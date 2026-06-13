@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Heart, Phone, Mail, MapPin, Share2, MessageCircle, PlayCircle, AtSign, CheckCircle } from 'lucide-react';
+import { Heart, Phone, Mail, MapPin, Instagram, Youtube, CheckCircle } from 'lucide-react';
 
 const services = [
   { label: 'Wedding Venues', href: '/categories/venue' },
@@ -50,10 +50,8 @@ const company = [
 ];
 
 const socials = [
-  { Icon: Share2, href: '#', label: 'Instagram' },
-  { Icon: MessageCircle, href: '#', label: 'Facebook' },
-  { Icon: PlayCircle, href: '#', label: 'YouTube' },
-  { Icon: AtSign, href: '#', label: 'Twitter' },
+  { Icon: Instagram, href: 'https://www.instagram.com/shaadi.shopping/', label: 'Instagram' },
+  { Icon: Youtube, href: 'https://youtube.com/@shaadishopping', label: 'YouTube' },
 ];
 
 export default function Footer() {
