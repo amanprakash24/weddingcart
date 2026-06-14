@@ -51,9 +51,11 @@ export const metadata: Metadata = {
     'wedding vendors Patna', 'wedding Bihar', 'shaadi Bihar',
   ],
   icons: {
-    icon: '/logo.jpeg',
-    apple: '/logo.jpeg',
-    shortcut: '/logo.jpeg',
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    apple: '/icon.png',
+    shortcut: '/icon.png',
   },
   manifest: '/manifest.json',
   openGraph: {
