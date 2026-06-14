@@ -142,18 +142,130 @@ export async function generateMetadata({
   const cat = CATEGORIES[catSlug];
   if (!city || !cat) return { title: 'Not Found' };
 
-  const title = `${cat.plural} in ${city.name}, ${city.state} — Book Top ${cat.plural} | ShaadiShopping`;
-  const description = `Find the best ${cat.plural} in ${city.name}, ${city.state}. Compare verified ${cat.desc} with real packages, photos & pricing. ${cat.priceNote}. Get free quotes from top ${cat.plural} in ${city.name}.`;
   const url = `${BASE_URL}/cities/${citySlug}/${catSlug}`;
 
   // Non-Patna cities: noindex until we have real vendor listings there
   if (citySlug !== 'patna') {
     return {
-      title,
-      description,
+      title: `${cat.plural} in ${city.name}, ${city.state} — Book Top ${cat.plural} | ShaadiShopping`,
+      description: `Find the best ${cat.plural} in ${city.name}, ${city.state}. Compare verified ${cat.desc} with real packages, photos & pricing. ${cat.priceNote}. Get free quotes from top ${cat.plural} in ${city.name}.`,
       robots: { index: false, follow: false },
     };
   }
+
+  // Per-category Patna SEO — targeted title, description & keyword set
+  const PATNA_CATEGORY_SEO: Record<string, { title: string; description: string; keywords: string[] }> = {
+    venue: {
+      title: 'Venues in Patna for Wedding & Marriage — Banquet Halls, Lawns | ShaadiShopping',
+      description: 'Find the best wedding venues in Patna, Bihar — banquet halls, marriage gardens, convention centres & lawn venues. Compare 35+ verified venues with real photos, pricing & packages. Venue rental from ₹80,000. Get free quotes.',
+      keywords: [
+        'venues in patna', 'venue in patna', 'wedding venues in patna',
+        'marriage hall in patna', 'banquet hall patna', 'shaadi hall patna',
+        'banquet hall in patna for marriage', 'best banquet halls in patna',
+        'marriage garden patna', 'wedding lawn patna', 'convention hall patna',
+        'reception hall patna', 'function hall patna', 'function hall patna bihar',
+        'wedding hall patna', 'marriage hall patna bihar', 'hall for wedding patna',
+      ],
+    },
+    dj: {
+      title: 'DJ in Patna for Wedding & Sangeet — Book Top Wedding DJs | ShaadiShopping',
+      description: 'Book the best DJ in Patna for your wedding sangeet & reception. Professional DJs with LED rigs, laser lights & premium sound systems. Packages from ₹15,000. Compare verified DJs and get free quotes.',
+      keywords: [
+        'dj in patna', 'dj patna', 'wedding dj patna', 'dj for wedding patna',
+        'best dj patna', 'dj patna bihar', 'dj hire patna', 'dj service patna',
+        'sangeet dj patna', 'reception dj patna', 'dj for sangeet patna',
+        'dj rental patna', 'dj with led patna', 'dj sound system patna',
+        'disc jockey patna', 'wedding dj service patna bihar',
+      ],
+    },
+    'photo-video': {
+      title: 'Photographer in Patna for Wedding — Candid & Traditional Photography | ShaadiShopping',
+      description: 'Book the best wedding photographers in Patna, Bihar. Candid, traditional & pre-wedding shoot specialists. Packages from ₹35,000. Compare verified photographers with real portfolios. Free quotes.',
+      keywords: [
+        'photographer in patna', 'wedding photographer patna', 'photographer patna',
+        'candid photographer patna', 'photography in patna', 'best photographer patna',
+        'pre-wedding shoot patna', 'wedding photography patna bihar',
+        'videographer patna', 'wedding videographer patna', 'photo video patna',
+        'candid photography patna', 'wedding photos patna', 'photographer hire patna',
+        'cinematographer patna', 'wedding film patna',
+      ],
+    },
+    makeup: {
+      title: 'Makeup Artist in Patna for Bridal — Book Top Bridal Makeup Artists | ShaadiShopping',
+      description: 'Book the best bridal makeup artists in Patna, Bihar. HD, airbrush & traditional bridal makeup from ₹15,000. Verified artists with real portfolio photos. Book months before your wedding.',
+      keywords: [
+        'makeup artist in patna', 'makeup artist patna', 'bridal makeup patna',
+        'bridal makeup artist patna', 'makeup artist patna bihar',
+        'best makeup artist patna', 'wedding makeup patna', 'makeup for wedding patna',
+        'airbrush makeup patna', 'HD makeup patna', 'bridal makeup artist near me patna',
+        'wedding makeup artist patna', 'dulhan makeup patna', 'shaadi makeup patna',
+      ],
+    },
+    mehndi: {
+      title: 'Mehndi Artist in Patna for Wedding — Book Bridal Henna Artists | ShaadiShopping',
+      description: 'Book top mehndi artists in Patna, Bihar for bridal & guest mehndi. Arabic, Rajasthani & fusion designs. Packages from ₹8,000. Verified artists with real portfolio photos.',
+      keywords: [
+        'mehndi artist in patna', 'mehndi artist patna', 'mehndi in patna',
+        'bridal mehndi patna', 'henna artist patna', 'mehndi design patna',
+        'mehndi patna bihar', 'wedding mehndi patna', 'Arabic mehndi patna',
+        'Rajasthani mehndi patna', 'mehndi wali patna', 'mehandi artist patna',
+        'mehndi for wedding patna', 'bridal henna patna', 'dulhan mehndi patna',
+      ],
+    },
+    catering: {
+      title: 'Caterer in Patna for Wedding — Book Top Wedding Catering Services | ShaadiShopping',
+      description: 'Book the best wedding caterers in Patna, Bihar. Veg, non-veg & multi-cuisine catering from ₹450/plate. Experienced in large-scale events from 200–3,000 guests. Get free quotes.',
+      keywords: [
+        'caterer in patna', 'catering in patna', 'catering patna',
+        'wedding catering patna', 'caterer patna', 'catering service patna',
+        'food catering patna', 'caterer patna bihar', 'wedding caterer patna',
+        'catering company patna', 'marriage catering patna', 'buffet catering patna',
+        'shaadi catering patna', 'caterer near me patna', 'best caterer patna',
+        'outdoor catering patna', 'catering for wedding patna bihar',
+      ],
+    },
+    decorator: {
+      title: 'Decorator in Patna for Wedding — Book Top Wedding Decoration Services | ShaadiShopping',
+      description: 'Book the best wedding decorators in Patna, Bihar. Floral, themed & LED décor packages from ₹50,000. Compare verified decorators with real project photos. Get free quotes.',
+      keywords: [
+        'decorator in patna', 'decorator patna', 'wedding decorator patna',
+        'decoration in patna', 'wedding decoration patna', 'marriage decoration patna',
+        'decorator patna bihar', 'wedding decoration service patna',
+        'floral decoration patna', 'LED decoration patna', 'stage decoration patna',
+        'mandap decoration patna', 'shaadi decoration patna', 'flower decoration patna',
+        'wedding decor patna', 'event decorator patna', 'reception decoration patna',
+      ],
+    },
+    band: {
+      title: 'Band in Patna for Baraat & Wedding — Book Top Brass Bands | ShaadiShopping',
+      description: 'Book the best baraat bands in Patna, Bihar for your wedding procession. 15–35 player ensembles with LED instruments & dhol. Packages from ₹25,000. Verified bands with real performance videos.',
+      keywords: [
+        'band in patna', 'baraat band patna', 'wedding band patna',
+        'brass band patna', 'band for wedding patna', 'baraat band in patna',
+        'dhol patna', 'dhol player patna', 'band patna bihar',
+        'baraat music patna', 'band hire patna', 'wedding procession band patna',
+        'band wala patna', 'musical band patna', 'band for baraat patna',
+        'shehnai patna', 'band baja patna',
+      ],
+    },
+    planning: {
+      title: 'Wedding Planner in Patna, Bihar — Book Top Wedding Planning Services | ShaadiShopping',
+      description: 'Book experienced wedding planners in Patna, Bihar for full-service & day-of coordination. Packages from ₹50,000. Manage vendors, décor, logistics & guest coordination seamlessly.',
+      keywords: [
+        'wedding planner in patna', 'wedding planner patna', 'planner in patna',
+        'wedding planning patna', 'event planner patna', 'marriage planner patna',
+        'wedding planner patna bihar', 'wedding coordinator patna',
+        'wedding organiser patna', 'wedding management patna',
+        'shaadi planner patna', 'best wedding planner patna',
+        'wedding planning service patna', 'wedding consultant patna',
+      ],
+    },
+  };
+
+  const patnaSeо = PATNA_CATEGORY_SEO[catSlug];
+  const title = patnaSeо?.title ?? `${cat.plural} in ${city.name}, ${city.state} — Book Top ${cat.plural} | ShaadiShopping`;
+  const description = patnaSeо?.description ?? `Find the best ${cat.plural} in ${city.name}, ${city.state}. Compare verified ${cat.desc} with real packages, photos & pricing. ${cat.priceNote}. Get free quotes from top ${cat.plural} in ${city.name}.`;
+  const extraKeywords = patnaSeо?.keywords ?? [];
 
   return {
     title,
@@ -163,6 +275,7 @@ export async function generateMetadata({
       `${cat.plural} in ${city.name}`, `${cat.plural} ${city.name}`,
       `wedding ${catSlug} ${city.name}`, `best ${cat.plural} ${city.name}`,
       `${cat.name} ${city.name} ${city.state}`, `book ${cat.plural} ${city.name}`,
+      ...extraKeywords,
     ],
     openGraph: {
       title,

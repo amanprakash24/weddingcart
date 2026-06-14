@@ -611,3 +611,21 @@ input[type="checkbox"], input[type="radio"] {
 .prose-editor .ProseMirror strong { font-weight: 700; }
 .prose-editor .ProseMirror hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.25rem 0; }
 .prose-editor .ProseMirror img { border-radius: 0.5rem; max-width: 100%; height: auto; margin: 0.75rem 0; }
+
+/* ── Prefers reduced motion — disable decorative CSS animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-fast,
+  .animate-hero-glow,
+  .shimmer-text,
+  .luxury-glow,
+  .skeleton,
+  .animate-float,
+  .animate-spin-slow,
+  .hero-highlight-cycle,
+  .vidaai-shimmer-overlay,
+  .card-shine::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

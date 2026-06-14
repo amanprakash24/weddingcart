@@ -42,10 +42,13 @@ export const metadata: Metadata = {
   description:
     "India's managed wedding planning & coordination platform. Expert consultants, trusted vendors, personalized planning wizard, and stress-free execution — from Venue to Vidaai.",
   keywords: [
+    'shaadi', 'shadi', 'shaadi planning', 'shaadi vendors', 'online shaadi booking',
+    'vivah', 'byah', 'vivah planning India',
     'wedding vendors India', 'wedding venue booking', 'bridal makeup artist',
     'wedding photographer', 'wedding catering', 'wedding decorator',
     'mehndi artist', 'wedding DJ', 'wedding band', 'wedding planning',
     'shaadi planning India', 'wedding platform India',
+    'wedding vendors Patna', 'wedding Bihar', 'shaadi Bihar',
   ],
   icons: {
     icon: '/logo.jpeg',

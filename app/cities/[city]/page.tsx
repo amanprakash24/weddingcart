@@ -104,8 +104,13 @@ export async function generateMetadata({
 
   const { name, state } = meta;
   const url = `${BASE_URL}/cities/${city}`;
-  const title = `Wedding Vendors in ${name} — Venues, Makeup, Catering & More | ShaadiShopping`;
-  const description = `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from 50+ wedding vendors in ${name}.`;
+  const isPatna = city.toLowerCase() === 'patna';
+  const title = isPatna
+    ? `Wedding Vendors in Patna, Bihar — Venues, Makeup, Catering & More | ShaadiShopping`
+    : `Wedding Vendors in ${name} — Venues, Makeup, Catering & More | ShaadiShopping`;
+  const description = isPatna
+    ? `Plan your shaadi in Patna, Bihar with India's most trusted wedding platform. Compare verified wedding venues, makeup artists, caterers, decorators & photographers. Get free quotes from 50+ vendors in Patna.`
+    : `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from 50+ wedding vendors in ${name}.`;
   const ogImage = meta.heroImage.split('?')[0] + '?w=1200&h=630&fit=crop&q=80';
 
   // Non-Patna cities: noindex until we have real vendor listings there
@@ -125,6 +130,9 @@ export async function generateMetadata({
       `wedding planning ${name}`, `bridal makeup ${name}`,
       `wedding caterers ${name}`, `wedding photographers ${name}`,
       `wedding decorators ${name}`, `${name} wedding services`,
+      `shaadi vendors ${name}`, `shaadi planning ${name}`,
+      `vivah vendors ${name}`, `shadi planning ${name}`,
+      `marriage vendors ${name}`, `wedding vendors Bihar`,
     ],
     alternates: { canonical: url },
     openGraph: {

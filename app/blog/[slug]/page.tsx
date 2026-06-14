@@ -76,10 +76,20 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const description = blog.seoDescription || blog.excerpt || `Read ${blog.title} on the ShaadiShopping Blog.`;
   const url = `${BASE_URL}/blog/${slug}`;
 
+  const courtMarriageKeywords = slug === 'court-marriage-registration-patna-bihar'
+    ? ['court marriage patna', 'court marriage registration patna', 'special marriage act patna',
+        'court marriage bihar', 'how to do court marriage patna', 'court marriage patna documents',
+        'arya samaj marriage patna', 'civil marriage patna', 'court marriage registration bihar',
+        'court shadi patna', 'registered marriage patna']
+    : [];
+
   return {
     title,
     description,
-    keywords: blog.tags?.length ? blog.tags : ['wedding tips', 'wedding planning India', 'ShaadiShopping blog'],
+    keywords: [
+      ...(blog.tags?.length ? blog.tags : ['wedding tips', 'wedding planning India', 'ShaadiShopping blog']),
+      ...courtMarriageKeywords,
+    ],
     alternates: { canonical: url },
     openGraph: {
       title,
@@ -129,7 +139,50 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     keywords: blog.tags?.join(', '),
     articleSection: blog.category,
     url: `${BASE_URL}/blog/${slug}`,
+    speakable: {
+      '@type': 'SpeakableSpecification',
+      cssSelector: ['h1', '.blog-prose h2', '.blog-prose h3'],
+    },
   };
+
+  const COURT_MARRIAGE_FAQS = slug === 'court-marriage-registration-patna-bihar' ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'How to do court marriage in Patna, Bihar?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'To register a court marriage in Patna, Bihar, both parties must visit the Sub-Divisional Magistrate (SDM) office with their identity proof (Aadhaar/Passport), age proof, passport photos, and address proof. File a Notice of Intended Marriage under the Special Marriage Act, 1954. After a 30-day notice period, the marriage officer registers the marriage in the presence of three witnesses.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What documents are needed for court marriage in Patna?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Documents required for court marriage in Patna: Aadhaar card or passport of both parties, birth certificate or 10th mark sheet for age proof, 2 passport-size photos each, address proof, and identity proof of three witnesses.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How long does court marriage registration take in Bihar?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Under the Special Marriage Act, the process takes a minimum of 30 days after filing the notice. The marriage is registered after the mandatory notice period if no objections are received.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What is the cost of court marriage registration in Patna?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'The government fee for court marriage in Bihar is typically ₹100–₹150. Legal assistance and documentation services may cost ₹2,000–₹5,000 extra if hired.',
+        },
+      },
+    ],
+  } : null;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -145,6 +198,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     <>
       <JsonLd data={articleJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
+      {COURT_MARRIAGE_FAQS && <JsonLd data={COURT_MARRIAGE_FAQS} />}
 
       <div className="min-h-screen" style={{ background: '#FFFCF7' }}>
 

@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Phone, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence, useInView, MotionConfig } from 'framer-motion';
+import { ArrowRight, Phone, Sparkles, Building2, Hotel, Palette, ChefHat, Camera, Flower2, Leaf, Disc3, ClipboardList, Music2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Vendor } from '@/types';
 import VendorCard from './VendorCard';
 
@@ -155,6 +155,63 @@ const TESTIMONIALS = [
   },
 ];
 
+// ── Trust stats ───────────────────────────────────────────────────────────────
+
+const TRUST_STATS = [
+  { end: 10000, suffix: '+', label: 'Couples Served' },
+  { end: 500,   suffix: '+', label: 'Verified Vendors' },
+  { end: 25,    suffix: '+', label: 'Cities Covered' },
+  { end: 5,     suffix: '',  label: 'Dedicated Experts' },
+];
+
+// ── Patna services (SVG icons, no emoji) ─────────────────────────────────────
+
+const PATNA_SERVICES = [
+  { label: 'Wedding Venues in Patna',  href: '/cities/patna/venue',       Icon: Building2     },
+  { label: 'Banquet Halls in Patna',   href: '/blog/best-banquet-halls-patna-wedding-marriage-hall', Icon: Hotel },
+  { label: 'Makeup Artists in Patna',  href: '/cities/patna/makeup',      Icon: Palette       },
+  { label: 'Caterers in Patna',        href: '/cities/patna/catering',    Icon: ChefHat       },
+  { label: 'Photographers in Patna',   href: '/cities/patna/photo-video', Icon: Camera        },
+  { label: 'Decorators in Patna',      href: '/cities/patna/decorator',   Icon: Flower2       },
+  { label: 'Mehndi Artists in Patna',  href: '/cities/patna/mehndi',      Icon: Leaf          },
+  { label: 'DJ Services in Patna',     href: '/cities/patna/dj',          Icon: Disc3         },
+  { label: 'Wedding Planners Patna',   href: '/cities/patna/planning',    Icon: ClipboardList },
+  { label: 'Bands in Patna',           href: '/cities/patna/band',        Icon: Music2        },
+];
+
+// ── Count-up stat component ───────────────────────────────────────────────────
+
+function CountUpStat({ end, suffix, label }: { end: number; suffix: string; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-40px' });
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    const startTime = performance.now();
+    const duration = 2000;
+    const raf = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.floor(eased * end));
+      if (progress < 1) requestAnimationFrame(raf);
+      else setValue(end);
+    };
+    requestAnimationFrame(raf);
+  }, [end, inView]);
+
+  const formatted = end >= 1000 ? value.toLocaleString('en-IN') : String(value);
+
+  return (
+    <motion.div ref={ref} variants={fadeUp} className="text-center lg:px-10">
+      <p className="font-cormorant text-4xl sm:text-5xl lg:text-6xl font-light text-[#8B1A4A] leading-none mb-2">
+        {formatted}{suffix}
+      </p>
+      <p className="text-gray-400 text-[0.58rem] sm:text-[0.7rem] tracking-[0.1em] sm:tracking-[0.2em] uppercase">{label}</p>
+    </motion.div>
+  );
+}
+
 // ── Lazy video — only loads & plays when scrolled into view ──────────────────
 
 function LazyVideo({ src, className, style }: { src: string; className?: string; style?: React.CSSProperties }) {
@@ -187,6 +244,7 @@ export default function HomepageClient() {
   const [activeStep, setActiveStep] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -217,7 +275,11 @@ export default function HomepageClient() {
   }, []);
 
   useEffect(() => {
-    const onScroll = () => setShowStickyCTA(window.scrollY > 500);
+    const onScroll = () => {
+      setShowStickyCTA(window.scrollY > 500);
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(total > 0 ? (window.scrollY / total) * 100 : 0);
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -226,7 +288,16 @@ export default function HomepageClient() {
   const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 3);
 
   return (
+    <MotionConfig reducedMotion="user">
     <div>
+
+      {/* Scroll progress bar */}
+      <div className="fixed top-0 left-0 z-[9999] h-[2px] w-full pointer-events-none">
+        <div
+          className="h-full"
+          style={{ width: `${scrollProgress}%`, background: 'linear-gradient(90deg, #8B1A4A, #C5A46D)', transition: 'width 80ms linear' }}
+        />
+      </div>
 
       {/* ── 1. HERO ── */}
       <section className="relative h-screen min-h-[640px] flex items-center overflow-hidden">
@@ -386,16 +457,8 @@ export default function HomepageClient() {
             className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-0 lg:divide-x lg:divide-[#C5A46D]/12"
             initial="hidden" whileInView="show" viewport={{ once: true }} variants={stagger(0.1)}
           >
-            {[
-              { value: '10,000+', label: 'Couples Served' },
-              { value: '500+',   label: 'Verified Vendors' },
-              { value: '25+',    label: 'Cities Covered' },
-              { value: '5',      label: 'Dedicated Experts' },
-            ].map(({ value, label }) => (
-              <motion.div key={label} variants={fadeUp} className="text-center lg:px-10">
-                <p className="font-cormorant text-4xl sm:text-5xl lg:text-6xl font-light text-[#8B1A4A] leading-none mb-2">{value}</p>
-                <p className="text-gray-400 text-[0.58rem] sm:text-[0.7rem] tracking-[0.1em] sm:tracking-[0.2em] uppercase">{label}</p>
-              </motion.div>
+            {TRUST_STATS.map(({ end, suffix, label }) => (
+              <CountUpStat key={label} end={end} suffix={suffix} label={label} />
             ))}
           </motion.div>
         </div>
@@ -825,15 +888,31 @@ export default function HomepageClient() {
               </div>
             </motion.div>
           </AnimatePresence>
-          <div className="flex justify-center gap-2.5 mt-10">
-            {TESTIMONIALS.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveTestimonial(i)}
-                className={`rounded-full transition-all duration-300 ${i === activeTestimonial ? 'w-6 h-1.5 bg-[#C5A46D]' : 'w-1.5 h-1.5 bg-[#C5A46D]/25 hover:bg-[#C5A46D]/50'}`}
-                aria-label={`Testimonial ${i + 1}`}
-              />
-            ))}
+          <div className="flex justify-center items-center gap-4 mt-10">
+            <button
+              onClick={() => setActiveTestimonial((s) => (s - 1 + TESTIMONIALS.length) % TESTIMONIALS.length)}
+              className="w-9 h-9 rounded-full border border-[#C5A46D]/30 flex items-center justify-center hover:bg-[#C5A46D]/10 active:scale-95 transition-all"
+              aria-label="Previous testimonial"
+            >
+              <ChevronLeft className="w-4 h-4 text-[#C5A46D]" />
+            </button>
+            <div className="flex gap-2.5">
+              {TESTIMONIALS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveTestimonial(i)}
+                  className={`rounded-full transition-all duration-300 ${i === activeTestimonial ? 'w-6 h-1.5 bg-[#C5A46D]' : 'w-1.5 h-1.5 bg-[#C5A46D]/25 hover:bg-[#C5A46D]/50'}`}
+                  aria-label={`Testimonial ${i + 1}`}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => setActiveTestimonial((s) => (s + 1) % TESTIMONIALS.length)}
+              className="w-9 h-9 rounded-full border border-[#C5A46D]/30 flex items-center justify-center hover:bg-[#C5A46D]/10 active:scale-95 transition-all"
+              aria-label="Next testimonial"
+            >
+              <ChevronRight className="w-4 h-4 text-[#C5A46D]" />
+            </button>
           </div>
         </div>
       </section>
@@ -936,24 +1015,13 @@ export default function HomepageClient() {
             </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {[
-              { label: 'Wedding Venues in Patna', href: '/cities/patna/venue', icon: '🏛️' },
-              { label: 'Banquet Halls in Patna', href: '/blog/best-banquet-halls-patna-wedding-marriage-hall', icon: '🎪' },
-              { label: 'Makeup Artists in Patna', href: '/cities/patna/makeup', icon: '💄' },
-              { label: 'Caterers in Patna', href: '/cities/patna/catering', icon: '🍽️' },
-              { label: 'Photographers in Patna', href: '/cities/patna/photo-video', icon: '📸' },
-              { label: 'Decorators in Patna', href: '/cities/patna/decorator', icon: '✨' },
-              { label: 'Mehndi Artists in Patna', href: '/cities/patna/mehndi', icon: '🌿' },
-              { label: 'DJ Services in Patna', href: '/cities/patna/dj', icon: '🎵' },
-              { label: 'Wedding Planners Patna', href: '/cities/patna/planning', icon: '📋' },
-              { label: 'Bands in Patna', href: '/cities/patna/band', icon: '🎺' },
-            ].map(({ label, href, icon }) => (
+            {PATNA_SERVICES.map(({ label, href, Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="group flex items-center gap-3 bg-[#FAF5EE] hover:bg-[#F0E8D8] border border-[#C5A46D]/15 hover:border-[#C5A46D]/40 rounded-xl px-4 py-3.5 transition-all duration-200"
+                className="group flex items-center gap-3 bg-[#FAF5EE] hover:bg-[#F0E8D8] border border-[#C5A46D]/15 hover:border-[#C5A46D]/40 rounded-xl px-4 py-3.5 transition-all duration-200 active:scale-[0.97]"
               >
-                <span className="text-xl flex-shrink-0">{icon}</span>
+                <Icon className="w-4 h-4 text-[#C5A46D] flex-shrink-0 group-hover:scale-110 transition-transform duration-200" />
                 <span className="text-[#2A1F1B] text-xs sm:text-sm font-medium leading-tight group-hover:text-[#8B1A4A] transition-colors">
                   {label}
                 </span>
@@ -1016,41 +1084,62 @@ export default function HomepageClient() {
       </section>
 
       {/* ── 9. CURATED VENDORS ── */}
-      {!loading && topVendors.length > 0 && (
-        <section className="py-16 sm:py-24 lg:py-32 bg-[#FEFBF6]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              className="text-center mb-14"
-              initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }} variants={stagger(0.15)}
-            >
-              <motion.p variants={fadeUp} className="eyebrow-luxury mb-4">Handpicked For You</motion.p>
-              <motion.h2 variants={fadeUp} className="text-4xl sm:text-5xl font-semibold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-                Selected By Our <span className="gradient-text-maroon">Wedding Experts</span>
-              </motion.h2>
-              <motion.p variants={fadeUp} className="text-gray-400 text-sm mt-5 max-w-sm mx-auto">
-                We don&apos;t list every vendor. We curate only those who consistently deliver excellence.
-              </motion.p>
-            </motion.div>
+      <section className="py-16 sm:py-24 lg:py-32 bg-[#FEFBF6]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            className="text-center mb-14"
+            initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }} variants={stagger(0.15)}
+          >
+            <motion.p variants={fadeUp} className="eyebrow-luxury mb-4">Handpicked For You</motion.p>
+            <motion.h2 variants={fadeUp} className="text-4xl sm:text-5xl font-semibold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+              Selected By Our <span className="gradient-text-maroon">Wedding Experts</span>
+            </motion.h2>
+            <motion.p variants={fadeUp} className="text-gray-400 text-sm mt-5 max-w-sm mx-auto">
+              We don&apos;t list every vendor. We curate only those who consistently deliver excellence.
+            </motion.p>
+          </motion.div>
 
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8"
-              initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }} variants={stagger(0.1)}
-            >
-              {topVendors.map((vendor) => (
-                <motion.div key={vendor.id} variants={fadeUp}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8">
+            {loading ? (
+              [1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100">
+                  <div className="skeleton aspect-[4/3]" />
+                  <div className="p-4 space-y-3">
+                    <div className="skeleton h-5 w-3/4 rounded-lg" />
+                    <div className="skeleton h-4 w-1/2 rounded-lg" />
+                    <div className="flex gap-2">
+                      <div className="skeleton h-6 w-20 rounded-full" />
+                      <div className="skeleton h-6 w-16 rounded-full" />
+                    </div>
+                    <div className="skeleton h-px w-full" />
+                    <div className="skeleton h-6 w-28 rounded-lg" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              topVendors.map((vendor) => (
+                <motion.div
+                  key={vendor.id}
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, margin: '-40px' }}
+                >
                   <VendorCard vendor={vendor} />
                 </motion.div>
-              ))}
-            </motion.div>
+              ))
+            )}
+          </div>
 
+          {!loading && topVendors.length > 0 && (
             <div className="text-center mt-10">
               <Link href="/categories/venue" className="inline-flex items-center gap-2 border border-[#C5A46D]/35 text-[#8B1A4A] font-semibold px-8 py-3.5 rounded-full hover:bg-[#8B1A4A] hover:text-white hover:border-[#8B1A4A] transition-all text-sm">
                 Explore All Curated Vendors
               </Link>
             </div>
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+      </section>
 
       {/* ── AS SEEN IN ── */}
       <div className="bg-[#FAF5EE] border-y border-[#C5A46D]/8 py-8 overflow-hidden">
@@ -1121,5 +1210,6 @@ export default function HomepageClient() {
       )}
 
     </div>
+  </MotionConfig>
   );
 }

@@ -9,6 +9,15 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 Disallow: /cart
-Crawl-delay: 1
+
+User-agent: Googlebot-Image
+Allow: /
+Disallow: /admin/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /cart
 
 Sitemap: https://www.shaadishopping.com/sitemap.xml

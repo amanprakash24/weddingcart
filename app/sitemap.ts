@@ -26,7 +26,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/plan`,              lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/vendor-onboarding`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     // Only Patna city landing page — other cities added as we expand
-    { url: `${BASE_URL}/cities/patna`,      lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.9 },
+    { url: `${BASE_URL}/cities/patna`,      lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.95 },
+    // High-value blog posts pinned at top priority
+    { url: `${BASE_URL}/blog/court-marriage-registration-patna-bihar`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
   ];
 
   let categoryRoutes: MetadataRoute.Sitemap = [];
@@ -62,11 +64,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select('slug updatedAt publishedAt')
       .lean<{ slug: string; updatedAt?: Date; publishedAt?: Date }[]>();
 
+    const pinnedBlogSlugs = new Set(['court-marriage-registration-patna-bihar']);
     blogRoutes = blogs.map(blog => ({
       url: `${BASE_URL}/blog/${blog.slug}`,
       lastModified: blog.updatedAt ?? blog.publishedAt ?? new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
+      changeFrequency: 'monthly' as const,
+      priority: pinnedBlogSlugs.has(blog.slug) ? 0.92 : 0.8,
     }));
   } catch (err) {
     console.error('Sitemap generation error:', err);
