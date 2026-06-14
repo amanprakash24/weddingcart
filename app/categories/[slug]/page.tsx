@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import CategoryPageClient from '@/components/CategoryPageClient';
 import { JsonLd } from '@/components/JsonLd';
@@ -6,6 +7,18 @@ import { connectDB } from '@/lib/mongodb';
 import CategoryModel from '@/lib/models/Category';
 import VendorModel from '@/lib/models/Vendor';
 import type { Vendor } from '@/types';
+
+// City name → URL slug map for supported cities
+const CITY_NAME_TO_SLUG: Record<string, string> = {
+  patna: 'patna', delhi: 'delhi', mumbai: 'mumbai', jaipur: 'jaipur',
+  bangalore: 'bangalore', bengaluru: 'bangalore', chennai: 'chennai',
+  hyderabad: 'hyderabad', kolkata: 'kolkata', udaipur: 'udaipur', goa: 'goa',
+};
+
+// Categories that have city-specific pages
+const VALID_CATEGORY_SLUGS = new Set([
+  'venue', 'makeup', 'mehndi', 'decorator', 'band', 'dj', 'catering', 'photo-video', 'planning',
+]);
 
 export const revalidate = 3600; // ISR: rebuild every hour
 
@@ -207,8 +220,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ city?: string }>;
+}) {
   const { slug } = await params;
+  const { city: cityParam } = await searchParams;
+
+  // Redirect to city-specific page if category has one
+  if (VALID_CATEGORY_SLUGS.has(slug)) {
+    const citySlug = cityParam
+      ? (CITY_NAME_TO_SLUG[cityParam.toLowerCase()] ?? 'patna')
+      : 'patna';
+    redirect(`/cities/${citySlug}/${slug}`);
+  }
+
   const [cat, initialVendors] = await Promise.all([
     getCategoryMeta(slug),
     getInitialVendors(slug),

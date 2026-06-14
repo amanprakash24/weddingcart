@@ -3,6 +3,22 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 Disallow: /cart
+Disallow: /wp-content/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+Disallow: /bride/
+Disallow: /business/
+Disallow: /groom/
+Disallow: /lifestyle/
+Disallow: /category/
+Disallow: /page/
+Disallow: /feed
+Disallow: /*/feed/
+Disallow: /wp-content/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+Disallow: /*?city=
+Disallow: /*?*city=
 
 User-agent: Googlebot
 Allow: /
