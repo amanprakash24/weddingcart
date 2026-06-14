@@ -86,8 +86,8 @@ export default function VendorDetailClient({ id }: Props) {
         }),
       });
       setSubmitted(true);
-      if (typeof window !== 'undefined' && typeof (window as Window & { gtag?: (...args: unknown[]) => void }).gtag === 'function') {
-        (window as Window & { gtag: (...args: unknown[]) => void }).gtag('event', 'generate_lead', {
+      if (typeof window !== 'undefined' && typeof (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag === 'function') {
+        (window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'generate_lead', {
           event_category: 'Enquiry',
           vendor_name: vendor.name,
           vendor_category: vendor.category,
