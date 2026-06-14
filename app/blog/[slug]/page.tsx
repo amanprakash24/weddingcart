@@ -7,7 +7,7 @@ import BlogModel from '@/lib/models/Blog';
 import { JsonLd } from '@/components/JsonLd';
 import { Calendar, Clock, ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
 
 const CATEGORY_COLOR: Record<string, string> = {
   'Wedding Tips':         '#C5A46D',

@@ -20,4 +20,4 @@ Disallow: /admin/
 Disallow: /api/
 Disallow: /cart
 
-Sitemap: https://www.shaadishopping.com/sitemap.xml
+Sitemap: https://shaadishopping.com/sitemap.xml

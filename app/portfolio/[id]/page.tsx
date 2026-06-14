@@ -8,7 +8,7 @@ import VendorPortfolioClient from '@/components/VendorPortfolioClient';
 
 export const revalidate = 3600;
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
 
 const CATEGORY_LABELS: Record<string, string> = {
   venue: 'Wedding Venue', makeup: 'Bridal Makeup Artist', mehndi: 'Mehndi Artist',

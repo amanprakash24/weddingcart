@@ -9,7 +9,7 @@ import type { Vendor } from '@/types';
 
 export const revalidate = 3600; // ISR: rebuild every hour
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
 
 const SLUG_TO_NAME: Record<string, string> = {
   venue: 'Venues', makeup: 'Makeup Artists', mehndi: 'Mehndi Artists',

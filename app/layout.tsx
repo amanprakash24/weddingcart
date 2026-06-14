@@ -34,7 +34,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com'),
   title: {
     default: "ShaadiShopping — India's Expert Wedding Planning & Coordination Platform",
     template: '%s | ShaadiShopping',
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
-    url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com',
+    url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com',
     images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — India's Expert Wedding Coordination Platform" }],
   },
   twitter: {
@@ -73,7 +73,7 @@ export const metadata: Metadata = {
     images: ['/opengraph-image'],
   },
   robots: { index: true, follow: true },
-  alternates: { canonical: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com' },
+  alternates: { canonical: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
