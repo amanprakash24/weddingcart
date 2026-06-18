@@ -1113,6 +1113,40 @@ export default function HomepageClient() {
                 </div>
               </div>
             </Link>
+
+            {/* 7 Vachan */}
+            <Link
+              href="/lp/7-vachan-patna"
+              className="group relative rounded-2xl overflow-hidden bg-white border border-[#C5A46D]/20 hover:border-[#C5A46D]/50 shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <div className="relative aspect-[16/9] overflow-hidden">
+                <Image
+                  src="https://content.jdmagicbox.com/v2/comp/patna/z3/0612px612.x612.250508092933.e8z3/catalogue/7-vachan-judges-colony-patna-banquet-halls-z4mw544mkw.jpg"
+                  alt="7 Vachan banquet hall at night, Judges Colony Saguna Mor Patna"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  unoptimized
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.2em] bg-[#C5A46D] text-white px-2.5 py-1 rounded-full">
+                  4.6★ · Saguna Mor
+                </span>
+              </div>
+              <div className="p-5">
+                <h3 className="text-lg font-bold text-[#2A1F1B] mb-1" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+                  7 Vachan
+                </h3>
+                <p className="text-xs text-[#6B5B4D] mb-3">
+                  Judges Colony, Saguna Mor, Patna · 500+ Guests · 7 Rooms · In-House DJ
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#8B1A4A]">From ₹1,100/plate</span>
+                  <span className="text-xs text-[#C5A46D] font-semibold group-hover:translate-x-1 transition-transform duration-200">
+                    View Venue →
+                  </span>
+                </div>
+              </div>
+            </Link>
           </div>
         </div>
       </section>

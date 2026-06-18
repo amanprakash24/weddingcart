@@ -26,7 +26,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/plan`,              lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/vendor-onboarding`,      lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     // Venue landing pages
-    { url: `${BASE_URL}/lp/touch-of-cozy`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/lp/touch-of-cozy`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/lp/7-vachan-patna`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
     // Only Patna city landing page — other cities added as we expand
     { url: `${BASE_URL}/cities/patna`,            lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.95 },
     // High-value blog posts pinned at top priority
