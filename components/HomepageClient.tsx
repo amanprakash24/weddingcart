@@ -1057,7 +1057,6 @@ export default function HomepageClient() {
                   alt="Touch of Cozy banquet hall, Rajeev Nagar Patna"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  unoptimized
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.2em] bg-[#C5A46D] text-white px-2.5 py-1 rounded-full">
@@ -1091,7 +1090,6 @@ export default function HomepageClient() {
                   alt="Swayamvar Hall and Homestay banquet hall, Danapur Patna"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  unoptimized
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.2em] bg-[#8B1A4A] text-white px-2.5 py-1 rounded-full">
@@ -1125,7 +1123,6 @@ export default function HomepageClient() {
                   alt="7 Vachan banquet hall at night, Judges Colony Saguna Mor Patna"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  unoptimized
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.2em] bg-[#C5A46D] text-white px-2.5 py-1 rounded-full">

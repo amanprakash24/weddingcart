@@ -28,6 +28,11 @@ const nextConfig: NextConfig = {
         hostname: 'drive.google.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'content.jdmagicbox.com',
+        pathname: '/**',
+      },
     ],
   },
 };

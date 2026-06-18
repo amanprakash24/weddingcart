@@ -113,7 +113,6 @@ export default function SevenVachanClient() {
             className="object-cover"
             priority
             sizes="100vw"
-            unoptimized
           />
           <div
             className="absolute inset-0"
@@ -327,7 +326,6 @@ export default function SevenVachanClient() {
                   alt={img.alt}
                   fill
                   className="object-cover hover:scale-105 transition-transform duration-500"
-                  unoptimized
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                 />
               </div>
