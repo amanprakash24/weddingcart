@@ -158,7 +158,7 @@ interface CategoryMeta {
 async function getInitialVendors(slug: string): Promise<Vendor[]> {
   try {
     const vendors = await VendorModel.find({ category: slug })
-      .sort({ isFeatured: -1, rating: -1 })
+      .sort({ sortOrder: 1, isFeatured: -1, rating: -1 })
       .limit(6)
       .lean();
     return JSON.parse(JSON.stringify(vendors)) as Vendor[];

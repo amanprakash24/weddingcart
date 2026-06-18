@@ -31,6 +31,7 @@ export interface IVendor extends Document {
   features: string[];
   packages: typeof PackageSchema[];
   isFeatured: boolean;
+  sortOrder: number;
 }
 
 const VendorSchema = new Schema<IVendor>({
@@ -53,6 +54,7 @@ const VendorSchema = new Schema<IVendor>({
   features: [String],
   packages: [PackageSchema],
   isFeatured: { type: Boolean, default: false },
+  sortOrder: { type: Number, default: 999 },
 }, { timestamps: true });
 
 VendorSchema.index({ category: 1, city: 1, rating: -1 });

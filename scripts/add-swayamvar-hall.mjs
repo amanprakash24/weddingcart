@@ -17,6 +17,7 @@ const VendorSchema = new mongoose.Schema({
   features: [String],
   packages: [mongoose.Schema.Types.Mixed],
   isFeatured: Boolean,
+  sortOrder: Number,
 }, { timestamps: true });
 
 const VENDOR = {
@@ -65,6 +66,7 @@ const VENDOR = {
     },
   ],
   isFeatured: true,
+  sortOrder: 2,
 };
 
 async function run() {

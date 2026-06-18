@@ -112,7 +112,8 @@ const VENDOR = {
       image: '',
     },
   ],
-  isFeatured: false,
+  isFeatured: true,
+  sortOrder: 1,
 };
 
 const VendorSchema = new mongoose.Schema({
@@ -128,6 +129,7 @@ const VendorSchema = new mongoose.Schema({
     price: Number, features: [String], isPopular: Boolean, image: String,
   }],
   isFeatured: Boolean,
+  sortOrder: Number,
 }, { timestamps: true });
 
 async function run() {
