@@ -100,7 +100,7 @@ interface InvoiceItemForm {
 }
 const SERVICE_OPTIONS = ['Venue', 'Food / Catering', 'Photography', 'Videography', 'Decoration', 'Mehendi', 'Makeup', 'Band / Music', 'DJ', 'Transport', 'Invitation Cards', 'Pandit Ji', 'Custom'];
 const EMPTY_INVOICE_ITEM: InvoiceItemForm = { description: '', customDescription: '', vendorName: '', amount: '', quantity: '1', isFood: false, foodType: 'veg', vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' };
-const EMPTY_INVOICE_FORM = { clientName: '', clientPhone: '', clientEmail: '', clientCity: '', eventDate: '', eventType: '', notes: '', gstEnabled: true, discountEnabled: false, discount: '' };
+const EMPTY_INVOICE_FORM = { clientName: '', clientPhone: '', clientEmail: '', clientCity: '', eventDate: '', eventType: '', notes: '', gstEnabled: true, discountEnabled: false, discount: '', amountPaid: '' };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
 
@@ -537,6 +537,8 @@ export default function AdminClient() {
   const invoiceDiscountAmt = invoiceForm.discountEnabled ? (parseFloat(invoiceForm.discount) || 0) : 0;
   const invoiceGstAmt = invoiceForm.gstEnabled ? Math.round((invoiceSubtotal - invoiceDiscountAmt) * 0.18) : 0;
   const invoiceTotal = invoiceSubtotal - invoiceDiscountAmt + invoiceGstAmt;
+  const invoiceAmountPaid = parseFloat(invoiceForm.amountPaid) || 0;
+  const invoiceBalanceDue = invoiceTotal - invoiceAmountPaid;
 
   // Preview invoice computed strings (safe — only used when previewInvoice is non-null)
   const prevInv = previewInvoice;
@@ -555,6 +557,7 @@ export default function AdminClient() {
     ((prevInv.discount ?? 0) > 0 ? `\nDiscount: -₹${prevInv.discount?.toLocaleString('en-IN')}` : '') +
     (prevInv.gstAmount > 0 ? `\nGST (18%): ₹${prevInv.gstAmount?.toLocaleString('en-IN')}` : '') +
     `\n*Total: ₹${prevInv.total?.toLocaleString('en-IN')}*` +
+    ((prevInv.amountPaid ?? 0) > 0 ? `\nAmount Paid: ₹${prevInv.amountPaid?.toLocaleString('en-IN')}\n*Balance Due: ₹${(prevInv.total - prevInv.amountPaid).toLocaleString('en-IN')}*` : '') +
     (prevInv.notes ? `\n\n${prevInv.notes}` : '') +
     `\n\nThank you for choosing ShaadiShopping! 🎊`
   ) : '';
@@ -566,6 +569,7 @@ export default function AdminClient() {
     ((prevInv.discount ?? 0) > 0 ? `\nDiscount: -₹${prevInv.discount?.toLocaleString('en-IN')}` : '') +
     (prevInv.gstAmount > 0 ? `\nGST (18%): ₹${prevInv.gstAmount?.toLocaleString('en-IN')}` : '') +
     `\nTotal: ₹${prevInv.total?.toLocaleString('en-IN')}` +
+    ((prevInv.amountPaid ?? 0) > 0 ? `\nAmount Paid: ₹${prevInv.amountPaid?.toLocaleString('en-IN')}\nBalance Due: ₹${(prevInv.total - prevInv.amountPaid).toLocaleString('en-IN')}` : '') +
     (prevInv.notes ? `\n\n${prevInv.notes}` : '') +
     `\n\nThank you!\nTeam ShaadiShopping`
   ) : '';
@@ -588,7 +592,7 @@ export default function AdminClient() {
         }
         return { description: desc, vendorName: i.vendorName || undefined, amount: parseFloat(i.amount), quantity: parseInt(i.quantity) || 1 };
       });
-    const payload = { ...invoiceForm, items, subtotal: invoiceSubtotal, discount: invoiceDiscountAmt, gstAmount: invoiceGstAmt, total: invoiceTotal };
+    const payload = { ...invoiceForm, items, subtotal: invoiceSubtotal, discount: invoiceDiscountAmt, gstAmount: invoiceGstAmt, total: invoiceTotal, amountPaid: invoiceAmountPaid };
     if (editingInvoice) {
       await fetch(`/api/invoices/${editingInvoice._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     } else {
@@ -2335,6 +2339,30 @@ export default function AdminClient() {
                           <span className="font-bold text-gray-900">Total</span>
                           <span className="font-bold text-amber-600 text-lg">₹{invoiceTotal.toLocaleString('en-IN')}</span>
                         </div>
+                        {/* Amount Paid + Balance Due */}
+                        <div className="mt-3 pt-3 border-t border-dashed border-amber-300 space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <label className="text-sm font-semibold text-gray-700 shrink-0">Amount Paid (₹)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max={invoiceTotal}
+                              value={invoiceForm.amountPaid}
+                              onChange={e => setInvoiceForm({ ...invoiceForm, amountPaid: e.target.value })}
+                              className="w-32 border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white text-right"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="font-bold text-gray-900">Balance Due</span>
+                            <span className={`font-bold text-lg ${invoiceBalanceDue <= 0 ? 'text-green-600' : 'text-rose-600'}`}>
+                              ₹{Math.max(0, invoiceBalanceDue).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          {invoiceBalanceDue <= 0 && invoiceAmountPaid > 0 && (
+                            <p className="text-xs text-green-600 font-semibold text-right">✓ Fully Paid</p>
+                          )}
+                        </div>
                       </div>
 
                       {/* Notes */}
@@ -2385,12 +2413,21 @@ export default function AdminClient() {
                           </div>
                           <div className="flex flex-col items-end gap-2">
                             <p className="text-amber-600 font-bold text-lg">₹{inv.total?.toLocaleString('en-IN')}</p>
+                            {(inv.amountPaid ?? 0) > 0 && (
+                              <div className="text-right">
+                                <p className="text-xs text-green-600 font-semibold">Paid: ₹{inv.amountPaid?.toLocaleString('en-IN')}</p>
+                                {(inv.total - inv.amountPaid) > 0
+                                  ? <p className="text-xs text-rose-600 font-bold">Due: ₹{(inv.total - inv.amountPaid).toLocaleString('en-IN')}</p>
+                                  : <p className="text-xs text-green-600 font-bold">✓ Fully Paid</p>
+                                }
+                              </div>
+                            )}
                             <div className="flex items-center gap-2">
                               <button onClick={() => setPreviewInvoice(inv)}
                                 className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg hover:bg-amber-100 transition-colors">
                                 <Eye className="w-3 h-3" /> Preview
                               </button>
-                              <button onClick={() => { setEditingInvoice(inv); setInvoiceForm({ clientName: inv.clientName, clientPhone: inv.clientPhone, clientEmail: inv.clientEmail || '', clientCity: inv.clientCity || '', eventDate: inv.eventDate || '', eventType: inv.eventType || '', notes: inv.notes || '', gstEnabled: inv.gstEnabled, discountEnabled: !!(inv.discount), discount: inv.discount ? String(inv.discount) : '' }); setInvoiceItems(inv.items?.map((it: AnyRecord) => ({ description: it.description, customDescription: '', vendorName: it.vendorName || '', amount: String(it.amount), quantity: String(it.quantity), isFood: false, foodType: 'veg' as const, vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' })) || [{ ...EMPTY_INVOICE_ITEM }]); setShowInvoiceForm(true); }}
+                              <button onClick={() => { setEditingInvoice(inv); setInvoiceForm({ clientName: inv.clientName, clientPhone: inv.clientPhone, clientEmail: inv.clientEmail || '', clientCity: inv.clientCity || '', eventDate: inv.eventDate || '', eventType: inv.eventType || '', notes: inv.notes || '', gstEnabled: inv.gstEnabled, discountEnabled: !!(inv.discount), discount: inv.discount ? String(inv.discount) : '', amountPaid: inv.amountPaid ? String(inv.amountPaid) : '' }); setInvoiceItems(inv.items?.map((it: AnyRecord) => ({ description: it.description, customDescription: '', vendorName: it.vendorName || '', amount: String(it.amount), quantity: String(it.quantity), isFood: false, foodType: 'veg' as const, vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' })) || [{ ...EMPTY_INVOICE_ITEM }]); setShowInvoiceForm(true); }}
                                 className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
                                 <Edit className="w-4 h-4" />
                               </button>
@@ -2532,6 +2569,23 @@ export default function AdminClient() {
                       <span>Total</span>
                       <span className="text-amber-600">₹{prevInv?.total?.toLocaleString('en-IN')}</span>
                     </div>
+                    {(prevInv?.amountPaid ?? 0) > 0 && (
+                      <>
+                        <div className="flex justify-between text-sm text-gray-600 border-t border-dashed border-gray-200 pt-2 mt-1">
+                          <span>Amount Paid</span>
+                          <span className="text-green-600 font-semibold">₹{prevInv?.amountPaid?.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-base pt-1">
+                          <span>Balance Due</span>
+                          <span className={prevInv?.total - prevInv?.amountPaid <= 0 ? 'text-green-600' : 'text-rose-600'}>
+                            ₹{Math.max(0, (prevInv?.total ?? 0) - (prevInv?.amountPaid ?? 0)).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        {(prevInv?.total - prevInv?.amountPaid) <= 0 && (
+                          <p className="text-xs text-green-600 font-bold text-right">✓ PAID IN FULL</p>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 
