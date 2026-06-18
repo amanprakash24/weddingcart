@@ -2509,14 +2509,9 @@ export default function AdminClient() {
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 print:hidden">
                 <p className="font-bold text-gray-800 text-sm flex items-center gap-2"><Receipt className="w-4 h-4 text-amber-500" /> Invoice Preview</p>
                 <div className="flex items-center gap-2">
-                  <button onClick={handlePrint}
-                    className="flex items-center gap-1.5 text-xs font-semibold bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-all"
-                    title="Save as PDF first, then share on WhatsApp">
-                    <Printer className="w-3.5 h-3.5" /> Save PDF
-                  </button>
                   <a href={`https://wa.me/${prevWaPhone}?text=${prevWaText}`} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs font-semibold bg-[#25D366] text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-all">
-                    💬 WhatsApp
+                    💬 Send WhatsApp
                   </a>
                   {prevInv?.clientEmail && (
                     <a href={`mailto:${prevInv.clientEmail}?subject=${prevMailSubject}&body=${prevMailBody}`}
@@ -2524,6 +2519,10 @@ export default function AdminClient() {
                       <Mail className="w-3.5 h-3.5" /> Send Email
                     </a>
                   )}
+                  <button onClick={handlePrint}
+                    className="flex items-center gap-1.5 text-xs font-semibold bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-all">
+                    <Printer className="w-3.5 h-3.5" /> Print / PDF
+                  </button>
                   <button onClick={() => setPreviewInvoice(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
                     <X className="w-4 h-4" />
                   </button>
