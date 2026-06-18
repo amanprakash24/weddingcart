@@ -578,38 +578,52 @@ export default function AdminClient() {
     const overlay = document.getElementById('invoice-modal-overlay');
     if (!overlay) { window.print(); return; }
 
-    // Hide all body-level elements except the one containing the invoice modal
     const hiddenEls: Array<{ el: HTMLElement; was: string }> = [];
-    Array.from(document.body.children).forEach(child => {
-      const el = child as HTMLElement;
-      if (!el.contains(overlay)) {
-        hiddenEls.push({ el, was: el.style.display });
-        el.style.setProperty('display', 'none', 'important');
-      }
-    });
 
-    // Flatten the modal overlay so it prints inline (no fixed positioning, no dark bg)
-    const prevPosition = overlay.style.position;
-    const prevBackground = overlay.style.background;
-    const prevPadding = overlay.style.padding;
+    // Walk up from overlay all the way to <body>, hiding every sibling at each level.
+    // This catches the admin sidebar, topbar, and any intermediate wrappers regardless
+    // of how deep the Next.js DOM nests them.
+    let cursor: HTMLElement = overlay;
+    while (cursor.parentElement && cursor.parentElement !== document.documentElement) {
+      const parent = cursor.parentElement;
+      Array.from(parent.children).forEach(child => {
+        const el = child as HTMLElement;
+        if (el !== cursor) {
+          hiddenEls.push({ el, was: el.style.display });
+          el.style.setProperty('display', 'none', 'important');
+        }
+      });
+      cursor = parent;
+    }
+
+    // Flatten the overlay: remove fixed position + dark backdrop so it prints inline
+    const prevOverlay = { position: overlay.style.position, background: overlay.style.background, padding: overlay.style.padding };
     overlay.style.setProperty('position', 'static', 'important');
     overlay.style.setProperty('background', 'transparent', 'important');
     overlay.style.setProperty('padding', '0', 'important');
 
     const inner = overlay.firstElementChild as HTMLElement | null;
-    const prevMaxH = inner?.style.maxHeight ?? '';
-    const prevOverflow = inner?.style.overflow ?? '';
+    const prevInner = { maxHeight: inner?.style.maxHeight ?? '', overflow: inner?.style.overflow ?? '' };
     if (inner) {
       inner.style.setProperty('max-height', 'none', 'important');
       inner.style.setProperty('overflow', 'visible', 'important');
+      inner.style.setProperty('box-shadow', 'none', 'important');
+      inner.style.setProperty('border-radius', '0', 'important');
+      inner.style.setProperty('max-width', '100%', 'important');
     }
 
     const restore = () => {
       hiddenEls.forEach(({ el, was }) => { el.style.display = was; });
-      overlay.style.position = prevPosition;
-      overlay.style.background = prevBackground;
-      overlay.style.padding = prevPadding;
-      if (inner) { inner.style.maxHeight = prevMaxH; inner.style.overflow = prevOverflow; }
+      overlay.style.position = prevOverlay.position;
+      overlay.style.background = prevOverlay.background;
+      overlay.style.padding = prevOverlay.padding;
+      if (inner) {
+        inner.style.maxHeight = prevInner.maxHeight;
+        inner.style.overflow = prevInner.overflow;
+        inner.style.removeProperty('box-shadow');
+        inner.style.removeProperty('border-radius');
+        inner.style.removeProperty('max-width');
+      }
       window.removeEventListener('afterprint', restore);
     };
 
