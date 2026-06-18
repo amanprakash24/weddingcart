@@ -23,7 +23,7 @@ const VENDOR = {
   id: '7-vachan-patna',
   name: '7 Vachan',
   category: 'venue',
-  city: 'patna',
+  city: 'Patna',
   address: 'Near Fashion Factory Godawari Complex, Opposite Purise Hospital, Saguna Mor, Danapur Khagaul Road, Judges Colony, Patna – 801503',
   priceMin: 1100,
   priceMax: 1300,
