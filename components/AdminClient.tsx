@@ -2491,8 +2491,7 @@ export default function AdminClient() {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-8">
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: 'Playfair Display, serif' }}>ShaadiShopping</h1>
-                    <p className="text-gray-500 text-sm mt-0.5">Wedding Planning Made Beautiful</p>
+                    <Image src="/logo.png" alt="ShaadiShopping" width={180} height={70} className="object-contain" priority />
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-amber-600">INVOICE</p>
@@ -2596,6 +2595,21 @@ export default function AdminClient() {
                     <p className="text-sm text-gray-600">{prevInv.notes}</p>
                   </div>
                 )}
+
+                {/* Signature & Stamp */}
+                <div className="mt-10 grid grid-cols-2 gap-8">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-10">Client Signature</p>
+                    <div className="border-b border-dashed border-gray-300 mb-1" />
+                    <p className="text-[10px] text-gray-400">Signature &amp; Date</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Authorised Signatory</p>
+                    <div className="w-24 h-24 border border-dashed border-gray-300 rounded-lg ml-auto flex items-center justify-center">
+                      <p className="text-[10px] text-gray-300 text-center">Stamp &amp;<br />Signature</p>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Footer */}
                 <div className="mt-8 pt-4 border-t border-gray-100 text-center">
