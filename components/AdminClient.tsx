@@ -2535,7 +2535,8 @@ export default function AdminClient() {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-8">
                   <div>
-                    <Image src="/logo.png" alt="ShaadiShopping" width={180} height={70} className="object-contain" priority />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo.png" alt="ShaadiShopping" width={220} height={120} style={{ objectFit: 'contain' }} />
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-amber-600">INVOICE</p>
