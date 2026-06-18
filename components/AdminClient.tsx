@@ -542,11 +542,13 @@ export default function AdminClient() {
 
   // Preview invoice computed strings (safe — only used when previewInvoice is non-null)
   const prevInv = previewInvoice;
+  const prevDocLabel = (prevInv?.amountPaid ?? 0) > 0 ? 'INVOICE' : 'QUOTATION';
+  const prevDocTitle = (prevInv?.amountPaid ?? 0) > 0 ? 'Invoice' : 'Quotation';
   const prevPhone = prevInv?.clientPhone?.replace(/\D/g, '') || '';
   const prevWaPhone = prevPhone.startsWith('91') ? prevPhone : `91${prevPhone}`;
   const prevWaText = prevInv ? encodeURIComponent(
-    `*ShaadiShopping Invoice*\n` +
-    `Invoice No: ${prevInv.invoiceNumber}\n` +
+    `*ShaadiShopping ${prevDocTitle}*\n` +
+    `${prevDocTitle} No: ${prevInv.invoiceNumber}\n` +
     `Date: ${new Date(prevInv.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}\n\n` +
     `*Client:* ${prevInv.clientName}\n` +
     (prevInv.eventDate ? `*Event Date:* ${new Date(prevInv.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}\n` : '') +
@@ -561,9 +563,9 @@ export default function AdminClient() {
     (prevInv.notes ? `\n\n${prevInv.notes}` : '') +
     `\n\nThank you for choosing ShaadiShopping! 🎊`
   ) : '';
-  const prevMailSubject = prevInv ? encodeURIComponent(`Invoice ${prevInv.invoiceNumber} from ShaadiShopping`) : '';
+  const prevMailSubject = prevInv ? encodeURIComponent(`${prevDocTitle} ${prevInv.invoiceNumber} from ShaadiShopping`) : '';
   const prevMailBody = prevInv ? encodeURIComponent(
-    `Dear ${prevInv.clientName},\n\nPlease find your invoice details below:\n\nInvoice No: ${prevInv.invoiceNumber}\nDate: ${new Date(prevInv.createdAt).toLocaleDateString('en-IN')}\n\nServices:\n` +
+    `Dear ${prevInv.clientName},\n\nPlease find your ${prevDocTitle.toLowerCase()} details below:\n\n${prevDocTitle} No: ${prevInv.invoiceNumber}\nDate: ${new Date(prevInv.createdAt).toLocaleDateString('en-IN')}\n\nServices:\n` +
     (prevInv.items || []).map((it: AnyRecord) => `- ${it.description}${it.vendorName ? ` (${it.vendorName})` : ''}: ₹${(it.amount * it.quantity).toLocaleString('en-IN')}`).join('\n') +
     `\n\nSubtotal: ₹${prevInv.subtotal?.toLocaleString('en-IN')}` +
     ((prevInv.discount ?? 0) > 0 ? `\nDiscount: -₹${prevInv.discount?.toLocaleString('en-IN')}` : '') +
@@ -2521,7 +2523,7 @@ export default function AdminClient() {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-auto print:max-h-none print:overflow-visible print:shadow-none print:rounded-none">
               {/* Modal actions bar */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 print:hidden">
-                <p className="font-bold text-gray-800 text-sm flex items-center gap-2"><Receipt className="w-4 h-4 text-amber-500" /> Invoice Preview</p>
+                <p className="font-bold text-gray-800 text-sm flex items-center gap-2"><Receipt className="w-4 h-4 text-amber-500" /> {prevDocTitle} Preview</p>
                 <div className="flex items-center gap-2">
                   <a href={`https://wa.me/${prevWaPhone}?text=${prevWaText}`} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs font-semibold bg-[#25D366] text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-all">
@@ -2552,7 +2554,7 @@ export default function AdminClient() {
                     <img src="/logo.png" alt="ShaadiShopping" width={220} height={120} style={{ objectFit: 'contain' }} />
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-amber-600">INVOICE</p>
+                    <p className="text-2xl font-bold text-amber-600">{prevDocLabel}</p>
                     <p className="text-sm font-mono text-gray-600 mt-0.5">{prevInv?.invoiceNumber}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{prevInv ? new Date(prevInv.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</p>
                   </div>
