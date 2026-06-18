@@ -33,6 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // High-value blog posts pinned at top priority
     { url: `${BASE_URL}/blog/court-marriage-registration-patna-bihar`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
     { url: `${BASE_URL}/blog/best-banquet-hall-in-patna`,              lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
+    { url: `${BASE_URL}/venues-in-patna`,                             lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.97 },
   ];
 
   let categoryRoutes: MetadataRoute.Sitemap = [];
