@@ -1031,6 +1031,92 @@ export default function HomepageClient() {
         </div>
       </section>
 
+      {/* ── Featured Venues ── */}
+      <section className="py-12 sm:py-16 bg-[#FAF5EE]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#C5A46D] mb-1">Verified by ShaadiShopping</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-[#2A1F1B]" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+                Featured Wedding Venues in Patna
+              </h2>
+            </div>
+            <Link href="/cities/patna/venue" className="hidden sm:block text-[#8B1A4A] text-sm font-semibold hover:underline flex-shrink-0">
+              All Venues →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {/* Touch of Cozy */}
+            <Link
+              href="/lp/touch-of-cozy"
+              className="group relative rounded-2xl overflow-hidden bg-white border border-[#C5A46D]/20 hover:border-[#C5A46D]/50 shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <div className="relative aspect-[16/9] overflow-hidden">
+                <Image
+                  src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80"
+                  alt="Touch of Cozy banquet hall, Rajeev Nagar Patna"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  unoptimized
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.2em] bg-[#C5A46D] text-white px-2.5 py-1 rounded-full">
+                  New · Rajeev Nagar
+                </span>
+              </div>
+              <div className="p-5">
+                <h3 className="text-lg font-bold text-[#2A1F1B] mb-1" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+                  Touch of Cozy
+                </h3>
+                <p className="text-xs text-[#6B5B4D] mb-3">
+                  Mica Colony, Rajeev Nagar, Patna · AC Hall · 5 Guest Rooms · In-House Catering
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#8B1A4A]">From ₹999/plate</span>
+                  <span className="text-xs text-[#C5A46D] font-semibold group-hover:translate-x-1 transition-transform duration-200">
+                    View Venue →
+                  </span>
+                </div>
+              </div>
+            </Link>
+
+            {/* Swayamvar Hall */}
+            <Link
+              href="/lp/swayamvar-hall"
+              className="group relative rounded-2xl overflow-hidden bg-white border border-[#C5A46D]/20 hover:border-[#C5A46D]/50 shadow-sm hover:shadow-md transition-all duration-300"
+            >
+              <div className="relative aspect-[16/9] overflow-hidden">
+                <Image
+                  src="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80"
+                  alt="Swayamvar Hall and Homestay banquet hall, Danapur Patna"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  unoptimized
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.2em] bg-[#8B1A4A] text-white px-2.5 py-1 rounded-full">
+                  Trusted · Danapur
+                </span>
+              </div>
+              <div className="p-5">
+                <h3 className="text-lg font-bold text-[#2A1F1B] mb-1" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+                  Swayamvar Hall &amp; Homestay
+                </h3>
+                <p className="text-xs text-[#6B5B4D] mb-3">
+                  Gola Road, Danapur, Patna · Up to 700 Guests · Home Stay · Baraat Allowed
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#8B1A4A]">From ₹1,50,000/event</span>
+                  <span className="text-xs text-[#C5A46D] font-semibold group-hover:translate-x-1 transition-transform duration-200">
+                    View Venue →
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── 9. MEET YOUR EXPERT ── */}
       <section className="py-16 sm:py-24 lg:py-32 bg-[#FFFCF7] overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">

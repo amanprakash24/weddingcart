@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
   },
-  robots: { index: false, follow: false },
+  robots: { index: true, follow: true },
 };
 
 const localBusinessSchema = {
