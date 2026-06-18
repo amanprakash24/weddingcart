@@ -542,8 +542,8 @@ export default function AdminClient() {
 
   // Preview invoice computed strings (safe — only used when previewInvoice is non-null)
   const prevInv = previewInvoice;
-  const prevDocLabel = (prevInv?.amountPaid ?? 0) > 0 ? 'INVOICE' : 'QUOTATION';
-  const prevDocTitle = (prevInv?.amountPaid ?? 0) > 0 ? 'Invoice' : 'Quotation';
+  const prevDocLabel = Number(prevInv?.amountPaid) > 0 ? 'INVOICE' : 'QUOTATION';
+  const prevDocTitle = Number(prevInv?.amountPaid) > 0 ? 'Invoice' : 'Quotation';
   const prevPhone = prevInv?.clientPhone?.replace(/\D/g, '') || '';
   const prevWaPhone = prevPhone.startsWith('91') ? prevPhone : `91${prevPhone}`;
   const prevWaText = prevInv ? encodeURIComponent(
@@ -2462,6 +2462,7 @@ export default function AdminClient() {
                           <div>
                             <div className="flex items-center gap-2 flex-wrap mb-1">
                               <span className="font-mono text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{inv.invoiceNumber}</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${Number(inv.amountPaid) > 0 ? 'bg-amber-100 text-amber-700' : 'bg-violet-100 text-violet-700'}`}>{Number(inv.amountPaid) > 0 ? 'Invoice' : 'Quotation'}</span>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${statusColors[inv.status] || 'bg-gray-100 text-gray-500'}`}>{inv.status}</span>
                               <span className="text-xs text-gray-400">{new Date(inv.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                             </div>
