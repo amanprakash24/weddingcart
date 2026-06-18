@@ -209,7 +209,6 @@ async function run() {
           'Overnight Weddings Allowed',
           'Guest Accommodations',
           'Operating Hours: 11 AM – 12 AM',
-          'Alcohol-Free Venue',
           'FSSAI Certified Kitchen',
           'GST Registered',
         ],

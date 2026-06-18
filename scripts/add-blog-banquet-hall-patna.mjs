@@ -60,7 +60,6 @@ const BLOG = {
   <li>Baraat permitted and overnight weddings supported</li>
   <li>FSSAI certified kitchen — food safety guaranteed</li>
   <li>GST registered — fully compliant billing</li>
-  <li>Alcohol-free venue</li>
   <li>Operating hours: 11 AM to 12 AM daily</li>
 </ul>
 <p><strong>Best for:</strong> Weddings, receptions, engagements, birthdays, and corporate events where you want an all-in-one venue with catering and stay.</p>
@@ -156,7 +155,7 @@ const BLOG = {
   <li><strong>Parking</strong> — Patna roads are busy. A hall without adequate parking creates stress for guests. Confirm the vehicle count clearly.</li>
   <li><strong>Generator backup</strong> — Power cuts happen. Ask specifically whether the generator covers the entire hall including AC, lights, and sound — or only partial backup.</li>
   <li><strong>Decoration policy</strong> — Some halls have tie-ups with specific decorators. Confirm whether you can bring your own.</li>
-  <li><strong>Outside food / alcohol policy</strong> — Know the rules before you book, especially for alcohol. Many halls in Patna are alcohol-free.</li>
+  <li><strong>Outside food policy</strong> — Many halls insist on in-house caterers only. Confirm before booking if you have a preferred vendor.</li>
   <li><strong>Muhurat date availability</strong> — Popular November–January muhurats get booked 6–8 months in advance. Lock in your date as soon as you finalise it.</li>
   <li><strong>Guest rooms</strong> — If you have outstation family, venues like <a href="/lp/touch-of-cozy">Touch of Cozy</a> (5 rooms), <a href="/lp/7-vachan-patna">7 Vachan</a> (7 rooms), and <a href="/lp/swayamvar-hall">Swayamvar Hall</a> offer on-site accommodation that saves significant coordination cost.</li>
 </ol>

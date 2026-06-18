@@ -20,7 +20,6 @@ const FEATURES = [
   'Overnight Weddings Allowed',
   'FSSAI Certified Kitchen',
   'GST Registered',
-  'Alcohol-Free Venue',
   'Operating Hours: 11 AM – 12 AM',
   'Dedicated Event Coordinator',
 ];

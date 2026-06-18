@@ -449,7 +449,7 @@ export default function VenuesInPatnaPage() {
                 ['Generator backup', 'Ask if backup covers AC, lights, and sound — or only partial. Patna summers are brutal.'],
                 ['Catering policy', 'Many halls allow only in-house caterers. Confirm before booking if you have a preferred vendor.'],
                 ['Parking capacity', 'A hall without parking creates chaos. Confirm vehicle count clearly — not just "ample parking".'],
-                ['Outside alcohol / food policy', 'Know the rules before you book, especially for alcohol. Many Patna halls are alcohol-free.'],
+                ['Outside food policy', 'Many halls allow only in-house caterers. Confirm before booking if you have a preferred outside vendor.'],
                 ['Muhurat date availability', 'Peak Nov–Jan muhurats book 6–8 months ahead. Lock your date as soon as it\'s confirmed.'],
                 ['Guest rooms for outstation family', 'Venues like Touch of Cozy (5 rooms), 7 Vachan (7 rooms) and Swayamvar Hall offer on-site stay.'],
               ].map(([title, detail], i) => (
