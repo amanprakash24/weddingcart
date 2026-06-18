@@ -574,6 +574,49 @@ export default function AdminClient() {
     `\n\nThank you!\nTeam ShaadiShopping`
   ) : '';
 
+  const handlePrint = () => {
+    const overlay = document.getElementById('invoice-modal-overlay');
+    if (!overlay) { window.print(); return; }
+
+    // Hide all body-level elements except the one containing the invoice modal
+    const hiddenEls: Array<{ el: HTMLElement; was: string }> = [];
+    Array.from(document.body.children).forEach(child => {
+      const el = child as HTMLElement;
+      if (!el.contains(overlay)) {
+        hiddenEls.push({ el, was: el.style.display });
+        el.style.setProperty('display', 'none', 'important');
+      }
+    });
+
+    // Flatten the modal overlay so it prints inline (no fixed positioning, no dark bg)
+    const prevPosition = overlay.style.position;
+    const prevBackground = overlay.style.background;
+    const prevPadding = overlay.style.padding;
+    overlay.style.setProperty('position', 'static', 'important');
+    overlay.style.setProperty('background', 'transparent', 'important');
+    overlay.style.setProperty('padding', '0', 'important');
+
+    const inner = overlay.firstElementChild as HTMLElement | null;
+    const prevMaxH = inner?.style.maxHeight ?? '';
+    const prevOverflow = inner?.style.overflow ?? '';
+    if (inner) {
+      inner.style.setProperty('max-height', 'none', 'important');
+      inner.style.setProperty('overflow', 'visible', 'important');
+    }
+
+    const restore = () => {
+      hiddenEls.forEach(({ el, was }) => { el.style.display = was; });
+      overlay.style.position = prevPosition;
+      overlay.style.background = prevBackground;
+      overlay.style.padding = prevPadding;
+      if (inner) { inner.style.maxHeight = prevMaxH; inner.style.overflow = prevOverflow; }
+      window.removeEventListener('afterprint', restore);
+    };
+
+    window.addEventListener('afterprint', restore);
+    window.print();
+  };
+
   const handleInvoiceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const items = invoiceItems
@@ -2466,9 +2509,14 @@ export default function AdminClient() {
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 print:hidden">
                 <p className="font-bold text-gray-800 text-sm flex items-center gap-2"><Receipt className="w-4 h-4 text-amber-500" /> Invoice Preview</p>
                 <div className="flex items-center gap-2">
+                  <button onClick={handlePrint}
+                    className="flex items-center gap-1.5 text-xs font-semibold bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-all"
+                    title="Save as PDF first, then share on WhatsApp">
+                    <Printer className="w-3.5 h-3.5" /> Save PDF
+                  </button>
                   <a href={`https://wa.me/${prevWaPhone}?text=${prevWaText}`} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-xs font-semibold bg-[#25D366] text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-all">
-                    💬 Send WhatsApp
+                    💬 WhatsApp
                   </a>
                   {prevInv?.clientEmail && (
                     <a href={`mailto:${prevInv.clientEmail}?subject=${prevMailSubject}&body=${prevMailBody}`}
@@ -2476,10 +2524,6 @@ export default function AdminClient() {
                       <Mail className="w-3.5 h-3.5" /> Send Email
                     </a>
                   )}
-                  <button onClick={() => window.print()}
-                    className="flex items-center gap-1.5 text-xs font-semibold bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-all">
-                    <Printer className="w-3.5 h-3.5" /> Print / PDF
-                  </button>
                   <button onClick={() => setPreviewInvoice(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
                     <X className="w-4 h-4" />
                   </button>
@@ -2522,11 +2566,18 @@ export default function AdminClient() {
                 </div>
 
                 {/* Items table */}
-                <table className="w-full mb-6">
+                <table className="w-full mb-6 table-fixed">
+                  <colgroup>
+                    <col className="w-[32%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[20%]" />
+                  </colgroup>
                   <thead>
                     <tr className="border-b-2 border-gray-200">
                       <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Description</th>
-                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider pb-2 hidden sm:table-cell">Vendor</th>
+                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Vendor</th>
                       <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Qty</th>
                       <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Rate</th>
                       <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Amount</th>
@@ -2535,10 +2586,10 @@ export default function AdminClient() {
                   <tbody>
                     {(prevInv?.items || []).map((it: AnyRecord, i: number) => (
                       <tr key={i} className="border-b border-gray-100">
-                        <td className="py-3 text-sm font-medium text-gray-900">{it.description}</td>
-                        <td className="py-3 text-sm text-gray-500 hidden sm:table-cell">{it.vendorName || '—'}</td>
-                        <td className="py-3 text-sm text-gray-700 text-right">{it.quantity}</td>
-                        <td className="py-3 text-sm text-gray-700 text-right">₹{it.amount?.toLocaleString('en-IN')}</td>
+                        <td className="py-3 text-sm font-medium text-gray-900 break-words">{it.description}</td>
+                        <td className="py-3 text-sm text-gray-500 break-words">{it.vendorName || '—'}</td>
+                        <td className="py-3 text-sm text-gray-700 text-right whitespace-nowrap">{it.quantity}</td>
+                        <td className="py-3 text-sm text-gray-700 text-right whitespace-nowrap">₹{it.amount?.toLocaleString('en-IN')}</td>
                         <td className="py-3 text-sm font-semibold text-gray-900 text-right">₹{(it.amount * it.quantity).toLocaleString('en-IN')}</td>
                       </tr>
                     ))}
