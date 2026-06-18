@@ -100,7 +100,7 @@ interface InvoiceItemForm {
 }
 const SERVICE_OPTIONS = ['Venue', 'Food / Catering', 'Photography', 'Videography', 'Decoration', 'Mehendi', 'Makeup', 'Band / Music', 'DJ', 'Transport', 'Invitation Cards', 'Pandit Ji', 'Custom'];
 const EMPTY_INVOICE_ITEM: InvoiceItemForm = { description: '', customDescription: '', vendorName: '', amount: '', quantity: '1', isFood: false, foodType: 'veg', vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' };
-const EMPTY_INVOICE_FORM = { clientName: '', clientPhone: '', clientEmail: '', clientCity: '', eventDate: '', eventType: '', notes: '', gstEnabled: true };
+const EMPTY_INVOICE_FORM = { clientName: '', clientPhone: '', clientEmail: '', clientCity: '', eventDate: '', eventType: '', notes: '', gstEnabled: true, discountEnabled: false, discount: '' };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
 
@@ -534,8 +534,9 @@ export default function AdminClient() {
     return (parseFloat(item.amount) || 0) * (parseInt(item.quantity) || 1);
   };
   const invoiceSubtotal = invoiceItems.reduce((sum, item) => sum + calcItemAmount(item), 0);
-  const invoiceGstAmt = invoiceForm.gstEnabled ? Math.round(invoiceSubtotal * 0.18) : 0;
-  const invoiceTotal = invoiceSubtotal + invoiceGstAmt;
+  const invoiceDiscountAmt = invoiceForm.discountEnabled ? (parseFloat(invoiceForm.discount) || 0) : 0;
+  const invoiceGstAmt = invoiceForm.gstEnabled ? Math.round((invoiceSubtotal - invoiceDiscountAmt) * 0.18) : 0;
+  const invoiceTotal = invoiceSubtotal - invoiceDiscountAmt + invoiceGstAmt;
 
   // Preview invoice computed strings (safe — only used when previewInvoice is non-null)
   const prevInv = previewInvoice;
@@ -551,6 +552,7 @@ export default function AdminClient() {
     `\n*Services:*\n` +
     (prevInv.items || []).map((it: AnyRecord) => `• ${it.description}${it.vendorName ? ` (${it.vendorName})` : ''} × ${it.quantity} — ₹${(it.amount * it.quantity).toLocaleString('en-IN')}`).join('\n') +
     `\n\nSubtotal: ₹${prevInv.subtotal?.toLocaleString('en-IN')}` +
+    ((prevInv.discount ?? 0) > 0 ? `\nDiscount: -₹${prevInv.discount?.toLocaleString('en-IN')}` : '') +
     (prevInv.gstAmount > 0 ? `\nGST (18%): ₹${prevInv.gstAmount?.toLocaleString('en-IN')}` : '') +
     `\n*Total: ₹${prevInv.total?.toLocaleString('en-IN')}*` +
     (prevInv.notes ? `\n\n${prevInv.notes}` : '') +
@@ -561,6 +563,7 @@ export default function AdminClient() {
     `Dear ${prevInv.clientName},\n\nPlease find your invoice details below:\n\nInvoice No: ${prevInv.invoiceNumber}\nDate: ${new Date(prevInv.createdAt).toLocaleDateString('en-IN')}\n\nServices:\n` +
     (prevInv.items || []).map((it: AnyRecord) => `- ${it.description}${it.vendorName ? ` (${it.vendorName})` : ''}: ₹${(it.amount * it.quantity).toLocaleString('en-IN')}`).join('\n') +
     `\n\nSubtotal: ₹${prevInv.subtotal?.toLocaleString('en-IN')}` +
+    ((prevInv.discount ?? 0) > 0 ? `\nDiscount: -₹${prevInv.discount?.toLocaleString('en-IN')}` : '') +
     (prevInv.gstAmount > 0 ? `\nGST (18%): ₹${prevInv.gstAmount?.toLocaleString('en-IN')}` : '') +
     `\nTotal: ₹${prevInv.total?.toLocaleString('en-IN')}` +
     (prevInv.notes ? `\n\n${prevInv.notes}` : '') +
@@ -585,7 +588,7 @@ export default function AdminClient() {
         }
         return { description: desc, vendorName: i.vendorName || undefined, amount: parseFloat(i.amount), quantity: parseInt(i.quantity) || 1 };
       });
-    const payload = { ...invoiceForm, items, subtotal: invoiceSubtotal, gstAmount: invoiceGstAmt, total: invoiceTotal };
+    const payload = { ...invoiceForm, items, subtotal: invoiceSubtotal, discount: invoiceDiscountAmt, gstAmount: invoiceGstAmt, total: invoiceTotal };
     if (editingInvoice) {
       await fetch(`/api/invoices/${editingInvoice._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     } else {
@@ -2300,6 +2303,27 @@ export default function AdminClient() {
                           <span className="text-gray-600">Subtotal</span>
                           <span className="font-semibold">₹{invoiceSubtotal.toLocaleString('en-IN')}</span>
                         </div>
+                        {/* Discount row */}
+                        <div className="flex items-center justify-between gap-3">
+                          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer shrink-0">
+                            <input type="checkbox" checked={invoiceForm.discountEnabled} onChange={e => setInvoiceForm({ ...invoiceForm, discountEnabled: e.target.checked, discount: e.target.checked ? invoiceForm.discount : '' })} className="w-4 h-4 accent-green-500" />
+                            Discount (₹)
+                          </label>
+                          {invoiceForm.discountEnabled && (
+                            <input
+                              type="number"
+                              min="0"
+                              max={invoiceSubtotal}
+                              value={invoiceForm.discount}
+                              onChange={e => setInvoiceForm({ ...invoiceForm, discount: e.target.value })}
+                              className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-sm bg-white text-right"
+                              placeholder="0"
+                            />
+                          )}
+                          {invoiceDiscountAmt > 0 && (
+                            <span className="text-sm font-semibold text-green-600 ml-auto">-₹{invoiceDiscountAmt.toLocaleString('en-IN')}</span>
+                          )}
+                        </div>
                         <div className="flex items-center justify-between">
                           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
                             <input type="checkbox" checked={invoiceForm.gstEnabled} onChange={e => setInvoiceForm({ ...invoiceForm, gstEnabled: e.target.checked })} className="w-4 h-4 accent-amber-500" />
@@ -2366,7 +2390,7 @@ export default function AdminClient() {
                                 className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg hover:bg-amber-100 transition-colors">
                                 <Eye className="w-3 h-3" /> Preview
                               </button>
-                              <button onClick={() => { setEditingInvoice(inv); setInvoiceForm({ clientName: inv.clientName, clientPhone: inv.clientPhone, clientEmail: inv.clientEmail || '', clientCity: inv.clientCity || '', eventDate: inv.eventDate || '', eventType: inv.eventType || '', notes: inv.notes || '', gstEnabled: inv.gstEnabled }); setInvoiceItems(inv.items?.map((it: AnyRecord) => ({ description: it.description, customDescription: '', vendorName: it.vendorName || '', amount: String(it.amount), quantity: String(it.quantity), isFood: false, foodType: 'veg' as const, vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' })) || [{ ...EMPTY_INVOICE_ITEM }]); setShowInvoiceForm(true); }}
+                              <button onClick={() => { setEditingInvoice(inv); setInvoiceForm({ clientName: inv.clientName, clientPhone: inv.clientPhone, clientEmail: inv.clientEmail || '', clientCity: inv.clientCity || '', eventDate: inv.eventDate || '', eventType: inv.eventType || '', notes: inv.notes || '', gstEnabled: inv.gstEnabled, discountEnabled: !!(inv.discount), discount: inv.discount ? String(inv.discount) : '' }); setInvoiceItems(inv.items?.map((it: AnyRecord) => ({ description: it.description, customDescription: '', vendorName: it.vendorName || '', amount: String(it.amount), quantity: String(it.quantity), isFood: false, foodType: 'veg' as const, vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' })) || [{ ...EMPTY_INVOICE_ITEM }]); setShowInvoiceForm(true); }}
                                 className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
                                 <Edit className="w-4 h-4" />
                               </button>
@@ -2492,6 +2516,12 @@ export default function AdminClient() {
                       <span>Subtotal</span>
                       <span>₹{prevInv?.subtotal?.toLocaleString('en-IN')}</span>
                     </div>
+                    {(prevInv?.discount ?? 0) > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Discount</span>
+                        <span>-₹{prevInv?.discount?.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
                     {(prevInv?.gstAmount ?? 0) > 0 && (
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>GST (18%)</span>

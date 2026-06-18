@@ -17,6 +17,7 @@ export interface IInvoice extends Document {
   eventType?: string;
   items: IInvoiceItem[];
   subtotal: number;
+  discount?: number;
   gstEnabled: boolean;
   gstAmount: number;
   total: number;
@@ -42,6 +43,7 @@ const InvoiceSchema = new Schema<IInvoice>({
   eventType: String,
   items: [InvoiceItemSchema],
   subtotal: { type: Number, required: true },
+  discount: { type: Number, default: 0 },
   gstEnabled: { type: Boolean, default: true },
   gstAmount: { type: Number, default: 0 },
   total: { type: Number, required: true },
