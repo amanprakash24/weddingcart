@@ -629,16 +629,3 @@ input[type="checkbox"], input[type="radio"] {
     transition: none !important;
   }
 }
-
-@media print {
-  body * { visibility: hidden !important; }
-  #invoice-print-area, #invoice-print-area * { visibility: visible !important; }
-  #invoice-print-area {
-    position: fixed !important;
-    top: 0; left: 0;
-    width: 100%;
-    background: white;
-    padding: 40px;
-    box-shadow: none;
-  }
-}
