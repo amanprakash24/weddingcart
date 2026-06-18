@@ -31,15 +31,18 @@ const BLOG = {
     'wedding venue patna',
     'banquet hall rajeev nagar patna',
     'banquet hall danapur patna',
+    'banquet hall judges colony patna',
+    'banquet hall saguna mor patna',
+    '7 vachan patna',
     'event hall patna',
   ],
   seoTitle: 'Best Banquet Hall in Patna for Wedding & Events — 2025 | ShaadiShopping',
   seoDescription:
-    'Find the best banquet halls in Patna for your wedding, reception, or any celebration. Compare top venues like Touch of Cozy (Rajeev Nagar) and Swayamvar Hall (Danapur) with real pricing and features.',
+    'Find the best banquet halls in Patna for your wedding, reception, or any celebration. Compare top venues like Touch of Cozy (Rajeev Nagar), 7 Vachan (Judges Colony) and Swayamvar Hall (Danapur) with real pricing and features.',
   coverImage: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1200&q=80',
   status: 'published',
   publishedAt: new Date(),
-  readTime: 8,
+  readTime: 9,
   content: `
 <h2>Why Choosing the Right Banquet Hall in Patna Matters</h2>
 <p>Patna has grown into one of Bihar's most active wedding markets. Hundreds of weddings, receptions, engagements, and family functions happen across the city every week — and the banquet hall you choose sets the tone for the entire event. The right hall means comfortable guests, seamless catering, hassle-free parking, and memories that last a lifetime. The wrong one means chaos on the most important day of your family's life.</p>
@@ -77,6 +80,24 @@ const BLOG = {
 </ul>
 <p><strong>Best for:</strong> Large weddings, baraats, multi-day celebrations where you need accommodation on-site for family members.</p>
 <p><strong>Contact &amp; booking:</strong> <a href="/lp/swayamvar-hall">View Swayamvar Hall on ShaadiShopping</a></p>
+
+<h3>3. 7 Vachan — Judges Colony, Saguna Mor, Patna</h3>
+<p><a href="/lp/7-vachan-patna"><strong>7 Vachan</strong></a> is an established and highly rated banquet hall located in Judges Colony, near Saguna Mor on the Danapur Khagaul Road. Rated <strong>4.6★ across 55 reviews</strong>, it has built a strong reputation since 2016 for delivering professional wedding and event services at honest per-plate pricing. With a rooftop venue option and <strong>7 on-site guest rooms</strong>, 7 Vachan is a complete wedding venue for families with outstation guests.</p>
+<p>What makes 7 Vachan stand out:</p>
+<ul>
+  <li>In-house catering at <strong>₹1,100/plate (Veg)</strong> and <strong>₹1,300/plate (Non-Veg)</strong></li>
+  <li>7 guest rooms — ideal for outstation families</li>
+  <li>In-house DJ — no need to arrange separately</li>
+  <li>Rooftop venue option for outdoor ceremonies</li>
+  <li>Play area for kids</li>
+  <li>Wheelchair accessible</li>
+  <li>500+ guest capacity</li>
+  <li>Ample on-site parking</li>
+  <li>Established in 2016 — nearly a decade of trust</li>
+</ul>
+<p><strong>Best for:</strong> Weddings, receptions, engagements, birthday parties, baby showers, and corporate events for families who want in-house DJ, catering, and stay under one roof.</p>
+<p><strong>Starting price:</strong> ₹1,100 per plate (Veg)</p>
+<p><strong>Contact &amp; booking:</strong> <a href="/lp/7-vachan-patna">View 7 Vachan on ShaadiShopping</a></p>
 
 <h2>Types of Banquet Halls in Patna</h2>
 <p>Patna's banquet market offers several categories of venues depending on your guest count, budget, and the kind of event you are hosting.</p>
@@ -116,6 +137,9 @@ const BLOG = {
 <h3>Danapur</h3>
 <p>One of Patna's most active wedding zones. Danapur's banquet halls are well-established and handle high guest volumes efficiently. <a href="/lp/swayamvar-hall">Swayamvar Hall</a> on Gola Road is the go-to name here, especially for large baraats and multi-day functions.</p>
 
+<h3>Judges Colony / Saguna Mor</h3>
+<p>Located along the Danapur Khagaul Road, Judges Colony and Saguna Mor are emerging as a preferred wedding belt for families in the western outskirts of Patna. <a href="/lp/7-vachan-patna">7 Vachan</a> is the leading banquet hall here — offering in-house DJ, 7 guest rooms, a rooftop venue, and transparent per-plate pricing that has earned it a 4.6★ rating across 55 reviews.</p>
+
 <h3>Kankarbagh</h3>
 <p>Centrally located with good road connectivity. Popular for mid-size weddings and corporate events. Halls here are competitively priced and easily accessible from Patna Junction.</p>
 
@@ -134,7 +158,7 @@ const BLOG = {
   <li><strong>Decoration policy</strong> — Some halls have tie-ups with specific decorators. Confirm whether you can bring your own.</li>
   <li><strong>Outside food / alcohol policy</strong> — Know the rules before you book, especially for alcohol. Many halls in Patna are alcohol-free.</li>
   <li><strong>Muhurat date availability</strong> — Popular November–January muhurats get booked 6–8 months in advance. Lock in your date as soon as you finalise it.</li>
-  <li><strong>Guest rooms</strong> — If you have outstation family, a venue like <a href="/lp/touch-of-cozy">Touch of Cozy</a> or <a href="/lp/swayamvar-hall">Swayamvar Hall</a> that offers on-site accommodation saves significant coordination cost.</li>
+  <li><strong>Guest rooms</strong> — If you have outstation family, venues like <a href="/lp/touch-of-cozy">Touch of Cozy</a> (5 rooms), <a href="/lp/7-vachan-patna">7 Vachan</a> (7 rooms), and <a href="/lp/swayamvar-hall">Swayamvar Hall</a> offer on-site accommodation that saves significant coordination cost.</li>
 </ol>
 
 <h2>When to Book Your Banquet Hall in Patna</h2>
