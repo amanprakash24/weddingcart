@@ -85,8 +85,21 @@ function ImageUploadField({
 type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings' | 'outside-vendors' | 'leads' | 'invoices';
 
 interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number; }
-interface InvoiceItemForm { description: string; vendorName: string; amount: string; quantity: string; }
-const EMPTY_INVOICE_ITEM: InvoiceItemForm = { description: '', vendorName: '', amount: '', quantity: '1' };
+interface InvoiceItemForm {
+  description: string;
+  customDescription: string;
+  vendorName: string;
+  amount: string;
+  quantity: string;
+  isFood: boolean;
+  foodType: 'veg' | 'non-veg' | 'both';
+  vegGuests: string;
+  vegPrice: string;
+  nonVegGuests: string;
+  nonVegPrice: string;
+}
+const SERVICE_OPTIONS = ['Venue', 'Food / Catering', 'Photography', 'Videography', 'Decoration', 'Mehendi', 'Makeup', 'Band / Music', 'DJ', 'Transport', 'Invitation Cards', 'Pandit Ji', 'Custom'];
+const EMPTY_INVOICE_ITEM: InvoiceItemForm = { description: '', customDescription: '', vendorName: '', amount: '', quantity: '1', isFood: false, foodType: 'veg', vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' };
 const EMPTY_INVOICE_FORM = { clientName: '', clientPhone: '', clientEmail: '', clientCity: '', eventDate: '', eventType: '', notes: '', gstEnabled: true };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
@@ -508,7 +521,19 @@ export default function AdminClient() {
   };
 
   // Invoice computations (computed from state, used in invoice form JSX)
-  const invoiceSubtotal = invoiceItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0) * (parseInt(item.quantity) || 1), 0);
+  const calcItemAmount = (item: InvoiceItemForm): number => {
+    if (item.isFood) {
+      const vg = parseInt(item.vegGuests) || 0;
+      const vp = parseFloat(item.vegPrice) || 0;
+      const ng = parseInt(item.nonVegGuests) || 0;
+      const np = parseFloat(item.nonVegPrice) || 0;
+      if (item.foodType === 'veg') return vg * vp;
+      if (item.foodType === 'non-veg') return ng * np;
+      return vg * vp + ng * np;
+    }
+    return (parseFloat(item.amount) || 0) * (parseInt(item.quantity) || 1);
+  };
+  const invoiceSubtotal = invoiceItems.reduce((sum, item) => sum + calcItemAmount(item), 0);
   const invoiceGstAmt = invoiceForm.gstEnabled ? Math.round(invoiceSubtotal * 0.18) : 0;
   const invoiceTotal = invoiceSubtotal + invoiceGstAmt;
 
@@ -545,13 +570,21 @@ export default function AdminClient() {
   const handleInvoiceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const items = invoiceItems
-      .filter((i) => i.description && i.amount)
-      .map((i) => ({
-        description: i.description,
-        vendorName: i.vendorName || undefined,
-        amount: parseFloat(i.amount),
-        quantity: parseInt(i.quantity) || 1,
-      }));
+      .filter((i) => {
+        const desc = i.description === 'Custom' ? i.customDescription : i.description;
+        if (i.isFood) return desc && calcItemAmount(i) > 0;
+        return desc && i.amount;
+      })
+      .map((i) => {
+        const desc = i.description === 'Custom' ? i.customDescription : i.description;
+        if (i.isFood) {
+          const parts: string[] = [];
+          if (i.foodType === 'veg' || i.foodType === 'both') parts.push(`${i.vegGuests} Veg × ₹${i.vegPrice}/plate`);
+          if (i.foodType === 'non-veg' || i.foodType === 'both') parts.push(`${i.nonVegGuests} Non-Veg × ₹${i.nonVegPrice}/plate`);
+          return { description: `${desc}${parts.length ? ' (' + parts.join(' + ') + ')' : ''}`, vendorName: i.vendorName || undefined, amount: calcItemAmount(i), quantity: 1 };
+        }
+        return { description: desc, vendorName: i.vendorName || undefined, amount: parseFloat(i.amount), quantity: parseInt(i.quantity) || 1 };
+      });
     const payload = { ...invoiceForm, items, subtotal: invoiceSubtotal, gstAmount: invoiceGstAmt, total: invoiceTotal };
     if (editingInvoice) {
       await fetch(`/api/invoices/${editingInvoice._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -2123,33 +2156,141 @@ export default function AdminClient() {
                           </button>
                         </div>
                         <div className="space-y-3">
-                          {invoiceItems.map((item, i) => (
-                            <div key={i} className="grid grid-cols-12 gap-2 items-start bg-gray-50 rounded-xl p-3">
-                              <div className="col-span-12 sm:col-span-4">
-                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Description *</label>
-                                <input required value={item.description} onChange={e => setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, description: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Photography, Decoration..." />
-                              </div>
-                              <div className="col-span-12 sm:col-span-3">
-                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Vendor <span className="font-normal">(optional)</span></label>
-                                <input value={item.vendorName} onChange={e => setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, vendorName: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Vendor name" />
-                              </div>
-                              <div className="col-span-6 sm:col-span-2">
-                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Amount (₹) *</label>
-                                <input required type="number" min="0" value={item.amount} onChange={e => setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, amount: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="50000" />
-                              </div>
-                              <div className="col-span-4 sm:col-span-2">
-                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Qty</label>
-                                <input type="number" min="1" value={item.quantity} onChange={e => setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, quantity: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
-                              </div>
-                              <div className="col-span-2 sm:col-span-1 flex items-end pb-0.5">
-                                {invoiceItems.length > 1 && (
-                                  <button type="button" onClick={() => setInvoiceItems(prev => prev.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-600 mt-5 sm:mt-0">
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
+                          {invoiceItems.map((item, i) => {
+                            const updateItem = (patch: Partial<InvoiceItemForm>) =>
+                              setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it));
+                            const foodTotal = calcItemAmount(item);
+                            return (
+                              <div key={i} className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                                {/* Row 1: Service dropdown + Vendor + Remove */}
+                                <div className="grid grid-cols-12 gap-2 items-start">
+                                  <div className="col-span-12 sm:col-span-5">
+                                    <label className="block text-[10px] font-semibold text-gray-400 mb-1">Service *</label>
+                                    <select
+                                      value={item.description}
+                                      onChange={e => {
+                                        const val = e.target.value;
+                                        updateItem({ description: val, isFood: val === 'Food / Catering', ...(val !== 'Food / Catering' && { foodType: 'veg', vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' }) });
+                                      }}
+                                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                    >
+                                      <option value="">Select service...</option>
+                                      {SERVICE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt === 'Food / Catering' ? '🍽️ ' + opt : opt}</option>)}
+                                    </select>
+                                    {item.description === 'Custom' && (
+                                      <input
+                                        required
+                                        value={item.customDescription}
+                                        onChange={e => updateItem({ customDescription: e.target.value })}
+                                        className="mt-2 w-full border border-amber-200 rounded-lg px-3 py-2 text-sm bg-white"
+                                        placeholder="Describe the service..."
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="col-span-10 sm:col-span-6">
+                                    <label className="block text-[10px] font-semibold text-gray-400 mb-1">Vendor <span className="font-normal">(optional)</span></label>
+                                    <input value={item.vendorName} onChange={e => updateItem({ vendorName: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Vendor name" />
+                                  </div>
+                                  <div className="col-span-2 sm:col-span-1 flex items-end justify-end pb-1">
+                                    {invoiceItems.length > 1 && (
+                                      <button type="button" onClick={() => setInvoiceItems(prev => prev.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-600 mt-5">
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Row 2: Amount + Qty for non-food items */}
+                                {!item.isFood && item.description && (
+                                  <div className="grid grid-cols-12 gap-2 items-end">
+                                    <div className="col-span-6 sm:col-span-3">
+                                      <label className="block text-[10px] font-semibold text-gray-400 mb-1">Amount (₹) *</label>
+                                      <input required={!item.isFood} type="number" min="0" value={item.amount} onChange={e => updateItem({ amount: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="50000" />
+                                    </div>
+                                    <div className="col-span-4 sm:col-span-2">
+                                      <label className="block text-[10px] font-semibold text-gray-400 mb-1">Qty</label>
+                                      <input type="number" min="1" value={item.quantity} onChange={e => updateItem({ quantity: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                                    </div>
+                                    {(parseFloat(item.amount) || 0) > 0 && (
+                                      <div className="col-span-12 sm:col-span-4 pb-2">
+                                        <p className="text-xs text-gray-500">= <span className="font-semibold text-gray-800">₹{((parseFloat(item.amount) || 0) * (parseInt(item.quantity) || 1)).toLocaleString('en-IN')}</span></p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Food sub-form */}
+                                {item.isFood && (
+                                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-4">
+                                    {/* Food type selector */}
+                                    <div>
+                                      <p className="text-[10px] font-bold text-green-700 uppercase tracking-wider mb-2">Food Type</p>
+                                      <div className="flex gap-2">
+                                        {(['veg', 'non-veg', 'both'] as const).map(ft => (
+                                          <button
+                                            key={ft}
+                                            type="button"
+                                            onClick={() => updateItem({ foodType: ft })}
+                                            className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold border transition-all ${item.foodType === ft ? (ft === 'veg' ? 'bg-green-500 text-white border-green-500' : ft === 'non-veg' ? 'bg-rose-500 text-white border-rose-500' : 'bg-amber-500 text-white border-amber-500') : 'border-gray-200 text-gray-600 hover:border-gray-300 bg-white'}`}
+                                          >
+                                            {ft === 'veg' ? '🥗 Veg' : ft === 'non-veg' ? '🍖 Non-Veg' : '🍽️ Both'}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {/* Veg fields */}
+                                    {(item.foodType === 'veg' || item.foodType === 'both') && (
+                                      <div>
+                                        <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-2">🥗 Veg</p>
+                                        <div className="grid grid-cols-3 gap-3 items-end">
+                                          <div>
+                                            <label className="block text-[10px] font-semibold text-gray-500 mb-1">No. of Guests</label>
+                                            <input type="number" min="0" value={item.vegGuests} onChange={e => updateItem({ vegGuests: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="100" />
+                                          </div>
+                                          <div>
+                                            <label className="block text-[10px] font-semibold text-gray-500 mb-1">Per Plate (₹)</label>
+                                            <input type="number" min="0" value={item.vegPrice} onChange={e => updateItem({ vegPrice: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="500" />
+                                          </div>
+                                          <div className="pb-2">
+                                            <p className="text-xs text-gray-500">= <span className="font-semibold text-green-700">₹{((parseInt(item.vegGuests) || 0) * (parseFloat(item.vegPrice) || 0)).toLocaleString('en-IN')}</span></p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Non-veg fields */}
+                                    {(item.foodType === 'non-veg' || item.foodType === 'both') && (
+                                      <div>
+                                        <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wider mb-2">🍖 Non-Veg</p>
+                                        <div className="grid grid-cols-3 gap-3 items-end">
+                                          <div>
+                                            <label className="block text-[10px] font-semibold text-gray-500 mb-1">No. of Guests</label>
+                                            <input type="number" min="0" value={item.nonVegGuests} onChange={e => updateItem({ nonVegGuests: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="50" />
+                                          </div>
+                                          <div>
+                                            <label className="block text-[10px] font-semibold text-gray-500 mb-1">Per Plate (₹)</label>
+                                            <input type="number" min="0" value={item.nonVegPrice} onChange={e => updateItem({ nonVegPrice: e.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="700" />
+                                          </div>
+                                          <div className="pb-2">
+                                            <p className="text-xs text-gray-500">= <span className="font-semibold text-rose-600">₹{((parseInt(item.nonVegGuests) || 0) * (parseFloat(item.nonVegPrice) || 0)).toLocaleString('en-IN')}</span></p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Food total */}
+                                    {foodTotal > 0 && (
+                                      <div className="flex items-center justify-between pt-2 border-t border-green-200">
+                                        <span className="text-xs font-bold text-green-800 uppercase tracking-wider">Food Total</span>
+                                        <span className="font-bold text-green-700 text-base">₹{foodTotal.toLocaleString('en-IN')}</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -2225,7 +2366,7 @@ export default function AdminClient() {
                                 className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg hover:bg-amber-100 transition-colors">
                                 <Eye className="w-3 h-3" /> Preview
                               </button>
-                              <button onClick={() => { setEditingInvoice(inv); setInvoiceForm({ clientName: inv.clientName, clientPhone: inv.clientPhone, clientEmail: inv.clientEmail || '', clientCity: inv.clientCity || '', eventDate: inv.eventDate || '', eventType: inv.eventType || '', notes: inv.notes || '', gstEnabled: inv.gstEnabled }); setInvoiceItems(inv.items?.map((it: AnyRecord) => ({ description: it.description, vendorName: it.vendorName || '', amount: String(it.amount), quantity: String(it.quantity) })) || [{ ...EMPTY_INVOICE_ITEM }]); setShowInvoiceForm(true); }}
+                              <button onClick={() => { setEditingInvoice(inv); setInvoiceForm({ clientName: inv.clientName, clientPhone: inv.clientPhone, clientEmail: inv.clientEmail || '', clientCity: inv.clientCity || '', eventDate: inv.eventDate || '', eventType: inv.eventType || '', notes: inv.notes || '', gstEnabled: inv.gstEnabled }); setInvoiceItems(inv.items?.map((it: AnyRecord) => ({ description: it.description, customDescription: '', vendorName: it.vendorName || '', amount: String(it.amount), quantity: String(it.quantity), isFood: false, foodType: 'veg' as const, vegGuests: '', vegPrice: '', nonVegGuests: '', nonVegPrice: '' })) || [{ ...EMPTY_INVOICE_ITEM }]); setShowInvoiceForm(true); }}
                                 className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
                                 <Edit className="w-4 h-4" />
                               </button>
