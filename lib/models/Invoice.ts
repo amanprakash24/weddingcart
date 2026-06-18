@@ -21,6 +21,7 @@ export interface IInvoice extends Document {
   gstEnabled: boolean;
   gstAmount: number;
   total: number;
+  amountPaid?: number;
   notes?: string;
   status: 'draft' | 'sent' | 'paid';
   createdAt: Date;
@@ -47,6 +48,7 @@ const InvoiceSchema = new Schema<IInvoice>({
   gstEnabled: { type: Boolean, default: true },
   gstAmount: { type: Number, default: 0 },
   total: { type: Number, required: true },
+  amountPaid: { type: Number, default: 0 },
   notes: String,
   status: { type: String, enum: ['draft', 'sent', 'paid'], default: 'draft' },
 }, { timestamps: true });
