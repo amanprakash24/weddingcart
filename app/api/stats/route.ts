@@ -6,12 +6,18 @@ import EnquiryModel from '@/lib/models/Enquiry';
 import ConsultationModel from '@/lib/models/Consultation';
 import BookingModel from '@/lib/models/Booking';
 import VendorApplicationModel from '@/lib/models/VendorApplication';
+import LeadModel from '@/lib/models/Lead';
 
 export async function GET() {
   try {
     await connectDB();
 
-    const [vendors, categories, enquiries, consultations, newEnquiries, newConsultations, bookings, newBookings, outsideVendors, newOutsideVendors] = await Promise.all([
+    const [
+      vendors, categories, enquiries, consultations,
+      newEnquiries, newConsultations, bookings, newBookings,
+      outsideVendors, newOutsideVendors, leads,
+      revenueAgg,
+    ] = await Promise.all([
       VendorModel.countDocuments(),
       CategoryModel.countDocuments(),
       EnquiryModel.countDocuments(),
@@ -22,7 +28,14 @@ export async function GET() {
       BookingModel.countDocuments({ status: 'new' }),
       VendorApplicationModel.countDocuments(),
       VendorApplicationModel.countDocuments({ status: 'new' }),
+      LeadModel.countDocuments(),
+      BookingModel.aggregate([
+        { $match: { status: { $in: ['confirmed', 'closed'] } } },
+        { $group: { _id: null, total: { $sum: '$total' } } },
+      ]),
     ]);
+
+    const revenue = revenueAgg[0]?.total ?? 0;
 
     return NextResponse.json({
       success: true,
@@ -37,6 +50,8 @@ export async function GET() {
         newBookings,
         outsideVendors,
         newOutsideVendors,
+        leads,
+        revenue,
       },
     });
   } catch (error) {

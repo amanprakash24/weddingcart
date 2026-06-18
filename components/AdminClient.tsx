@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText, Copy, Link2 } from 'lucide-react';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText, Link2, Receipt, Printer, Mail, TrendingUp } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -82,9 +82,12 @@ function ImageUploadField({
   );
 }
 
-type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings' | 'outside-vendors' | 'leads';
+type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings' | 'outside-vendors' | 'leads' | 'invoices';
 
-interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; }
+interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number; }
+interface InvoiceItemForm { description: string; vendorName: string; amount: string; quantity: string; }
+const EMPTY_INVOICE_ITEM: InvoiceItemForm = { description: '', vendorName: '', amount: '', quantity: '1' };
+const EMPTY_INVOICE_FORM = { clientName: '', clientPhone: '', clientEmail: '', clientCity: '', eventDate: '', eventType: '', notes: '', gstEnabled: true };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
 
@@ -146,6 +149,14 @@ export default function AdminClient() {
   const [role, setRole] = useState<'admin' | 'super_admin' | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Invoice state
+  const [invoices, setInvoices] = useState<AnyRecord[]>([]);
+  const [showInvoiceForm, setShowInvoiceForm] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<AnyRecord | null>(null);
+  const [previewInvoice, setPreviewInvoice] = useState<AnyRecord | null>(null);
+  const [invoiceForm, setInvoiceForm] = useState(EMPTY_INVOICE_FORM);
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItemForm[]>([{ ...EMPTY_INVOICE_ITEM }]);
+
   const copyPortfolioLink = (vendorId: string) => {
     const url = `${window.location.origin}/portfolio/${vendorId}`;
     navigator.clipboard.writeText(url).then(() => {
@@ -186,7 +197,7 @@ export default function AdminClient() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, vRes, cRes, eRes, conRes, bRes, appRes, lRes] = await Promise.all([
+      const [sRes, vRes, cRes, eRes, conRes, bRes, appRes, lRes, invRes] = await Promise.all([
         fetch('/api/stats'),
         fetch('/api/vendors?limit=100'),
         fetch('/api/categories'),
@@ -195,8 +206,9 @@ export default function AdminClient() {
         fetch('/api/bookings'),
         fetch('/api/vendor-applications'),
         fetch('/api/leads'),
+        fetch('/api/invoices'),
       ]);
-      const [s, v, c, e, con, b, app, l] = await Promise.all([sRes.json(), vRes.json(), cRes.json(), eRes.json(), conRes.json(), bRes.json(), appRes.json(), lRes.json()]);
+      const [s, v, c, e, con, b, app, l, inv] = await Promise.all([sRes.json(), vRes.json(), cRes.json(), eRes.json(), conRes.json(), bRes.json(), appRes.json(), lRes.json(), invRes.json()]);
       if (s.success) setStats(s.data);
       if (v.success) setVendors(v.data);
       if (c.success) setCategories(c.data);
@@ -205,6 +217,7 @@ export default function AdminClient() {
       if (b.success) setBookings(b.data);
       if (app.success) setVendorApplications(app.data);
       if (l.success) setLeads(l.data);
+      if (inv.success) setInvoices(inv.data);
     } finally {
       setLoading(false);
     }
@@ -494,6 +507,66 @@ export default function AdminClient() {
     fetchAll();
   };
 
+  // Invoice computations (computed from state, used in invoice form JSX)
+  const invoiceSubtotal = invoiceItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0) * (parseInt(item.quantity) || 1), 0);
+  const invoiceGstAmt = invoiceForm.gstEnabled ? Math.round(invoiceSubtotal * 0.18) : 0;
+  const invoiceTotal = invoiceSubtotal + invoiceGstAmt;
+
+  // Preview invoice computed strings (safe — only used when previewInvoice is non-null)
+  const prevInv = previewInvoice;
+  const prevPhone = prevInv?.clientPhone?.replace(/\D/g, '') || '';
+  const prevWaPhone = prevPhone.startsWith('91') ? prevPhone : `91${prevPhone}`;
+  const prevWaText = prevInv ? encodeURIComponent(
+    `*ShaadiShopping Invoice*\n` +
+    `Invoice No: ${prevInv.invoiceNumber}\n` +
+    `Date: ${new Date(prevInv.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}\n\n` +
+    `*Client:* ${prevInv.clientName}\n` +
+    (prevInv.eventDate ? `*Event Date:* ${new Date(prevInv.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}\n` : '') +
+    (prevInv.eventType ? `*Event:* ${prevInv.eventType}\n` : '') +
+    `\n*Services:*\n` +
+    (prevInv.items || []).map((it: AnyRecord) => `• ${it.description}${it.vendorName ? ` (${it.vendorName})` : ''} × ${it.quantity} — ₹${(it.amount * it.quantity).toLocaleString('en-IN')}`).join('\n') +
+    `\n\nSubtotal: ₹${prevInv.subtotal?.toLocaleString('en-IN')}` +
+    (prevInv.gstAmount > 0 ? `\nGST (18%): ₹${prevInv.gstAmount?.toLocaleString('en-IN')}` : '') +
+    `\n*Total: ₹${prevInv.total?.toLocaleString('en-IN')}*` +
+    (prevInv.notes ? `\n\n${prevInv.notes}` : '') +
+    `\n\nThank you for choosing ShaadiShopping! 🎊`
+  ) : '';
+  const prevMailSubject = prevInv ? encodeURIComponent(`Invoice ${prevInv.invoiceNumber} from ShaadiShopping`) : '';
+  const prevMailBody = prevInv ? encodeURIComponent(
+    `Dear ${prevInv.clientName},\n\nPlease find your invoice details below:\n\nInvoice No: ${prevInv.invoiceNumber}\nDate: ${new Date(prevInv.createdAt).toLocaleDateString('en-IN')}\n\nServices:\n` +
+    (prevInv.items || []).map((it: AnyRecord) => `- ${it.description}${it.vendorName ? ` (${it.vendorName})` : ''}: ₹${(it.amount * it.quantity).toLocaleString('en-IN')}`).join('\n') +
+    `\n\nSubtotal: ₹${prevInv.subtotal?.toLocaleString('en-IN')}` +
+    (prevInv.gstAmount > 0 ? `\nGST (18%): ₹${prevInv.gstAmount?.toLocaleString('en-IN')}` : '') +
+    `\nTotal: ₹${prevInv.total?.toLocaleString('en-IN')}` +
+    (prevInv.notes ? `\n\n${prevInv.notes}` : '') +
+    `\n\nThank you!\nTeam ShaadiShopping`
+  ) : '';
+
+  const handleInvoiceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const items = invoiceItems
+      .filter((i) => i.description && i.amount)
+      .map((i) => ({
+        description: i.description,
+        vendorName: i.vendorName || undefined,
+        amount: parseFloat(i.amount),
+        quantity: parseInt(i.quantity) || 1,
+      }));
+    const payload = { ...invoiceForm, items, subtotal: invoiceSubtotal, gstAmount: invoiceGstAmt, total: invoiceTotal };
+    if (editingInvoice) {
+      await fetch(`/api/invoices/${editingInvoice._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } else {
+      const res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.success) setPreviewInvoice(data.data);
+    }
+    setShowInvoiceForm(false);
+    setEditingInvoice(null);
+    setInvoiceForm(EMPTY_INVOICE_FORM);
+    setInvoiceItems([{ ...EMPTY_INVOICE_ITEM }]);
+    fetchAll();
+  };
+
   const TABS = [
     { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Dashboard' },
     { id: 'vendors' as Tab, icon: Briefcase, label: 'Vendors', badge: regularVendors.length },
@@ -505,6 +578,7 @@ export default function AdminClient() {
     { id: 'bookings' as Tab, icon: BookOpen, label: 'Bookings', badge: stats?.newBookings, badgeColor: 'bg-emerald-500' },
     { id: 'outside-vendors' as Tab, icon: Users, label: 'Outside Vendors', badge: stats?.newOutsideVendors, badgeColor: 'bg-indigo-500' },
     { id: 'leads' as Tab, icon: Phone, label: 'Leads', badge: leads.length || undefined, badgeColor: 'bg-green-500' },
+    { id: 'invoices' as Tab, icon: Receipt, label: 'Invoices', badge: invoices.length || undefined, badgeColor: 'bg-teal-500' },
   ];
 
   return (
@@ -602,14 +676,28 @@ export default function AdminClient() {
                 </button>
               )}
 
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              {/* Revenue highlight */}
+              {(stats?.revenue ?? 0) > 0 && (
+                <div className="w-full mb-5 bg-gradient-to-r from-amber-500 to-rose-500 rounded-2xl px-6 py-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mb-1">Confirmed Revenue</p>
+                    <p className="text-white text-3xl font-bold">₹{(stats!.revenue).toLocaleString('en-IN')}</p>
+                    <p className="text-white/70 text-xs mt-1">From confirmed &amp; closed bookings</p>
+                  </div>
+                  <TrendingUp className="w-12 h-12 text-white/30" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
                   { label: 'Total Vendors',  value: stats?.vendors || 0,       icon: Briefcase,    color: 'bg-blue-500',   tab: 'vendors' as Tab },
                   { label: 'Categories',     value: stats?.categories || 0,    icon: Tag,          color: 'bg-purple-500', tab: 'categories' as Tab },
                   { label: 'Enquiries',      value: stats?.enquiries || 0,     icon: MessageSquare,color: 'bg-amber-500',  tab: 'enquiries' as Tab,     sub: stats?.newEnquiries ? `${stats.newEnquiries} new` : undefined },
                   { label: 'Consultations',  value: stats?.consultations || 0, icon: Phone,        color: 'bg-rose-500',   tab: 'consultations' as Tab, sub: stats?.newConsultations ? `${stats.newConsultations} new` : undefined },
                   { label: 'Bookings',       value: stats?.bookings || 0,      icon: BookOpen,     color: 'bg-teal-500',   tab: 'bookings' as Tab,      sub: stats?.newBookings ? `${stats.newBookings} new` : undefined },
-                  { label: 'Outside Vendors', value: stats?.outsideVendors || 0, icon: Users,       color: 'bg-indigo-500', tab: 'outside-vendors' as Tab, sub: stats?.newOutsideVendors ? `${stats.newOutsideVendors} new` : undefined },
+                  { label: 'Outside Vendors', value: stats?.outsideVendors || 0, icon: Users,      color: 'bg-indigo-500', tab: 'outside-vendors' as Tab, sub: stats?.newOutsideVendors ? `${stats.newOutsideVendors} new` : undefined },
+                  { label: 'Leads Captured', value: stats?.leads || 0,         icon: Phone,        color: 'bg-green-500',  tab: 'leads' as Tab },
+                  { label: 'Invoices',       value: invoices.length,           icon: Receipt,      color: 'bg-orange-500', tab: 'invoices' as Tab },
                 ].map(({ label, value, icon: Icon, color, tab: targetTab, sub }) => (
                   <button
                     key={label}
@@ -1474,6 +1562,30 @@ export default function AdminClient() {
                       </div>
                     </div>
 
+                    {/* Quick actions */}
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      {(() => {
+                        const ePhone = e.phone?.replace(/\D/g, '') || '';
+                        const waPhone = ePhone.startsWith('91') ? ePhone : `91${ePhone}`;
+                        return (
+                          <>
+                            <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg hover:bg-emerald-100 transition-colors">
+                              💬 WhatsApp
+                            </a>
+                            <a href={`tel:${e.phone}`}
+                              className="flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg hover:bg-blue-100 transition-colors">
+                              📞 Call
+                            </a>
+                            <button onClick={() => { setInvoiceForm({ ...EMPTY_INVOICE_FORM, clientName: e.name, clientPhone: e.phone, clientEmail: e.email || '', clientCity: e.city || '', eventDate: e.eventDate || '', eventType: e.eventType || '' }); setInvoiceItems([{ ...EMPTY_INVOICE_ITEM }]); setEditingInvoice(null); setShowInvoiceForm(true); setTab('invoices'); }}
+                              className="flex items-center gap-1 text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-lg hover:bg-orange-100 transition-colors">
+                              <Receipt className="w-3 h-3" /> Create Invoice
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </div>
+
                     {/* Client & Vendor cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                       {/* Client */}
@@ -1900,7 +2012,7 @@ export default function AdminClient() {
                       checked={selectedLeads.has(lead._id)}
                       onChange={(e) => setSelectedLeads((prev) => {
                         const next = new Set(prev);
-                        e.target.checked ? next.add(lead._id) : next.delete(lead._id);
+                        if (e.target.checked) { next.add(lead._id); } else { next.delete(lead._id); }
                         return next;
                       })}
                     />
@@ -1949,8 +2061,325 @@ export default function AdminClient() {
             </div>
           )}
 
+          {/* INVOICES */}
+          {tab === 'invoices' && (
+            <div>
+              <div className="flex items-center justify-between mb-5">
+                <p className="text-gray-500 text-sm">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''} total</p>
+                <button
+                  onClick={() => { setEditingInvoice(null); setInvoiceForm(EMPTY_INVOICE_FORM); setInvoiceItems([{ ...EMPTY_INVOICE_ITEM }]); setShowInvoiceForm(true); }}
+                  className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all"
+                >
+                  <Plus className="w-4 h-4" /> New Invoice
+                </button>
+              </div>
+
+              {/* Invoice form */}
+              {showInvoiceForm && (
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5 animate-fade-in">
+                    <h3 className="font-bold text-gray-900 mb-5 text-lg flex items-center gap-2">
+                      <Receipt className="w-5 h-5 text-amber-500" />
+                      {editingInvoice ? 'Edit Invoice' : 'Create Invoice'}
+                    </h3>
+                    <form onSubmit={handleInvoiceSubmit} className="space-y-5">
+                      {/* Client details */}
+                      <div>
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Client Details</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Client Name *</label>
+                            <input required value={invoiceForm.clientName} onChange={e => setInvoiceForm({ ...invoiceForm, clientName: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Rahul Sharma" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Phone *</label>
+                            <input required type="tel" value={invoiceForm.clientPhone} onChange={e => setInvoiceForm({ ...invoiceForm, clientPhone: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="+91 98765 43210" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Email <span className="text-gray-400 font-normal">(optional)</span></label>
+                            <input type="email" value={invoiceForm.clientEmail} onChange={e => setInvoiceForm({ ...invoiceForm, clientEmail: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="rahul@example.com" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">City <span className="text-gray-400 font-normal">(optional)</span></label>
+                            <input value={invoiceForm.clientCity} onChange={e => setInvoiceForm({ ...invoiceForm, clientCity: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Patna" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Event Date <span className="text-gray-400 font-normal">(optional)</span></label>
+                            <input type="date" value={invoiceForm.eventDate} onChange={e => setInvoiceForm({ ...invoiceForm, eventDate: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">Event Type <span className="text-gray-400 font-normal">(optional)</span></label>
+                            <input value={invoiceForm.eventType} onChange={e => setInvoiceForm({ ...invoiceForm, eventType: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Wedding, Engagement, Reception..." />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Line items */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Services / Items</p>
+                          <button type="button" onClick={() => setInvoiceItems(prev => [...prev, { ...EMPTY_INVOICE_ITEM }])}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 border border-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-50 transition-all">
+                            <Plus className="w-3.5 h-3.5" /> Add Item
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {invoiceItems.map((item, i) => (
+                            <div key={i} className="grid grid-cols-12 gap-2 items-start bg-gray-50 rounded-xl p-3">
+                              <div className="col-span-12 sm:col-span-4">
+                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Description *</label>
+                                <input required value={item.description} onChange={e => setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, description: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Photography, Decoration..." />
+                              </div>
+                              <div className="col-span-12 sm:col-span-3">
+                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Vendor <span className="font-normal">(optional)</span></label>
+                                <input value={item.vendorName} onChange={e => setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, vendorName: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Vendor name" />
+                              </div>
+                              <div className="col-span-6 sm:col-span-2">
+                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Amount (₹) *</label>
+                                <input required type="number" min="0" value={item.amount} onChange={e => setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, amount: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" placeholder="50000" />
+                              </div>
+                              <div className="col-span-4 sm:col-span-2">
+                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Qty</label>
+                                <input type="number" min="1" value={item.quantity} onChange={e => setInvoiceItems(prev => prev.map((it, idx) => idx === i ? { ...it, quantity: e.target.value } : it))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                              </div>
+                              <div className="col-span-2 sm:col-span-1 flex items-end pb-0.5">
+                                {invoiceItems.length > 1 && (
+                                  <button type="button" onClick={() => setInvoiceItems(prev => prev.filter((_, idx) => idx !== i))} className="text-rose-400 hover:text-rose-600 mt-5 sm:mt-0">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Totals preview */}
+                      <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Subtotal</span>
+                          <span className="font-semibold">₹{invoiceSubtotal.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" checked={invoiceForm.gstEnabled} onChange={e => setInvoiceForm({ ...invoiceForm, gstEnabled: e.target.checked })} className="w-4 h-4 accent-amber-500" />
+                            GST (18%)
+                          </label>
+                          <span className="text-sm font-semibold">₹{invoiceGstAmt.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-amber-200">
+                          <span className="font-bold text-gray-900">Total</span>
+                          <span className="font-bold text-amber-600 text-lg">₹{invoiceTotal.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+
+                      {/* Notes */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Notes <span className="text-gray-400 font-normal">(optional — shown on invoice)</span></label>
+                        <textarea rows={2} value={invoiceForm.notes} onChange={e => setInvoiceForm({ ...invoiceForm, notes: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none" placeholder="Payment terms, thank you note, etc." />
+                      </div>
+
+                      <div className="flex gap-3">
+                        <button type="submit" className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+                          {editingInvoice ? 'Update Invoice' : 'Create & Preview'}
+                        </button>
+                        <button type="button" onClick={() => { setShowInvoiceForm(false); setEditingInvoice(null); }} className="bg-gray-100 text-gray-700 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-200">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+              )}
+
+              {/* Invoice list */}
+              {invoices.length === 0 && !showInvoiceForm ? (
+                <div className="text-center py-16 text-gray-400">
+                  <Receipt className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">No invoices yet. Click &ldquo;New Invoice&rdquo; to create your first one.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {invoices.map((inv) => {
+                    const statusColors: Record<string, string> = {
+                      draft: 'bg-gray-100 text-gray-600',
+                      sent: 'bg-blue-100 text-blue-700',
+                      paid: 'bg-emerald-100 text-emerald-700',
+                    };
+                    return (
+                      <div key={inv._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                        <div className="flex items-start justify-between gap-3 flex-wrap">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="font-mono text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{inv.invoiceNumber}</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${statusColors[inv.status] || 'bg-gray-100 text-gray-500'}`}>{inv.status}</span>
+                              <span className="text-xs text-gray-400">{new Date(inv.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            </div>
+                            <p className="font-semibold text-gray-900 text-sm">{inv.clientName}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">📞 {inv.clientPhone}{inv.clientCity ? ` · 📍 ${inv.clientCity}` : ''}</p>
+                            {inv.eventDate && <p className="text-xs text-gray-500 mt-0.5">📅 {new Date(inv.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}{inv.eventType ? ` — ${inv.eventType}` : ''}</p>}
+                            <p className="text-xs text-gray-400 mt-1">{inv.items?.length} item{inv.items?.length !== 1 ? 's' : ''}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <p className="text-amber-600 font-bold text-lg">₹{inv.total?.toLocaleString('en-IN')}</p>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => setPreviewInvoice(inv)}
+                                className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg hover:bg-amber-100 transition-colors">
+                                <Eye className="w-3 h-3" /> Preview
+                              </button>
+                              <button onClick={() => { setEditingInvoice(inv); setInvoiceForm({ clientName: inv.clientName, clientPhone: inv.clientPhone, clientEmail: inv.clientEmail || '', clientCity: inv.clientCity || '', eventDate: inv.eventDate || '', eventType: inv.eventType || '', notes: inv.notes || '', gstEnabled: inv.gstEnabled }); setInvoiceItems(inv.items?.map((it: AnyRecord) => ({ description: it.description, vendorName: it.vendorName || '', amount: String(it.amount), quantity: String(it.quantity) })) || [{ ...EMPTY_INVOICE_ITEM }]); setShowInvoiceForm(true); }}
+                                className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button onClick={async () => { if (!confirm('Delete this invoice?')) return; await fetch(`/api/invoices/${inv._id}`, { method: 'DELETE' }); fetchAll(); }}
+                                className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            {/* Status update */}
+                            <div className="flex gap-1.5">
+                              {(['draft', 'sent', 'paid'] as const).map(s => (
+                                <button key={s} onClick={async () => { await fetch(`/api/invoices/${inv._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: s }) }); fetchAll(); }}
+                                  className={`text-xs px-2.5 py-1 rounded-full font-medium border transition-all capitalize ${inv.status === s ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300'}`}>
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </main>
+
+      {/* Invoice preview modal */}
+      {previewInvoice && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 print:hidden" onClick={e => { if (e.target === e.currentTarget) setPreviewInvoice(null); }}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-auto">
+              {/* Modal actions bar */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 print:hidden">
+                <p className="font-bold text-gray-800 text-sm flex items-center gap-2"><Receipt className="w-4 h-4 text-amber-500" /> Invoice Preview</p>
+                <div className="flex items-center gap-2">
+                  <a href={`https://wa.me/${prevWaPhone}?text=${prevWaText}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-semibold bg-[#25D366] text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-all">
+                    💬 Send WhatsApp
+                  </a>
+                  {prevInv?.clientEmail && (
+                    <a href={`mailto:${prevInv.clientEmail}?subject=${prevMailSubject}&body=${prevMailBody}`}
+                      className="flex items-center gap-1.5 text-xs font-semibold bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:opacity-90 transition-all">
+                      <Mail className="w-3.5 h-3.5" /> Send Email
+                    </a>
+                  )}
+                  <button onClick={() => window.print()}
+                    className="flex items-center gap-1.5 text-xs font-semibold bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-all">
+                    <Printer className="w-3.5 h-3.5" /> Print / PDF
+                  </button>
+                  <button onClick={() => setPreviewInvoice(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Invoice content */}
+              <div id="invoice-print-area" className="p-8">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-8">
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900" style={{ fontFamily: 'Playfair Display, serif' }}>ShaadiShopping</h1>
+                    <p className="text-gray-500 text-sm mt-0.5">Wedding Planning Made Beautiful</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-amber-600">INVOICE</p>
+                    <p className="text-sm font-mono text-gray-600 mt-0.5">{prevInv?.invoiceNumber}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{prevInv ? new Date(prevInv.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}</p>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="h-px bg-gradient-to-r from-amber-400 to-rose-400 mb-6" />
+
+                {/* Client info */}
+                <div className="grid grid-cols-2 gap-6 mb-8">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Bill To</p>
+                    <p className="font-bold text-gray-900">{prevInv?.clientName}</p>
+                    <p className="text-sm text-gray-600">{prevInv?.clientPhone}</p>
+                    {prevInv?.clientEmail && <p className="text-sm text-gray-600">{prevInv.clientEmail}</p>}
+                    {prevInv?.clientCity && <p className="text-sm text-gray-600">{prevInv.clientCity}</p>}
+                  </div>
+                  {(prevInv?.eventDate || prevInv?.eventType) && (
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Event Details</p>
+                      {prevInv.eventType && <p className="font-semibold text-gray-900 capitalize">{prevInv.eventType}</p>}
+                      {prevInv.eventDate && <p className="text-sm text-gray-600">{new Date(prevInv.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Items table */}
+                <table className="w-full mb-6">
+                  <thead>
+                    <tr className="border-b-2 border-gray-200">
+                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Description</th>
+                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider pb-2 hidden sm:table-cell">Vendor</th>
+                      <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Qty</th>
+                      <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Rate</th>
+                      <th className="text-right text-xs font-bold text-gray-500 uppercase tracking-wider pb-2">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(prevInv?.items || []).map((it: AnyRecord, i: number) => (
+                      <tr key={i} className="border-b border-gray-100">
+                        <td className="py-3 text-sm font-medium text-gray-900">{it.description}</td>
+                        <td className="py-3 text-sm text-gray-500 hidden sm:table-cell">{it.vendorName || '—'}</td>
+                        <td className="py-3 text-sm text-gray-700 text-right">{it.quantity}</td>
+                        <td className="py-3 text-sm text-gray-700 text-right">₹{it.amount?.toLocaleString('en-IN')}</td>
+                        <td className="py-3 text-sm font-semibold text-gray-900 text-right">₹{(it.amount * it.quantity).toLocaleString('en-IN')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Totals */}
+                <div className="flex justify-end">
+                  <div className="w-full sm:w-64 space-y-2">
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Subtotal</span>
+                      <span>₹{prevInv?.subtotal?.toLocaleString('en-IN')}</span>
+                    </div>
+                    {(prevInv?.gstAmount ?? 0) > 0 && (
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>GST (18%)</span>
+                        <span>₹{prevInv?.gstAmount?.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-base border-t border-gray-200 pt-2">
+                      <span>Total</span>
+                      <span className="text-amber-600">₹{prevInv?.total?.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {prevInv?.notes && (
+                  <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Notes</p>
+                    <p className="text-sm text-gray-600">{prevInv.notes}</p>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="mt-8 pt-4 border-t border-gray-100 text-center">
+                  <p className="text-xs text-gray-400">Thank you for choosing ShaadiShopping · Making your special day truly memorable 🎊</p>
+                </div>
+              </div>
+            </div>
+          </div>
+      )}
     </div>
   );
 }
