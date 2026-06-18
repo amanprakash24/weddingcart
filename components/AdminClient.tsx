@@ -570,6 +570,101 @@ export default function AdminClient() {
     `\n\nThank you!\nTeam ShaadiShopping`
   ) : '';
 
+  const handlePrint = () => {
+    const inv = prevInv;
+    if (!inv) return;
+    const itemRows = (inv.items || []).map((it: AnyRecord) =>
+      `<tr>
+        <td class="b">${it.description}</td>
+        <td>${it.vendorName || '—'}</td>
+        <td class="r">${it.quantity}</td>
+        <td class="r">₹${it.amount?.toLocaleString('en-IN')}</td>
+        <td class="r b">₹${(it.amount * it.quantity).toLocaleString('en-IN')}</td>
+       </tr>`
+    ).join('');
+    const discountRow = (inv.discount ?? 0) > 0
+      ? `<div class="tr disc"><span>Discount</span><span>-₹${inv.discount?.toLocaleString('en-IN')}</span></div>` : '';
+    const gstRow = (inv.gstAmount ?? 0) > 0
+      ? `<div class="tr"><span>GST (18%)</span><span>₹${inv.gstAmount?.toLocaleString('en-IN')}</span></div>` : '';
+    const notesSection = inv.notes
+      ? `<div class="notes"><p class="nl">Notes</p><p class="nt">${inv.notes}</p></div>` : '';
+    const eventSection = (inv.eventDate || inv.eventType) ? `
+      <div>
+        <p class="il">Event Details</p>
+        ${inv.eventType ? `<p class="in">${inv.eventType}</p>` : ''}
+        ${inv.eventDate ? `<p class="id">${new Date(inv.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>` : ''}
+      </div>` : '<div></div>';
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Invoice ${inv.invoiceNumber}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111;background:#fff;padding:40px;max-width:720px;margin:0 auto}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px}
+.brand{font-size:22px;font-weight:800;font-family:Georgia,serif}
+.brand-sub{font-size:12px;color:#777;margin-top:3px}
+.inv-title{font-size:22px;font-weight:800;color:#d97706;text-align:right}
+.inv-num{font-size:13px;color:#555;font-family:monospace;text-align:right;margin-top:3px}
+.inv-date{font-size:11px;color:#999;text-align:right;margin-top:2px}
+.divider{height:2px;background:linear-gradient(to right,#f59e0b,#f43f5e);margin-bottom:24px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px}
+.il{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.in{font-size:15px;font-weight:700}
+.id{font-size:13px;color:#555;margin-top:2px}
+table{width:100%;border-collapse:collapse;margin-bottom:20px}
+th{text-align:left;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.08em;padding-bottom:8px;border-bottom:2px solid #e5e7eb}
+th.r{text-align:right}
+td{padding:10px 0;font-size:13px;color:#333;border-bottom:1px solid #f3f4f6;vertical-align:top}
+td.r{text-align:right}
+td.b{font-weight:600}
+.totals{display:flex;justify-content:flex-end;margin-bottom:20px}
+.ti{width:240px}
+.tr{display:flex;justify-content:space-between;font-size:13px;color:#555;padding:3px 0}
+.tr.disc{color:#16a34a}
+.tr.final{font-size:15px;font-weight:700;color:#111;border-top:2px solid #e5e7eb;padding-top:10px;margin-top:4px}
+.tr.final span:last-child{color:#d97706}
+.notes{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-bottom:20px}
+.nl{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.nt{font-size:13px;color:#555}
+.footer{border-top:1px solid #f3f4f6;padding-top:14px;text-align:center}
+.footer p{font-size:11px;color:#aaa}
+@media print{body{padding:20px}@page{margin:1.5cm}}
+</style></head><body>
+<div class="header">
+  <div><p class="brand">ShaadiShopping</p><p class="brand-sub">Wedding Planning Made Beautiful</p></div>
+  <div><p class="inv-title">INVOICE</p><p class="inv-num">${inv.invoiceNumber}</p><p class="inv-date">${new Date(inv.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
+</div>
+<div class="divider"></div>
+<div class="info-grid">
+  <div>
+    <p class="il">Bill To</p>
+    <p class="in">${inv.clientName}</p>
+    <p class="id">${inv.clientPhone}</p>
+    ${inv.clientEmail ? `<p class="id">${inv.clientEmail}</p>` : ''}
+    ${inv.clientCity ? `<p class="id">${inv.clientCity}</p>` : ''}
+  </div>
+  ${eventSection}
+</div>
+<table>
+  <thead><tr>
+    <th>Description</th><th>Vendor</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amount</th>
+  </tr></thead>
+  <tbody>${itemRows}</tbody>
+</table>
+<div class="totals"><div class="ti">
+  <div class="tr"><span>Subtotal</span><span>₹${inv.subtotal?.toLocaleString('en-IN')}</span></div>
+  ${discountRow}${gstRow}
+  <div class="tr final"><span>Total</span><span>₹${inv.total?.toLocaleString('en-IN')}</span></div>
+</div></div>
+${notesSection}
+<div class="footer"><p>Thank you for choosing ShaadiShopping · Making your special day truly memorable 🎊</p></div>
+</body></html>`;
+    const win = window.open('', '_blank', 'width=820,height=950');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
+  };
+
   const handleInvoiceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const items = invoiceItems
@@ -2439,7 +2534,7 @@ export default function AdminClient() {
                       <Mail className="w-3.5 h-3.5" /> Send Email
                     </a>
                   )}
-                  <button onClick={() => window.print()}
+                  <button onClick={handlePrint}
                     className="flex items-center gap-1.5 text-xs font-semibold bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-all">
                     <Printer className="w-3.5 h-3.5" /> Print / PDF
                   </button>
