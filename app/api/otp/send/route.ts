@@ -12,6 +12,19 @@ export async function POST(req: Request) {
 
     await connectDB();
 
+    // Rate limit: one OTP per phone per 60 seconds
+    const recent = await OTP.findOne({ phone });
+    if (recent) {
+      const ageSeconds = (Date.now() - new Date(recent.createdAt).getTime()) / 1000;
+      if (ageSeconds < 60) {
+        const wait = Math.ceil(60 - ageSeconds);
+        return NextResponse.json(
+          { success: false, message: `Please wait ${wait} seconds before requesting another OTP` },
+          { status: 429 },
+        );
+      }
+    }
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     await OTP.deleteMany({ phone });

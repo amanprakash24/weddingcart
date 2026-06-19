@@ -5,8 +5,12 @@ import VendorModel from '@/lib/models/Vendor';
 import BlogModel from '@/lib/models/Blog';
 import { CATEGORIES, VENDORS } from '@/data/seedData';
 import { BLOG_POSTS } from '@/data/blogSeedData';
+import { requireAdmin } from '@/lib/adminAuth';
 
 export async function POST() {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await connectDB();
 
