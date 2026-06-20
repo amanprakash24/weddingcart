@@ -8,6 +8,17 @@ import {
   ArrowRight, ShieldCheck, Clock, Sparkles, Utensils, Home,
 } from 'lucide-react';
 
+const GALLERY_IMAGES = [
+  {
+    src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1781971028/shaadishopping/touch-of-cozy/best-banquet-hall-touch-of-cozy.jpg',
+    alt: 'Touch of Cozy Banquet Hall — Best Banquet Hall in Patna',
+  },
+  {
+    src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1781971030/shaadishopping/touch-of-cozy/touch-of-cozy-patna.jpg',
+    alt: 'Touch of Cozy — Wedding Venue in Rajeev Nagar, Patna',
+  },
+];
+
 const FEATURES = [
   'Fully Air-Conditioned Banquet Hall',
   '5 Complimentary Guest Rooms with Events',
@@ -357,6 +368,37 @@ export default function TouchOfCozyClient() {
               >
                 <CheckCircle className="w-4 h-4 text-[#C5A46D] flex-shrink-0 mt-0.5" />
                 <span className="text-sm text-gray-700 font-medium leading-snug">{f}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PHOTO GALLERY ── */}
+      <section className="bg-[#FFFAF5] py-14 sm:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.2em] mb-2">Photo Gallery</p>
+            <h2
+              className="text-2xl sm:text-3xl font-bold text-gray-900"
+              style={{ fontFamily: 'var(--font-playfair, serif)' }}
+            >
+              See the Venue for Yourself
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {GALLERY_IMAGES.map((img) => (
+              <div
+                key={img.src}
+                className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-md border border-[#C5A46D]/15"
+              >
+                <Image
+                  src={img.src}
+                  alt={img.alt}
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-500"
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                />
               </div>
             ))}
           </div>
