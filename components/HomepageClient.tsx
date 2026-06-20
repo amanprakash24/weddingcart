@@ -14,6 +14,7 @@ import CitiesSection from './homepage/CitiesSection';
 import ExpertSection from './homepage/ExpertSection';
 import FeaturedVendorsSection from './homepage/FeaturedVendorsSection';
 import FinalCtaSection from './homepage/FinalCtaSection';
+import AboutBrandSection from './homepage/AboutBrandSection';
 
 const MARQUEE_ITEMS = [
   'Venues', 'Photographers', 'Decorators', 'Mehndi Artists',
@@ -108,6 +109,7 @@ export default function HomepageClient() {
           </motion.div>
         </div>
 
+        <AboutBrandSection />
         <FinalCtaSection />
 
         {/* Sticky Mobile CTA */}

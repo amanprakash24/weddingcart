@@ -43,7 +43,7 @@ export default function HeroSection() {
             className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/15 text-white/80 px-4 py-2 rounded-full text-[0.68rem] sm:text-xs font-medium mb-6 sm:mb-8 tracking-[0.1em] sm:tracking-[0.14em] uppercase"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#C5A46D] flex-shrink-0" />
-            India&apos;s Expert Wedding Platform
+            Shaadi Shopping — India&apos;s Expert Wedding Platform
           </motion.div>
 
           <h1
