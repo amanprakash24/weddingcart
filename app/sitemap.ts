@@ -34,11 +34,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/blog/court-marriage-registration-patna-bihar`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
     { url: `${BASE_URL}/blog/best-banquet-hall-in-patna`,              lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
     { url: `${BASE_URL}/venues-in-patna`,                             lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.97 },
+    // Venue landing pages
+    { url: `${BASE_URL}/lp/swayamvar-hall`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
   ];
 
   let categoryRoutes: MetadataRoute.Sitemap = [];
   let vendorRoutes: MetadataRoute.Sitemap = [];
+  let portfolioRoutes: MetadataRoute.Sitemap = [];
   let blogRoutes: MetadataRoute.Sitemap = [];
+
+  // Slugs already pinned in staticRoutes — skip in dynamic to avoid duplicates
+  const PINNED_BLOG_SLUGS = new Set([
+    'court-marriage-registration-patna-bihar',
+    'best-banquet-hall-in-patna',
+  ]);
 
   try {
     await connectDB();
@@ -65,20 +74,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
+    portfolioRoutes = vendors.map(vendor => ({
+      url: `${BASE_URL}/portfolio/${vendor.id}`,
+      lastModified: vendor.updatedAt ?? new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    }));
+
     const blogs = await BlogModel.find({ status: 'published' })
       .select('slug updatedAt publishedAt')
       .lean<{ slug: string; updatedAt?: Date; publishedAt?: Date }[]>();
 
-    const pinnedBlogSlugs = new Set(['court-marriage-registration-patna-bihar']);
-    blogRoutes = blogs.map(blog => ({
-      url: `${BASE_URL}/blog/${blog.slug}`,
-      lastModified: blog.updatedAt ?? blog.publishedAt ?? new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: pinnedBlogSlugs.has(blog.slug) ? 0.92 : 0.8,
-    }));
+    blogRoutes = blogs
+      .filter(blog => !PINNED_BLOG_SLUGS.has(blog.slug))
+      .map(blog => ({
+        url: `${BASE_URL}/blog/${blog.slug}`,
+        lastModified: blog.updatedAt ?? blog.publishedAt ?? new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.8,
+      }));
   } catch (err) {
     console.error('Sitemap generation error:', err);
   }
 
-  return [...cityCategoryRoutes, ...staticRoutes, ...categoryRoutes, ...vendorRoutes, ...blogRoutes];
+  return [...cityCategoryRoutes, ...staticRoutes, ...categoryRoutes, ...vendorRoutes, ...portfolioRoutes, ...blogRoutes];
 }

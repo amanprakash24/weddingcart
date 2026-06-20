@@ -202,6 +202,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
+    keywords: [
+      `${name} India`, `wedding ${slug} India`, `best ${name.toLowerCase()} India`,
+      `book ${name.toLowerCase()} wedding India`, `${name.toLowerCase()} price India`,
+      `verified ${name.toLowerCase()} wedding`, `${name.toLowerCase()} near me`,
+      'wedding vendors India', 'ShaadiShopping',
+    ],
     alternates: { canonical: url },
     openGraph: {
       title,
