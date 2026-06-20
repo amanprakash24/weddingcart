@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     template: '%s | ShaadiShopping',
   },
   description:
-    "India's managed wedding planning & coordination platform. Expert consultants, trusted vendors, personalized planning wizard, and stress-free execution — from Venue to Vidaai.",
+    "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert wedding coordination from Venue to Vidaai.",
   keywords: [
     'shaadi', 'shadi', 'shaadi planning', 'shaadi vendors', 'online shaadi booking',
     'vivah', 'byah', 'vivah planning India',
@@ -49,6 +49,8 @@ export const metadata: Metadata = {
     'mehndi artist', 'wedding DJ', 'wedding band', 'wedding planning',
     'shaadi planning India', 'wedding platform India',
     'wedding vendors Patna', 'wedding Bihar', 'shaadi Bihar',
+    'banquet hall patna', 'best banquet hall patna', 'banquet hall in patna',
+    'marriage hall patna', 'wedding hall patna',
   ],
   icons: {
     icon: [
@@ -61,7 +63,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   openGraph: {
     title: "ShaadiShopping — India's Expert Wedding Coordination Platform",
-    description: "Expert-guided wedding planning from Venue to Vidaai. Trusted vendors, personal consultants, stress-free coordination across India.",
+    description: "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert coordination from Venue to Vidaai.",
     type: 'website',
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
@@ -71,7 +73,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'ShaadiShopping — India\'s Expert Wedding Coordination Platform',
-    description: "Expert-guided wedding planning from Venue to Vidaai. Trusted vendors, personal consultants, stress-free coordination across India.",
+    description: "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert coordination from Venue to Vidaai.",
     site: '@ShaadiShopping',
     images: ['/opengraph-image'],
   },
