@@ -33,7 +33,7 @@ const localBusinessSchema = {
   telephone: '+91-76460-28228',
   address: {
     '@type': 'PostalAddress',
-    streetAddress: 'T Point, Gola Rd, near Danapur',
+    streetAddress: 'Gola Road, Adarsh Vihar Colony, Lane 5, near T Point, beside Hotel King Regency',
     addressLocality: 'Patna',
     addressRegion: 'Bihar',
     postalCode: '801503',
