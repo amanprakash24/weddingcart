@@ -77,10 +77,11 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
+    '@id': `${BASE_URL}/vendors/${id}`,
     name: vendor.name,
     description: vendor.description,
     image: vendor.image,
-    url: `${BASE_URL}/portfolio/${id}`,
+    url: `${BASE_URL}/vendors/${id}`,
     address: { '@type': 'PostalAddress', addressLocality: vendor.city, addressCountry: 'IN' },
     priceRange: `₹${vendor.priceMin.toLocaleString('en-IN')} – ₹${vendor.priceMax.toLocaleString('en-IN')}`,
     ...(vendor.reviewCount > 0 && {

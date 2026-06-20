@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import VendorApplicationModel from '@/lib/models/VendorApplication';
 import VendorModel from '@/lib/models/Vendor';
+import { requireAdmin } from '@/lib/adminAuth';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80';
 
@@ -45,47 +46,56 @@ async function createVendorFromApplication(app: InstanceType<typeof VendorApplic
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await connectDB();
     const { id } = await params;
     const application = await VendorApplicationModel.findById(id);
     if (!application) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     return NextResponse.json({ success: true, data: application });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to fetch application' }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await connectDB();
     const { id } = await params;
-    const body = await req.json();
+    const { status } = await req.json();
 
-    // Fetch existing record to check previous status
     const existing = await VendorApplicationModel.findById(id);
     if (!existing) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 
+    const update: { status: string; vendorId?: string } = { status };
+
     // Auto-create vendor on first approval
-    if (body.status === 'approved' && existing.status !== 'approved' && !existing.vendorId) {
-      const vendorId = await createVendorFromApplication(existing);
-      body.vendorId = vendorId;
+    if (status === 'approved' && existing.status !== 'approved' && !existing.vendorId) {
+      update.vendorId = await createVendorFromApplication(existing);
     }
 
-    const application = await VendorApplicationModel.findByIdAndUpdate(id, body, { new: true });
+    const application = await VendorApplicationModel.findByIdAndUpdate(id, update, { new: true });
     return NextResponse.json({ success: true, data: application });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to update application' }, { status: 500 });
   }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await connectDB();
     const { id } = await params;
     await VendorApplicationModel.findByIdAndDelete(id);
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to delete application' }, { status: 500 });
   }
 }

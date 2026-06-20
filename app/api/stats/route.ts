@@ -7,8 +7,12 @@ import ConsultationModel from '@/lib/models/Consultation';
 import BookingModel from '@/lib/models/Booking';
 import VendorApplicationModel from '@/lib/models/VendorApplication';
 import LeadModel from '@/lib/models/Lead';
+import { requireAdmin } from '@/lib/adminAuth';
 
 export async function GET() {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await connectDB();
 
@@ -40,21 +44,12 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        vendors,
-        categories,
-        enquiries,
-        consultations,
-        newEnquiries,
-        newConsultations,
-        bookings,
-        newBookings,
-        outsideVendors,
-        newOutsideVendors,
-        leads,
-        revenue,
+        vendors, categories, enquiries, consultations,
+        newEnquiries, newConsultations, bookings, newBookings,
+        outsideVendors, newOutsideVendors, leads, revenue,
       },
     });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to fetch stats' }, { status: 500 });
   }
 }

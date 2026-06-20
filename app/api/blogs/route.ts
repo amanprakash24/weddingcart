@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { connectDB } from '@/lib/mongodb';
 import BlogModel from '@/lib/models/Blog';
-import { computeAdminToken, computeSuperAdminToken } from '@/lib/adminAuth';
-
-async function isAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('admin_session')?.value;
-  if (!token) return false;
-  return token === computeAdminToken() || token === computeSuperAdminToken();
-}
+import { requireAdmin } from '@/lib/adminAuth';
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,9 +10,9 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category');
     const page = Math.max(1, parseInt(searchParams.get('page') ?? '1'));
     const limit = Math.min(20, parseInt(searchParams.get('limit') ?? '9'));
-    const all = searchParams.get('all') === 'true'; // admin: show drafts too
+    const showAll = searchParams.get('all') === 'true' && (await requireAdmin());
 
-    const query: Record<string, unknown> = all ? {} : { status: 'published' };
+    const query: Record<string, unknown> = showAll ? {} : { status: 'published' };
     if (category && category !== 'all') query.category = category;
 
     const total = await BlogModel.countDocuments(query);
@@ -32,13 +24,13 @@ export async function GET(req: NextRequest) {
       .lean();
 
     return NextResponse.json({ blogs, total, page, pages: Math.ceil(total / limit) });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch blogs' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await isAdmin())) {
+  if (!(await requireAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {
@@ -60,7 +52,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ blog }, { status: 201 });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Failed to create blog' }, { status: 500 });
   }
 }

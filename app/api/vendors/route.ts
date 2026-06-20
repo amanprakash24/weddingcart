@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import VendorModel from '@/lib/models/Vendor';
+import { requireAdmin } from '@/lib/adminAuth';
+
+type MongoRegex = { $regex: string; $options: string };
+
+interface VendorFilter {
+  category?: string;
+  city?: string;
+  isFeatured?: boolean;
+  rating?: { $gte: number };
+  priceMin?: { $gte: number };
+  priceMax?: { $lte: number };
+  $or?: Array<{ name?: MongoRegex } | { city?: MongoRegex } | { description?: MongoRegex }>;
+}
+
+type SortQuery = Record<string, 1 | -1>;
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,9 +31,10 @@ export async function GET(req: NextRequest) {
     const sort = searchParams.get('sort') || 'rating';
     const featured = searchParams.get('featured');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const page = parseInt(searchParams.get('page') || '1');
+    const skip = (page - 1) * limit;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const query: Record<string, any> = {};
+    const query: VendorFilter = {};
 
     if (category) query.category = category;
     if (city) query.city = city;
@@ -34,26 +50,31 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let sortQuery: any = { sortOrder: 1, isFeatured: -1, rating: -1, reviewCount: -1 };
+    let sortQuery: SortQuery = { sortOrder: 1, isFeatured: -1, rating: -1, reviewCount: -1 };
     if (sort === 'price-asc') sortQuery = { sortOrder: 1, isFeatured: -1, priceMin: 1 };
     else if (sort === 'price-desc') sortQuery = { sortOrder: 1, isFeatured: -1, priceMin: -1 };
     else if (sort === 'reviews') sortQuery = { sortOrder: 1, isFeatured: -1, reviewCount: -1, rating: -1 };
 
-    const vendors = await VendorModel.find(query).sort(sortQuery).limit(limit).lean();
-    return NextResponse.json({ success: true, data: vendors, total: vendors.length });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+    const [vendors, total] = await Promise.all([
+      VendorModel.find(query).sort(sortQuery).skip(skip).limit(limit).lean(),
+      VendorModel.countDocuments(query),
+    ]);
+    return NextResponse.json({ success: true, data: vendors, total, page, limit });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to fetch vendors' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await connectDB();
     const body = await req.json();
     const vendor = await VendorModel.create(body);
     return NextResponse.json({ success: true, data: vendor }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to create vendor' }, { status: 500 });
   }
 }

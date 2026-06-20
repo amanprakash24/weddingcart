@@ -35,6 +35,7 @@ interface BlogData {
   seoTitle: string;
   seoDescription: string;
   publishedAt: string | null;
+  updatedAt: string | null;
   readTime: number;
 }
 
@@ -112,12 +113,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [blog, related] = await Promise.all([
-    getBlog(slug),
-    getBlog(slug).then(b => b ? getRelatedPosts(b.category, slug) : []),
-  ]);
-
+  const blog = await getBlog(slug);
   if (!blog) notFound();
+  const related = await getRelatedPosts(blog.category, slug);
 
   const categoryColor = CATEGORY_COLOR[blog.category] ?? '#C5A46D';
 
@@ -134,7 +132,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       logo: { '@type': 'ImageObject', url: `${BASE_URL}/logo.png` },
     },
     datePublished: blog.publishedAt,
-    dateModified: blog.publishedAt,
+    dateModified: blog.updatedAt ?? blog.publishedAt,
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${BASE_URL}/blog/${slug}` },
     keywords: blog.tags?.join(', '),
     articleSection: blog.category,

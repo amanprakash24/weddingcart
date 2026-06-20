@@ -61,6 +61,9 @@ const organizationSchema = {
   logo: `${BASE_URL}/logo.png`,
   sameAs: [
     'https://shaadishopping.com',
+    'https://www.instagram.com/shaadishopping',
+    'https://www.facebook.com/shaadishopping',
+    'https://wa.me/917646028228',
   ],
   contactPoint: {
     '@type': 'ContactPoint',

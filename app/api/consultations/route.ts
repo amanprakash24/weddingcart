@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import ConsultationModel from '@/lib/models/Consultation';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { requireAdmin } from '@/lib/adminAuth';
 
 export async function GET(req: NextRequest) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
@@ -11,8 +15,8 @@ export async function GET(req: NextRequest) {
     const query = status ? { status } : {};
     const consultations = await ConsultationModel.find(query).sort({ createdAt: -1 }).lean();
     return NextResponse.json({ success: true, data: consultations });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to fetch consultations' }, { status: 500 });
   }
 }
 
@@ -59,7 +63,6 @@ function buildAdminMessage(data: Record<string, unknown>) {
     .join(', ') || 'None';
 
   const budget = BUDGET_LABELS[data.budgetRange as string] || (data.budgetRange as string) || 'Not specified';
-
   const eventType = (data.eventType as string) || 'wedding';
   const eventLabel = eventType.charAt(0).toUpperCase() + eventType.slice(1);
 
@@ -144,22 +147,33 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const consultation = await ConsultationModel.create(body);
 
-    const ADMIN_PHONE = '917646028228';
+    // Whitelist fields — prevent injecting status or other admin-controlled fields
+    const {
+      name, phone, email, city, eventType, weddingDate, days, guestCount,
+      foodPreference, services, venueType, preferredTime, message,
+      cartItems, totalBudget, weddingStyle, budgetRange, consultationDate,
+    } = body;
+
+    const consultation = await ConsultationModel.create({
+      name, phone, email, city, eventType, weddingDate, days, guestCount,
+      foodPreference, services, venueType, preferredTime, message,
+      cartItems, totalBudget, weddingStyle, budgetRange, consultationDate,
+    });
+
+    const ADMIN_PHONE = process.env.WHATSAPP_ADMIN_PHONE || '917646028228';
     const expertName = process.env.EXPERT_NAME || 'Priya Mishra';
 
-    // Fire both messages concurrently — don't block the response on WhatsApp
     const adminMsg = buildAdminMessage(body);
     const userMsg  = buildUserMessage(body, expertName);
 
     await Promise.allSettled([
       sendWhatsAppMessage(ADMIN_PHONE, adminMsg),
-      sendWhatsAppMessage(`91${body.phone}`, userMsg),
+      sendWhatsAppMessage(`91${phone}`, userMsg),
     ]);
 
     return NextResponse.json({ success: true, data: consultation }, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to submit consultation' }, { status: 500 });
   }
 }
