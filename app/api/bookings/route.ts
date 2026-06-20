@@ -20,7 +20,8 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const booking = await BookingModel.create(body);
+    const { name, phone, city, items, total } = body;
+    const booking = await BookingModel.create({ name, phone, city, items, total });
     return NextResponse.json({ success: true, data: booking }, { status: 201 });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to create booking' }, { status: 500 });

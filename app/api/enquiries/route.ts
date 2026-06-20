@@ -23,7 +23,11 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const enquiry = await EnquiryModel.create(body);
+    const { vendorId, vendorName, vendorCategory, name, phone, email, city, eventDate, guestCount, eventType, message } = body;
+    const enquiry = await EnquiryModel.create({
+      vendorId, vendorName, vendorCategory,
+      name, phone, email, city, eventDate, guestCount, eventType, message,
+    });
     return NextResponse.json({ success: true, data: enquiry }, { status: 201 });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to submit enquiry' }, { status: 500 });

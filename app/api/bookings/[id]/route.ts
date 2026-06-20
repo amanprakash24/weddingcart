@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import BookingModel from '@/lib/models/Booking';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { requireAdmin } from '@/lib/adminAuth';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     await connectDB();
     const { id } = await params;
-    const body = await req.json();
+    const { status } = await req.json();
 
     const existing = await BookingModel.findById(id).lean() as {
       name: string;
@@ -20,9 +24,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     if (!existing) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 
-    const booking = await BookingModel.findByIdAndUpdate(id, body, { new: true });
+    const booking = await BookingModel.findByIdAndUpdate(id, { status }, { new: true });
 
-    if (body.status === 'contacted' && existing.status !== 'contacted') {
+    if (status === 'contacted' && existing.status !== 'contacted') {
       const itemLines = (existing.items || [])
         .map((it) => `• ${it.vendorName} — ${it.packageName}: ₹${(it.price * it.quantity).toLocaleString('en-IN')}`)
         .join('\n');
@@ -49,7 +53,7 @@ We look forward to making your special day truly memorable! ✨
     }
 
     return NextResponse.json({ success: true, data: booking });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ success: false, error: 'Failed to update booking' }, { status: 500 });
   }
 }
