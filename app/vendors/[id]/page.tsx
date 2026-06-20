@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import VendorDetailClient from '@/components/VendorDetailClient';
 import { JsonLd } from '@/components/JsonLd';
@@ -7,7 +8,7 @@ import VendorModel from '@/lib/models/Vendor';
 
 export const revalidate = 3600;
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 const CATEGORY_LABELS: Record<string, string> = {
   venue: 'Wedding Venue',
@@ -75,7 +76,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const vendor = await getVendorMeta(id);
 
-  if (!vendor) return { title: 'Vendor Not Found' };
+  if (!vendor) return { title: 'Not Found', robots: { index: false } };
 
   const catLabel = CATEGORY_LABELS[vendor.category] ?? vendor.category;
   const title = `${vendor.name} — ${catLabel} in ${vendor.city}`;
@@ -111,6 +112,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function VendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const vendor = await getVendorMeta(id);
+
+  if (!vendor) notFound();
 
   const jsonLd = vendor
     ? {

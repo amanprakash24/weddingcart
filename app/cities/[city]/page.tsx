@@ -9,7 +9,7 @@ import type { Vendor } from '@/types';
 
 export const revalidate = 3600;
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 // ── City registry ────────────────────────────────────────────────────────────
 

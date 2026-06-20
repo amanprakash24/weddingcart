@@ -6,7 +6,7 @@ import BlogModel from '@/lib/models/Blog';
 
 export const dynamic = 'force-dynamic';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 const CATEGORY_SLUGS = ['venue', 'makeup', 'mehndi', 'decorator', 'band', 'dj', 'catering', 'photo-video', 'planning'];
 

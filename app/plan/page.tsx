@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import PlanPageClient from '@/components/PlanPageClient';
 import { JsonLd } from '@/components/JsonLd';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
   title: 'Plan Your Wedding — Free Wedding Planning Wizard | ShaadiShopping',

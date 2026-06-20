@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import BlogListClient from '@/components/BlogListClient';
 import { JsonLd } from '@/components/JsonLd';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
   title: 'Wedding Blog — Tips, Trends & Real Weddings | ShaadiShopping',

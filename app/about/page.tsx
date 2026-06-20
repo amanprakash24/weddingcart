@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import AboutClient from '@/components/AboutClient';
 import { JsonLd } from '@/components/JsonLd';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
   title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",

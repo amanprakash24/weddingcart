@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import HomepageClient from '@/components/HomepageClient';
 import { JsonLd } from '@/components/JsonLd';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
   title: "Shaadi Shopping | ShaadiShopping — #1 Wedding Planning in Patna & India",
@@ -61,7 +61,7 @@ const organizationSchema = {
   url: BASE_URL,
   logo: `${BASE_URL}/logo.png`,
   sameAs: [
-    'https://shaadishopping.com',
+    'https://www.shaadishopping.com',
     'https://www.instagram.com/shaadishopping',
     'https://www.facebook.com/shaadishopping',
     'https://wa.me/917646028228',

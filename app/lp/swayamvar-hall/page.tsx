@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { JsonLd } from '@/components/JsonLd';
 import SwayamvarLandingClient from '@/components/SwayamvarLandingClient';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shaadishopping.com';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
   title: 'Sayamwar Hall & Homestay — Premium Banquet & Wedding Venue in Patna',
