@@ -57,14 +57,13 @@ const FAQS = [
 ];
 
 const GALLERY_IMAGES = [
-  {
-    src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1781971028/shaadishopping/touch-of-cozy/best-banquet-hall-touch-of-cozy.jpg',
-    alt: 'Touch of Cozy Banquet Hall — Best Banquet Hall in Patna',
-  },
-  {
-    src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1781971030/shaadishopping/touch-of-cozy/touch-of-cozy-patna.jpg',
-    alt: 'Touch of Cozy — Wedding Venue in Rajeev Nagar, Patna',
-  },
+  { src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1781971028/shaadishopping/touch-of-cozy/best-banquet-hall-touch-of-cozy.jpg', alt: 'Touch of Cozy — Best Banquet Hall in Patna' },
+  { src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782033876/shaadishopping/touch-of-cozy/touch-of-cozy-venue.jpg', alt: 'Touch of Cozy Banquet Hall & Café — Rajeev Nagar Patna' },
+  { src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782033878/shaadishopping/touch-of-cozy/best-banquet-hall-patna.jpg', alt: 'Best Banquet Hall in Patna — Touch of Cozy' },
+  { src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782033876/shaadishopping/touch-of-cozy/touch-of-cozy-hall.jpg', alt: 'Touch of Cozy Hall Interior — Wedding Venue Patna' },
+  { src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782033877/shaadishopping/touch-of-cozy/touch-of-cozy-2.jpg', alt: 'Touch of Cozy Banquet Hall — Mica Colony Patna' },
+  { src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782033874/shaadishopping/touch-of-cozy/touch-of-cozy-1.jpg', alt: 'Touch of Cozy Wedding Hall — Patliputra Patna' },
+  { src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1781971030/shaadishopping/touch-of-cozy/touch-of-cozy-patna.jpg', alt: 'Touch of Cozy — Wedding & Reception Venue Patna' },
 ];
 
 const FEATURES = [
@@ -435,18 +434,18 @@ export default function TouchOfCozyClient() {
               See the Venue for Yourself
             </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {GALLERY_IMAGES.map((img) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {GALLERY_IMAGES.map((img, i) => (
               <div
                 key={img.src}
-                className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-md border border-[#C5A46D]/15"
+                className={`relative rounded-2xl overflow-hidden shadow-md border border-[#C5A46D]/15 ${i === 0 ? 'col-span-2 row-span-2 aspect-[4/3]' : 'aspect-square'}`}
               >
                 <Image
                   src={img.src}
                   alt={img.alt}
                   fill
                   className="object-cover hover:scale-105 transition-transform duration-500"
-                  sizes="(max-width: 640px) 100vw, 50vw"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 />
               </div>
             ))}
