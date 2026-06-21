@@ -23,6 +23,9 @@ export const metadata: Metadata = {
     'banquet hall baraat allowed Patna',
     'Touch of Cozy review',
     'Touch of Cozy wedding',
+    'banquet hall Patliputra Patna',
+    'best banquet hall Patliputra',
+    'wedding venue Patliputra Patna',
   ],
   alternates: { canonical: PAGE_URL },
   openGraph: {

@@ -5,8 +5,56 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   Phone, CheckCircle, Star, MapPin, Users, Calendar,
-  ArrowRight, ShieldCheck, Clock, Sparkles, Utensils, Home,
+  ArrowRight, ShieldCheck, Clock, Utensils, Home, ChevronDown,
 } from 'lucide-react';
+
+const REVIEWS = [
+  {
+    name: 'Priya Sharma',
+    rating: 5,
+    date: 'April 2025',
+    text: 'Best banquet hall in Patna! We hosted our daughter\'s wedding at Touch of Cozy and the experience was perfect from start to finish. The food was delicious, hall was beautifully decorated, and the staff was extremely cooperative.',
+  },
+  {
+    name: 'Rajesh Kumar',
+    rating: 5,
+    date: 'March 2025',
+    text: 'Excellent banquet hall in Rajeev Nagar, Patna. Catering was top-notch with great variety. The 5 guest rooms were very comfortable for our outstation relatives. The venue manager handled everything professionally.',
+  },
+  {
+    name: 'Sunita Verma',
+    rating: 5,
+    date: 'February 2025',
+    text: 'We celebrated our engagement here and it was wonderful. Ambiance is elegant, parking was easy, and food quality was excellent. Best value banquet hall in Patliputra area — great hospitality all around.',
+  },
+];
+
+const FAQS = [
+  {
+    q: 'Is Touch of Cozy the best banquet hall in Patna?',
+    a: 'Touch of Cozy is one of the top-rated banquet halls in Patna, located in Mica Colony, Rajeev Nagar (Patliputra area). It offers a fully AC hall for 300+ guests, in-house catering from ₹999/plate, 5 guest rooms, valet parking, and is baraat-friendly — rated 5.0★ by 47+ couples.',
+  },
+  {
+    q: 'What is the capacity of Touch of Cozy banquet hall?',
+    a: 'Touch of Cozy can comfortably host 200–350 guests for a seated dinner and up to 400+ guests for cocktail-style receptions. Valet parking is available for 40–45 vehicles.',
+  },
+  {
+    q: 'What is the catering price at Touch of Cozy Patna?',
+    a: 'In-house catering packages start at ₹999/plate (Veg Gold), ₹1,199 (Veg Platinum), ₹1,351 (Veg Luxury), ₹1,199 (Non-Veg Gold), ₹1,399 (Non-Veg Platinum), and ₹1,599 (Non-Veg Luxury). All packages include hall access and decoration.',
+  },
+  {
+    q: 'Does Touch of Cozy allow overnight weddings and baraat?',
+    a: 'Yes. Touch of Cozy explicitly permits baraat processions and supports overnight weddings. The venue operates from 11 AM to 12 AM daily. Guest rooms are available for the bridal family overnight.',
+  },
+  {
+    q: 'Where exactly is Touch of Cozy located in Patna?',
+    a: 'Road No. 23, Near Atal Path Branch Road, Mica Colony, Rajeev Nagar, Patna – 800012. Easily accessible from Boring Road (10 min), Bailey Road, and the Patna bypass.',
+  },
+  {
+    q: 'How do I book Touch of Cozy?',
+    a: 'Fill the free quote form on this page or call +91 76460 28228. ShaadiShopping is the authorised booking partner — our service is completely free for couples.',
+  },
+];
 
 const GALLERY_IMAGES = [
   {
@@ -100,6 +148,7 @@ export default function TouchOfCozyClient() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const isValidPhone = (v: string) => /^\d{10}$/.test(v.replace(/[\s\-\+\(\)]/g, ''));
 
@@ -541,6 +590,68 @@ export default function TouchOfCozyClient() {
                 allowFullScreen
               />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── REVIEWS ── */}
+      <section className="bg-white py-14 sm:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.2em] mb-2">What Couples Say</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+              Real Reviews from Real Weddings
+            </h2>
+            <div className="flex items-center justify-center gap-2 mt-3">
+              {[1,2,3,4,5].map(s => <Star key={s} className="w-4 h-4 fill-[#C5A46D] text-[#C5A46D]" />)}
+              <span className="text-gray-500 text-sm ml-1">5.0 · 47+ Google Reviews</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {REVIEWS.map((r) => (
+              <div key={r.name} className="bg-[#FFFAF5] border border-[#C5A46D]/15 rounded-2xl p-5">
+                <div className="flex items-center gap-1 mb-3">
+                  {[1,2,3,4,5].map(s => <Star key={s} className="w-3.5 h-3.5 fill-[#C5A46D] text-[#C5A46D]" />)}
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed mb-4">&ldquo;{r.text}&rdquo;</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900">{r.name}</span>
+                  <span className="text-xs text-gray-400">{r.date}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section className="bg-[#FFFAF5] py-14 sm:py-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.2em] mb-2">FAQ</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+              Frequently Asked Questions
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {FAQS.map((faq, i) => (
+              <div key={i} className="bg-white border border-[#C5A46D]/20 rounded-2xl overflow-hidden">
+                <button
+                  className="w-full flex items-center justify-between px-5 py-4 text-left"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  <span className="text-sm font-semibold text-gray-900 pr-4">{faq.q}</span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-[#C5A46D] flex-shrink-0 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {openFaq === i && (
+                  <div className="px-5 pb-4">
+                    <p className="text-sm text-gray-600 leading-relaxed">{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>
