@@ -71,8 +71,8 @@ export default function SwayamvarLandingClient() {
       <section className="relative min-h-[92vh] flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1600&q=85"
-            alt="Sayamwar Hall & Homestay — Banquet Hall Patna"
+            src="https://res.cloudinary.com/djaif7u83/image/upload/v1782029500/shaadishopping/swayamvar-hall/best-banquet-hall-swayamvar.jpg"
+            alt="Swayamvar Hall & Homestay — Best Banquet Hall in Patna"
             fill
             className="object-cover"
             priority
