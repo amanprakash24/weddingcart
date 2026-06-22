@@ -176,7 +176,7 @@ export default function Footer() {
               </div>
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-3.5 h-3.5 text-[#C5A46D] flex-shrink-0 mt-0.5" />
-                <span className="text-gray-500">T Point, Gola Rd, near Danapur,<br />Patna, Bihar 801503</span>
+                <span className="text-gray-500">Gola Road, Adarsh Vihar Colony, Lane 5,<br />near T Point, beside Hotel King Regency,<br />Patna, Bihar 801503</span>
               </div>
               <a
                 href="https://maps.app.goo.gl/VxJRiNVLS3S9xseC8"
