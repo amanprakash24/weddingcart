@@ -14,9 +14,6 @@ export default function robots(): MetadataRoute.Robots {
         '/api/*',
         '/cart',
         '/vendor-onboarding',
-        // Legacy landing pages superseded by canonical /vendors/[id] and /cities/... routes (see next.config.ts redirects)
-        '/lp/*',
-        '/venues-in-patna',
       ],
     },
     sitemap: `${BASE_URL}/sitemap.xml`,
