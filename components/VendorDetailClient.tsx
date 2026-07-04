@@ -224,6 +224,12 @@ export default function VendorDetailClient({ id }: Props) {
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-3 font-[Playfair_Display,serif]">About {vendor.name}</h2>
               <p className="text-gray-600 leading-relaxed">{vendor.description}</p>
+              {vendor.address && (
+                <p className="text-gray-500 text-sm mt-3 flex items-start gap-1.5">
+                  <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
+                  {vendor.address}
+                </p>
+              )}
             </div>
 
             {/* Amenities/Features */}
@@ -462,6 +468,29 @@ export default function VendorDetailClient({ id }: Props) {
           </div>
         </div>
       </div>
+
+      {/* FAQs — mirrors the JSON-LD FAQPage block in app/vendors/[id]/page.tsx so
+          crawlable answers actually appear on the page, not just in schema. */}
+      {vendor.faqs && vendor.faqs.length > 0 && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-3">
+            {vendor.faqs.map(({ q, a }) => (
+              <details key={q} className="group bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <summary className="flex items-center justify-between gap-4 px-5 py-4 cursor-pointer font-semibold text-gray-800 hover:bg-amber-50 transition-colors list-none">
+                  {q}
+                  <CR className="w-4 h-4 text-amber-500 flex-shrink-0 transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="px-5 pb-4 pt-1 text-gray-600 text-sm leading-relaxed border-t border-gray-100">
+                  {a}
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Related categories for same city */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
