@@ -21,6 +21,7 @@ export interface IVendor extends Document {
   city: string;
   address?: string;
   mapEmbedUrl?: string;
+  faqs?: { q: string; a: string }[];
   priceMin: number;
   priceMax: number;
   rating: number;
@@ -44,6 +45,7 @@ const VendorSchema = new Schema<IVendor>({
   city: { type: String, required: true },
   address: { type: String, default: '' },
   mapEmbedUrl: { type: String, default: '' },
+  faqs: [{ q: String, a: String }],
   priceMin: { type: Number, required: true },
   priceMax: { type: Number, required: true },
   rating: { type: Number, default: 4.5 },

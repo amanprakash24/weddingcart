@@ -48,6 +48,7 @@ interface VendorMeta {
   rating: number;
   reviewCount: number;
   image: string;
+  faqs?: { q: string; a: string }[];
 }
 
 export async function generateStaticParams() {
@@ -64,7 +65,7 @@ async function getVendorMeta(id: string): Promise<VendorMeta | null> {
   try {
     await connectDB();
     const vendor = await VendorModel.findOne({ id })
-      .select('id name city address ownerPhone category description priceMin priceMax rating reviewCount image')
+      .select('id name city address ownerPhone category description priceMin priceMax rating reviewCount image faqs')
       .lean<VendorMeta>();
     return vendor;
   } catch {
@@ -155,10 +156,25 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
       }
     : null;
 
+  // Mirrors the FAQ accordion rendered in VendorDetailClient — keep both in
+  // sync so the visible answers match what's marked up as FAQPage schema.
+  const faqJsonLd = vendor?.faqs && vendor.faqs.length > 0
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: vendor.faqs.map(({ q, a }) => ({
+          '@type': 'Question',
+          name: q,
+          acceptedAnswer: { '@type': 'Answer', text: a },
+        })),
+      }
+    : null;
+
   return (
     <>
       {jsonLd && <JsonLd data={jsonLd} />}
       {breadcrumbJsonLd && <JsonLd data={breadcrumbJsonLd} />}
+      {faqJsonLd && <JsonLd data={faqJsonLd} />}
       <Suspense>
         <VendorDetailClient id={id} />
       </Suspense>

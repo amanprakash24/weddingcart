@@ -54,6 +54,7 @@ export interface Vendor {
   isFeatured?: boolean;
   address?: string;
   mapEmbedUrl?: string;
+  faqs?: { q: string; a: string }[];
 }
 
 export interface Category {
