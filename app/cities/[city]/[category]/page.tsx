@@ -6,6 +6,7 @@ import { connectDB } from '@/lib/mongodb';
 import VendorModel from '@/lib/models/Vendor';
 import { JsonLd } from '@/components/JsonLd';
 import VendorCard from '@/components/VendorCard';
+import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
 
 export const revalidate = 3600;
@@ -23,6 +24,8 @@ const CITIES: Record<string, { name: string; state: string }> = {
   kolkata:   { name: 'Kolkata',   state: 'West Bengal' },
   udaipur:   { name: 'Udaipur',   state: 'Rajasthan' },
   goa:       { name: 'Goa',       state: 'Goa' },
+  // Bihar expansion cities — served from the Patna vendor network, fully indexed
+  ...BIHAR_CITIES,
 };
 
 const CATEGORIES: Record<string, { name: string; plural: string; desc: string; priceNote: string }> = {
@@ -87,7 +90,14 @@ const PATNA_FAQS: Record<string, { q: string; a: string }[]> = {
 };
 
 function defaultFaqs(cat: { plural: string; name: string }, city: { name: string; state: string }) {
+  const biharTravelFaq = city.state === 'Bihar' && city.name !== 'Patna'
+    ? [{
+        q: `Do ${cat.plural} from Patna travel to ${city.name}?`,
+        a: `Yes — ShaadiShopping is headquartered in Patna and our verified ${cat.plural.toLowerCase()} regularly serve weddings in ${city.name} and across Bihar. Travel and logistics are included in your quote upfront, with no hidden charges.`,
+      }]
+    : [];
   return [
+    ...biharTravelFaq,
     {
       q: `How much do ${cat.plural} cost in ${city.name}?`,
       a: `Pricing for ${cat.plural} in ${city.name} varies based on experience, package inclusions, and event duration. Browse ShaadiShopping's verified ${city.name} listings to compare packages and request free quotes.`,
@@ -123,6 +133,13 @@ function editorialText(cat: { plural: string; name: string; desc: string }, city
     return texts[cat.plural.toLowerCase().replace('wedding ', '')] || texts.venue || `${city.name} is home to talented ${cat.plural} experienced in creating memorable wedding celebrations. Browse and compare verified ${cat.plural} on ShaadiShopping.`;
   }
 
+  // Bihar cities: unique local context + honest served-from-Patna positioning
+  if (city.state === 'Bihar') {
+    const slug = Object.keys(BIHAR_CITIES).find((s) => BIHAR_CITIES[s].name === city.name);
+    const info = slug ? BIHAR_CITIES[slug] : undefined;
+    return `${city.name} is ${info?.knownFor ?? 'a key wedding market in Bihar'}. Weddings here follow the full Bihari celebration calendar — tilak, haldi, mehndi, sangeet, baraat and reception — and demand experienced ${cat.plural.toLowerCase()} who understand local traditions. ${info?.serviceNote ?? `ShaadiShopping's verified Patna vendor network serves weddings across Bihar, including ${city.name}.`} Compare verified ${cat.desc}, read real reviews, and get free quotes through ShaadiShopping — Bihar's most trusted wedding platform.`;
+  }
+
   return `${city.name}, ${city.state} has a vibrant wedding industry with experienced ${cat.plural} serving couples across the region. Whether you are planning an intimate celebration or a grand wedding, ShaadiShopping helps you compare verified ${cat.desc} in ${city.name}, read real reviews, and get free quotes — all in one place. Browse ${city.name}'s top ${cat.plural} below.`;
 }
 
@@ -144,12 +161,43 @@ export async function generateMetadata({
 
   const url = `${BASE_URL}/cities/${citySlug}/${catSlug}`;
 
-  // Non-Patna cities: noindex until we have real vendor listings there
-  if (citySlug !== 'patna') {
+  // Non-Bihar cities: noindex until we have real vendor listings there.
+  // Bihar cities are indexed — they are genuinely served from the Patna network.
+  if (city.state !== 'Bihar') {
     return {
       title: `${cat.plural} in ${city.name}, ${city.state} — Book Top ${cat.plural} | ShaadiShopping`,
       description: `Find the best ${cat.plural} in ${city.name}, ${city.state}. Compare verified ${cat.desc} with real packages, photos & pricing. ${cat.priceNote}. Get free quotes from top ${cat.plural} in ${city.name}.`,
       robots: { index: false, follow: false },
+    };
+  }
+
+  // Bihar cities other than Patna: indexed, city-targeted metadata
+  if (citySlug !== 'patna') {
+    const title = `${cat.plural} in ${city.name}, Bihar — Book Top ${cat.plural} | ShaadiShopping`;
+    const description = `Book the best ${cat.plural.toLowerCase()} in ${city.name}, Bihar. Verified ${cat.desc} serving ${city.name} from ShaadiShopping's Patna network. ${cat.priceNote}. Free quotes & expert help.`;
+    return {
+      title,
+      description,
+      alternates: { canonical: url },
+      keywords: [
+        `${cat.plural.toLowerCase()} in ${city.name.toLowerCase()}`,
+        `${cat.name.toLowerCase()} ${city.name.toLowerCase()}`,
+        `wedding ${catSlug} ${city.name.toLowerCase()}`,
+        `best ${cat.plural.toLowerCase()} ${city.name.toLowerCase()}`,
+        `${cat.name.toLowerCase()} ${city.name.toLowerCase()} bihar`,
+        `shaadi ${catSlug} ${city.name.toLowerCase()}`,
+        `marriage ${catSlug} ${city.name.toLowerCase()}`,
+      ],
+      openGraph: {
+        title,
+        description,
+        url,
+        type: 'website',
+        locale: 'en_IN',
+        siteName: 'ShaadiShopping',
+        images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: title }],
+      },
+      twitter: { card: 'summary_large_image', title, description, images: ['/opengraph-image'] },
     };
   }
 
@@ -295,15 +343,30 @@ export async function generateMetadata({
   };
 }
 
-async function getVendors(cityName: string, catSlug: string): Promise<Vendor[]> {
+async function getVendors(
+  cityName: string,
+  catSlug: string,
+  isBihar: boolean,
+): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
     await connectDB();
     const vendors = await VendorModel.find({ city: cityName, category: catSlug })
       .sort({ isFeatured: -1, rating: -1 })
       .lean();
-    return JSON.parse(JSON.stringify(vendors)) as Vendor[];
+    if (vendors.length > 0) {
+      return { vendors: JSON.parse(JSON.stringify(vendors)) as Vendor[], fromNetwork: false };
+    }
+    // Bihar cities without local listings: show the Patna network vendors that
+    // serve them, so the page is never an empty soft-404.
+    if (isBihar && cityName !== 'Patna') {
+      const network = await VendorModel.find({ city: 'Patna', category: catSlug })
+        .sort({ isFeatured: -1, rating: -1 })
+        .lean();
+      return { vendors: JSON.parse(JSON.stringify(network)) as Vendor[], fromNetwork: network.length > 0 };
+    }
+    return { vendors: [], fromNetwork: false };
   } catch {
-    return [];
+    return { vendors: [], fromNetwork: false };
   }
 }
 
@@ -317,7 +380,7 @@ export default async function CityCategoryPage({
   const cat = CATEGORIES[catSlug];
   if (!city || !cat) notFound();
 
-  const vendors = await getVendors(city.name, catSlug);
+  const { vendors, fromNetwork } = await getVendors(city.name, catSlug, city.state === 'Bihar');
   const url = `${BASE_URL}/cities/${citySlug}/${catSlug}`;
   const faqs = PATNA_FAQS[catSlug] && citySlug === 'patna'
     ? PATNA_FAQS[catSlug]
@@ -377,7 +440,7 @@ export default async function CityCategoryPage({
             name: v.name,
             url: `${BASE_URL}/vendors/${v.id}`,
             image: v.image,
-            address: { '@type': 'PostalAddress', addressLocality: city.name, addressCountry: 'IN' },
+            address: { '@type': 'PostalAddress', addressLocality: v.city || city.name, addressCountry: 'IN' },
             ...(v.reviewCount > 0 && {
               aggregateRating: {
                 '@type': 'AggregateRating',
@@ -424,7 +487,9 @@ export default async function CityCategoryPage({
             </h1>
             <p className="text-white/60 text-base max-w-2xl mb-6">
               {vendors.length > 0
-                ? `${vendors.length} verified ${cat.plural.toLowerCase()} in ${city.name}, ${city.state} — compare packages, read reviews & get free quotes`
+                ? fromNetwork
+                  ? `${vendors.length} verified ${cat.plural.toLowerCase()} serving ${city.name}, ${city.state} — compare packages, read reviews & get free quotes`
+                  : `${vendors.length} verified ${cat.plural.toLowerCase()} in ${city.name}, ${city.state} — compare packages, read reviews & get free quotes`
                 : `Find and compare verified ${cat.plural.toLowerCase()} in ${city.name}, ${city.state}`}
             </p>
 
@@ -467,7 +532,9 @@ export default async function CityCategoryPage({
           ) : (
             <>
               <p className="text-gray-500 text-sm mb-6">
-                Showing {vendors.length} verified {cat.plural.toLowerCase()} in {city.name}
+                {fromNetwork
+                  ? `Showing ${vendors.length} verified ${cat.plural.toLowerCase()} from our Patna network serving ${city.name} — travel included in your quote`
+                  : `Showing ${vendors.length} verified ${cat.plural.toLowerCase()} in ${city.name}`}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {vendors.map((vendor) => (

@@ -5,6 +5,7 @@ import { JsonLd } from '@/components/JsonLd';
 import CityPageClient from '@/components/CityPageClient';
 import { connectDB } from '@/lib/mongodb';
 import VendorModel from '@/lib/models/Vendor';
+import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
 
 export const revalidate = 3600;
@@ -24,6 +25,8 @@ const CITIES: Record<string, { name: string; state: string; heroImage: string }>
   kolkata:   { name: 'Kolkata',   state: 'West Bengal',  heroImage: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80' },
   udaipur:   { name: 'Udaipur',   state: 'Rajasthan',    heroImage: 'https://images.unsplash.com/photo-1587826080692-f439cd0b70da?w=1920&q=80' },
   goa:       { name: 'Goa',       state: 'Goa',          heroImage: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=80' },
+  // Bihar expansion cities — served from the Patna vendor network, fully indexed
+  ...BIHAR_CITIES,
 };
 
 // ── City-specific FAQs ───────────────────────────────────────────────────────
@@ -53,6 +56,32 @@ const CITY_FAQS: Record<string, { q: string; a: string }[]> = {
   ],
 };
 
+function biharCityFaqs(slug: string, name: string) {
+  const info = BIHAR_CITIES[slug];
+  return [
+    {
+      q: `Does ShaadiShopping provide wedding services in ${name}?`,
+      a: `Yes. ShaadiShopping is headquartered in Patna and coordinates weddings across all of Bihar, including ${name} — ${info?.knownFor ?? 'a key wedding market in Bihar'}. ${info?.serviceNote ?? ''}`,
+    },
+    {
+      q: `How much does a wedding cost in ${name}, Bihar?`,
+      a: `A mid-range wedding in ${name} for 300–500 guests typically costs ₹6–18 lakh including venue, catering, décor, and photography — generally more affordable than metro cities. Budget weddings start from ₹3–5 lakh. Call ShaadiShopping for a free custom estimate.`,
+    },
+    {
+      q: `Do Patna wedding vendors travel to ${name}?`,
+      a: `Yes — our verified decorators, photographers, makeup artists, caterers, DJs and baraat bands regularly serve weddings in ${name} and across Bihar. Travel and logistics are included in your quote upfront, with no hidden charges.`,
+    },
+    {
+      q: `What is the best wedding season in ${name}?`,
+      a: `The peak wedding season in Bihar runs from October to February, aligned with the most auspicious muhurat dates in November, December and January. Book vendors 4–6 months ahead for weddings in ${name} during this window.`,
+    },
+    {
+      q: `How do I start planning my wedding in ${name} with ShaadiShopping?`,
+      a: `Call or WhatsApp +91-76460-28228 for a free consultation. Our wedding expert will understand your date, guest count and budget, then shortlist verified vendors for your ${name} wedding — venue, catering, décor, photography and more.`,
+    },
+  ];
+}
+
 function defaultFaqs(name: string, state: string) {
   return [
     {
@@ -72,16 +101,28 @@ function defaultFaqs(name: string, state: string) {
 
 // ── SSR: pre-fetch initial vendors ───────────────────────────────────────────
 
-async function getInitialVendors(cityName: string): Promise<Vendor[]> {
+async function getInitialVendors(cityName: string, isBihar: boolean): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
     await connectDB();
     const vendors = await VendorModel.find({ city: cityName })
       .sort({ isFeatured: -1, rating: -1 })
       .limit(6)
       .lean();
-    return JSON.parse(JSON.stringify(vendors)) as Vendor[];
+    if (vendors.length > 0) {
+      return { vendors: JSON.parse(JSON.stringify(vendors)) as Vendor[], fromNetwork: false };
+    }
+    // Bihar cities without local listings: show the Patna network vendors that
+    // serve them, so the page is never an empty soft-404.
+    if (isBihar && cityName !== 'Patna') {
+      const network = await VendorModel.find({ city: 'Patna' })
+        .sort({ isFeatured: -1, rating: -1 })
+        .limit(6)
+        .lean();
+      return { vendors: JSON.parse(JSON.stringify(network)) as Vendor[], fromNetwork: true };
+    }
+    return { vendors: [], fromNetwork: false };
   } catch {
-    return [];
+    return { vendors: [], fromNetwork: false };
   }
 }
 
@@ -105,16 +146,22 @@ export async function generateMetadata({
   const { name, state } = meta;
   const url = `${BASE_URL}/cities/${city}`;
   const isPatna = city.toLowerCase() === 'patna';
+  const isBihar = state === 'Bihar';
   const title = isPatna
     ? `Wedding Vendors in Patna, Bihar — Venues, Makeup, Catering & More | ShaadiShopping`
-    : `Wedding Vendors in ${name} — Venues, Makeup, Catering & More | ShaadiShopping`;
+    : isBihar
+      ? `Wedding Vendors in ${name}, Bihar — Venues, Makeup, Catering & More | ShaadiShopping`
+      : `Wedding Vendors in ${name} — Venues, Makeup, Catering & More | ShaadiShopping`;
   const description = isPatna
     ? `Plan your shaadi in Patna, Bihar with India's most trusted wedding platform. Compare verified wedding venues, makeup artists, caterers, decorators & photographers. Get free quotes from 50+ vendors in Patna.`
-    : `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from 50+ wedding vendors in ${name}.`;
+    : isBihar
+      ? `Plan your shaadi in ${name}, Bihar with ShaadiShopping — Bihar's most trusted wedding platform. Verified venues, makeup artists, caterers, decorators & photographers serving ${name}. Free expert consultation.`
+      : `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from 50+ wedding vendors in ${name}.`;
   const ogImage = meta.heroImage.split('?')[0] + '?w=1200&h=630&fit=crop&q=80';
 
-  // Non-Patna cities: noindex until we have real vendor listings there
-  if (city.toLowerCase() !== 'patna') {
+  // Non-Bihar cities: noindex until we have real vendor listings there.
+  // Bihar cities are indexed — they are genuinely served from the Patna network.
+  if (!isBihar) {
     return {
       title,
       description,
@@ -133,6 +180,8 @@ export async function generateMetadata({
       `shaadi vendors ${name}`, `shaadi planning ${name}`,
       `vivah vendors ${name}`, `shadi planning ${name}`,
       `marriage vendors ${name}`, `wedding vendors Bihar`,
+      `marriage hall ${name}`, `banquet hall ${name}`,
+      `shaadi ${name}`, `wedding planner ${name}`,
     ],
     alternates: { canonical: url },
     openGraph: {
@@ -161,8 +210,12 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
 
   const { name, state, heroImage } = meta;
   const url = `${BASE_URL}/cities/${city}`;
-  const faqs = CITY_FAQS[city.toLowerCase()] ?? defaultFaqs(name, state);
-  const initialVendors = await getInitialVendors(name);
+  const citySlug = city.toLowerCase();
+  const isBihar = state === 'Bihar';
+  const faqs =
+    CITY_FAQS[citySlug] ??
+    (isBihar ? biharCityFaqs(citySlug, name) : defaultFaqs(name, state));
+  const { vendors: initialVendors, fromNetwork } = await getInitialVendors(name, isBihar);
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -221,6 +274,7 @@ export default async function CityPage({ params }: { params: Promise<{ city: str
           faqs={faqs}
           heroImage={heroImage}
           initialVendors={initialVendors}
+          networkFallback={fromNetwork ? 'Patna' : undefined}
         />
       </Suspense>
     </>

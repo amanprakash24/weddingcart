@@ -43,6 +43,8 @@ interface Props {
   faqs: FAQ[];
   heroImage: string;
   initialVendors?: Vendor[];
+  /** City whose vendors are shown when this city has no local listings (e.g. 'Patna') */
+  networkFallback?: string;
 }
 
 function FAQItem({ q, a }: FAQ) {
@@ -67,10 +69,11 @@ function FAQItem({ q, a }: FAQ) {
   );
 }
 
-export default function CityPageClient({ cityName, stateName, faqs, heroImage, initialVendors }: Props) {
+export default function CityPageClient({ cityName, stateName, faqs, heroImage, initialVendors, networkFallback }: Props) {
   const [vendors, setVendors] = useState<Vendor[]>(initialVendors ?? []);
   const [loading, setLoading] = useState(!(initialVendors?.length));
   const [activeCategory, setActiveCategory] = useState('all');
+  const [showingNetwork, setShowingNetwork] = useState(Boolean(networkFallback && initialVendors?.length));
 
   useEffect(() => {
     async function fetchVendors() {
@@ -80,13 +83,25 @@ export default function CityPageClient({ cityName, stateName, faqs, heroImage, i
         if (activeCategory !== 'all') params.set('category', activeCategory);
         const res = await fetch(`/api/vendors?${params}`);
         const data = await res.json();
-        setVendors(data.data ?? []);
+        let list: Vendor[] = data.data ?? [];
+        let fromNetwork = false;
+        // No local listings — fall back to the network city's vendors that serve this city
+        if (list.length === 0 && networkFallback) {
+          const fbParams = new URLSearchParams({ city: networkFallback, sort: 'rating' });
+          if (activeCategory !== 'all') fbParams.set('category', activeCategory);
+          const fbRes = await fetch(`/api/vendors?${fbParams}`);
+          const fbData = await fbRes.json();
+          list = fbData.data ?? [];
+          fromNetwork = list.length > 0;
+        }
+        setVendors(list);
+        setShowingNetwork(fromNetwork);
       } finally {
         setLoading(false);
       }
     }
     fetchVendors();
-  }, [cityName, activeCategory]);
+  }, [cityName, activeCategory, networkFallback]);
 
   return (
     <div className="min-h-screen bg-[#FFFCF7]">
@@ -185,6 +200,13 @@ export default function CityPageClient({ cityName, stateName, faqs, heroImage, i
               </button>
             ))}
           </div>
+
+          {!loading && showingNetwork && networkFallback && (
+            <p className="mb-6 text-sm text-[#6B5B4D] bg-[#FAF5EE] border border-[#E8D4A0]/60 rounded-xl px-5 py-3">
+              These verified vendors from our {networkFallback} network serve weddings in {cityName} —
+              travel and logistics are included in your quote.
+            </p>
+          )}
 
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import CategoryPageClient from '@/components/CategoryPageClient';
 import { JsonLd } from '@/components/JsonLd';
@@ -13,6 +13,12 @@ const CITY_NAME_TO_SLUG: Record<string, string> = {
   patna: 'patna', delhi: 'delhi', mumbai: 'mumbai', jaipur: 'jaipur',
   bangalore: 'bangalore', bengaluru: 'bangalore', chennai: 'chennai',
   hyderabad: 'hyderabad', kolkata: 'kolkata', udaipur: 'udaipur', goa: 'goa',
+  // Bihar expansion cities
+  muzaffarpur: 'muzaffarpur', gaya: 'gaya', bhagalpur: 'bhagalpur',
+  darbhanga: 'darbhanga', purnia: 'purnia', arrah: 'arrah', ara: 'arrah',
+  begusarai: 'begusarai', chhapra: 'chhapra', hajipur: 'hajipur',
+  'bihar-sharif': 'bihar-sharif', 'bihar sharif': 'bihar-sharif',
+  motihari: 'motihari', samastipur: 'samastipur',
 };
 
 // Categories that have city-specific pages
@@ -241,7 +247,7 @@ export default async function CategoryPage({
     const citySlug = cityParam
       ? (CITY_NAME_TO_SLUG[cityParam.toLowerCase()] ?? 'patna')
       : 'patna';
-    redirect(`/cities/${citySlug}/${slug}`);
+    permanentRedirect(`/cities/${citySlug}/${slug}`);
   }
 
   const [cat, initialVendors] = await Promise.all([
