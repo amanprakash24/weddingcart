@@ -13,7 +13,7 @@ const SHAADI_WA = `https://wa.me/${SHAADI_PHONE}?text=Hi%2C%20I%20am%20looking%2
 export const metadata: Metadata = {
   title: 'Wedding Venues in Patna — Compare & Book Top Halls (2025) | ShaadiShopping',
   description:
-    'Find the best wedding venues in Patna. Compare verified banquet halls — Touch of Cozy (Rajeev Nagar), Swayamvar Hall (Danapur) & 7 Vachan (Saguna Mor). Real pricing, photos & free quotes. Book via ShaadiShopping.',
+    'Find the best wedding venues in Patna. Compare verified banquet halls — Touch of Cozy (Rajeev Nagar), Swayamvar Hall (Danapur), 7 Vachan (Saguna Mor) & Ashiyana Resort (Digha). Real pricing, photos & free quotes. Book via ShaadiShopping.',
   keywords: [
     'venues in patna',
     'wedding venues in patna',
@@ -27,12 +27,15 @@ export const metadata: Metadata = {
     'event venues patna',
     'compare wedding venues patna',
     'affordable wedding venues patna',
+    'banquet hall in digha patna',
+    'wedding venue rukanpura patna',
+    'ashiyana resort patna',
   ],
   alternates: { canonical: PAGE_URL },
   openGraph: {
     title: 'Wedding Venues in Patna — Compare & Book Top Halls (2025)',
     description:
-      'Compare Patna\'s top verified wedding venues — pricing, photos, capacity & features. Touch of Cozy, Swayamvar Hall, 7 Vachan. Get a free quote via ShaadiShopping.',
+      'Compare Patna\'s top verified wedding venues — pricing, photos, capacity & features. Touch of Cozy, Swayamvar Hall, 7 Vachan, Ashiyana Resort. Get a free quote via ShaadiShopping.',
     url: PAGE_URL,
     type: 'website',
     locale: 'en_IN',
@@ -97,6 +100,23 @@ const VENUES = [
     href: '/lp/7-vachan-patna',
     image: 'https://content.jdmagicbox.com/v2/comp/patna/z3/0612px612.x612.250508092933.e8z3/catalogue/7-vachan-judges-colony-patna-banquet-halls-z4mw544mkw.jpg',
     imageAlt: '7 Vachan banquet hall, Judges Colony Saguna Mor Patna',
+  },
+  {
+    name: 'Ashiyana Resort',
+    tagline: 'Indoor Hall + Outdoor Lawn in West Patna',
+    area: 'Ashiana-Digha Road, Rukanpura, Digha',
+    rating: 5.0,
+    reviewLabel: 'Featured Venue',
+    capacity: 'Up to 600 guests',
+    vegPrice: 900,
+    nonVegPrice: 1000,
+    rooms: '10 guest rooms',
+    highlights: ['Indoor hall + outdoor lawn', '4 AC changing rooms', 'Outside caterers allowed', 'Baraat, hawan & firecrackers OK', 'Overnight weddings allowed'],
+    badge: 'Featured · Digha',
+    badgeColor: 'bg-[#8B1A4A]',
+    href: '/vendors/ashiyana-resort-rukanpura',
+    image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1783059452/shaadishopping/ashiyana-resort/x2svqkmeyizqreenyaxg.webp',
+    imageAlt: 'Ashiyana Resort banquet hall and lawn, Rukanpura Digha Patna',
   },
 ];
 
@@ -193,7 +213,7 @@ export default function VenuesInPatnaPage() {
             </nav>
 
             <div className="inline-flex items-center gap-2 bg-[#C5A46D]/15 border border-[#C5A46D]/30 text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.18em] px-3 py-1.5 rounded-full mb-5">
-              <MapPin className="w-3 h-3" /> Patna, Bihar · 3 Verified Venues
+              <MapPin className="w-3 h-3" /> Patna, Bihar · 4 Verified Venues
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-5" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
@@ -208,9 +228,9 @@ export default function VenuesInPatnaPage() {
 
             <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
               {[
-                { value: '3', label: 'Verified Venues' },
-                { value: '₹999', label: 'Starting Per Plate' },
-                { value: '500+', label: 'Max Capacity' },
+                { value: '4', label: 'Verified Venues' },
+                { value: '₹900', label: 'Starting Per Plate' },
+                { value: '600+', label: 'Max Capacity' },
                 { value: '30 min', label: 'Response Time' },
               ].map(({ value, label }) => (
                 <div key={label} className="text-center px-4">
@@ -365,6 +385,7 @@ export default function VenuesInPatnaPage() {
                     { name: 'Touch of Cozy', area: 'Rajeev Nagar', rating: '5.0★', veg: '₹999', nonVeg: '₹1,199', rooms: '5 rooms', cap: '200', href: '/lp/touch-of-cozy' },
                     { name: 'Swayamvar Hall', area: 'Danapur', rating: '4.8★', veg: '₹1,000', nonVeg: '₹1,300', rooms: 'Home stay', cap: '500', href: '/lp/swayamvar-hall' },
                     { name: '7 Vachan', area: 'Saguna Mor', rating: '4.6★', veg: '₹1,100', nonVeg: '₹1,300', rooms: '7 rooms', cap: '500+', href: '/lp/7-vachan-patna' },
+                    { name: 'Ashiyana Resort', area: 'Digha', rating: '5.0★', veg: '₹900', nonVeg: '₹1,000', rooms: '10 rooms', cap: '600', href: '/vendors/ashiyana-resort-rukanpura' },
                   ].map((row, i) => (
                     <tr key={row.name} className={i % 2 === 0 ? 'bg-[#FFFAF5]' : 'bg-white'}>
                       <td className="px-4 py-4 font-semibold text-[#2A1F1B]">
@@ -393,7 +414,7 @@ export default function VenuesInPatnaPage() {
               Best Areas for Wedding Venues in Patna
             </h2>
           </div>
-          <div className="grid sm:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               {
                 area: 'Rajeev Nagar / Mica Colony',
@@ -415,6 +436,13 @@ export default function VenuesInPatnaPage() {
                 venues: ['7 Vachan'],
                 links: ['/lp/7-vachan-patna'],
                 price: 'From ₹1,100/plate',
+              },
+              {
+                area: 'Digha / Rukanpura',
+                desc: 'West Patna\'s wedding belt, serving Digha, Ashiyana Nagar, Patliputra, Kurji & Boring Road. Indoor hall plus outdoor lawn on one property, with the highest guest capacity of any venue here.',
+                venues: ['Ashiyana Resort'],
+                links: ['/vendors/ashiyana-resort-rukanpura'],
+                price: 'From ₹900/plate',
               },
             ].map(({ area, desc, venues, links, price }) => (
               <div key={area} className="bg-white rounded-2xl border border-[#C5A46D]/15 p-6">
@@ -518,6 +546,8 @@ export default function VenuesInPatnaPage() {
             <Link href="/" className="text-[#C5A46D]/60 hover:text-[#C5A46D] transition-colors">Visit Main Site</Link>
             {' · '}
             <Link href="/blog/best-banquet-hall-in-patna" className="text-[#C5A46D]/60 hover:text-[#C5A46D] transition-colors">Banquet Hall Guide</Link>
+            {' · '}
+            <Link href="/blog/ashiyana-resort-banquet-hall-digha-patna" className="text-[#C5A46D]/60 hover:text-[#C5A46D] transition-colors">Ashiyana Resort Guide</Link>
           </p>
         </div>
 

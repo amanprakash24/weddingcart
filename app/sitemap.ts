@@ -43,14 +43,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/about`,             lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/plan`,              lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/vendor-onboarding`,      lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
-    // NOTE: /lp/* and /venues-in-patna are deliberately excluded — they are
-    // disallowed in robots.ts (superseded by canonical /vendors/ and /cities/ routes),
-    // and a sitemap must never list robots-blocked URLs.
     // Patna city landing page (other Bihar cities added via biharCityRoutes above)
     { url: `${BASE_URL}/cities/patna`,            lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.95 },
+    // Venue landing pages — indexed per robots.ts and each page's own metadata
+    { url: `${BASE_URL}/venues-in-patna`,         lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.97 },
+    { url: `${BASE_URL}/lp/touch-of-cozy`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/lp/swayamvar-hall`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/lp/7-vachan-patna`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
     // High-value blog posts pinned at top priority
     { url: `${BASE_URL}/blog/court-marriage-registration-patna-bihar`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
     { url: `${BASE_URL}/blog/best-banquet-hall-in-patna`,              lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
+    { url: `${BASE_URL}/blog/ashiyana-resort-banquet-hall-digha-patna`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
   ];
 
   let categoryRoutes: MetadataRoute.Sitemap = [];
@@ -62,6 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const PINNED_BLOG_SLUGS = new Set([
     'court-marriage-registration-patna-bihar',
     'best-banquet-hall-in-patna',
+    'ashiyana-resort-banquet-hall-digha-patna',
   ]);
 
   try {
