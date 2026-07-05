@@ -6,8 +6,8 @@ import { Star, MapPin, Users, CheckCircle, ChevronRight, Phone } from 'lucide-re
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 const PAGE_URL = `${BASE_URL}/venues-in-patna`;
-const SHAADI_PHONE = '+917986519662';
-const SHAADI_PHONE_DISPLAY = '+91 79865 19662';
+const SHAADI_PHONE = '+917646028228';
+const SHAADI_PHONE_DISPLAY = '+91 76460 28228';
 const SHAADI_WA = `https://wa.me/${SHAADI_PHONE}?text=Hi%2C%20I%20am%20looking%20for%20a%20wedding%20venue%20in%20Patna.%20Please%20help.`;
 
 export const metadata: Metadata = {

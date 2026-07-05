@@ -8,8 +8,8 @@ import {
   ArrowRight, ShieldCheck, Clock, Music, Car,
 } from 'lucide-react';
 
-const SHAADI_PHONE = '+917986519662';
-const SHAADI_PHONE_DISPLAY = '+91 79865 19662';
+const SHAADI_PHONE = '+917646028228';
+const SHAADI_PHONE_DISPLAY = '+91 76460 28228';
 
 const FEATURES = [
   'AC Banquet Hall (Multiple Capacities)',
