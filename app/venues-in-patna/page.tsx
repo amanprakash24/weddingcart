@@ -64,8 +64,8 @@ const VENUES = [
     badge: 'New · Rajeev Nagar',
     badgeColor: 'bg-[#C5A46D]',
     href: '/lp/touch-of-cozy',
-    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80',
-    imageAlt: 'Touch of Cozy banquet hall, Mica Colony Rajeev Nagar Patna',
+    image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1783232556/shaadishopping/touch-of-cozy/touch-of-cozy-entrance.jpg',
+    imageAlt: 'Touch of Cozy banquet hall entrance, Mica Colony Rajeev Nagar Patna',
   },
   {
     name: 'Swayamvar Hall & Homestay',
@@ -81,7 +81,7 @@ const VENUES = [
     badge: 'Trusted · Danapur',
     badgeColor: 'bg-[#8B1A4A]',
     href: '/lp/swayamvar-hall',
-    image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80',
+    image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782029500/shaadishopping/swayamvar-hall/best-banquet-hall-swayamvar.jpg',
     imageAlt: 'Swayamvar Hall banquet hall, Danapur Patna',
   },
   {
