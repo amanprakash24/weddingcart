@@ -55,7 +55,7 @@ const localBusinessSchema = {
   description:
     "Patna's best banquet hall in Mica Colony, Rajeev Nagar. AC hall for 300+ guests, in-house catering from ₹999/plate, 5 guest rooms, baraat welcome, overnight weddings. Weddings, receptions, engagements, birthdays & corporate events.",
   url: PAGE_URL,
-  telephone: '+917986519662',
+  telephone: '+917646028228',
   priceRange: '₹999 – ₹1,599 per plate',
   openingHours: 'Mo-Su 11:00-24:00',
   sameAs: [

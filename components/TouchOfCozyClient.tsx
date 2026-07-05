@@ -213,10 +213,10 @@ export default function TouchOfCozyClient() {
             </span>
           </Link>
           <a
-            href="tel:+917986519662"
+            href="tel:+917646028228"
             className="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs font-semibold px-4 py-2 rounded-full hover:bg-white/20 transition-all"
           >
-            <Phone className="w-3.5 h-3.5" /> +91 79865 19662
+            <Phone className="w-3.5 h-3.5" /> +91 76460 28228
           </a>
         </div>
 
@@ -300,7 +300,7 @@ export default function TouchOfCozyClient() {
                     Our team will call you within 30 minutes to confirm availability and pricing.
                   </p>
                   <a
-                    href="tel:+917986519662"
+                    href="tel:+917646028228"
                     className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white font-semibold px-6 py-3 rounded-full text-sm hover:opacity-90 transition-all"
                   >
                     <Phone className="w-4 h-4" /> Call Us Now
@@ -384,8 +384,8 @@ export default function TouchOfCozyClient() {
 
                   <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-2">
                     <span className="text-xs text-gray-400">Or call directly:</span>
-                    <a href="tel:+917986519662" className="text-xs font-bold text-[#8B1A4A] hover:underline">
-                      +91 79865 19662
+                    <a href="tel:+917646028228" className="text-xs font-bold text-[#8B1A4A] hover:underline">
+                      +91 76460 28228
                     </a>
                   </div>
                 </>
@@ -571,7 +571,7 @@ export default function TouchOfCozyClient() {
                   Book This Venue <ArrowRight className="w-4 h-4" />
                 </a>
                 <a
-                  href="tel:+917986519662"
+                  href="tel:+917646028228"
                   className="inline-flex items-center justify-center gap-2 border border-[#C5A46D]/40 text-[#8B1A4A] font-semibold px-6 py-3.5 rounded-full text-sm hover:bg-[#8B1A4A]/5 transition-all"
                 >
                   <Phone className="w-4 h-4" /> Call Now
@@ -675,10 +675,10 @@ export default function TouchOfCozyClient() {
               Check Availability <Calendar className="w-4 h-4" />
             </a>
             <a
-              href="tel:+917986519662"
+              href="tel:+917646028228"
               className="inline-flex items-center justify-center gap-2 border-2 border-white/40 text-white font-semibold px-8 py-4 rounded-full text-sm hover:bg-white/10 transition-all"
             >
-              <Phone className="w-4 h-4" /> +91 79865 19662
+              <Phone className="w-4 h-4" /> +91 76460 28228
             </a>
           </div>
         </div>
@@ -704,7 +704,7 @@ export default function TouchOfCozyClient() {
           Get Free Quote
         </a>
         <a
-          href="tel:+917986519662"
+          href="tel:+917646028228"
           className="flex items-center justify-center gap-1.5 border border-gray-200 text-gray-700 px-4 py-3.5 rounded-xl text-sm font-semibold"
         >
           <Phone className="w-4 h-4" /> Call
