@@ -51,6 +51,23 @@ interface VendorMeta {
   faqs?: { q: string; a: string }[];
 }
 
+// Common local search terms people use for venues instead of "wedding venue"
+const VENUE_SYNONYMS = ['banquet hall', 'marriage hall', 'shaadi hall', 'wedding hall', 'function hall'];
+
+// Addresses are free-text (e.g. "Rajeev Nagar Road No 23, Near Atal Path Branch Road,
+// Mica Colony, Patna-12"). The locality/area name is reliably the segment right before
+// the city name — landmark segments before it ("Near X", "Opposite X") are more specific
+// than a searchable area name, and segments after it are city/state/pincode.
+function extractLocality(address: string | undefined, city: string): string | null {
+  if (!address) return null;
+  const parts = address.split(',').map((s) => s.trim()).filter(Boolean);
+  const cityIdx = parts.findIndex((p) => p.toLowerCase().includes(city.toLowerCase()));
+  if (cityIdx <= 0) return null;
+  const candidate = parts[cityIdx - 1];
+  if (/^(near|opposite)\b/i.test(candidate)) return null;
+  return candidate;
+}
+
 export async function generateStaticParams() {
   try {
     await connectDB();
@@ -79,10 +96,24 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   if (!vendor) return { title: 'Not Found', robots: { index: false } };
 
+  const isVenue = vendor.category === 'venue';
   const catLabel = CATEGORY_LABELS[vendor.category] ?? vendor.category;
-  const title = `${vendor.name} — ${catLabel} in ${vendor.city}`;
-  const description = `Book ${vendor.name}, a top ${catLabel} in ${vendor.city}. ${vendor.description.slice(0, 140)}... Packages starting from ₹${vendor.priceMin.toLocaleString('en-IN')}.`;
+  const displayLabel = isVenue ? 'Wedding Venue & Banquet Hall' : catLabel;
+  const locality = extractLocality(vendor.address, vendor.city);
+  const place = locality ? `${locality}, ${vendor.city}` : vendor.city;
+
+  const title = `${vendor.name} — ${displayLabel} in ${place}`;
+  const description = `Book ${vendor.name}, a top ${displayLabel.toLowerCase()} in ${place}. ${vendor.description.slice(0, 140)}... Packages starting from ₹${vendor.priceMin.toLocaleString('en-IN')}.`;
   const url = `${BASE_URL}/vendors/${id}`;
+
+  const localityKeywords = locality
+    ? [
+        `${catLabel} in ${locality}`,
+        `${catLabel} near ${locality}`,
+        `${vendor.name} ${locality}`,
+        ...(isVenue ? VENUE_SYNONYMS.map((s) => `${s} ${locality}`) : []),
+      ]
+    : [];
 
   return {
     title,
@@ -91,6 +122,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       `${vendor.name}`, `${catLabel} in ${vendor.city}`,
       `${catLabel} ${vendor.city}`, `book ${catLabel} ${vendor.city}`,
       `wedding vendors ${vendor.city}`, `${vendor.city} wedding services`,
+      ...(isVenue ? VENUE_SYNONYMS.map((s) => `${s} in ${vendor.city}`) : []),
+      ...(isVenue ? [`wedding venue near me ${vendor.city}`] : []),
+      ...localityKeywords,
     ],
     alternates: { canonical: url },
     openGraph: {
