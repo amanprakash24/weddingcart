@@ -1,0 +1,34 @@
+# ShaadiShopping
+
+> ShaadiShopping is India's expert wedding planning and vendor marketplace platform, currently focused on Patna and the wider Bihar region. It connects couples with verified wedding vendors and provides end-to-end coordination from venue booking through to the vidaai (farewell) ceremony — venues, catering, décor, photography & videography, bridal/groom fashion, makeup artists, mehndi artists, DJs, bands, and more.
+
+ShaadiShopping is not a listings-only directory — every enquiry is followed up by a dedicated human wedding consultant who helps shortlist vendors, negotiate packages, and coordinate the event within the couple's budget and guest count.
+
+## Key pages
+
+- [Homepage](https://www.shaadishopping.com/): What ShaadiShopping does, featured vendors, and how the platform works end-to-end.
+- [Plan Your Wedding](https://www.shaadishopping.com/plan): Guided wizard where couples submit city, budget, guest count, and service needs to get matched with vendors and an expert consultant.
+- [Venues in Patna](https://www.shaadishopping.com/venues-in-patna): Curated directory of top banquet halls and wedding venues in Patna, with real photos and pricing.
+- [Patna hub](https://www.shaadishopping.com/cities/patna): City landing page linking to every vendor category available in Patna (venues, catering, décor, photography, makeup, mehndi, DJ/band, planning).
+- [Blog](https://www.shaadishopping.com/blog): Wedding planning guides — e.g. court marriage registration in Bihar, best banquet halls in Patna, venue spotlights.
+- [About](https://www.shaadishopping.com/about): ShaadiShopping's mission, team, and why couples choose the platform over generic listing sites.
+
+## Vendor categories (Patna)
+
+- [Venues](https://www.shaadishopping.com/cities/patna/venue)
+- [Catering](https://www.shaadishopping.com/cities/patna/catering)
+- [Photography & Videography](https://www.shaadishopping.com/cities/patna/photo-video)
+- [Décor](https://www.shaadishopping.com/cities/patna/decorator)
+- [Makeup Artists](https://www.shaadishopping.com/cities/patna/makeup)
+- [Mehndi Artists](https://www.shaadishopping.com/cities/patna/mehndi)
+- [DJ Services](https://www.shaadishopping.com/cities/patna/dj)
+- [Band & Music](https://www.shaadishopping.com/cities/patna/band)
+- [Wedding Planning](https://www.shaadishopping.com/cities/patna/planning)
+
+## Contact
+
+- WhatsApp / Phone (official ShaadiShopping line, not individual vendor numbers): +91 76460 28228
+
+## Optional
+
+- [Vendor Onboarding](https://www.shaadishopping.com/vendor-onboarding): For wedding vendors who want to list their business on ShaadiShopping.
