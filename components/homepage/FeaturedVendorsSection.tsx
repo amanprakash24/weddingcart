@@ -26,7 +26,10 @@ export default function FeaturedVendorsSection() {
 
   useEffect(() => { fetchVendors(); }, [fetchVendors]);
 
-  const topVendors = [...vendors].sort((a, b) => b.rating - a.rating).slice(0, 3);
+  const topVendors = vendors
+    .filter((v) => v.isFeatured)
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 3);
 
   return (
     <section className="py-16 sm:py-24 lg:py-32 bg-[#FEFBF6]">
