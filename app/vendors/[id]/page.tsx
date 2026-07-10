@@ -49,6 +49,8 @@ interface VendorMeta {
   reviewCount: number;
   image: string;
   faqs?: { q: string; a: string }[];
+  locality?: string;
+  openingHours?: string[];
 }
 
 // Common local search terms people use for venues instead of "wedding venue"
@@ -68,6 +70,11 @@ function extractLocality(address: string | undefined, city: string): string | nu
   return candidate;
 }
 
+// "saguna-more" -> "Saguna More" — turns the admin-set locality slug into display text
+function humanizeSlug(slug: string): string {
+  return slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 export async function generateStaticParams() {
   try {
     await connectDB();
@@ -82,7 +89,7 @@ async function getVendorMeta(id: string): Promise<VendorMeta | null> {
   try {
     await connectDB();
     const vendor = await VendorModel.findOne({ id })
-      .select('id name city address ownerPhone category description priceMin priceMax rating reviewCount image faqs')
+      .select('id name city address ownerPhone category description priceMin priceMax rating reviewCount image faqs locality openingHours')
       .lean<VendorMeta>();
     return vendor;
   } catch {
@@ -99,7 +106,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const isVenue = vendor.category === 'venue';
   const catLabel = CATEGORY_LABELS[vendor.category] ?? vendor.category;
   const displayLabel = isVenue ? 'Wedding Venue & Banquet Hall' : catLabel;
-  const locality = extractLocality(vendor.address, vendor.city);
+  const locality = vendor.locality ? humanizeSlug(vendor.locality) : extractLocality(vendor.address, vendor.city);
   const place = locality ? `${locality}, ${vendor.city}` : vendor.city;
 
   const title = `${vendor.name} — ${displayLabel} in ${place}`;
@@ -165,6 +172,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
           addressCountry: 'IN',
         },
         ...(vendor.ownerPhone && { telephone: vendor.ownerPhone }),
+        ...(vendor.openingHours && vendor.openingHours.length > 0 && { openingHours: vendor.openingHours }),
         priceRange: `₹${vendor.priceMin.toLocaleString('en-IN')} – ₹${vendor.priceMax.toLocaleString('en-IN')}`,
         ...(vendor.reviewCount > 0 && {
           aggregateRating: {
