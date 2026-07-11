@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Star, MapPin, ChevronLeft, ChevronRight, CheckCircle, Phone, Calendar, Users, X, ShoppingCart, ChevronRight as CR, Check, MessageCircle } from 'lucide-react';
+import { Star, MapPin, ChevronLeft, ChevronRight, CheckCircle, Phone, Calendar, Users, X, ShoppingCart, ChevronRight as CR, Check, MessageCircle, Play } from 'lucide-react';
 
 const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 // Categories where guest count makes sense
@@ -34,6 +34,7 @@ export default function VendorDetailClient({ id }: Props) {
   const [imgIdx, setImgIdx] = useState(0);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [showEnquiry, setShowEnquiry] = useState(false);
+  const [showVirtualTour, setShowVirtualTour] = useState(false);
   const [enquiryForm, setEnquiryForm] = useState({ name: '', phone: '', email: '', city: 'Patna', eventDate: '', guestCount: '', eventType: 'wedding', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -172,6 +173,22 @@ export default function VendorDetailClient({ id }: Props) {
             <span className="text-white line-clamp-1">{vendor.name}</span>
           </nav>
         </div>
+
+        {/* Virtual tour badge */}
+        {vendor.virtualTourVideo && (
+          <button
+            onClick={() => setShowVirtualTour(true)}
+            className="absolute inset-0 z-10 m-auto flex flex-col items-center justify-center gap-2 w-fit h-fit group"
+            aria-label="Watch virtual tour"
+          >
+            <span className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-lg transition-all group-hover:scale-105">
+              <Play className="w-7 h-7 sm:w-8 sm:h-8 text-amber-600 fill-amber-600 ml-1" />
+            </span>
+            <span className="px-3 py-1 rounded-full bg-black/50 text-white text-xs font-semibold tracking-wide backdrop-blur-sm">
+              Virtual Tour
+            </span>
+          </button>
+        )}
 
         {/* Bottom info */}
         <div className="absolute bottom-6 left-4 right-4 z-10">
@@ -543,6 +560,29 @@ export default function VendorDetailClient({ id }: Props) {
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* Virtual Tour modal */}
+      {showVirtualTour && vendor.virtualTourVideo && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4" onClick={() => setShowVirtualTour(false)}>
+          <button onClick={() => setShowVirtualTour(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
+            <X className="w-8 h-8" />
+          </button>
+          <div className="w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
+              <video src={vendor.virtualTourVideo} controls autoPlay className="w-full h-full" />
+            </div>
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white/10 backdrop-blur-sm rounded-xl px-5 py-4">
+              <p className="text-white text-sm text-center sm:text-left">Liked what you saw? Check availability for your date.</p>
+              <button
+                onClick={() => { setShowVirtualTour(false); setShowEnquiry(true); }}
+                className="flex-shrink-0 flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 transition-all text-sm"
+              >
+                <Phone className="w-4 h-4" /> Send Enquiry
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -48,6 +48,7 @@ export interface Vendor {
   reviewCount: number;
   image: string;
   images?: string[];
+  virtualTourVideo?: string;
   description: string;
   features: string[];
   packages: Package[];
