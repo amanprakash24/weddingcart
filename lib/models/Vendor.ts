@@ -28,6 +28,7 @@ export interface IVendor extends Document {
   reviewCount: number;
   image: string;
   images: string[];
+  virtualTourVideo?: string;
   description: string;
   features: string[];
   packages: typeof PackageSchema[];
@@ -52,6 +53,7 @@ const VendorSchema = new Schema<IVendor>({
   reviewCount: { type: Number, default: 0 },
   image: { type: String, required: true },
   images: [String],
+  virtualTourVideo: { type: String, default: '' },
   description: { type: String, required: true },
   features: [String],
   packages: [PackageSchema],

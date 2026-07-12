@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowLeft, Edit, Trash2, Star, MapPin, CheckCircle, XCircle,
-  Phone, Mail, User, RefreshCw, Upload, X, Plus, Tag,
+  Phone, Mail, User, RefreshCw, Upload, X, Plus, Tag, Video,
 } from 'lucide-react';
 
 // ── Cloudinary uploader (same as AdminClient) ─────────────────────────────────
@@ -52,6 +52,60 @@ function ImageUploadField({
   );
 }
 
+// ── Virtual tour video uploader (direct-to-Cloudinary — Vercel's 4.5MB
+// request body cap makes proxying video through our own API unreliable) ──────
+function VideoUploadField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File) => {
+    setError(''); setUploading(true);
+    try {
+      const sigRes = await fetch('/api/upload/video-signature', { method: 'POST' });
+      const sig = await sigRes.json();
+      if (!sig.success) { setError('Could not start upload'); return; }
+
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('api_key', sig.apiKey);
+      fd.append('timestamp', String(sig.timestamp));
+      fd.append('signature', sig.signature);
+      fd.append('folder', sig.folder);
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/video/upload`, {
+        method: 'POST', body: fd,
+      });
+      const data = await res.json();
+      if (data.secure_url) onChange(data.secure_url);
+      else setError(data.error?.message || 'Upload failed');
+    } catch { setError('Upload failed'); }
+    finally { setUploading(false); }
+  };
+
+  return (
+    <div className="space-y-2">
+      {value ? (
+        <div className="relative inline-block">
+          <video src={value} className="rounded-lg border border-gray-200" style={{ height: 90, width: 160, objectFit: 'cover' }} muted />
+          <button type="button" onClick={() => onChange('')}
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-colors">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
+          className="flex items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50 transition-all disabled:opacity-50 w-full">
+          {uploading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Uploading video...</> : <><Video className="w-4 h-4" /> Upload virtual tour video</>}
+        </button>
+      )}
+      <input ref={inputRef} type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+      {error && <p className="text-xs text-rose-500">{error}</p>}
+    </div>
+  );
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
@@ -74,6 +128,7 @@ export default function AdminVendorDetailClient({ vendorId }: { vendorId: string
     name: '', ownerName: '', ownerPhone: '', ownerEmail: '',
     category: 'venue', city: 'Patna', priceMin: '', priceMax: '',
     rating: '4.5', reviewCount: '', description: '', features: '', isFeatured: false,
+    virtualTourVideo: '',
   });
   const [vendorImages, setVendorImages] = useState<string[]>(['']);
   const [packages, setPackages] = useState<PackageForm[]>([{ ...EMPTY_PACKAGE }]);
@@ -110,6 +165,7 @@ export default function AdminVendorDetailClient({ vendorId }: { vendorId: string
       description: v.description || '',
       features: (v.features || []).join(', '),
       isFeatured: v.isFeatured || false,
+      virtualTourVideo: v.virtualTourVideo || '',
     });
     const imgs = v.images?.length ? v.images : v.image ? [v.image] : [''];
     setVendorImages(imgs);
@@ -455,6 +511,15 @@ export default function AdminVendorDetailClient({ vendorId }: { vendorId: string
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Virtual tour video */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Virtual Tour Video <span className="text-gray-400 font-normal">(optional — shown as a play badge on the venue&apos;s photo)</span></label>
+                  <VideoUploadField
+                    value={vendorForm.virtualTourVideo}
+                    onChange={(u) => setVendorForm({ ...vendorForm, virtualTourVideo: u })}
+                  />
                 </div>
 
                 {/* Description */}
