@@ -34,7 +34,7 @@ export default function VendorCard({ vendor }: Props) {
         <div className="relative aspect-[4/3] overflow-hidden">
           <Image
             src={vendor.image}
-            alt={vendor.name}
+            alt={`${vendor.name} — ${CATEGORY_NAMES[vendor.category] ?? vendor.category} in ${vendor.city}`}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover transition-transform duration-700 group-hover:scale-105"

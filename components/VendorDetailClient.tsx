@@ -26,6 +26,10 @@ function whatsappUrl(vendorId: string, vendorName: string) {
   return `https://wa.me/${number}?text=${text}`;
 }
 
+function formatCategory(category: string) {
+  return category.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 interface Props { id: string }
 
 export default function VendorDetailClient({ id }: Props) {
@@ -126,6 +130,8 @@ export default function VendorDetailClient({ id }: Props) {
   );
 
   const images = vendor.images?.length ? vendor.images : [vendor.image];
+  const citySlug = vendor.city.toLowerCase();
+  const categoryLabel = formatCategory(vendor.category);
   const hasPerPlate = vendor.packages.some(
     (p) => p.isPerPlate === true || p.features.some((f) => f.toLowerCase().includes('per plate'))
   );
@@ -140,7 +146,7 @@ export default function VendorDetailClient({ id }: Props) {
         <div className="absolute inset-0">
           {images.map((src, i) => (
             <div key={src} className={`absolute inset-0 transition-opacity duration-700 ${i === imgIdx ? 'opacity-100' : 'opacity-0'}`}>
-              <Image src={src} alt={vendor.name} fill sizes="100vw" className="object-cover" priority={i === 0} />
+              <Image src={src} alt={`${vendor.name} — ${categoryLabel} in ${vendor.city}`} fill sizes="100vw" className="object-cover" priority={i === 0} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </div>
           ))}
@@ -168,7 +174,9 @@ export default function VendorDetailClient({ id }: Props) {
           <nav className="flex items-center gap-2 text-white/80 text-sm">
             <Link href="/" className="hover:text-white">Home</Link>
             <CR className="w-3.5 h-3.5" />
-            <Link href={`/categories/${vendor.category}`} className="hover:text-white capitalize">{vendor.category.replace('-', ' ')}</Link>
+            <Link href={`/cities/${citySlug}`} className="hover:text-white">{vendor.city}</Link>
+            <CR className="w-3.5 h-3.5" />
+            <Link href={`/cities/${citySlug}/${vendor.category}`} className="hover:text-white">{categoryLabel}</Link>
             <CR className="w-3.5 h-3.5" />
             <span className="text-white line-clamp-1">{vendor.name}</span>
           </nav>
@@ -194,7 +202,10 @@ export default function VendorDetailClient({ id }: Props) {
         <div className="absolute bottom-6 left-4 right-4 z-10">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white font-[Playfair_Display,serif] mb-1">{vendor.name}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white font-[Playfair_Display,serif] mb-1">
+                {vendor.name}
+                <span className="block text-sm sm:text-base font-normal text-white/80 mt-1">{categoryLabel} in {vendor.city}</span>
+              </h1>
               <div className="flex items-center gap-4 text-white/80 text-sm">
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-rose-300" />
@@ -273,7 +284,7 @@ export default function VendorDetailClient({ id }: Props) {
                       onClick={() => setLightbox(i)}
                       className="relative aspect-video rounded-xl overflow-hidden img-zoom group"
                     >
-                      <Image src={src} alt={`Photo ${i + 1}`} fill sizes="33vw" className="object-cover" />
+                      <Image src={src} alt={`${vendor.name} photo ${i + 1} — ${categoryLabel} in ${vendor.city}`} fill sizes="33vw" className="object-cover" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                         <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium">View</span>
                       </div>
@@ -516,6 +527,12 @@ export default function VendorDetailClient({ id }: Props) {
             Other Wedding Services in {vendor.city}
           </h2>
           <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/cities/${citySlug}`}
+              className="px-4 py-1.5 rounded-full border border-amber-300 bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-all"
+            >
+              All vendors in {vendor.city}
+            </Link>
             {[
               { slug: 'venue', label: 'Venues' },
               { slug: 'makeup', label: 'Makeup Artists' },
@@ -531,7 +548,7 @@ export default function VendorDetailClient({ id }: Props) {
               .map((c) => (
                 <Link
                   key={c.slug}
-                  href={`/cities/${vendor.city.toLowerCase()}/${c.slug}`}
+                  href={`/cities/${citySlug}/${c.slug}`}
                   className="px-4 py-1.5 rounded-full border border-amber-200 bg-white text-amber-700 text-sm font-medium hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all"
                 >
                   {c.label} in {vendor.city}
@@ -548,7 +565,7 @@ export default function VendorDetailClient({ id }: Props) {
             <X className="w-8 h-8" />
           </button>
           <div className="relative w-full max-w-4xl aspect-video" onClick={(e) => e.stopPropagation()}>
-            <Image src={images[lightbox]} alt="Gallery" fill sizes="90vw" className="object-contain" />
+            <Image src={images[lightbox]} alt={`${vendor.name} photo ${lightbox + 1} — ${categoryLabel} in ${vendor.city}`} fill sizes="90vw" className="object-contain" />
           </div>
           {images.length > 1 && (
             <>

@@ -13,7 +13,6 @@ export default function robots(): MetadataRoute.Robots {
         '/api',
         '/api/*',
         '/cart',
-        '/vendor-onboarding',
       ],
     },
     sitemap: `${BASE_URL}/sitemap.xml`,
