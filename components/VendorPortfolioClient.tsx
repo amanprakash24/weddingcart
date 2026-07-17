@@ -10,6 +10,7 @@ import {
   ShieldCheck, Award, MessageCircle, Calendar,
 } from 'lucide-react';
 import { Vendor, Package } from '@/types';
+import { getShaadiPhone } from '@/lib/shaadiPhone';
 
 const CATEGORY_LABELS: Record<string, string> = {
   venue: 'Wedding Venue', makeup: 'Bridal Makeup Artist', mehndi: 'Mehndi Artist',
@@ -342,12 +343,10 @@ export default function VendorPortfolioClient({ id }: { id: string }) {
                 style={{ boxShadow: '0 8px 32px rgba(139,26,74,0.5)' }}>
                 Send Enquiry <ArrowRight className="w-4 h-4" />
               </button>
-              {vendor.ownerPhone && (
-                <a href={`tel:${vendor.ownerPhone}`}
-                  className="inline-flex items-center justify-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white font-semibold px-7 py-4 rounded-full text-sm hover:bg-white/15 transition-all">
-                  <Phone className="w-4 h-4" /> Call Now
-                </a>
-              )}
+              <a href={`tel:+91${getShaadiPhone(vendor.id)}`}
+                className="inline-flex items-center justify-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white font-semibold px-7 py-4 rounded-full text-sm hover:bg-white/15 transition-all">
+                <Phone className="w-4 h-4" /> Call Now
+              </a>
             </motion.div>
 
           </motion.div>
@@ -537,12 +536,10 @@ export default function VendorPortfolioClient({ id }: { id: string }) {
                 style={{ boxShadow: '0 6px 28px rgba(139,26,74,0.4)' }}>
                 <Calendar className="w-4 h-4" /> Send Enquiry
               </button>
-              {vendor.ownerPhone && (
-                <a href={`tel:${vendor.ownerPhone}`}
-                  className="inline-flex items-center justify-center gap-2 border-2 border-[#C5A46D]/35 text-[#8B1A4A] font-bold px-8 py-4 rounded-full text-sm hover:bg-[#8B1A4A]/5 transition-all">
-                  <Phone className="w-4 h-4" /> Call Directly
-                </a>
-              )}
+              <a href={`tel:+91${getShaadiPhone(vendor.id)}`}
+                className="inline-flex items-center justify-center gap-2 border-2 border-[#C5A46D]/35 text-[#8B1A4A] font-bold px-8 py-4 rounded-full text-sm hover:bg-[#8B1A4A]/5 transition-all">
+                <Phone className="w-4 h-4" /> Call Directly
+              </a>
             </motion.div>
           </motion.div>
         </div>
@@ -606,12 +603,10 @@ export default function VendorPortfolioClient({ id }: { id: string }) {
           style={{ boxShadow: '0 4px 16px rgba(139,26,74,0.4)' }}>
           <MessageCircle className="w-4 h-4" /> Enquire Now
         </button>
-        {vendor.ownerPhone && (
-          <a href={`tel:${vendor.ownerPhone}`}
-            className="flex items-center justify-center gap-1.5 border border-gray-200 text-gray-700 px-4 py-3.5 rounded-xl text-sm font-semibold">
-            <Phone className="w-4 h-4" /> Call
-          </a>
-        )}
+        <a href={`tel:+91${getShaadiPhone(vendor.id)}`}
+          className="flex items-center justify-center gap-1.5 border border-gray-200 text-gray-700 px-4 py-3.5 rounded-xl text-sm font-semibold">
+          <Phone className="w-4 h-4" /> Call
+        </a>
       </div>
 
     </div>

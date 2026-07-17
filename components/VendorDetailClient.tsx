@@ -10,13 +10,7 @@ const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'H
 const GUEST_COUNT_CATEGORIES = new Set(['venue', 'catering', 'accommodation', 'hospitality', 'planning', 'decorator']);
 import { Vendor, Package } from '@/types';
 import { useCart } from '@/context/CartContext';
-
-const SHAADI_PHONES = ['7646028228', '9942972484'];
-
-function getShaadiPhone(vendorId: string) {
-  const sum = vendorId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return SHAADI_PHONES[sum % SHAADI_PHONES.length];
-}
+import { getShaadiPhone } from '@/lib/shaadiPhone';
 
 function whatsappUrl(vendorId: string, vendorName: string) {
   const number = `91${getShaadiPhone(vendorId)}`;
