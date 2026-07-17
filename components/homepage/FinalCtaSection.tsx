@@ -13,7 +13,7 @@ export default function FinalCtaSection() {
       <div className="absolute inset-0">
         <Image
           src="https://images.unsplash.com/photo-1478146059778-26028b07395a?w=1920&q=80"
-          alt="Wedding"
+          alt=""
           fill
           sizes="100vw"
           className="object-cover"

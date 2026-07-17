@@ -39,7 +39,7 @@ export default function HeroSection() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, delay: 0, ease: [0.22, 1, 0.36, 1] }}
             className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/15 text-white/80 px-4 py-2 rounded-full text-[0.68rem] sm:text-xs font-medium mb-6 sm:mb-8 tracking-[0.1em] sm:tracking-[0.14em] uppercase"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#C5A46D] flex-shrink-0" />
@@ -55,7 +55,7 @@ export default function HeroSection() {
                 className="inline-block"
                 initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 1.2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.7, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
               >
                 From Venue&nbsp;
               </motion.span>
@@ -63,7 +63,7 @@ export default function HeroSection() {
                 className="inline-block"
                 initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 1.2, delay: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               >
                 to&nbsp;
               </motion.span>
@@ -71,7 +71,7 @@ export default function HeroSection() {
                 className="inline-block relative"
                 initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 1.2, delay: 1.0, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.7, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
               >
                 Vidaai
                 <span className="vidaai-shimmer-overlay" aria-hidden="true">Vidaai</span>
@@ -82,7 +82,7 @@ export default function HeroSection() {
                 className="inline-block"
                 initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 1.4, delay: 1.4, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.8, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
               >
                 <span className="text-white/50">— </span>
                 <span className="hero-highlight-cycle-wrap">
@@ -95,7 +95,7 @@ export default function HeroSection() {
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.0, delay: 1.85, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
             className="text-white/65 text-sm sm:text-lg mb-8 sm:mb-10 max-w-md sm:max-w-xl leading-relaxed"
           >
             Expert consultants. Verified vendors. End-to-end coordination — for your dream Indian wedding.
@@ -104,7 +104,7 @@ export default function HeroSection() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.0, delay: 2.15, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-4"
           >
             <Link
