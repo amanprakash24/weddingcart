@@ -103,20 +103,24 @@ gets added later, the adapter tables can be added in a follow-up migration.
 2. **Phone + OTP** — for `VENDOR` and `CUSTOMER`. Structurally complete against the
    Postgres `Otp` table (find-by-phone-and-code, expiry check, single-use delete),
    but **not independently testable yet**: `/api/otp/send` and `/api/otp/verify`
-   still write to MongoDB today, and OTP migration isn't explicitly named in the
-   Milestone 4 module list below — that's a scheduling gap to close before this
-   provider can be exercised end-to-end. First-time phone login defaults new users to
-   `CUSTOMER`; `VENDOR` accounts are provisioned deliberately (on `VendorApplication`
-   approval, linked via `vendorId`), not auto-assigned — flagged for product sign-off,
-   not a unilateral final decision.
+   still write to MongoDB today. **Resolved 2026-07-19**: rather than folding OTP
+   into the module cutover list, it now has its own milestone — **Authentication
+   Transition** (repoint `/api/otp/send`/`/api/otp/verify` at Postgres, decide OTP
+   persistence-vs-cache strategy, vendor login, customer login, session creation,
+   rate limiting, audit logging), sequenced after data migration is proven stable
+   and before any module cutover that depends on vendor/customer auth. See
+   `docs/architecture-review.md` §6 for the full 6-milestone list. First-time phone
+   login defaults new users to `CUSTOMER`; `VENDOR` accounts are provisioned
+   deliberately (on `VendorApplication` approval, linked via `vendorId`), not
+   auto-assigned — flagged for product sign-off, not a unilateral final decision.
 
 **Middleware:** **not touched in Milestone 1.** `middleware.ts` still runs the
 existing HMAC check protecting `/admin/*` — Milestone 1 is additive infrastructure
 only ("no CRM, no Wedding OS, no UI redesign… just build a solid foundation," per
 the instruction that scoped this milestone). Swapping middleware over to
-`getServerSession()`-based role checks happens per-module during Milestone 4, closing
-the known HMAC drift bug between `lib/adminAuth.ts` and `middleware.ts` as a side
-effect of that cutover — not before.
+`getServerSession()`-based role checks happens per-module during the module cutover
+milestone, closing the known HMAC drift bug between `lib/adminAuth.ts` and
+`middleware.ts` as a side effect of that cutover — not before.
 
 ### Decision 1 — `/api/seed` lockdown ✅
 

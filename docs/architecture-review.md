@@ -185,15 +185,19 @@ formalizing as-is, no change to current practice.
 
 ## 6. Milestone Planning (15 min)
 
-5 milestones, module-by-module rather than one giant PR (already agreed 2026-07-19):
+6 milestones, module-by-module rather than one giant PR. Revised 2026-07-19 to give
+OTP/vendor/customer authentication its own milestone rather than folding it into
+Infrastructure or the module cutover — the principle: **don't migrate the login flow
+until the new database layer is proven stable.**
 
 | # | Milestone | Owner | Status |
 |---|---|---|---|
-| 1 | Infrastructure — Postgres, Prisma, Auth.js, connection layer, env vars | _(assign: Developer A/B)_ | Code written 2026-07-19, `next build`/lint/typecheck clean. **DoD not fully satisfied**: no live Postgres instance provisioned yet, so unit/integration tests against a real DB and rollback testing are not yet possible — that's real work for Milestone 3, not skipped |
-| 2 | Repository layer — replace direct Mongoose access with repositories/services | _(assign)_ | Not started |
+| 1 | Infrastructure — Postgres, Prisma, Auth.js (Credentials provider only), connection layer, env vars | _(assign: Developer A/B)_ | Code written 2026-07-19, `next build`/lint/typecheck clean. **DoD not fully satisfied**: no live Postgres instance provisioned yet, so unit/integration tests against a real DB and rollback testing are not yet possible — that's real work for Milestone 3, not skipped |
+| 2 | Data Access Layer — `repositories/*.repository.ts` per Prisma model (vendor, booking, lead, blog, category, …), `services/*` for business logic that spans repositories. App code calls repositories, never `prisma.*` directly | _(assign)_ | Not started |
 | 3 | Data migration — dry run, validation, performance testing, rollback testing | _(assign)_ | Not started |
-| 4 | Switch modules one at a time: Categories → Vendors → Blogs → Leads → Bookings → Invoices | _(assign per module)_ | Not started |
-| 5 | Production cutover — maintenance window, migration, verification, monitoring, rollback-if-needed | _(assign)_ | Not started |
+| 4 | **Authentication Transition** — `/api/otp/send` + `/api/otp/verify` repointed at Postgres, OTP persistence/cache strategy, vendor login, customer login, session creation, rate limiting, audit logging. Sits after Milestone 3 (DB proven stable) and before any module cutover that depends on vendor/customer auth | _(assign)_ | Not started — closes the OTP gap flagged after Milestone 1 |
+| 5 | Switch modules one at a time: Categories → Blogs → Vendors → Vendor Packages/FAQs → Leads → Bookings → Invoices | _(assign per module)_ | Not started |
+| 6 | Production cutover — maintenance window, migration, verification, monitoring, rollback-if-needed | _(assign)_ | Not started |
 
 **Definition of Done, applied to every milestone/module above** (not just "code
 compiles"): unit tests pass · integration tests pass · TypeScript clean · Prisma
@@ -203,15 +207,20 @@ migration verified · acceptance checklist complete (`docs/postgres-migration-pl
 **Ownership placeholders left blank deliberately** — fill in during the live meeting;
 not a call for this document to make unilaterally.
 
+**Post-migration principle (once all 6 milestones ship):** stop adding new features
+directly to the old admin. Every new capability from that point forward — CRM,
+Wedding Workspace, Vendor Calendar, Finance — gets built as a modular part of Shaadi
+Shopping OS on the new foundation, not as a one-off addition to what's being retired.
+
 ---
 
 ## Status
 
 Sections 1–2: reflect committed, already-reviewed work. Sections 3–5: proposals
-awaiting team ratification. Section 6: milestone structure agreed, ownership pending
-— **Milestone 1 code exists** (per the "docs now, then start" decision, not gated on
-a live team meeting), but its Definition of Done is not fully satisfiable until a
-real Postgres instance exists (Milestone 3). `main` will not be merged into until the
-full sequence in `docs/postgres-migration-plan.md` (code review → staging →
-rehearsal → acceptance checklist → cutover) is satisfied — no change to that
-decision.
+awaiting team ratification. Section 6: milestone structure agreed (6 milestones as of
+2026-07-19, Authentication Transition added as its own step), ownership pending —
+**Milestone 1 code exists** (per the "docs now, then start" decision, not gated on a
+live team meeting), but its Definition of Done is not fully satisfiable until a real
+Postgres instance exists (Milestone 3). `main` will not be merged into until the full
+sequence in `docs/postgres-migration-plan.md` (code review → staging → rehearsal →
+acceptance checklist → cutover) is satisfied — no change to that decision.
