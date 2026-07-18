@@ -1,14 +1,16 @@
 // Phase A schema — 1:1 relational port of the current MongoDB/Mongoose data model.
 // No new business entities (e.g. Wedding) here by design; see docs/postgres-migration-plan.md.
 
+// Prisma 7: connection URL lives in prisma.config.ts (CLI) and is passed via a
+// driver adapter to the PrismaClient constructor at runtime (see lib/prisma.ts) —
+// `url`/`directUrl` are no longer valid in the schema's datasource block.
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 // ---------- Enums ----------

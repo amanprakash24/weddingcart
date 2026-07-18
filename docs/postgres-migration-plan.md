@@ -7,8 +7,25 @@ foundation.
 
 Schema file: `prisma/schema.prisma`. All five open decisions below were resolved by
 the product owner on 2026-07-19 and are reflected in the schema and this plan.
-**Implementation (Phase 3) has not started** — this document is the approved
-blueprint only.
+
+**Update 2026-07-19: Milestone 1 (infrastructure) is complete.** Dependencies
+installed, Prisma client generating, `lib/prisma.ts` connection layer and
+`lib/auth/*` (NextAuth v4) written, full `next build` passing with zero regressions
+to any existing route. See §3 for the v4-not-v5 correction this surfaced, and the
+note below for a real Prisma 7 breaking change this design didn't originally
+anticipate. Milestones 2–5 (repository layer, data migration, module cutover,
+production cutover) have not started.
+
+**Prisma 7 breaking change discovered during Milestone 1:** the schema originally
+written here used `datasource.url`/`directUrl` directly in `schema.prisma` and
+generator `provider = "prisma-client-js"` — both invalid under the installed Prisma
+7.8.0. Prisma 7 requires a driver adapter architecture: connection config moved to a
+new root-level `prisma.config.ts` (used by the CLI — generate/migrate/studio only),
+and the running app builds its own `PrismaPg` adapter (`@prisma/adapter-pg` + `pg`)
+in `lib/prisma.ts`, passed to the `PrismaClient` constructor. The generator now
+outputs to `generated/prisma` (gitignored) instead of `node_modules/@prisma/client`.
+Verified against Prisma's own official docs (`prisma.io/docs`), not assumed —
+`schema.prisma` and this doc are updated accordingly.
 
 ## 1. ID strategy
 
@@ -51,6 +68,24 @@ constraint yet because there's no `Customer`/`Wedding` table to point at until P
 
 ## 3. Auth.js (NextAuth) architecture
 
+**Version: NextAuth v4 (stable/GA), not v5.** The original design assumed the v5
+"Auth.js" API (a single universal `auth()` helper usable in middleware, server
+components, and route handlers). When Milestone 1 actually installed the package,
+`next-auth`'s `latest` npm tag resolved to `4.24.14` — v5 exists only under the
+`beta` dist-tag (`5.0.0-beta.31`). Decided 2026-07-19: **stay on v4**, since this is
+the auth layer for a live business (admin, sales, vendor, and customer logins) and a
+pre-GA major version isn't an acceptable risk there, matching the "freeze the stack"
+principle already applied to the rest of this migration. v4 achieves the identical
+design goal (Credentials providers, JWT sessions, role-gated access) via
+`getServerSession()` instead of a unified `auth()` helper — implemented in
+`lib/auth/session.ts`.
+
+**Isolation layer:** app code calls `lib/auth/session.ts` (`getSession()`,
+`requireRole()`), never `next-auth` directly. This contains a future v4→v5 upgrade
+(once v5 reaches GA) to `lib/auth/` — the rest of the app doesn't need to change.
+`lib/auth/roles.ts` re-exports the Prisma `Role` enum; `lib/auth/permissions.ts`
+holds role-check helpers, deliberately minimal for Milestone 1.
+
 **Provider setup:** Credentials-only for Phase A — no OAuth providers, so no
 `Account`/`Session`/`VerificationToken` adapter tables are included in the schema.
 Session strategy is **JWT**, not database sessions — matches the current architecture
@@ -58,22 +93,30 @@ most closely (signed cookie checked in middleware/edge, no per-request DB lookup
 keeps `middleware.ts` fast. If an OAuth provider (Google login for customers, say)
 gets added later, the adapter tables can be added in a follow-up migration.
 
-**Two login flows onto one `User` table, distinguished by `role`:**
+**Two login flows onto one `User` table, distinguished by `role`** (implemented in
+`lib/auth/auth.ts`):
 
 1. **Credentials (email + password)** — for `SUPER_ADMIN` and `SALES`. Replaces the
    current two-hardcoded-env-var-pairs system in `lib/adminAuth.ts`. `User.passwordHash`
-   is set (bcrypt), checked in the NextAuth `authorize()` callback.
-2. **Phone + OTP** — for `VENDOR` and `CUSTOMER`. Reuses the existing `Otp` table and
-   `/api/otp/send` + `/api/otp/verify` logic, wrapped in a custom NextAuth
-   `CredentialsProvider` whose `authorize()` verifies the OTP server-side and returns
-   (or creates) a `User` row with that phone number. `VENDOR` users additionally carry
-   a `vendorId` FK linking their login to their `Vendor` profile row.
+   is set (bcrypt via `bcryptjs`, not native `bcrypt` — avoids native-module build
+   issues), checked in the NextAuth `authorize()` callback.
+2. **Phone + OTP** — for `VENDOR` and `CUSTOMER`. Structurally complete against the
+   Postgres `Otp` table (find-by-phone-and-code, expiry check, single-use delete),
+   but **not independently testable yet**: `/api/otp/send` and `/api/otp/verify`
+   still write to MongoDB today, and OTP migration isn't explicitly named in the
+   Milestone 4 module list below — that's a scheduling gap to close before this
+   provider can be exercised end-to-end. First-time phone login defaults new users to
+   `CUSTOMER`; `VENDOR` accounts are provisioned deliberately (on `VendorApplication`
+   approval, linked via `vendorId`), not auto-assigned — flagged for product sign-off,
+   not a unilateral final decision.
 
-**Middleware:** replaces the custom Web-Crypto HMAC re-implementation in
-`middleware.ts` (which had already drifted from `lib/adminAuth.ts` — different secret
-fallback behavior) with NextAuth's own `auth()` middleware wrapper, checking
-`session.user.role` against `['SUPER_ADMIN', 'SALES']` for `/admin/*`. This collapses
-two independent HMAC implementations into one, closing that drift bug as a side effect.
+**Middleware:** **not touched in Milestone 1.** `middleware.ts` still runs the
+existing HMAC check protecting `/admin/*` — Milestone 1 is additive infrastructure
+only ("no CRM, no Wedding OS, no UI redesign… just build a solid foundation," per
+the instruction that scoped this milestone). Swapping middleware over to
+`getServerSession()`-based role checks happens per-module during Milestone 4, closing
+the known HMAC drift bug between `lib/adminAuth.ts` and `middleware.ts` as a side
+effect of that cutover — not before.
 
 ### Decision 1 — `/api/seed` lockdown ✅
 
