@@ -1,0 +1,364 @@
+// Phase A schema — 1:1 relational port of the current MongoDB/Mongoose data model.
+// No new business entities (e.g. Wedding) here by design; see docs/postgres-migration-plan.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  SUPER_ADMIN
+  SALES
+  VENDOR
+  CUSTOMER
+}
+
+enum ApplicationStatus {
+  NEW
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  CLOSED
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum ConsultationStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+}
+
+enum BlogStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// ---------- Auth (Auth.js) ----------
+
+// Credentials-only (no OAuth) for Phase A, so no Account/Session/VerificationToken
+// adapter tables — session strategy is JWT. Add the adapter tables later if an
+// OAuth provider is introduced.
+model User {
+  id           String   @id @default(uuid())
+  name         String?
+  email        String?  @unique
+  phone        String?  @unique
+  // Set only for SUPER_ADMIN / SALES (credentials login).
+  // Null for VENDOR / CUSTOMER, which authenticate via phone + OTP.
+  passwordHash String?
+  role         Role
+  vendorId     String?  @unique
+  vendor       Vendor?  @relation(fields: [vendorId], references: [id])
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Ephemeral phone verification for public lead capture (not a login session).
+// No DB-native TTL in Postgres — app must filter `WHERE expiresAt > now()`,
+// and a daily cron/cleanup job should delete expired rows.
+model Otp {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@map("otps")
+}
+
+// ---------- Catalog ----------
+
+model Category {
+  id          String   @id @default(uuid())
+  slug        String   @unique // was Mongo's human-readable `id` field (e.g. "venue", "makeup")
+  name        String
+  icon        String
+  description String
+  image       String
+  isSpecial   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendors            Vendor[]
+  vendorApplications VendorApplication[]
+
+  @@map("categories")
+}
+
+model Vendor {
+  id               String   @id @default(uuid())
+  slug             String   @unique // was Mongo's human-readable `id` field, still used in /vendors/[id] URLs
+  name             String
+  ownerName        String   @default("")
+  ownerPhone       String   @default("")
+  ownerEmail       String   @default("")
+  categoryId       String
+  category         Category @relation(fields: [categoryId], references: [id])
+  city             String
+  address          String   @default("")
+  mapEmbedUrl      String   @default("")
+  priceMin         Int
+  priceMax         Int
+  rating           Float    @default(4.5)
+  reviewCount      Int      @default(0)
+  image            String
+  images           String[] @default([])
+  virtualTourVideo String   @default("")
+  description      String
+  features         String[] @default([])
+  isFeatured       Boolean  @default(false)
+  sortOrder        Int      @default(999)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  packages     VendorPackage[]
+  faqs         VendorFaq[]
+  application  VendorApplication?
+  user         User?
+  bookingItems BookingItem[]
+  enquiries    Enquiry[]
+
+  @@index([categoryId, city, rating])
+  @@map("vendors")
+}
+
+model VendorPackage {
+  id          String  @id @default(uuid())
+  vendorId    String
+  vendor      Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  price       Int
+  features    String[] @default([])
+  isPopular   Boolean @default(false)
+  isPerPlate  Boolean @default(false)
+  image       String  @default("")
+
+  @@map("vendor_packages")
+}
+
+model VendorFaq {
+  id       String @id @default(uuid())
+  vendorId String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  question String
+  answer   String
+
+  @@map("vendor_faqs")
+}
+
+model VendorApplication {
+  id              String            @id @default(uuid())
+  businessName    String
+  ownerName       String
+  ownerPhone      String
+  ownerEmail      String
+  categoryId      String
+  category        Category          @relation(fields: [categoryId], references: [id])
+  city            String
+  priceMin        Int               @default(0)
+  priceMax        Int               @default(0)
+  experience      String            @default("")
+  description     String            @default("")
+  instagram       String            @default("")
+  website         String            @default("")
+  coverImage      String            @default("")
+  portfolioImages String[]          @default([])
+  foodMenuImages  String[]          @default([])
+  status          ApplicationStatus @default(NEW)
+  vendorId        String?           @unique
+  vendor          Vendor?           @relation(fields: [vendorId], references: [id])
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("vendor_applications")
+}
+
+// ---------- Leads / bookings / consultations ----------
+// customerId is reserved (nullable, no FK enforced yet) on every lead-shaped
+// table so Phase B can link these rows to a Customer/Wedding without a
+// second destructive schema migration.
+
+model Lead {
+  id         String   @id @default(uuid())
+  phone      String
+  whatsapp   Boolean  @default(false)
+  source     String   @default("popup")
+  customerId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("leads")
+}
+
+model Enquiry {
+  id             String        @id @default(uuid())
+  vendorId       String
+  vendor         Vendor        @relation(fields: [vendorId], references: [id])
+  vendorName     String
+  vendorCategory String
+  name           String
+  phone          String
+  email          String?
+  city           String
+  eventDate      String
+  guestCount     String?
+  eventType      String
+  message        String?
+  status         EnquiryStatus @default(NEW)
+  customerId     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("enquiries")
+}
+
+model Consultation {
+  id             String             @id @default(uuid())
+  name           String
+  phone          String
+  email          String             @default("")
+  city           String?
+  eventType      String             @default("wedding")
+  weddingDate    String
+  days           Int
+  guestCount     Int
+  foodPreference String             @default("veg")
+  services       String[]           @default([])
+  venueType      String             @default("")
+  preferredTime  String?
+  message        String?
+  cartItems      Json?
+  totalBudget    Int?
+  status         ConsultationStatus @default(NEW)
+  // weddingStyle / budgetRange / consultationDate were written by the API but
+  // absent from the Mongoose schema (drift). Live-data audit (2026-07-19,
+  // 16/16 docs) found them 0% populated — dropped rather than carried forward
+  // as permanently-empty columns. See docs/postgres-migration-plan.md §5.
+  customerId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("consultations")
+}
+
+model Booking {
+  id         String        @id @default(uuid())
+  name       String
+  phone      String
+  city       String
+  total      Int
+  status     BookingStatus @default(NEW)
+  customerId String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  items BookingItem[]
+
+  @@map("bookings")
+}
+
+model BookingItem {
+  id             String  @id @default(uuid())
+  bookingId      String
+  booking        Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vendorId       String?
+  vendor         Vendor? @relation(fields: [vendorId], references: [id])
+  vendorName     String
+  vendorCategory String
+  packageName    String
+  price          Int
+  quantity       Int
+
+  @@map("booking_items")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique
+  clientName    String
+  clientPhone   String
+  clientEmail   String?
+  clientCity    String?
+  eventDate     String?
+  eventType     String?
+  subtotal      Int
+  discount      Int           @default(0)
+  gstEnabled    Boolean       @default(true)
+  gstAmount     Int           @default(0)
+  total         Int
+  amountPaid    Int           @default(0)
+  notes         String?
+  status        InvoiceStatus @default(DRAFT)
+  customerId    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  vendorName  String?
+  amount      Int
+  quantity    Int     @default(1)
+
+  @@map("invoice_items")
+}
+
+// ---------- Content ----------
+
+model Blog {
+  id             String     @id @default(uuid())
+  title          String
+  slug           String     @unique
+  excerpt        String     @default("")
+  content        String
+  coverImage     String     @default("")
+  author         String     @default("ShaadiShopping Team")
+  category       String     @default("Wedding Tips")
+  tags           String[]   @default([])
+  seoTitle       String     @default("")
+  seoDescription String     @default("")
+  status         BlogStatus @default(DRAFT)
+  publishedAt    DateTime?
+  readTime       Int        @default(1)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([category, status])
+  @@map("blogs")
+}
