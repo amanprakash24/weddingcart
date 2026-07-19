@@ -14,8 +14,8 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 - **`02-crm.md`** — lead lifecycle, follow-up engine, sales pipeline.
 - **`03-wedding-workspace.md`** — per-wedding view: timeline, events, vendors, budget, documents, tasks, communication, health score.
 - **`04-vendor-os.md`** — profile self-service, availability/calendar, booking confirmation, packages, earnings, reviews, Vendor Score.
-- `05-customer-portal.md` (planned)
-- `06-finance.md` — payments, GST, commission, profit (planned)
+- `05-customer-portal.md` (planned — skipped ahead of, not forgotten)
+- **`06-finance.md`** — payments (Razorpay), vendor payouts, commission, GST data requirements, profit reporting.
 - `07-ai-assistant.md` — follow-up nudges, vendor recommendations, summaries (planned)
 
 ## Relationship to the Postgres migration
