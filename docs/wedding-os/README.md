@@ -31,8 +31,17 @@ Framework — before any implementation.
   independence, soft-delete, audit trail, AI read/write). Resolved along the way:
   `Booking` also converts into `Wedding` (via `CONFIRMED`), and the wedding date is
   collected at checkout, not at confirmation — `Booking` gains `weddingDate`
-  (required), `weddingType`/`guestCount` (optional). No SQL/Prisma yet — that's
-  Step 3, a separate future doc.
+  (required), `weddingType`/`guestCount` (optional).
+- **`schema-draft-1-notes.md`** — Step 3: the physical Prisma schema itself lives
+  in `prisma/schema.prisma` (branch `feat/wedding-os-schema`), organized into the
+  same bounded-context sections as `domain-model.md`. This doc explains what's
+  genuinely new vs. Phase A's additive-only changes, the decisions made while
+  writing it (`Role.OPERATIONS` added, "store events not state" implemented via
+  `ActivityLog`, `VendorPaymentDetails` isolated for sensitivity), and a self-check
+  against the primary conversion workflow — one gap flagged (automatic `Invoice`
+  generation on conversion is a business-logic question, not modeled as a schema
+  trigger). `npx prisma format`/`generate` both pass clean. **Not yet reviewed —
+  Step 4's workflow-by-workflow review is still ahead.**
 
 ## Status: first-pass specification complete
 
