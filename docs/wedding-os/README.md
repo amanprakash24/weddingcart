@@ -20,11 +20,19 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 
 ## Phase B: domain model → schema
 
-- **`domain-model.md`** — Step 1/2 of Phase B: business entities, relationships,
-  the Wedding Aggregate, bounded contexts. No SQL/Prisma yet — that's Step 3, a
-  separate future doc, informed by this one plus `docs/postgres-migration-plan.md`'s
-  already-migrated Phase A schema. Surfaces one open question (`Booking` vs.
-  `Wedding`) that needs an answer before Step 3 is written.
+4-step process, chosen deliberately over jumping straight to Prisma: (1) resolve
+open product/UX questions the domain model surfaces, (2) domain model in business
+language, (3) physical Prisma schema, (4) schema review against the Entity Review
+Framework — before any implementation.
+
+- **`domain-model.md`** — Steps 1/2: business entities, relationships, the Wedding
+  Aggregate (validated against every Wedding Workspace screen), bounded contexts,
+  and the Step 4 review framework (5 questions every entity should answer: owner,
+  independence, soft-delete, audit trail, AI read/write). Resolved along the way:
+  `Booking` also converts into `Wedding` (via `CONFIRMED`), and the wedding date is
+  collected at checkout, not at confirmation — `Booking` gains `weddingDate`
+  (required), `weddingType`/`guestCount` (optional). No SQL/Prisma yet — that's
+  Step 3, a separate future doc.
 
 ## Status: first-pass specification complete
 

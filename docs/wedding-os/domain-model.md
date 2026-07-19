@@ -158,14 +158,31 @@ simpler concept.**
   Naming (`customerId` vs. something like `weddingId`) is a Step 3 detail, not a
   new gap.
 
-**New, smaller gap this resolution surfaces:** `Booking` has **no wedding-date
-field today** — checked directly against the live Phase A schema, not assumed.
-Converting to a `Wedding`/`WeddingEvent` needs a date, and cart checkout currently
-never asks for one. Two ways to close this, **a product/UX decision, not resolved
-here**: (a) add a date field to the self-service checkout flow itself, or (b)
-collect it during the coordinator's confirmation step (§ trigger above) before
-conversion — i.e. `CONFIRMED` requires a date to be set, checkout itself stays as
-simple as it is today.
+**Resolved: collect the date at checkout, not at confirmation (decided
+2026-07-19).** Rejected the "ask at confirmation" alternative — it produces real
+friction (`customer books → no date on file → sales calls → coordinator confirms →
+"what's your wedding date again?"`), and the date is needed immediately anyway for
+vendor availability checks (venue, photography, makeup, decorator) that should
+inform the booking itself, not just the post-conversion workspace.
+
+`Booking` gains, at checkout:
+- **`weddingDate`** — required
+- `city` — already exists on `Booking`, no change
+- **`weddingType`** — optional
+- **`guestCount`** — optional
+
+**Two distinct date concepts, kept separate so the schema doesn't overload one
+field:**
+- **Booking Date** — the customer's *intended* wedding date at the time of
+  checkout. Belongs to `Booking`. May change.
+- **WeddingEvent Date** — the *scheduled* date of a specific event
+  (Haldi/Mehendi/Sangeet/Wedding/Reception), belongs to `WeddingEvent`, per
+  `03-wedding-workspace.md` §4's multi-event structure.
+
+On conversion (`CONFIRMED` → `Wedding`): `Booking.weddingDate` becomes the default
+date for the first `WeddingEvent` (the main Wedding day), editable by coordinators
+from there; additional events get added in the Wedding Workspace with their own
+dates, independent of the original booking date.
 
 ## 6. Bounded contexts (summary)
 
@@ -180,11 +197,30 @@ simple as it is today.
 | AI | AIConversation |
 | *Shared (no single context)* | Task, ActivityLog, ApprovalRequest |
 
-## 7. Next step
+## 7. Entity review framework (for Step 4, applied once the schema exists)
 
-**Step 3 — physical Prisma schema** — is the next doc, not this one. It should
-trace every table back to an entity named here, extending
+Every model in the Step 3 Prisma schema should be able to answer these five
+questions — forces the schema to reflect the product, not just port whatever's
+easiest to implement:
+
+| Question | Example answer |
+|---|---|
+| Who owns this entity? | `Task` → owned by `Wedding` (or by a `Lead`/`Enquiry`/`Consultation` if `context=SALES_FOLLOWUP`) |
+| Can it exist independently? | `Task` → No, always belongs to something. `Vendor` → Yes, exists before any booking |
+| Can it be soft-deleted? | Usually yes — but flag exceptions explicitly (e.g. `Payment` records arguably should never be deleted, only reversed/refunded, for audit integrity) |
+| Does it need an audit trail? | `Payment` → Yes. `VendorPackage` → probably not beyond normal `updatedAt` |
+| Does AI read/write it? | `ActivityLog` → AI reads (to summarize) and writes (drafts, flagged per `07-ai-assistant.md`'s AI-generation flag). `Task` → AI suggests (Level 2), doesn't create unilaterally in v1 |
+
+Not applied exhaustively to all ~30 entities in this doc — that's Step 4's job,
+once the physical schema exists to review. Documented here so the framework isn't
+invented fresh when that review happens.
+
+## 8. Next step
+
+The order is now: (1) Booking date/UX — **resolved**, §5. (2) This domain model —
+**up to date** as of this revision. (3) **Step 3, physical Prisma schema — next**,
+not this doc. It should trace every table back to an entity named here, extending
 `docs/postgres-migration-plan.md`'s already-migrated Phase A schema rather than
-replacing it. §5's `Booking` question is resolved; the one remaining open item
-before Step 3 is the smaller product/UX decision on where a `Booking`'s wedding
-date gets collected (§5).
+replacing it, and should fold in `Booking`'s new `weddingDate`/`weddingType`/
+`guestCount` fields from §5. (4) Schema review using §7's framework, before any
+implementation begins.
