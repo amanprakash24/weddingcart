@@ -98,15 +98,20 @@ model Otp {
 // ---------- Catalog ----------
 
 model Category {
-  id          String   @id @default(uuid())
-  slug        String   @unique // was Mongo's human-readable `id` field (e.g. "venue", "makeup")
-  name        String
-  icon        String
-  description String
-  image       String
-  isSpecial   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  // Original Mongo `_id` (ObjectId, stringified), preserved on every migrated
+  // table (not User/Otp — those have no Mongo source). Exists solely so
+  // scripts/validate-post-migration.mjs can match records across the two
+  // databases for checksum comparison — never exposed via any API response.
+  legacyMongoId String?  @unique
+  slug          String   @unique // was Mongo's human-readable `id` field (e.g. "venue", "makeup")
+  name          String
+  icon          String
+  description   String
+  image         String
+  isSpecial     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   vendors            Vendor[]
   vendorApplications VendorApplication[]
@@ -116,6 +121,7 @@ model Category {
 
 model Vendor {
   id               String   @id @default(uuid())
+  legacyMongoId    String?  @unique
   slug             String   @unique // was Mongo's human-readable `id` field, still used in /vendors/[id] URLs
   name             String
   ownerName        String   @default("")
@@ -152,32 +158,35 @@ model Vendor {
 }
 
 model VendorPackage {
-  id          String  @id @default(uuid())
-  vendorId    String
-  vendor      Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  name        String
-  description String
-  price       Int
-  features    String[] @default([])
-  isPopular   Boolean @default(false)
-  isPerPlate  Boolean @default(false)
-  image       String  @default("")
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  vendorId      String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  name          String
+  description   String
+  price         Int
+  features      String[] @default([])
+  isPopular     Boolean  @default(false)
+  isPerPlate    Boolean  @default(false)
+  image         String   @default("")
 
   @@map("vendor_packages")
 }
 
 model VendorFaq {
-  id       String @id @default(uuid())
-  vendorId String
-  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  question String
-  answer   String
+  id            String  @id @default(uuid())
+  legacyMongoId String? @unique
+  vendorId      String
+  vendor        Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  question      String
+  answer        String
 
   @@map("vendor_faqs")
 }
 
 model VendorApplication {
   id              String            @id @default(uuid())
+  legacyMongoId   String?           @unique
   businessName    String
   ownerName       String
   ownerPhone      String
@@ -209,19 +218,21 @@ model VendorApplication {
 // second destructive schema migration.
 
 model Lead {
-  id         String   @id @default(uuid())
-  phone      String
-  whatsapp   Boolean  @default(false)
-  source     String   @default("popup")
-  customerId String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  phone         String
+  whatsapp      Boolean  @default(false)
+  source        String   @default("popup")
+  customerId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("leads")
 }
 
 model Enquiry {
   id             String        @id @default(uuid())
+  legacyMongoId  String?       @unique
   vendorId       String
   vendor         Vendor        @relation(fields: [vendorId], references: [id])
   vendorName     String
@@ -244,6 +255,7 @@ model Enquiry {
 
 model Consultation {
   id             String             @id @default(uuid())
+  legacyMongoId  String?            @unique
   name           String
   phone          String
   email          String             @default("")
@@ -264,23 +276,24 @@ model Consultation {
   // absent from the Mongoose schema (drift). Live-data audit (2026-07-19,
   // 16/16 docs) found them 0% populated — dropped rather than carried forward
   // as permanently-empty columns. See docs/postgres-migration-plan.md §5.
-  customerId String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  customerId     String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   @@map("consultations")
 }
 
 model Booking {
-  id         String        @id @default(uuid())
-  name       String
-  phone      String
-  city       String
-  total      Int
-  status     BookingStatus @default(NEW)
-  customerId String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id            String        @id @default(uuid())
+  legacyMongoId String?       @unique
+  name          String
+  phone         String
+  city          String
+  total         Int
+  status        BookingStatus @default(NEW)
+  customerId    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   items BookingItem[]
 
@@ -289,6 +302,7 @@ model Booking {
 
 model BookingItem {
   id             String  @id @default(uuid())
+  legacyMongoId  String? @unique
   bookingId      String
   booking        Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   vendorId       String?
@@ -304,6 +318,7 @@ model BookingItem {
 
 model Invoice {
   id            String        @id @default(uuid())
+  legacyMongoId String?       @unique
   invoiceNumber String        @unique
   clientName    String
   clientPhone   String
@@ -329,13 +344,14 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id          String  @id @default(uuid())
-  invoiceId   String
-  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  description String
-  vendorName  String?
-  amount      Int
-  quantity    Int     @default(1)
+  id            String  @id @default(uuid())
+  legacyMongoId String? @unique
+  invoiceId     String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description   String
+  vendorName    String?
+  amount        Int
+  quantity      Int     @default(1)
 
   @@map("invoice_items")
 }
@@ -344,6 +360,7 @@ model InvoiceItem {
 
 model Blog {
   id             String     @id @default(uuid())
+  legacyMongoId  String?    @unique
   title          String
   slug           String     @unique
   excerpt        String     @default("")
