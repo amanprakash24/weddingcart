@@ -8,41 +8,41 @@ measurements, not intuition).
 ## 0. Staging environment (prerequisite — nothing below is possible without this)
 
 **Database**
-- [ ] Supabase **staging** project created — a separate project, never production
-      reused as a test target
-- [ ] PostgreSQL version matches what Prisma 7 supports (Supabase defaults are fine;
-      confirm rather than assume)
-- [ ] Automated backups enabled on the staging project, if the Supabase tier includes it
+- [x] Supabase **staging** project created (`shaadishopping-staging`, 2026-07-19) —
+      a separate project, not production reused as a test target
+- [x] PostgreSQL version confirmed directly (not assumed): 17.6
+- [ ] Automated backups enabled on the staging project — **not yet verified**
 
 **Environment** (`.env.local`, never committed — `.env.example` documents the shape)
-- [ ] `DATABASE_URL` set to the staging pooled connection string
-- [ ] `DIRECT_URL` set to the staging direct connection string
-- [ ] `SUPER_ADMIN_EMAIL` set to a real address (not fabricated — see
-      `docs/migration-test-plan.md` "Special case — Users")
-- [ ] `ADMIN_EMAIL` set to a real address
+- [x] `DATABASE_URL` set — **using the direct connection for both** `DATABASE_URL`/
+      `DIRECT_URL` (not the pooled string), a deliberate simplification for a
+      no-concurrent-traffic staging dry run — switch `DATABASE_URL` to the pooled
+      (port 6543) string before anything resembling real load
+- [x] `DIRECT_URL` set (same direct connection string, see above)
+- [x] `SUPER_ADMIN_EMAIL` set to a real address
+- [x] `ADMIN_EMAIL` set to a real address
 
 **Security**
-- [ ] Strong, unique database password (not reused from anywhere else)
-- [ ] IP restrictions configured if the Supabase tier/plan supports it
-- [ ] Confirmed no secret ever gets committed — `.env.example` is the only tracked
-      env file (fixed 2026-07-19; verify with `git ls-files | grep '\.env'` — should
-      show only `.env.example`)
+- [x] Strong, unique database password (Supabase-generated, not reused)
+- [ ] IP restrictions — **not configured** (Free tier default: open; revisit before
+      anything beyond a staging dry run)
+- [x] Confirmed no secret ever gets committed — `.env.example` is the only tracked
+      env file
 
 ## 1. Migration execution (staging)
 
-Run in this order, per `docs/migration-test-plan.md` and
-`docs/rollback-checklist.md`'s pre-migration checklist:
-
-- [ ] `scripts/validate-migration-readiness.mjs` passes with 0 blocking issues
-      (re-run fresh — don't trust the 2026-07-19 result, live data changes daily)
-- [ ] `scripts/migrate-to-postgres.mjs` run against staging — **this is its first
-      execution ever**, treat the first run as a rehearsal even though it's already
-      idempotent/transactional/batch-validated by design
-- [ ] All 7 batch reports (`migration-reports/*.json`) show `validationStatus: PASS`
-      — if any batch failed and the script stopped, follow
-      `docs/rollback-checklist.md` before retrying, don't just re-run blind
-- [ ] `scripts/validate-post-migration.mjs` passes (full cross-database count +
-      checksum comparison)
+- [x] `scripts/validate-migration-readiness.mjs` passes with 0 blocking issues
+      (re-run fresh 2026-07-19 immediately before the real run, not the earlier
+      2026-07-19 morning result — counts had already shifted: 87 vendors vs. 93 earlier)
+- [x] `scripts/migrate-to-postgres.mjs` run against staging (2026-07-19,
+      commit `bed0a35`) — **first execution surfaced 2 real bugs**, both fixed (see
+      `docs/migration-log.md` for full detail: a stale `users.role` reference from
+      the identity redesign, and a Windows filename bug from `/` in a batch name).
+      Third attempt, with fixes applied, completed cleanly end-to-end.
+- [x] All 7 batch reports (`migration-reports/*.json`) show `validationStatus: PASS`
+- [x] `scripts/validate-post-migration.mjs` passes — **0 mismatches** across every
+      checked table (Category, Vendor, VendorApplication, Lead, Enquiry,
+      Consultation, Booking, Invoice, Blog)
 
 ## 2. Application correctness (staging)
 
