@@ -44,9 +44,16 @@ Framework — before any implementation.
 - **`step4-workflow-review.md`** — Step 4: all 6 named workflows traced against
   the actual schema. 1 real schema gap found (`BookingItem.vendorId` nullable vs.
   `VendorBooking.vendorId` required — resolved as a conversion-logic decision, not
-  a schema change), 1 small fix applied directly (`Wedding.completedAt`), 1 open
-  product question surfaced and **not yet answered** (can one person be both a
-  Vendor and a Customer? — `User.phone` uniqueness currently prevents it).
+  a schema change), 1 small fix applied directly (`Wedding.completedAt`), and 1
+  open product question resolved into a real identity redesign the same day:
+  `User.role` replaced by `UserRole` (multi-role per person) +
+  `CustomerProfile`/`VendorProfile`/`EmployeeProfile` — see the file for the full
+  ripple into already-shipped Milestone 1 auth code.
+- **`track-b-conversion-pipeline.md`** — implementation *prep* (not a production
+  feature — migration is still paused on staging): repositories + a transactional,
+  idempotent service for exactly the prioritized `Booking(CONFIRMED) → Wedding →
+  WeddingEvent → VendorBooking → Tasks → ActivityLog` pipeline. Not wired to any
+  live route. Invoice/Payment creation deliberately excluded from this pass.
 
 ## Status: first-pass specification complete
 
