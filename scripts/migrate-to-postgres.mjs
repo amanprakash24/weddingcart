@@ -75,7 +75,13 @@ async function withTransaction(fn) {
 
 async function saveReport(batchName, report) {
   await mkdir('migration-reports', { recursive: true });
-  const file = `migration-reports/${report.startedAt.replace(/[:.]/g, '-')}-${batchName}.json`;
+  // Windows treats /,\,: etc. as path separators/invalid filename chars — batch
+  // names like "Leads / Enquiries / Consultations / Vendor Applications" broke
+  // this on first real run against Windows (caught by actually running it, not
+  // by review). Sanitize for the filename only; `batchName` in the report JSON
+  // content itself is untouched.
+  const safeBatchName = batchName.replace(/[/\\:*?"<>|]/g, '-').replace(/-+/g, '-');
+  const file = `migration-reports/${report.startedAt.replace(/[:.]/g, '-')}-${safeBatchName}.json`;
   await writeFile(file, JSON.stringify(report, null, 2));
   console.log('');
   console.log(`Batch: ${batchName}`);
@@ -170,11 +176,24 @@ async function seedUsers() {
       process.exit(1);
     }
     const passwordHash = await bcrypt.hash(p.password, 10);
+    // Identity redesign (2026-07-19, docs/wedding-os/step4-workflow-review.md):
+    // User.role no longer exists — role now lives in the UserRole join table
+    // (multi-role per person). This function was missed during that refactor
+    // (caught by actually running the migration against real Postgres, not by
+    // review) — fixed here to match lib/auth/auth.ts's same pattern.
+    const { rows } = await pgClient.query(
+      `INSERT INTO users (id, email, name, "passwordHash", "createdAt", "updatedAt")
+       VALUES ($1, $2, $3, $4, now(), now())
+       ON CONFLICT (email) DO UPDATE SET "passwordHash" = EXCLUDED."passwordHash", "updatedAt" = now()
+       RETURNING id`,
+      [randomUUID(), p.email, p.username, passwordHash]
+    );
+    const userId = rows[0].id;
     await pgClient.query(
-      `INSERT INTO users (id, email, name, "passwordHash", role, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, $4, $5, now(), now())
-       ON CONFLICT (email) DO UPDATE SET "passwordHash" = EXCLUDED."passwordHash", role = EXCLUDED.role, "updatedAt" = now()`,
-      [randomUUID(), p.email, p.username, passwordHash, p.role]
+      `INSERT INTO user_roles (id, "userId", role, "createdAt")
+       VALUES ($1, $2, $3, now())
+       ON CONFLICT ("userId", role) DO NOTHING`,
+      [randomUUID(), userId, p.role]
     );
     console.log(`Seeded ${p.role} user: ${p.email}`);
   }
@@ -476,9 +495,14 @@ async function batchLeadsEtc(vendorSlugToId, categorySlugToId) {
       return { migrated, skipped, failed: 0 };
     },
     async validateFn() {
-      const [l, e, c, a] = await Promise.all([
-        countPg('leads'), countPg('enquiries'), countPg('consultations'), countPg('vendor_applications'),
-      ]);
+      // Sequential, not Promise.all — pgClient is a single non-pooled
+      // Client, which can only run one query at a time. Concurrent queries
+      // against it triggered a real "already executing a query" deprecation
+      // warning on the first live run (caught by executing, not by review).
+      const l = await countPg('leads');
+      const e = await countPg('enquiries');
+      const c = await countPg('consultations');
+      const a = await countPg('vendor_applications');
       const total = l + e + c + a;
       return total >= sourceCount
         ? { pass: true }
