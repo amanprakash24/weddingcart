@@ -1,12 +1,21 @@
 # Migration Test Plan
 
 Per-dataset verification plan for the Milestone 3 data migration
-(`scripts/migrate-to-postgres.mjs`, not yet written). Source counts below are real,
-captured 2026-07-19 against live MongoDB via `scripts/validate-migration-readiness.mjs`
-and a supplementary subdocument count query — not placeholders. **Re-capture these
-counts immediately before the real migration run**, since live data changes daily;
-treat the numbers here as "what they were when this plan was written," not a frozen
-target.
+(`scripts/migrate-to-postgres.mjs`). Source counts below are real, captured
+2026-07-19 against live MongoDB via `scripts/validate-migration-readiness.mjs` and a
+supplementary subdocument count query — not placeholders. **Re-capture these counts
+immediately before the real migration run**, since live data changes daily; treat the
+numbers here as "what they were when this plan was written," not a frozen target.
+
+**Status 2026-07-19: `scripts/migrate-to-postgres.mjs` is code-complete — idempotent
+per-batch upserts via `legacyMongoId`, transactional per batch, structured JSON
+report + console progress per batch, stops on first validation failure — but has
+NEVER BEEN EXECUTED.** No live Postgres instance exists yet (`DATABASE_URL` in
+`.env.local` is a placeholder); verified the script fails fast and cleanly (5s
+timeout) rather than hang when it can't connect, same as
+`scripts/validate-post-migration.mjs`. Do not treat this plan or the script's
+existence as evidence the migration has run — the actual dry run is the next real
+action, once a staging Postgres target exists.
 
 Migration runs in 7 batches, in dependency order (a batch never migrates before the
 tables it references). Validate after every batch; **do not start the next batch if
@@ -99,8 +108,15 @@ Transition), not during Milestone 3.
 No Mongo collection maps to Postgres `users` — it's seeded directly from the two
 current admin env-var accounts (`ADMIN_USERNAME`/`SUPER_ADMIN_USERNAME`), each given a
 real bcrypt hash of their current password. This happens once, is not part of the
-7 batches above, and should run before Batch 1 so `SUPER_ADMIN` login is available
-for validating the rest of the migration as it proceeds.
+7 batches above, and runs before Batch 1 (`seedUsers()` in
+`scripts/migrate-to-postgres.mjs`) so `SUPER_ADMIN` login is available for validating
+the rest of the migration as it proceeds.
+
+**Requires `SUPER_ADMIN_EMAIL`/`ADMIN_EMAIL` to be set in `.env.local` first** — the
+legacy accounts are usernames (`"Gaurav_Singh"`, not an email shape), but the new
+`User.email` field is what the Credentials provider looks accounts up by. Real
+addresses were deliberately not fabricated; the script fails with a clear error
+rather than guessing if these are unset.
 
 ---
 
