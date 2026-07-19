@@ -14,9 +14,9 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 - **`02-crm.md`** — lead lifecycle, follow-up engine, sales pipeline.
 - **`03-wedding-workspace.md`** — per-wedding view: timeline, events, vendors, budget, documents, tasks, communication, health score.
 - **`04-vendor-os.md`** — profile self-service, availability/calendar, booking confirmation, packages, earnings, reviews, Vendor Score.
-- `05-customer-portal.md` (planned — skipped ahead of, not forgotten)
+- `05-customer-portal.md` (planned — deliberately written last, after AI, so it's designed with the AI surface already known)
 - **`06-finance.md`** — payments (Razorpay), vendor payouts, commission, GST data requirements, profit reporting.
-- `07-ai-assistant.md` — follow-up nudges, vendor recommendations, summaries (planned)
+- **`07-ai-assistant.md`** — AI mapped across every role (Founder/Sales/Operations/Vendor/Customer), 3-level framework (Assistant/Copilot/Autonomous — v1 ships Assistant+Copilot only), closes the AI-upgrade loop left open by 02/03/04.
 
 ## Relationship to the Postgres migration
 
