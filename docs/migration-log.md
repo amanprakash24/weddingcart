@@ -59,6 +59,11 @@ root cause: ..., fix applied, re-run scheduled for ...">
 
 ---
 
-*(No runs yet as of 2026-07-19 — this file has only the template above. The first
-entry gets added above this line once a Supabase staging project exists and the
-first real execution happens, per `docs/release-readiness-checklist.md`.)*
+*(No `migrate-to-postgres.mjs` runs yet as of 2026-07-19 — that's still pending
+`SUPER_ADMIN_EMAIL`/`ADMIN_EMAIL`, required by the script's `seedUsers()` step
+before it will run at all. Infrastructure status, for context: Supabase staging
+project "shaadishopping-staging" was provisioned 2026-07-19, and the initial
+schema migration (`prisma migrate dev --name init_phase_a_and_b`, commit `b00a222`
+on `feat/wedding-os-schema`) applied cleanly — 38 tables verified live, covering
+both Phase A and Phase B. The first full entry using the template above gets added
+once the actual data migration runs.)*
