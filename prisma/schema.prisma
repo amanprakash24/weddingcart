@@ -589,8 +589,13 @@ model Wedding {
   coordinatorId String?
   coordinator   User?   @relation("WeddingCoordinator", fields: [coordinatorId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  // Distinct from `updatedAt` (which any field edit touches) — needed for
+  // "time from creation to completion" reporting. Found during the Step 4
+  // workflow review (Wedding Completion), added directly rather than flagged
+  // since it's a safe, uncontroversial addition.
+  completedAt DateTime?
 
   couple             Couple?
   events             WeddingEvent[]

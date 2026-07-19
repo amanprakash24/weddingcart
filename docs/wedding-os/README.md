@@ -40,8 +40,13 @@ Framework — before any implementation.
   `ActivityLog`, `VendorPaymentDetails` isolated for sensitivity), and a self-check
   against the primary conversion workflow — one gap flagged (automatic `Invoice`
   generation on conversion is a business-logic question, not modeled as a schema
-  trigger). `npx prisma format`/`generate` both pass clean. **Not yet reviewed —
-  Step 4's workflow-by-workflow review is still ahead.**
+  trigger). `npx prisma format`/`generate` both pass clean.
+- **`step4-workflow-review.md`** — Step 4: all 6 named workflows traced against
+  the actual schema. 1 real schema gap found (`BookingItem.vendorId` nullable vs.
+  `VendorBooking.vendorId` required — resolved as a conversion-logic decision, not
+  a schema change), 1 small fix applied directly (`Wedding.completedAt`), 1 open
+  product question surfaced and **not yet answered** (can one person be both a
+  Vendor and a Customer? — `User.phone` uniqueness currently prevents it).
 
 ## Status: first-pass specification complete
 
