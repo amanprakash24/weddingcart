@@ -11,8 +11,7 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 ## Documents
 
 - **`01-command-center.md`** — Founder, Sales, Operations, and Vendor dashboards.
-  First doc in this set.
-- `02-crm.md` — lead lifecycle, follow-up engine, sales pipeline (planned, not started)
+- **`02-crm.md`** — lead lifecycle, follow-up engine, sales pipeline.
 - `03-wedding-workspace.md` — per-wedding view: timeline, checklist, budget, documents (planned)
 - `04-vendor-os.md` — availability, packages, calendar, earnings (planned)
 - `05-customer-portal.md` (planned)
