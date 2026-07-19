@@ -97,15 +97,22 @@ model User {
   name         String?
   email        String?  @unique
   phone        String?  @unique
-  // Set only for SUPER_ADMIN / SALES (credentials login).
+  // Set only for SUPER_ADMIN / SALES / OPERATIONS (credentials login).
   // Null for VENDOR / CUSTOMER, which authenticate via phone + OTP.
   passwordHash String?
-  role         Role
-  vendorId     String?  @unique
-  vendor       Vendor?  @relation(fields: [vendorId], references: [id])
   image        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // Identity/role redesign (Step 4 review, 2026-07-19): one User per phone
+  // number can now hold MULTIPLE roles (e.g. a vendor who also books their own
+  // wedding as a customer) — replaces the single `role Role` field. Role-
+  // specific data lives in the profile tables below, not flat on User, so
+  // identity stays separate from capability-specific fields.
+  roles           UserRole[]
+  customerProfile CustomerProfile?
+  vendorProfile   VendorProfile?
+  employeeProfile EmployeeProfile?
 
   // Phase B back-relations (Wedding OS) — every internal team member (Founder/
   // Sales/Operations) and Vendor/Customer login funnels through this same User
@@ -128,6 +135,57 @@ model User {
   notifications           Notification[]
 
   @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role
+  createdAt DateTime @default(now())
+
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+// Intentionally thin for v1 — no customer-specific field has been named by any
+// Wedding OS doc yet beyond what Couple/Wedding already capture. Exists now so
+// the identity/profile separation is established structurally; extend with
+// real fields (saved addresses, preferences) when a real need names one,
+// rather than inventing fields speculatively.
+model CustomerProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("customer_profiles")
+}
+
+// Replaces the old `User.vendorId` direct field — the link between a login
+// identity and the (already rich) Vendor business-listing record, which stays
+// unchanged as the actual profile data.
+model VendorProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorId  String   @unique
+  vendor    Vendor   @relation(fields: [vendorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("vendor_profiles")
+}
+
+// Intentionally thin for v1, same reasoning as CustomerProfile — for
+// SUPER_ADMIN/SALES/OPERATIONS team members. Extend when a real
+// employee-specific field is needed (department, hire date, etc.).
+model EmployeeProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("employee_profiles")
 }
 
 // Ephemeral phone verification for public lead capture (not a login session).
@@ -196,12 +254,12 @@ model Vendor {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  packages     VendorPackage[]
-  faqs         VendorFaq[]
-  application  VendorApplication?
-  user         User?
-  bookingItems BookingItem[]
-  enquiries    Enquiry[]
+  packages      VendorPackage[]
+  faqs          VendorFaq[]
+  application   VendorApplication?
+  vendorProfile VendorProfile? // Phase B — replaces the old direct User.vendorId link
+  bookingItems  BookingItem[]
+  enquiries     Enquiry[]
 
   // Phase B (Wedding OS / Vendor OS / Finance)
   vendorBookings VendorBooking[]

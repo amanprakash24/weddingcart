@@ -26,14 +26,18 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials.password) return null;
 
-        const user = await prisma.user.findUnique({ where: { email: credentials.email } });
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+          include: { roles: true },
+        });
         if (!user || !user.passwordHash) return null;
-        if (!ADMIN_ROLES.includes(user.role)) return null;
+        const roles = user.roles.map((r) => r.role);
+        if (!roles.some((role) => ADMIN_ROLES.includes(role))) return null;
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) return null;
 
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        return { id: user.id, email: user.email, name: user.name, roles };
       },
     }),
     // Vendor / Customer — phone + OTP. Structurally complete against the
@@ -59,33 +63,46 @@ export const authOptions: AuthOptions = {
 
         await prisma.otp.delete({ where: { id: otp.id } });
 
-        let user = await prisma.user.findUnique({ where: { phone: credentials.phone } });
+        let user = await prisma.user.findUnique({
+          where: { phone: credentials.phone },
+          include: { roles: true, vendorProfile: true },
+        });
         if (!user) {
           // First-time phone login defaults to CUSTOMER. VENDOR accounts are
           // provisioned deliberately (on VendorApplication approval, linked
-          // via vendorId) rather than auto-created here — a phone with no
-          // existing account is assumed to be a customer, not a vendor.
+          // via VendorProfile) rather than auto-created here — a phone with
+          // no existing account is assumed to be a customer, not a vendor.
           // Flagged for product sign-off, not a unilateral final decision.
+          // A CUSTOMER role here doesn't preclude this same User later also
+          // gaining a VENDOR role (see lib/auth/roles.ts — multi-role per
+          // phone number, resolved in the Step 4 schema review) — this just
+          // sets up their first role, not their only possible one.
           user = await prisma.user.create({
-            data: { phone: credentials.phone, role: Role.CUSTOMER },
+            data: { phone: credentials.phone, roles: { create: { role: Role.CUSTOMER } } },
+            include: { roles: true, vendorProfile: true },
           });
         }
 
-        return { id: user.id, name: user.name, role: user.role, vendorId: user.vendorId ?? undefined };
+        return {
+          id: user.id,
+          name: user.name,
+          roles: user.roles.map((r) => r.role),
+          vendorId: user.vendorProfile?.vendorId ?? undefined,
+        };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role;
+        token.roles = user.roles;
         token.vendorId = user.vendorId;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.role = token.role;
+        session.user.roles = token.roles;
         session.user.vendorId = token.vendorId;
       }
       return session;

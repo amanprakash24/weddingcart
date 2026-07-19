@@ -8,9 +8,11 @@ export async function getSession() {
   return getServerSession(authOptions);
 }
 
+// A session's user can hold multiple roles (Step 4 schema review) — this
+// passes if ANY of the user's roles is in `allowed`, not all of them.
 export async function requireRole(allowed: Role[]) {
   const session = await getSession();
-  if (!session?.user || !allowed.includes(session.user.role)) {
+  if (!session?.user || !session.user.roles.some((role) => allowed.includes(role))) {
     return null;
   }
   return session;

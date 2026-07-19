@@ -52,19 +52,33 @@ isn't silently missed when Step 3.5/implementation happens.
 
 Traced cleanly except one real question this raised, not previously surfaced:
 
-### 🟡 Open question: can one person be both a Vendor and a Customer?
+### ✅ Resolved: yes — identity model redesigned for multi-role (2026-07-19)
 
-`User.phone String? @unique` — one phone number backs exactly one `User`, with
-exactly one `Role`. A vendor who later wants to book their *own* wedding through
-the platform (or a customer who becomes a vendor) can't cleanly get a second
-account under the current model — the phone-number uniqueness blocks it.
+`User.phone String? @unique` used to back exactly one `Role`. **Decided: support
+multi-role now, not deferred** — real scenarios named (a photographer who books
+their own wedding, a banquet owner who books decorators through the platform) make
+this more than a theoretical edge case, and the fix is far cheaper before
+production data accumulates than after.
 
-**Not resolved here — flagging for your call**, same as every other open product
-question in this doc set: is single-role-per-phone an acceptable v1 constraint
-(edge case, low volume), or does the system need multi-role support per person? The
-fix, if needed, is straightforward (a join table or an array-of-roles instead of a
-single enum) but changes a core Identity-context assumption, so it shouldn't be
-decided unilaterally.
+**Schema change**: `User.role Role` replaced by a `UserRole` join table
+(`userId`, `role`, unique per pair) — one `User` can now hold multiple roles.
+Role-specific data moved off `User` into three profile tables (`CustomerProfile`,
+`VendorProfile`, `EmployeeProfile`), keeping identity separate from
+capability-specific fields. `VendorProfile` replaces the old direct
+`User.vendorId`; `CustomerProfile`/`EmployeeProfile` are intentionally thin for
+v1 (no named fields yet beyond the identity link) rather than inventing content
+speculatively.
+
+**Ripple effect into already-built Milestone 1 auth code, updated to match**:
+`lib/auth/auth.ts` (both `authorize()` callbacks now query `roles`/`vendorProfile`
+and return `roles: Role[]` instead of a single `role`), `lib/auth/session.ts`
+(`requireRole()` now checks "any of the user's roles," not one), `lib/auth/
+permissions.ts` (added `hasAdminRole()`/`hasSuperAdmin()` array-aware variants
+alongside the existing single-role checkers), `lib/auth/roles.ts` (`ADMIN_ROLES`
+now includes `OPERATIONS`, missed when that role was first added), and
+`types/next-auth.d.ts` (`session.user.role` → `session.user.roles: Role[]`).
+Re-verified: `tsc --noEmit`, lint, and full `next build` all pass clean after
+every one of these changes.
 
 ## Workflow 3: Lead conversion
 
@@ -122,10 +136,13 @@ already flagged in `06-finance.md`, not schema issues.
   schema change): `BookingItem.vendorId` nullable vs. `VendorBooking.vendorId`
   required — skip-and-flag during conversion.
 - **1 small fix applied directly**: `Wedding.completedAt`.
-- **1 open product question surfaced, needs your call**: single-role-per-phone
-  (can someone be both Vendor and Customer?).
+- **1 open product question surfaced and resolved same-day**: yes, one person can
+  now hold multiple roles — `User.role` replaced by a `UserRole` join table plus
+  `CustomerProfile`/`VendorProfile`/`EmployeeProfile`, with every already-built
+  Milestone 1 auth file updated to match (see Workflow 2 for the full list).
 - **Everything else traced clean** across all 6 workflows — no further schema
   changes from this pass.
 
-Schema re-validated after the `completedAt` addition: `prisma format` and
-`prisma generate` both pass clean.
+Schema re-validated after both the `completedAt` addition and the identity
+redesign: `prisma format`, `prisma generate`, `tsc --noEmit`, lint, and a full
+`next build` all pass clean.
