@@ -59,10 +59,11 @@ Wedding
 └── Budget                  (COMPUTED — not a stored entity, derived from
                               VendorBooking.price + Payment, per 03-wedding-workspace §6)
 
-Lead / Enquiry / Consultation  --[WON]-->  Wedding
-    (CRM context)                          (Wedding context — the one cross-context
-                                             event every other relationship in this
-                                             system assumes already happened)
+Lead / Enquiry / Consultation  --[WON]-->        Wedding
+Booking                        --[CONFIRMED]-->  Wedding
+    (CRM context / Marketplace-adjacent          (Wedding context — TWO conversion
+     self-service checkout)                       paths into the same aggregate root,
+                                                    resolved 2026-07-19 — see §5)
 
 VendorBooking --> Vendor          (Wedding context references Marketplace context)
 Task.assignedToUserId --> User    (Wedding/CRM context references Identity context)
@@ -133,24 +134,38 @@ Two mappings, not new entities:
   any login account exists (a coordinator entered the details) — hence
   `Wedding.customerId → User` is 0-or-1, not required.
 
-## 5. Open question this exercise surfaced (not resolved — flagging, per the pattern this whole doc set has followed)
+## 5. Resolved: `Booking` also converts into a `Wedding` (decided 2026-07-19)
 
-**How does the existing `Booking` entity (Phase A, real — self-service cart
-checkout with multi-vendor `items[]`) relate to `Wedding`?** Every Wedding OS doc so
-far assumed the CRM path (`Lead`/`Enquiry`/`Consultation` → qualified → `WON` →
-`Wedding`) as *the* way a `Wedding` gets created. But the live site also supports a
-direct self-service cart checkout (`Booking`) that never goes through that pipeline.
-Two live paths into what might need to become the same destination:
+Two live paths now both terminate at the same aggregate root: the coordinator-led
+CRM path (`Lead`/`Enquiry`/`Consultation` → qualified → `WON` → `Wedding`, per
+`02-crm.md`) and self-service cart checkout (`Booking` → `CONFIRMED` → `Wedding`).
+Decision: **`Booking` also converts, it doesn't stay a permanently separate,
+simpler concept.**
 
-- Does a completed `Booking` also convert into a `Wedding` (self-service intake,
-  parallel to the coordinator-led CRM intake)?
-- Or does `Booking` stay a separate, simpler concept that never becomes a full
-  `Wedding` (e.g. a single-vendor or low-touch purchase that doesn't need the full
-  workspace)?
+**Mechanics:**
+- **Trigger:** `Booking.status` reaching `CONFIRMED` (the existing Phase A enum
+  value — chosen over `CLOSED`, which reads more like post-event archival than
+  "this is now real, start executing it"). Not immediate on cart submission, same
+  reasoning as CRM's `WON` gate — a raw checkout still benefits from a
+  confirmation step before becoming a full `Wedding` record.
+- **Field mapping:** `Booking.items[]` (each already `vendorId` + `packageName` +
+  `price` + `quantity`) maps directly onto `VendorBooking` records — this is a
+  clean, near-1:1 translation, not a re-modeling. `Booking.city` seeds the primary
+  `WeddingEvent`'s city.
+- **Linkage:** `Booking` already reserved a nullable `customerId` field in Phase A
+  (`docs/postgres-migration-plan.md`, "every lead-shaped table," anticipating
+  exactly this) — that field is what actually gets populated on conversion.
+  Naming (`customerId` vs. something like `weddingId`) is a Step 3 detail, not a
+  new gap.
 
-This wasn't visible until compiling the full domain model — worth a decision before
-Step 3 (physical schema), since it changes whether `Booking` needs a `weddingId`
-link or stays fully independent.
+**New, smaller gap this resolution surfaces:** `Booking` has **no wedding-date
+field today** — checked directly against the live Phase A schema, not assumed.
+Converting to a `Wedding`/`WeddingEvent` needs a date, and cart checkout currently
+never asks for one. Two ways to close this, **a product/UX decision, not resolved
+here**: (a) add a date field to the self-service checkout flow itself, or (b)
+collect it during the coordinator's confirmation step (§ trigger above) before
+conversion — i.e. `CONFIRMED` requires a date to be set, checkout itself stays as
+simple as it is today.
 
 ## 6. Bounded contexts (summary)
 
@@ -170,5 +185,6 @@ link or stays fully independent.
 **Step 3 — physical Prisma schema** — is the next doc, not this one. It should
 trace every table back to an entity named here, extending
 `docs/postgres-migration-plan.md`'s already-migrated Phase A schema rather than
-replacing it. The `Booking` question in §5 needs an answer before that doc is
-written, not during it.
+replacing it. §5's `Booking` question is resolved; the one remaining open item
+before Step 3 is the smaller product/UX decision on where a `Booking`'s wedding
+date gets collected (§5).
