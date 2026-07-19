@@ -14,9 +14,18 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 - **`02-crm.md`** — lead lifecycle, follow-up engine, sales pipeline.
 - **`03-wedding-workspace.md`** — per-wedding view: timeline, events, vendors, budget, documents, tasks, communication, health score.
 - **`04-vendor-os.md`** — profile self-service, availability/calendar, booking confirmation, packages, earnings, reviews, Vendor Score.
-- `05-customer-portal.md` (planned — deliberately written last, after AI, so it's designed with the AI surface already known)
+- **`05-customer-portal.md`** — written last on purpose, after AI. Couple-facing view of the Wedding Workspace data: overview, timeline, vendor directory, payments (Razorpay), budget (margin-filtered), documents, communication.
 - **`06-finance.md`** — payments (Razorpay), vendor payouts, commission, GST data requirements, profit reporting.
 - **`07-ai-assistant.md`** — AI mapped across every role (Founder/Sales/Operations/Vendor/Customer), 3-level framework (Assistant/Copilot/Autonomous — v1 ships Assistant+Copilot only), closes the AI-upgrade loop left open by 02/03/04.
+
+## Status: first-pass specification complete
+
+All 7 modules have a first-pass functional design as of this doc. Each doc's "data
+model gaps" section is the collected input for the Phase B schema design (the
+`Wedding`/`WeddingEvent`/`VendorBooking`/`Payment`/`Task`/`ActivityLog`/`Document`
+entities named throughout this set, on top of the Phase A schema already migrated
+in `docs/postgres-migration-plan.md`). Phase B schema design is the next real
+decision point — not implementation of any single module yet.
 
 ## Relationship to the Postgres migration
 
