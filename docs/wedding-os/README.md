@@ -18,6 +18,14 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 - **`06-finance.md`** — payments (Razorpay), vendor payouts, commission, GST data requirements, profit reporting.
 - **`07-ai-assistant.md`** — AI mapped across every role (Founder/Sales/Operations/Vendor/Customer), 3-level framework (Assistant/Copilot/Autonomous — v1 ships Assistant+Copilot only), closes the AI-upgrade loop left open by 02/03/04.
 
+## Phase B: domain model → schema
+
+- **`domain-model.md`** — Step 1/2 of Phase B: business entities, relationships,
+  the Wedding Aggregate, bounded contexts. No SQL/Prisma yet — that's Step 3, a
+  separate future doc, informed by this one plus `docs/postgres-migration-plan.md`'s
+  already-migrated Phase A schema. Surfaces one open question (`Booking` vs.
+  `Wedding`) that needs an answer before Step 3 is written.
+
 ## Status: first-pass specification complete
 
 All 7 modules have a first-pass functional design as of this doc. Each doc's "data
