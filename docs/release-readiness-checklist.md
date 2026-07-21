@@ -62,12 +62,13 @@ measurements, not intuition).
       move to Postgres improved it or whether the missing `pg_trgm`/full-text index
       (noted as an open gap) still needs addressing before cutover
 
-## 4. Security (before Milestone 4, not blocking this gate)
+## 4. Security (Milestone 4, now complete — 2026-07-21)
 
-- [ ] Both blocking items from `docs/security-checklist.md` resolved: rate limiting
+- [x] Both blocking items from `docs/security-checklist.md` resolved: rate limiting
       on both Credentials `authorize()` callbacks, explicit `session.maxAge`
-- [ ] CSRF and cookie-flag items verified against a real login flow (couldn't be
-      checked without one — now one exists)
+- [x] CSRF and cookie-flag items verified against a real login flow — admin
+      (credentials) and vendor/customer (OTP) login built, all 6 checklist items
+      confirmed live against staging (see `docs/security-checklist.md`)
 
 ## 5. Rollback
 

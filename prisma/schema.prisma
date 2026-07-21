@@ -202,6 +202,24 @@ model Otp {
   @@map("otps")
 }
 
+// Security checklist item #2 (docs/security-checklist.md) — rate limiting on
+// login attempts. No in-memory approach (a Map, a simple counter) is reliable
+// here: Vercel is serverless/multi-instance, so in-memory state doesn't
+// persist or share across invocations. Postgres-backed instead — consistent
+// with the frozen stack (no new infra like Redis) and works correctly
+// regardless of how many instances are handling requests. One row per
+// attempt (not a running counter) so the lockout window is a simple count
+// query, not a field that needs careful concurrent-update handling.
+model LoginAttempt {
+  id         String   @id @default(uuid())
+  identifier String // email or phone attempted against a Credentials provider
+  success    Boolean
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+  @@map("login_attempts")
+}
+
 // ---------- Catalog ----------
 
 model Category {

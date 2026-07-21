@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { connectDB } from '@/lib/mongodb';
 import BlogModel from '@/lib/models/Blog';
-import { computeAdminToken, computeSuperAdminToken } from '@/lib/adminAuth';
-
-async function isAdmin(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('admin_session')?.value;
-  if (!token) return false;
-  return token === computeAdminToken() || token === computeSuperAdminToken();
-}
+import { requireAdmin } from '@/lib/adminAuth';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -27,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await requireAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { slug } = await params;
   try {
     await connectDB();
@@ -52,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  if (!(await isAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await requireAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { slug } = await params;
   try {
     await connectDB();

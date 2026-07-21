@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import OTP from '@/lib/models/OTP';
+import { otpService } from '@/services/otp.service';
 
 export async function POST(req: Request) {
   try {
@@ -10,25 +9,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Invalid phone number' }, { status: 400 });
     }
 
-    await connectDB();
-
-    // Rate limit: one OTP per phone per 60 seconds
-    const recent = await OTP.findOne({ phone });
-    if (recent) {
-      const ageSeconds = (Date.now() - new Date(recent.createdAt).getTime()) / 1000;
-      if (ageSeconds < 60) {
-        const wait = Math.ceil(60 - ageSeconds);
-        return NextResponse.json(
-          { success: false, message: `Please wait ${wait} seconds before requesting another OTP` },
-          { status: 429 },
-        );
-      }
+    const result = await otpService.requestCode(phone);
+    if ('waitSeconds' in result) {
+      return NextResponse.json(
+        { success: false, message: `Please wait ${result.waitSeconds} seconds before requesting another OTP` },
+        { status: 429 },
+      );
     }
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-
-    await OTP.deleteMany({ phone });
-    await OTP.create({ phone, code });
+    const { code } = result;
 
     const phoneId    = process.env.WHATSAPP_PHONE_NUMBER_ID;
     const token      = process.env.WHATSAPP_ACCESS_TOKEN;

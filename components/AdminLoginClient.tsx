@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, EyeOff, Lock, User, Sparkles } from 'lucide-react';
+import { signIn } from 'next-auth/react';
+import { Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
 
 export default function AdminLoginClient() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -15,27 +16,13 @@ export default function AdminLoginClient() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      const res = await signIn('credentials', { email, password, redirect: false });
 
-      // Handle non-JSON responses (e.g. server crash HTML page)
-      const text = await res.text();
-      let data: { success: boolean; error?: string };
-      try {
-        data = JSON.parse(text);
-      } catch {
-        setError(`Server error (${res.status}). Please restart the dev server.`);
-        return;
-      }
-
-      if (data.success) {
-        // Hard redirect so the new httpOnly cookie is sent with the next request
+      if (res?.ok) {
+        // Hard redirect so the new httpOnly session cookie is sent with the next request
         window.location.href = '/admin';
       } else {
-        setError('Invalid username or password.');
+        setError('Invalid email or password.');
       }
     } catch (err) {
       setError(`Network error: ${err instanceof Error ? err.message : 'Please try again.'}`);
@@ -60,16 +47,16 @@ export default function AdminLoginClient() {
         {/* Card */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
+            {/* Email */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Username</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email</label>
               <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter email"
                   required
                   autoComplete="username"
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-all bg-gray-50 focus:bg-white"

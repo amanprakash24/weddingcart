@@ -3,13 +3,19 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { Role, ADMIN_ROLES } from '@/lib/auth/roles';
+import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
 
 // Auth.js v4 (stable/GA), not v5 — see docs/postgres-migration-plan.md for why
 // v5 (beta-only as of this migration) was rejected for production auth.
 // JWT session strategy, Credentials-only (no OAuth), so no Prisma adapter is
 // wired here — sessions never touch the DB after login.
+// Security checklist item #1 (docs/security-checklist.md): explicit maxAge,
+// not NextAuth's 30-day default. Matches the legacy admin_session cookie's
+// 7-day expiry (lib/adminAuth.ts) rather than inventing a new value.
+const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+
 export const authOptions: AuthOptions = {
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt', maxAge: SESSION_MAX_AGE_SECONDS },
   pages: {
     signIn: '/admin/login',
   },
@@ -26,15 +32,27 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials.password) return null;
 
+        // Checked before touching the password — a locked-out identifier is
+        // rejected without confirming/denying whether the password itself
+        // would have been correct.
+        if (await isRateLimited(credentials.email)) return null;
+
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
           include: { roles: true },
         });
-        if (!user || !user.passwordHash) return null;
+        if (!user || !user.passwordHash) {
+          await recordLoginAttempt(credentials.email, false);
+          return null;
+        }
         const roles = user.roles.map((r) => r.role);
-        if (!roles.some((role) => ADMIN_ROLES.includes(role))) return null;
+        if (!roles.some((role) => ADMIN_ROLES.includes(role))) {
+          await recordLoginAttempt(credentials.email, false);
+          return null;
+        }
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
+        await recordLoginAttempt(credentials.email, valid);
         if (!valid) return null;
 
         return { id: user.id, email: user.email, name: user.name, roles };
@@ -56,12 +74,21 @@ export const authOptions: AuthOptions = {
       async authorize(credentials) {
         if (!credentials?.phone || !credentials.code) return null;
 
+        // Same rate limiting as the credentials provider, keyed on phone —
+        // without this, a 6-digit OTP code is brute-forceable (only 1M
+        // combinations, no limit otherwise on verify attempts).
+        if (await isRateLimited(credentials.phone)) return null;
+
         const otp = await prisma.otp.findFirst({
           where: { phone: credentials.phone, code: credentials.code, expiresAt: { gt: new Date() } },
         });
-        if (!otp) return null;
+        if (!otp) {
+          await recordLoginAttempt(credentials.phone, false);
+          return null;
+        }
 
         await prisma.otp.delete({ where: { id: otp.id } });
+        await recordLoginAttempt(credentials.phone, true);
 
         let user = await prisma.user.findUnique({
           where: { phone: credentials.phone },
