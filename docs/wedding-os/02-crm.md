@@ -135,7 +135,28 @@ assumed:
 | Explicit `LOST` state + `lostReason` | ✅ Built | Both real |
 | Lead priority score | Still open, not schema-blocking | Correctly left as computed (no column) per this doc's own original call — no change needed |
 | Follow-up SLA config | Still open, not schema-blocking | Where "first contact within N hours" lives (settings table vs. hardcoded) — genuinely undecided, flag for whoever implements the Follow-up engine |
-| **AI-prep fields (`summary`/`next_action`/`priority`/`sentiment`) per lead** | **New gap, not previously reconciled** | Named directly by the user when scoping Milestone 5 CRM deliverables (2026-07-21), intended to be manually populated for now so AI can auto-fill them later. **Doesn't exist as columns on `Lead`/`Enquiry`/`Consultation` today, and isn't named in `07-ai-assistant.md` either** (which talks about dashboard-level AI summaries, not stored per-lead fields). Needs a decision before Sprint 5.2 (Lead Workspace, which is where these would presumably be edited/shown): add as real nullable columns, or fold `summary`/`sentiment` into existing `ActivityLog` entries and treat `next_action`/`priority` as sub-fields of the existing `Task`/priority-score concepts instead of inventing 4 new parallel columns |
+| **AI-prep fields (`summary`/`next_action`/`priority`/`sentiment`) per lead** | **Decided 2026-07-21 — NOT nullable columns on Lead/Enquiry/Consultation** | See "AI insight storage" below |
+
+### AI insight storage: decided as a separate `LeadInsight` entity, not columns on Lead (2026-07-21)
+
+Explicitly rejected adding 4 nullable columns (`summary`, `next_action`, `priority`, `sentiment`) directly to `Lead`/`Enquiry`/`Consultation`. Reasoning: AI output is **derived**, not source-of-truth — it changes over time (summaries get regenerated, models get swapped, humans override AI output), and a flat column silently overwrites that history on every regeneration.
+
+**Decision: a new `LeadInsight` entity** (not yet added to `prisma/schema.prisma` — this is a documented decision, not implemented; deferred past Sprint 5.1, revisit no later than Sprint 5.2 since Lead Workspace is where these would be shown):
+
+```
+LeadInsight
+  id
+  leadId / enquiryId / consultationId   (exactly one set, same pattern as Quotation)
+  generatedBy   (AI | HUMAN)
+  summary
+  nextAction
+  sentiment
+  confidence
+  createdAt
+  updatedAt
+```
+
+Keeping this separate from the capture entities gives versioning (multiple insights over time, not one overwritten field), auditability (human vs. AI provenance via `generatedBy`), room for multiple AI models later, and manual overrides — without touching `Lead`/`Enquiry`/`Consultation` at all. Also consistent with "workflows first, AI second" (`07-ai-assistant.md`): this entity can be designed now and populated manually (`generatedBy: HUMAN`) before any AI integration exists.
 
 ## 8. Relationship to other modules
 

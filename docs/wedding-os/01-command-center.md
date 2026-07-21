@@ -271,7 +271,7 @@ Design is unified (this document), but implementation is sequenced. **Milestone 
 Dashboard**, since the CRM (Lead Inbox, Pipeline, Follow-ups) is the more urgent
 gap — Founder's own dashboard (Sprint 5.4) comes after:
 
-- Sprint 5.1 — CRM Dashboard (Lead list, search, filters)
+- Sprint 5.1 — ✅ Done (2026-07-21): CRM Dashboard (`/admin/crm`) — unified Lead/Enquiry/Consultation inbox, Today's Work + Pipeline-by-Stage stats, search (name/phone), filters (stage/city/sales rep/source). Read-only, no editing, per scope. Verified live against staging (18 real records) via browser, not just build/lint/tsc.
 - Sprint 5.2 — Lead Workspace (customer profile, timeline, follow-ups, notes)
 - Sprint 5.3 — Lead Pipeline (status changes, activity history, assignments, reminders)
 - Sprint 5.4 — Founder Dashboard (Today's Work, revenue, pipeline, vendor availability, overdue tasks)
