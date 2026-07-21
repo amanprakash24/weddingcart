@@ -121,9 +121,9 @@ assign blame for — it's exactly what this agenda item exists to fix going forw
 
 **Important scoping note:** this is a breaking response-shape change. It does **not**
 apply retroactively to every route in Milestone 1 — it lands module-by-module during
-Milestone 4 (Categories → Vendors → Blogs → Leads → Bookings → Invoices), each PR
-updating both the route and its frontend callers together, per the "not everything in
-one giant PR" instruction already agreed for that milestone.
+Milestone 5 (Categories → Blogs → Vendors → Vendor Packages/FAQs → Leads → Bookings →
+Invoices), each PR updating both the route and its frontend callers together, per the
+"not everything in one giant PR" instruction already agreed for that milestone.
 
 ---
 
@@ -139,7 +139,7 @@ placement decisions.
 app/            # routes only — pages + route handlers (existing, unchanged)
 components/     # React components, *Client.tsx convention for client components (existing, unchanged)
 lib/            # cross-cutting utilities: prisma.ts (new), auth.ts (new), whatsapp.ts, shaadiPhone.ts
-                 # (mongodb.ts + models/ retired module-by-module during Milestone 4, not deleted in Milestone 1)
+                 # (mongodb.ts + models/ retired module-by-module during Milestone 5, not deleted in Milestone 1)
 repositories/   # NEW — one file per Prisma model; every raw `prisma.<model>.*` call lives ONLY here
 services/       # NEW — business logic composing repositories (e.g. approveVendorApplication()
                  # spans VendorApplication + Vendor + Cloudinary move, doesn't belong in a route handler)
@@ -192,11 +192,11 @@ until the new database layer is proven stable.**
 
 | # | Milestone | Owner | Status |
 |---|---|---|---|
-| 1 | Infrastructure — Postgres, Prisma, Auth.js (Credentials provider only), connection layer, env vars | _(assign: Developer A/B)_ | Code written 2026-07-19, `next build`/lint/typecheck clean. **DoD not fully satisfied**: no live Postgres instance provisioned yet, so unit/integration tests against a real DB and rollback testing are not yet possible — that's real work for Milestone 3, not skipped |
-| 2 | Data Access Layer — `repositories/*.repository.ts` per Prisma model (vendor, booking, lead, blog, category, …), `services/*` for business logic that spans repositories. App code calls repositories, never `prisma.*` directly | _(assign)_ | Not started |
-| 3 | Data migration — dry run, validation, performance testing, rollback testing | _(assign)_ | Not started |
-| 4 | **Authentication Transition** — `/api/otp/send` + `/api/otp/verify` repointed at Postgres, OTP persistence/cache strategy, vendor login, customer login, session creation, rate limiting, audit logging. Sits after Milestone 3 (DB proven stable) and before any module cutover that depends on vendor/customer auth | _(assign)_ | Not started — closes the OTP gap flagged after Milestone 1 |
-| 5 | Switch modules one at a time: Categories → Blogs → Vendors → Vendor Packages/FAQs → Leads → Bookings → Invoices | _(assign per module)_ | Not started |
+| 1 | Infrastructure — Postgres, Prisma, Auth.js (Credentials provider only), connection layer, env vars | _(assign: Developer A/B)_ | ✅ Done (2026-07-19) |
+| 2 | Data Access Layer — `repositories/*.repository.ts` per Prisma model (vendor, booking, lead, blog, category, …), `services/*` for business logic that spans repositories. App code calls repositories, never `prisma.*` directly | _(assign)_ | ✅ Done (2026-07-19), 3 lowest-risk models (Category, Blog, Vendor) |
+| 3 | Data migration — dry run, validation, performance testing, rollback testing | _(assign)_ | ✅ Done (2026-07-20) — executed live against Supabase staging, 0 mismatches, see `docs/migration-log.md` |
+| 4 | **Authentication Transition** — `/api/otp/send` + `/api/otp/verify` repointed at Postgres, OTP persistence/cache strategy, vendor login, customer login, session creation, rate limiting, audit logging. Sits after Milestone 3 (DB proven stable) and before any module cutover that depends on vendor/customer auth | _(assign)_ | ✅ Done (2026-07-21) — admin/vendor/customer login all live on NextAuth, verified end-to-end against staging, see `docs/security-checklist.md` |
+| 5 | Switch modules one at a time: Categories → Blogs → Vendors → Vendor Packages/FAQs → Leads → Bookings → Invoices | _(assign per module)_ | Not started — superseded in practice by the CRM vertical-slice direction (see `docs/wedding-os/`); revisit whether this milestone still runs as originally scoped |
 | 6 | Production cutover — maintenance window, migration, verification, monitoring, rollback-if-needed | _(assign)_ | Not started |
 
 **Definition of Done, applied to every milestone/module above** (not just "code
@@ -218,9 +218,13 @@ Shopping OS on the new foundation, not as a one-off addition to what's being ret
 
 Sections 1–2: reflect committed, already-reviewed work. Sections 3–5: proposals
 awaiting team ratification. Section 6: milestone structure agreed (6 milestones as of
-2026-07-19, Authentication Transition added as its own step), ownership pending —
-**Milestone 1 code exists** (per the "docs now, then start" decision, not gated on a
-live team meeting), but its Definition of Done is not fully satisfiable until a real
-Postgres instance exists (Milestone 3). `main` will not be merged into until the full
-sequence in `docs/postgres-migration-plan.md` (code review → staging → rehearsal →
-acceptance checklist → cutover) is satisfied — no change to that decision.
+2026-07-19, Authentication Transition added as its own step) — **Milestones 1–4 are
+now done** (Infrastructure, Data Access Layer, Data Migration, Authentication
+Transition — the last as of 2026-07-21, tagged `milestone-4-auth-transition`).
+Milestones 5–6 (module cutover, production cutover) are not started, and per the
+2026-07-21 product-direction decision, Milestone 5 in practice is being reconsidered
+as the first Wedding OS **vertical slice** (CRM) rather than the originally-scoped
+module-by-module Mongo→Postgres switch — see `docs/wedding-os/` for the current
+framing. `main` will not be merged into until
+the full sequence in `docs/postgres-migration-plan.md` (code review → staging →
+rehearsal → acceptance checklist → cutover) is satisfied — no change to that decision.
