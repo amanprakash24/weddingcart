@@ -64,6 +64,47 @@ entities named throughout this set, on top of the Phase A schema already migrate
 in `docs/postgres-migration-plan.md`). Phase B schema design is the next real
 decision point — not implementation of any single module yet.
 
+## Future Direction — open, strategic, not yet decided (2026-07-21)
+
+These are real long-term ambitions for the platform, kept visible here so they
+shape decisions early (cheaply) rather than being rediscovered later (expensively)
+— same discipline as every other "flag the gap, don't silently resolve it" entry
+in this doc set. None of these are scoped or greenlit; they're direction, not
+commitments.
+
+- **Multi-tenancy** — today, every model (`Wedding`, `Vendor`, `Booking`, `User`,
+  …) implicitly belongs to one business, ShaadiShopping. If this platform is ever
+  sold to other banquet halls, wedding planners, photographers, decorators,
+  caterers, makeup artists, DJs, or event companies as their own tenant, that's a
+  fundamentally different data-isolation model (e.g. a `tenantId` on every table
+  vs. separate deployments per customer) — not a small add-on. **Nothing needs to
+  change today**, but schema/API decisions between now and Milestone 5+ should be
+  made aware this question exists, the way the identity redesign (`User`↔`Vendor`↔
+  `Customer`) was resolved early specifically because retrofitting it later would
+  have been far more expensive.
+- **SaaS licensing model** — pricing/packaging for a hypothetical external-tenant
+  version. Not scoped.
+- **Marketplace + SaaS coexistence** — ShaadiShopping's own marketplace
+  (customer-facing, ShaadiShopping is the brand) and a hypothetical white-label
+  SaaS product (other businesses' own brand) are different products sharing a
+  platform — how they coexist architecturally and commercially is undecided.
+- **White-label possibility** (future) — letting a tenant present the product
+  under their own brand, not ShaadiShopping's.
+- **Voice-first UX** (future) — relevant given the "non-technical business owner"
+  usability bar in `01-command-center.md`'s Product Principle section; not
+  designed.
+- **Beginner Mode** (future) — a simplified onboarding/first-run experience,
+  distinct from the permanent Role-Based Experience principle (which is about
+  role-relevant scope, not skill level).
+- **AI roadmap** — `07-ai-assistant.md` already specifies the 3-level
+  (Assistant/Copilot/Autonomous) framework for v1; this entry is a placeholder for
+  whatever comes after that, not a new AI plan.
+
+**Litmus test for what to build next, at every milestone from here on** (the
+user's own framing): *"Will this help convert more bookings or operate weddings
+more efficiently?"* and *"Will this still work when 10,000 vendors across many
+categories are using it?"* — build if yes, defer if no.
+
 ## Relationship to the Postgres migration
 
 These specs will surface data-model requirements (new entities, new fields) that

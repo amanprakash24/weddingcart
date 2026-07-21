@@ -4,6 +4,45 @@ One system, four role-based views. Designed together (per the principle: every K
 needs one clear owner, and designing roles in isolation leads to rework once the
 others are defined), built incrementally: **Founder → Sales → Operations → Vendor**.
 
+## Product Principle: Role-Based Experience (2026-07-21)
+
+**Same platform, different experience per role.** This is a permanent design
+principle, not a one-time UI decision — every future screen (CRM, Wedding Workspace,
+Vendor OS, Customer Portal) should be designed against it, not just this dashboard.
+
+The roles below are more granular than the 4 in §2: **Vendor is not one experience.**
+A Venue Owner, a Photographer, and a Decorator run genuinely different businesses and
+should each see a home screen built around their own actual workflow, not a
+one-size-fits-all vendor UI:
+
+- Founder Dashboard (§4.1)
+- Sales Dashboard (§4.2)
+- Venue Dashboard, Photographer Dashboard, Decorator Dashboard, Caterer Dashboard,
+  … (§4.4 — category-specific views within the single Vendor role)
+- Customer Dashboard (`05-customer-portal.md`)
+
+**Companion principle — the usability bar for every screen:**
+> "Can my father or an uncle who has never used CRM software complete this task
+> without training?"
+
+If the answer is no, redesign it. Concretely, this means:
+- Simple language, not technical/CRM jargon, in every label and empty state
+- Show only the actions relevant to the user's role — no admin/system-config noise
+  on a Venue Owner's screen
+- Prioritize "today's work" over analytics — a business owner opens the app to see
+  what needs doing today, not a chart
+- Keep the first experience minimal and expandable, not maximal — don't front-load
+  every possible feature on day one
+- Design mobile-first — vendors and sales reps are working from a phone, not a desk
+
+**Why this matters beyond ShaadiShopping:** the long-term ambition is for this
+platform to eventually work for other banquet halls, wedding planners,
+photographers, decorators, caterers, makeup artists, DJs, and event companies as
+their own users, not just ShaadiShopping's internal team and vendor roster. Every
+design decision from here on should hold up against: **"will this still work when
+10,000 vendors across many categories are using it?"** — see `README.md`'s "Future
+Direction" section for the multi-tenancy/SaaS question this raises architecturally.
+
 ## 1. Purpose
 
 **Who uses it:** Super Admin/Founder, Sales team, Operations/coordination staff,
@@ -100,15 +139,43 @@ KPIs shown · Refresh behavior · Permissions.
 
 ### 4.4 Vendor Dashboard
 
+Per the Role-Based Experience principle above, the Vendor Dashboard is not one
+fixed widget set — it's a **shared core every vendor gets, plus modules that vary
+by vendor category** (`Vendor.categoryId`, already a real field from Phase A). This
+avoids two bad extremes: a single generic vendor UI that's cluttered with
+irrelevant options for most categories, or a fully separate product per category
+that fragments the platform and multiplies maintenance cost.
+
+**Shared modules (every vendor, every category):**
+
 | Widget | Purpose | Data source | KPIs | Refresh | Permissions |
 |---|---|---|---|---|---|
+| Today's Work | What needs doing right now — the single most important widget per the usability principle above | Union of this vendor's due items across the modules below | Count | Real-time | Vendor (own only) |
 | Calendar (Available/Tentative/Booked) | The vendor's own availability | **Needs VendorAvailability — same gap as Founder's cross-category view, this is that view scoped to one vendor** | Calendar grid | Real-time | Vendor (own only), Founder/Operations (view any) |
+| Payments | Payout tracking | **Needs a Payout/Commission entity — doesn't exist yet, ties into the future `06-finance.md`** | ₹ earned, ₹ pending payout | Daily | Vendor (own only) |
+| My Profile | Self-service profile + notifications | `Vendor`, `VendorProfile` — already exist | Edit form | On demand | Vendor (own only) |
 | New Enquiries | Incoming leads for this vendor | `Enquiry` where `vendorId` = self — **already exists, Milestone 2's repository layer could serve this today once wired up** | Count new/responded | Real-time | Vendor (own only) |
 | Booking Requests | Confirmed/pending work | `BookingItem` where `vendorId` = self — **already exists** | Count, list | Real-time | Vendor (own only) |
-| Earnings | Payout tracking | **Needs a Payout/Commission entity — doesn't exist yet, ties into the future `06-finance.md`** | ₹ earned, ₹ pending payout | Daily | Vendor (own only) |
 | Reviews | Reputation | **No Review entity exists — `Vendor.rating`/`reviewCount` today are just aggregate numbers with no individual review records behind them** | Rating, count, recent reviews | Daily | Vendor (own only), public (aggregate only) |
 | Package Management | Self-service pricing | `VendorPackage` — **already exists, repository already built (Milestone 2)** | List, edit | Real-time | Vendor (own only) |
-| Availability Management | Self-service calendar | Same VendorAvailability gap | Calendar edit | Real-time | Vendor (own only) |
+
+**Category-specific modules** — fully specified for the 4 highest-volume categories
+today (`venue`, `photo-video`, `decorator`, `catering` in `data/seedData.ts`'s
+category list); the same shared-core-plus-category-modules pattern generalizes to
+the platform's other ~18 categories (makeup, mehndi, band, dj, accommodation, …),
+detailed as each is actually prioritized rather than speccing all of them speculatively
+today:
+
+| Category | Modules | Notes |
+|---|---|---|
+| **Venue** | Hall Availability (per-hall, not just per-vendor — a venue may have multiple halls), Menu Packages | `VendorPackage` already models packages generically; hall-level sub-availability is a gap if a venue has more than one hall/space |
+| **Photographer** | Shoot Schedule, Album Delivery status, Equipment Checklist (future) | Shoot Schedule is the Photographer's view of Booking Requests, reframed around shoot dates rather than generic "bookings" |
+| **Decorator** | Event Schedule, Material Checklist (future), Team Assignment (future) | Material/Team concepts are new, not modeled anywhere yet — flagged as future, not built now |
+| **Caterer** | Event Schedule, Menu/Guest Count per booking, Material Checklist (future) | Guest count already exists on `Booking`/`Wedding` — caterer view surfaces it per-event rather than inventing a new field |
+
+**Availability Management** (self-service calendar editing) is a cross-cutting
+capability on top of the shared Calendar widget, not category-specific — same
+VendorAvailability gap noted above.
 
 ## 5. Alerts (role-filtered)
 
@@ -142,6 +209,7 @@ the schema, not a schema invented ahead of the requirement:
 | `Target` | Founder (Monthly Targets vs. Actuals) | Simple entity: role/period/target amount |
 | An explicit "lost" state | Sales (Deals Won/Lost) | Current `BookingStatus`/`EnquiryStatus` enums have no losing terminal state, only NEW/CONTACTED/CONFIRMED/CLOSED |
 | "Operations" role | All Operations Dashboard permissions | See §2 — needs a decision on enum value vs. permission flag |
+| Hall-level sub-availability | Venue category dashboard (§4.4) | Only matters if a single `Vendor` (venue) has multiple bookable halls/spaces — not yet confirmed as a real scenario in the current vendor data, don't build ahead of confirming it |
 
 ## 8. Future enhancements (not this pass)
 
