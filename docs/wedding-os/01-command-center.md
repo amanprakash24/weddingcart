@@ -67,25 +67,30 @@ Broadly, the Command Center should answer, at a glance, per role:
 |---|---|
 | Founder | `SUPER_ADMIN` |
 | Sales | `SALES` |
-| Operations | **No existing mapping — see gap below** |
+| Operations | `OPERATIONS` — ✅ resolved (added as a genuine 5th enum value, Phase B schema, see `schema-draft-1-notes.md`) |
 | Vendor | `VENDOR` |
 
-**Gap, flagged not silently resolved:** "Operations" appears here for the first
-time in this project's history — the current `Role` enum (`SUPER_ADMIN`, `SALES`,
-`VENDOR`, `CUSTOMER`, set in Milestone 1) has no Operations role. Before this
-dashboard gets built, decide whether Operations is (a) a genuinely new 5th enum
-value, or (b) `SALES` with an additional permission flag/scope. This affects the
-Phase B schema migration, not Phase A (already shipped) — no urgency to resolve
-before finishing the database migration, but it needs a decision before Operations
-Dashboard implementation starts.
+~~Gap, flagged not silently resolved~~ — **resolved.** The gap this section originally
+flagged (no Operations role existed) is closed: `Role.OPERATIONS` is a real enum
+value in `prisma/schema.prisma` today.
 
-## 3. Dashboard layout (shared pattern across all 4 roles)
+## 3. Dashboard layout (shared pattern across all roles)
+
+**Revised (2026-07-21): "Today's Work" leads every dashboard, not analytics.**
+Originally this layout put a KPI strip first. Per the Role-Based Experience
+principle above (and the "grandpa test"), every role's dashboard now opens with
+action items — what needs doing today — with KPIs/analytics demoted below, not
+removed:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ Top KPI strip (3-5 headline numbers, role-specific)  │
+│ Today's Work — action items, role-specific           │
+│ (e.g. Founder: follow-ups, site visits, payments      │
+│  pending, weddings today, overdue tasks)              │
 ├─────────────────────────────────────────────────────┤
 │ Alerts panel (role-filtered, see §5)                 │
+├─────────────────────────────────────────────────────┤
+│ KPI strip (3-5 headline numbers, role-specific)      │
 ├───────────────────────────┬───────────────────────────┤
 │ Main widget grid           │ Filters sidebar (see §6)  │
 │ (role-specific widgets)    │                            │
@@ -93,7 +98,11 @@ Dashboard implementation starts.
 ```
 
 Same shell, different widget set per role — this is a deliberate constraint so the
-system reads as one product, not four unrelated dashboards bolted together.
+system reads as one product, not four (or more, per the Role-Based Experience
+principle) unrelated dashboards bolted together. "Today's Work" is a per-role
+composed view (Founder's pulls from every role's due items; Sales/Vendor pull only
+their own), not a new stored entity — it's a read that unions `Task.dueAt`/
+`ActivityLog`/payment-due/booking-due queries already named elsewhere in this doc.
 
 ## 4. Widgets by role
 
@@ -102,40 +111,50 @@ KPIs shown · Refresh behavior · Permissions.
 
 ### 4.1 Founder Dashboard
 
+**Verified against the actual Phase B schema (2026-07-21) — most gaps below,
+originally flagged when this doc was written, are now closed.** Only genuine
+remaining gaps are called out explicitly; everything else has a real model.
+
 | Widget | Purpose | Data source | KPIs | Refresh | Permissions |
 |---|---|---|---|---|---|
+| **Today's Work** | Leads the dashboard per §3's revised layout — Founder's own due items, not analytics | Union of overdue `Task`s assigned to Founder, weddings happening today (`WeddingEvent.date`), payments pending | Count per category | Real-time | Founder only |
 | Revenue Today/Month | Business health at a glance | `Invoice.amountPaid`, `Booking.total` (status CONFIRMED/CLOSED) | ₹ today, ₹ this month, vs. last month | Real-time on load | Founder only |
 | New Leads | Top-of-funnel volume | `Lead` + `Enquiry` + `Consultation` counts | Count today/week, source breakdown | Real-time | Founder (full), Sales (summary) |
 | Conversion Rate | Funnel health | Bookings ÷ (Leads+Enquiries+Consultations) | % this month, trend | Daily | Founder (full), Sales (own) |
 | Bookings | Confirmed business | `Booking` where status=CONFIRMED/CLOSED | Count, ₹ value, list | Real-time | Founder, Operations (view) |
 | Outstanding Payments | Cash flow risk | `Invoice.total - Invoice.amountPaid` where status≠PAID | ₹ outstanding, count overdue | Daily | Founder (full), Operations (view) |
-| Vendor Performance | Which vendors to recommend | **Needs the "Vendor Score" concept from the CRM vision** — booking acceptance rate, response time, reviews, cancellation rate, on-time service, repeat bookings | Composite score, ranked list | Daily | Founder |
-| Team Performance | Are reps converting | Bookings/Leads grouped by assigned Sales user | Per-rep conversion %, follow-up SLA adherence | Daily | Founder (full), Sales (own row only) |
+| Vendor Performance | Which vendors to recommend | ✅ Computable now — `Review` + `VendorBooking` models both exist (Phase B); the composite "Vendor Score" (acceptance rate, response time, reviews, cancellation rate, on-time service, repeat bookings) is a computed-on-read aggregate, not a stored field, same pattern as `Category` vendor counts | Composite score, ranked list | Daily | Founder |
+| Team Performance | Are reps converting | Bookings/Leads grouped by `assignedToId` (Phase B, real field) | Per-rep conversion %, follow-up SLA adherence | Daily | Founder (full), Sales (own row only) |
 | City-wise Performance | Where to invest next | Bookings/Revenue grouped by `Vendor.city`/`Booking.city` | ₹ and count per city | Weekly | Founder |
-| Monthly Targets vs. Actuals | Are we on pace | **Needs a Target concept — doesn't exist yet** | Target ₹, actual ₹, % attainment | Daily | Founder |
-| **Vendor Availability (all categories)** | The explicitly-stated founder pain point — one view of booked/available dates across every category, not just venues | **Needs a VendorAvailability/Calendar concept — doesn't exist yet** | Available/Tentative/Booked counts per category, conflict flags | Real-time | Founder (full), Operations (full), Vendor (own only) |
+| Monthly Targets vs. Actuals | Are we on pace | **Still a genuine gap — no `Target` model exists in the schema.** Simple entity: role/period/target amount | Target ₹, actual ₹, % attainment | Daily | Founder |
+| **Vendor Availability (all categories)** | The explicitly-stated founder pain point — one view of booked/available dates across every category, not just venues | ✅ Resolved — `VendorAvailability` model exists (Phase B schema) | Available/Tentative/Booked counts per category, conflict flags | Real-time | Founder (full), Operations (full), Vendor (own only) |
 
 ### 4.2 Sales Dashboard
 
+**Also verified against the real schema — every gap originally flagged here is
+now closed** (`PipelineStage`, `Task`, `Quotation`, `assignedToId` all real).
+
 | Widget | Purpose | Data source | KPIs | Refresh | Permissions |
 |---|---|---|---|---|---|
-| New Leads Assigned | Work queue | `Lead`/`Enquiry` — **needs an `assignedToUserId` field, doesn't exist yet** | Count unassigned/assigned to me | Real-time | Sales (own), Founder (all) |
-| Follow-ups Due Today | The core founder pain point, generalized to a team | **Needs a FollowUp/Task entity — doesn't exist yet** | Count due, overdue count | Real-time | Sales (own), Founder (all, summary) |
-| Site Visits Scheduled | Pipeline stage tracking | **Needs a Timeline/Activity entity — doesn't exist yet** | Count today/week | Daily | Sales (own), Operations (view) |
-| Quotations Sent | Mid-funnel activity | **Needs a Quotation entity — the original sidebar nav named "Quotations" separately from "Invoices," but no such model exists today** | Count, ₹ value, conversion from quote to booking | Daily | Sales (own), Founder (all) |
-| Deals Won/Lost | Close-rate tracking | `Booking.status`/`Enquiry.status` = CLOSED (won) vs. abandoned (lost — needs an explicit "lost" state, current enums don't have one) | Count, ₹ value, win rate | Daily | Sales (own), Founder (all) |
+| **Today's Work** | Leads the dashboard per §3 — this rep's own due items | `Task`s assigned to this Sales user, `dueAt` today or overdue | Count per category | Real-time | Sales (own only) |
+| New Leads Assigned | Work queue | `Lead`/`Enquiry`/`Consultation`.`assignedToId` — ✅ real field (Phase B) | Count unassigned/assigned to me | Real-time | Sales (own), Founder (all) |
+| Follow-ups Due Today | The core founder pain point, generalized to a team | ✅ `Task` (context=SALES_FOLLOWUP) — real model | Count due, overdue count | Real-time | Sales (own), Founder (all, summary) |
+| Site Visits Scheduled | Pipeline stage tracking | ✅ `PipelineStage.SITE_VISIT_SCHEDULED` + `ActivityLog` — both real | Count today/week | Daily | Sales (own), Operations (view) |
+| Quotations Sent | Mid-funnel activity | ✅ `Quotation` model exists (Phase B) | Count, ₹ value, conversion from quote to booking | Daily | Sales (own), Founder (all) |
+| Deals Won/Lost | Close-rate tracking | ✅ `PipelineStage.WON`/`LOST` + `lostReason` — all real fields | Count, ₹ value, win rate | Daily | Sales (own), Founder (all) |
 | Personal Conversion Rate | Individual performance | Same as Founder's Team Performance, filtered to self | % this month vs. last | Daily | Sales (own only) |
 
 ### 4.3 Operations Dashboard
 
 | Widget | Purpose | Data source | KPIs | Refresh | Permissions |
 |---|---|---|---|---|---|
-| Today's Events | What's happening now | **Needs the Wedding/Event entity from Phase B — doesn't exist yet** | Count, list with time/venue | Real-time | Operations, Founder (view) |
-| Vendor Confirmations Pending | Execution risk | `Booking`/`BookingItem` where status=NEW/CONTACTED | Count, list, days pending | Real-time | Operations, Founder (view) |
+| **Today's Work** | Leads the dashboard per §3 | `Task`s (context=WEDDING_TASK) assigned to Operations, due today/overdue | Count per category | Real-time | Operations only |
+| Today's Events | What's happening now | ✅ `Wedding`/`WeddingEvent` exist (Phase B) | Count, list with time/venue | Real-time | Operations, Founder (view) |
+| Vendor Confirmations Pending | Execution risk | `Booking`/`BookingItem` where status=NEW/CONTACTED (Phase A, unchanged) | Count, list, days pending | Real-time | Operations, Founder (view) |
 | Payment Reminders | Collections | `Invoice` overdue (same source as Founder's Outstanding Payments, actioned here) | Count, ₹, days overdue | Daily | Operations, Founder (view) |
-| Timeline Progress | Per-wedding execution status | **Needs a Timeline entity (site visit → booking → payment → event day), from the original CRM vision's Wedding Command Center concept** | % complete per active wedding | Daily | Operations, Founder (view) |
-| Team Assignments | Who's doing what | Same `assignedToUserId` gap as Sales | List by team member | Real-time | Operations, Founder |
-| Issue Tracker | Anything blocked | **New concept, not modeled anywhere yet** | Open/resolved count | Real-time | Operations, Founder (view) |
+| Timeline Progress | Per-wedding execution status | ✅ `TimelineMilestone` exists (Phase B) | % complete per active wedding | Daily | Operations, Founder (view) |
+| Team Assignments | Who's doing what | ✅ `assignedToId` — real field, same as Sales | List by team member | Real-time | Operations, Founder |
+| Issue Tracker | Anything blocked | **Still a genuine gap — no Issue/Blocker model exists.** Lowest priority of the remaining gaps; revisit only if Operations Dashboard implementation surfaces a real need for it | Open/resolved count | Real-time | Operations, Founder (view) |
 
 ### 4.4 Vendor Dashboard
 
@@ -151,12 +170,12 @@ that fragments the platform and multiplies maintenance cost.
 | Widget | Purpose | Data source | KPIs | Refresh | Permissions |
 |---|---|---|---|---|---|
 | Today's Work | What needs doing right now — the single most important widget per the usability principle above | Union of this vendor's due items across the modules below | Count | Real-time | Vendor (own only) |
-| Calendar (Available/Tentative/Booked) | The vendor's own availability | **Needs VendorAvailability — same gap as Founder's cross-category view, this is that view scoped to one vendor** | Calendar grid | Real-time | Vendor (own only), Founder/Operations (view any) |
-| Payments | Payout tracking | **Needs a Payout/Commission entity — doesn't exist yet, ties into the future `06-finance.md`** | ₹ earned, ₹ pending payout | Daily | Vendor (own only) |
+| Calendar (Available/Tentative/Booked) | The vendor's own availability | ✅ `VendorAvailability` exists (Phase B) — same model as Founder's cross-category view, scoped to one vendor | Calendar grid | Real-time | Vendor (own only), Founder/Operations (view any) |
+| Payments | Payout tracking | ✅ `Payout`/`PayoutBatch`/`CommissionRate` exist (Phase B), ties into `06-finance.md` | ₹ earned, ₹ pending payout | Daily | Vendor (own only) |
 | My Profile | Self-service profile + notifications | `Vendor`, `VendorProfile` — already exist | Edit form | On demand | Vendor (own only) |
 | New Enquiries | Incoming leads for this vendor | `Enquiry` where `vendorId` = self — **already exists, Milestone 2's repository layer could serve this today once wired up** | Count new/responded | Real-time | Vendor (own only) |
 | Booking Requests | Confirmed/pending work | `BookingItem` where `vendorId` = self — **already exists** | Count, list | Real-time | Vendor (own only) |
-| Reviews | Reputation | **No Review entity exists — `Vendor.rating`/`reviewCount` today are just aggregate numbers with no individual review records behind them** | Rating, count, recent reviews | Daily | Vendor (own only), public (aggregate only) |
+| Reviews | Reputation | ✅ `Review` model exists (Phase B) — `Vendor.rating`/`reviewCount` become computed-on-read from these, not bare aggregates | Rating, count, recent reviews | Daily | Vendor (own only), public (aggregate only) |
 | Package Management | Self-service pricing | `VendorPackage` — **already exists, repository already built (Milestone 2)** | List, edit | Real-time | Vendor (own only) |
 
 **Category-specific modules** — fully specified for the 4 highest-volume categories
@@ -174,8 +193,8 @@ today:
 | **Caterer** | Event Schedule, Menu/Guest Count per booking, Material Checklist (future) | Guest count already exists on `Booking`/`Wedding` — caterer view surfaces it per-event rather than inventing a new field |
 
 **Availability Management** (self-service calendar editing) is a cross-cutting
-capability on top of the shared Calendar widget, not category-specific — same
-VendorAvailability gap noted above.
+capability on top of the shared Calendar widget, not category-specific — uses the
+same `VendorAvailability` model as the Calendar widget above.
 
 ## 5. Alerts (role-filtered)
 
@@ -187,15 +206,41 @@ VendorAvailability gap noted above.
 ## 6. Filters
 
 Date range · City · Vendor category · Sales executive (assigned-to) · Wedding
-status. The last two both depend on gaps noted in §7 (`assignedToUserId`, the
-`Wedding` entity) — filters can't fully work until those exist.
+status. All required fields (`assignedToId`, `Wedding`) now exist in the Phase B
+schema — these filters are implementable today, not blocked on schema work.
 
-## 7. Data model gaps this design surfaces
+## 7. Data model gaps — RE-VERIFIED against the real Phase B schema (2026-07-21)
 
-Everything below is required by this functional design but does **not** exist in
-`prisma/schema.prisma` as it stands after Phase A (the 1:1 Mongo port). This list is
-the concrete input for Phase B's schema design — a functional requirement driving
-the schema, not a schema invented ahead of the requirement:
+This section originally listed everything this design needed that didn't exist
+yet in `prisma/schema.prisma` after Phase A. **Almost everything below has since
+been built** (Phase B schema, `schema-draft-1-notes.md`) — this doc was never
+updated to reflect that until now. Verified directly against `prisma/schema.prisma`
+(not assumed from the notes doc) before making this claim:
+
+| Concept | Status | Notes |
+|---|---|---|
+| `Wedding` (+ `WeddingEvent`) | ✅ Built | Both real models |
+| `VendorAvailability` | ✅ Built | Real model — the single most load-bearing gap originally named here, now closed |
+| `Task` (unified, replaces the earlier separate "FollowUp"/"Timeline" language) | ✅ Built | `context` discriminator (`SALES_FOLLOWUP`/`WEDDING_TASK`) |
+| `assignedToId` on `Lead`/`Enquiry`/`Consultation` | ✅ Built | Real field (named `assignedToId`, not `assignedToUserId` as earlier drafts of this doc called it) |
+| `Quotation` | ✅ Built | Real model, `QuotationStatus` enum |
+| `Review` (individual records) | ✅ Built | `Vendor.rating`/`reviewCount` can become computed-on-read from these |
+| `Payout`/`PayoutBatch`/`CommissionRate` | ✅ Built | Ties into `06-finance.md` |
+| `Target` | ❌ Still missing | The one remaining Founder Dashboard gap — no model exists. Simple entity: role/period/target amount |
+| Explicit "lost" state | ✅ Built | `PipelineStage.LOST` + `Lead`/`Enquiry`/`Consultation.lostReason` |
+| "Operations" role | ✅ Built | `Role.OPERATIONS` |
+| Issue/Blocker tracker (Operations) | ❌ Still missing | Lowest priority of what remains — no model exists, not clearly needed yet |
+| Hall-level sub-availability (Venue category) | ❌ Still missing | Only matters if a venue has multiple bookable halls — unconfirmed as a real scenario, don't build ahead of confirming it |
+
+**What this means for Milestone 5: the schema is not the blocker for any of the
+CRM/Command Center screens specified here or in `02-crm.md`.** What's missing is
+application code — repositories, services, API routes, and UI — on top of a
+schema that already supports almost everything this design asked for. Only
+`Target` and the Operations Issue Tracker remain genuine schema gaps, and neither
+blocks Milestone 5 Sprint 5.1–5.3.
+
+Historical context (kept for reference — everything below was true when this
+section was originally written, before the Phase B schema existed):
 
 | Concept | Needed by | Notes |
 |---|---|---|
@@ -221,7 +266,17 @@ the schema, not a schema invented ahead of the requirement:
 
 ## 9. Build order
 
-Design is unified (this document), but implementation is sequenced:
-**Founder → Sales → Operations → Vendor** — matching the founder's most immediate
-need first, while keeping the full system's shape defined up front so each phase
-doesn't require redesigning the ones before it.
+Design is unified (this document), but implementation is sequenced. **Milestone 5
+(2026-07-21) sequences the Sales-side pieces of this first, ahead of the Founder
+Dashboard**, since the CRM (Lead Inbox, Pipeline, Follow-ups) is the more urgent
+gap — Founder's own dashboard (Sprint 5.4) comes after:
+
+- Sprint 5.1 — CRM Dashboard (Lead list, search, filters)
+- Sprint 5.2 — Lead Workspace (customer profile, timeline, follow-ups, notes)
+- Sprint 5.3 — Lead Pipeline (status changes, activity history, assignments, reminders)
+- Sprint 5.4 — Founder Dashboard (Today's Work, revenue, pipeline, vendor availability, overdue tasks)
+
+Operations and Vendor dashboards remain sequenced after Milestone 5, per the
+original Founder → Sales → Operations → Vendor build order — Milestone 5 only
+reorders Founder vs. Sales within that sequence, it doesn't change what comes
+after CRM.

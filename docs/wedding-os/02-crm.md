@@ -120,20 +120,22 @@ Dashboard's Personal Conversion Rate widget from `01-command-center.md`.
 | Pipeline Board | Kanban view, drag-to-advance-stage | Same three tables + PipelineStage | Sales (own + reassign), Founder (all) |
 | Reports | Funnel, source performance, rep performance, SLA compliance | Aggregated from all of the above | Founder (full), Sales (own only) |
 
-## 7. Data model gaps
+## 7. Data model gaps — RE-VERIFIED against the real Phase B schema (2026-07-21)
 
-Builds directly on the gaps already flagged in `01-command-center.md` §7 — repeated
-here with CRM-specific detail rather than duplicated as a separate list:
+This section originally listed gaps against Phase A. **All of the schema-level
+gaps are now closed** — verified directly against `prisma/schema.prisma`, not
+assumed:
 
-| Concept | Detail |
-|---|---|
-| `PipelineStage` (shared enum or lookup table) | The 8-stage lifecycle in §3 — none of the current per-entity status enums support it |
-| `FollowUp`/`Task` | Type (call/WhatsApp/email/site visit), scheduled time, completed time, outcome/notes, linked to whichever of Lead/Enquiry/Consultation it belongs to |
-| `assignedToUserId` on `Lead`/`Enquiry`/`Consultation` | Already flagged in Command Center — this is where it's actually populated/edited |
-| `Quotation` | Referenced in the original sidebar nav, needed for the QUOTATION_SENT stage — not modeled anywhere yet |
-| Explicit `LOST` state + `lostReason` | Needed on whatever the unified `PipelineStage` becomes |
-| Lead priority score | v1 can be a computed value (days-to-wedding × budget tier), doesn't need its own column necessarily — flag as a decision for whoever implements this |
-| Follow-up SLA config | Where does "first contact within N hours" live — a settings table, or hardcoded initially? Flag as a decision, not resolved here |
+| Concept | Status | Detail |
+|---|---|---|
+| `PipelineStage` | ✅ Built | Real enum (`NEW`...`WON`/`LOST`), a field on `Lead`/`Enquiry`/`Consultation` — resolved as an enum field, not a separate lookup table |
+| `Task` (unified — replaces the earlier separate "FollowUp" language) | ✅ Built | `context`, `status`, `priority`, `dueAt`, `completedAt`, `assignedToId`. **One nuance the original "FollowUp" wording implied that isn't quite how it landed**: the follow-up *channel* (call/WhatsApp/email/site visit) isn't a field on `Task` itself — it's recorded via a linked `ActivityLog` entry (`ActivityType.CALL`/`WHATSAPP`/`EMAIL`/etc.) when the task is actually worked. `Task` = what's due; `ActivityLog` = what happened. Not a conflict, just worth knowing before building the Follow-up Queue screen (§6) so it's built against two tables, not one |
+| `assignedToId` on `Lead`/`Enquiry`/`Consultation` | ✅ Built | Real field (named `assignedToId`, not `assignedToUserId`) |
+| `Quotation` | ✅ Built | Real model, `QuotationStatus` enum (`DRAFT`/`SENT`/`ACCEPTED`/`REJECTED`/`EXPIRED`) |
+| Explicit `LOST` state + `lostReason` | ✅ Built | Both real |
+| Lead priority score | Still open, not schema-blocking | Correctly left as computed (no column) per this doc's own original call — no change needed |
+| Follow-up SLA config | Still open, not schema-blocking | Where "first contact within N hours" lives (settings table vs. hardcoded) — genuinely undecided, flag for whoever implements the Follow-up engine |
+| **AI-prep fields (`summary`/`next_action`/`priority`/`sentiment`) per lead** | **New gap, not previously reconciled** | Named directly by the user when scoping Milestone 5 CRM deliverables (2026-07-21), intended to be manually populated for now so AI can auto-fill them later. **Doesn't exist as columns on `Lead`/`Enquiry`/`Consultation` today, and isn't named in `07-ai-assistant.md` either** (which talks about dashboard-level AI summaries, not stored per-lead fields). Needs a decision before Sprint 5.2 (Lead Workspace, which is where these would presumably be edited/shown): add as real nullable columns, or fold `summary`/`sentiment` into existing `ActivityLog` entries and treat `next_action`/`priority` as sub-fields of the existing `Task`/priority-score concepts instead of inventing 4 new parallel columns |
 
 ## 8. Relationship to other modules
 
