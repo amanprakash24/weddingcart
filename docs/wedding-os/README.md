@@ -17,6 +17,7 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 - **`05-customer-portal.md`** — written last on purpose, after AI. Couple-facing view of the Wedding Workspace data: overview, timeline, vendor directory, payments (Razorpay), budget (margin-filtered), documents, communication.
 - **`06-finance.md`** — payments (Razorpay), vendor payouts, commission, GST data requirements, profit reporting.
 - **`07-ai-assistant.md`** — AI mapped across every role (Founder/Sales/Operations/Vendor/Customer), 3-level framework (Assistant/Copilot/Autonomous — v1 ships Assistant+Copilot only), closes the AI-upgrade loop left open by 02/03/04.
+- **`user-journeys.md`** — three end-to-end journeys (Customer, Venue Owner, Founder), each grounded in real entities/gaps from the docs above. Not a new design pass — evidence for *why* Role-Based Experience matters, not a restatement of it.
 
 ## Phase B: domain model → schema
 
@@ -63,6 +64,41 @@ model gaps" section is the collected input for the Phase B schema design (the
 entities named throughout this set, on top of the Phase A schema already migrated
 in `docs/postgres-migration-plan.md`). Phase B schema design is the next real
 decision point — not implementation of any single module yet.
+
+## North Star Metric (decided 2026-07-21)
+
+**Successful Wedding Bookings Completed** — not Leads. Leads are top-of-funnel and
+can be inflated by volume without reflecting real business outcomes (a lead that
+never converts, or a wedding that books but falls through before completion,
+shouldn't count). `Wedding.completedAt` (added during the Step 4 schema review,
+`step4-workflow-review.md`) is the concrete field this metric is measured against
+— it already exists, no new schema needed to start tracking this.
+
+Every future milestone should be evaluated against whether it moves this number,
+not a proxy metric (lead volume, follow-up count, dashboard views) that can look
+good without it.
+
+## Product Architecture: Three Products, One Platform (decided 2026-07-21)
+
+Shaadi Shopping OS is explicitly three product surfaces sharing one backend/database,
+not one undifferentiated app:
+
+- **Product A — Marketplace** (`shaadishopping.com`, public): where a customer
+  discovers vendors. Already built, MongoDB-era, migrating module-by-module.
+- **Product B — Wedding Operations OS** (`/admin`, internal): used by
+  ShaadiShopping's own Founder/Sales/Operations team — the Command Center, CRM,
+  Wedding Workspace, Finance.
+- **Product C — Vendor OS** (`/vendor`): used directly by banquet halls,
+  photographers, decorators, and other vendors — self-service profile,
+  availability, bookings, earnings (`04-vendor-os.md`).
+
+Same Prisma schema, same Next.js deployment, same auth system (Milestone 4) — the
+separation is architectural (route/UI/permission boundaries), not separate
+infrastructure. **Product C is the literal seed of the multi-tenancy/SaaS
+direction below**: a Vendor OS built cleanly for ShaadiShopping's own vendors is
+most of what an eventual external-tenant SaaS product would need to reuse — which
+is exactly why the multi-tenancy question is worth keeping visible now rather than
+only when a specific external customer asks for it.
 
 ## Future Direction — open, strategic, not yet decided (2026-07-21)
 

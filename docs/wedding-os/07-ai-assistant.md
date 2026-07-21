@@ -25,6 +25,15 @@ within pre-approved rules.
 behalf needs a trust foundation this platform doesn't have yet (see §6 Guardrails).
 Every Level 3 idea below is listed as a future enhancement, not a v1 deliverable.
 
+**Sequencing, confirmed explicitly (2026-07-21): AI comes after clean workflows and
+structured data, not alongside them.** Milestone 5 (CRM) and beyond should focus on
+capturing structured data (pipeline stages, timelines, `ActivityLog` entries) and
+building solid workflows first — AI becomes dramatically more valuable once it has
+high-quality history to work with, rather than being asked to compensate for thin
+or messy data. This doesn't change the framework above, it reinforces why v1 is
+already scoped to Assistant + Copilot: it's the same underlying judgment, stated
+as an explicit sequencing decision rather than left implicit.
+
 ## 2. AI by role
 
 For each: feature, level, data source (existing or planned entity from earlier docs).
