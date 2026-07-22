@@ -60,9 +60,15 @@ NEW → CONTACTED → QUALIFIED → SITE_VISIT_SCHEDULED → QUOTATION_SENT
 - **SITE_VISIT_SCHEDULED** — a visit is booked (relevant mainly for venue-led enquiries)
 - **QUOTATION_SENT** — a `Quotation` has gone out (entity doesn't exist yet — see gaps)
 - **NEGOTIATION** — active back-and-forth on price/package
-- **WON** — converts to a `Wedding` record; this specific `Lead`/`Enquiry`/`Consultation`
-  row is marked converted and linked via the `customerId`/`legacyMongoId`-style
-  reference already reserved on these tables from Phase A
+- **WON** — makes this `Lead`/`Enquiry`/`Consultation` row *eligible* for
+  conversion; a `Wedding` is only actually created by a separate, explicit
+  `Create Wedding Workspace` action (captures Wedding Date/Venue/Coordinator/
+  Notes/Token-Advance-received, not required to exist yet), not automatically
+  on reaching `WON`. On conversion the row is marked converted and linked via
+  the `customerId`/`legacyMongoId`-style reference already reserved on these
+  tables from Phase A, and becomes read-only for pipeline/deal fields from
+  that point (still viewable, still gets `ActivityLog` notes). Full mechanics
+  and reasoning: `domain-model.md` §5.1.
 - **LOST** — needs an explicit reason code (budget, chose competitor, date conflict,
   went cold, etc.) — today's enums have no losing terminal state at all, everything
   either stays open or silently goes stale
@@ -165,7 +171,9 @@ Keeping this separate from the capture entities gives versioning (multiple insig
   Sent, Deals Won/Lost, Personal Conversion Rate) widgets from
   `01-command-center.md` directly — this doc is where those widgets' data actually
   gets created.
-- A `WON` lead converts into a `Wedding`, handed off to `03-wedding-workspace.md`
+- A `WON` lead becomes eligible to convert into a `Wedding` via the explicit
+  `Create Wedding Workspace` action (`domain-model.md` §5.1), handed off to
+  `03-wedding-workspace.md`
   (not yet written).
 - `07-ai-assistant.md` (not yet written) is where the lead priority score and
   follow-up nudges eventually get AI-upgraded — this doc specifies the rules-based

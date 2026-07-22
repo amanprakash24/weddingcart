@@ -184,6 +184,52 @@ date for the first `WeddingEvent` (the main Wedding day), editable by coordinato
 from there; additional events get added in the Wedding Workspace with their own
 dates, independent of the original booking date.
 
+**Symmetric lock rule (decided 2026-07-22, see §5.1 below):** once `Booking`
+converts (`customerId` populated), the `Booking` record itself becomes read-only —
+same rule as the CRM path, applied for the same reason (avoid two systems mutating
+overlapping fields post-handoff).
+
+## 5.1 Resolved: CRM-path (`Lead`/`Enquiry`/`Consultation` → `WON` → `Wedding`) conversion trigger and lock rule (decided 2026-07-22)
+
+Design workshop question going into Milestone 6: is `WON` alone (a purely internal
+sales-status change) a strong enough signal to create a `Wedding`, or does it need
+an external confirmation gate like the `Booking` path has?
+
+**Decision: a two-step hybrid**, keeping Sales Success, Operational Commitment, and
+Financial Progress as three separately-owned concepts rather than collapsing them:
+
+1. **`WON`** (already a terminal pipeline state, no outbound transitions per
+   `lib/crm/pipeline.ts`) makes a Lead/Enquiry/Consultation *eligible* for
+   conversion. Nothing is created automatically — rejected auto-convert-on-`WON`
+   because an internal CRM action (including an accidental one) shouldn't be able
+   to spin up a full operational entity (Operations, vendor coordination, tasks)
+   on its own.
+2. **Explicit `Create Wedding Workspace` action** (a deliberate "operational
+   handoff" from Sales to Operations, not a passive form submit) is what actually
+   creates the `Wedding`. Its dialog captures Wedding Date, Venue, Coordinator,
+   Notes, and **Token Advance Received? (Yes/No)** — captured, not required. This
+   avoids coupling Wedding creation to Finance (some venues/processes confirm
+   before payment lands) while still getting structured operational data from
+   day one. If the business later decides every wedding needs a token before
+   Operations starts, that becomes a validation rule on this same dialog, not a
+   domain-model change.
+3. On conversion, the source record gets its `customerId`-style pointer populated
+   (mirroring the `Booking` path's existing `customerId` field/mechanism above),
+   linking it to the new `Wedding`.
+
+**Lock rule:** once converted (pointer populated), the Lead/Enquiry/Consultation
+record becomes **read-only for pipeline/deal fields** — no further stage
+transitions, no editing venue/date/deal details in parallel with Operations.
+Sales can still **view** it and append `ActivityLog` notes for historical
+continuity (e.g. a customer calling their old sales contact after handoff), but
+the deal itself is closed. Applied for the same reason `LeadInsight` was made a
+separate versioned entity instead of nullable columns on `Lead`, and `Task`/
+`ActivityLog` were consolidated instead of forked per context: two systems both
+allowed to mutate overlapping fields is exactly the drift this project has
+avoided everywhere else. The identical rule applies to the `Booking` path once
+`Booking.customerId` is populated (§5 above) — same seam, same rule, applied
+symmetrically.
+
 ## 6. Bounded contexts (summary)
 
 | Context | Owns |
