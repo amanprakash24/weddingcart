@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { STAGE_LABELS, STAGE_COLORS, SOURCE_LABELS, type LeadInboxItem } from './types';
 
 function timeAgo(iso: string): string {
@@ -9,8 +10,6 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-// Read-only per Sprint 5.1 scope — no row actions, no inline editing. Rows
-// will become clickable (linking into the Lead Workspace) in Sprint 5.2.
 export default function LeadTable({ items, loading }: { items: LeadInboxItem[]; loading: boolean }) {
   if (loading) {
     return <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">Loading…</div>;
@@ -35,8 +34,11 @@ export default function LeadTable({ items, loading }: { items: LeadInboxItem[]; 
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={`${item.sourceType}-${item.id}`} className="border-b border-gray-50 last:border-0 hover:bg-gray-50">
-              <td className="px-4 py-3 text-gray-500">{SOURCE_LABELS[item.sourceType]}</td>
+            <tr key={`${item.sourceType}-${item.id}`} className="relative border-b border-gray-50 last:border-0 hover:bg-gray-50">
+              <td className="px-4 py-3 text-gray-500">
+                <Link href={`/admin/crm/leads/${item.sourceType}/${item.id}`} className="absolute inset-0" aria-label={`Open ${item.name ?? item.phone}`} />
+                {SOURCE_LABELS[item.sourceType]}
+              </td>
               <td className="px-4 py-3">
                 <div className="font-medium text-gray-900">{item.name ?? '—'}</div>
                 <div className="text-gray-500 text-xs">{item.phone}</div>

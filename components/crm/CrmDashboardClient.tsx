@@ -1,26 +1,55 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import TodaysWork from './TodaysWork';
 import StatsCards from './StatsCards';
 import LeadSearch from './LeadSearch';
 import LeadFilters from './LeadFilters';
 import LeadTable from './LeadTable';
-import type { LeadInboxItem, LeadInboxStats, SalesRep, LeadFiltersState } from './types';
+import type { LeadInboxItem, LeadInboxStats, SalesRep, LeadFiltersState, PipelineStage, SourceType } from './types';
 
 const PAGE_SIZE = 20;
 
+// Filters/page live in the URL (not just component state) so that clicking
+// into a Lead Workspace and pressing Back restores the exact same view —
+// see the Sprint 5.2 plan's "Navigation + preserved filters/scroll" section.
+function filtersFromParams(params: URLSearchParams): LeadFiltersState {
+  return {
+    search: params.get('search') ?? '',
+    stage: (params.get('stage') as PipelineStage | '') ?? '',
+    city: params.get('city') ?? '',
+    assignedToId: params.get('assignedToId') ?? '',
+    sourceType: (params.get('sourceType') as SourceType | '') ?? '',
+  };
+}
+
 export default function CrmDashboardClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [stats, setStats] = useState<LeadInboxStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [items, setItems] = useState<LeadInboxItem[]>([]);
   const [total, setTotal] = useState(0);
   const [tableLoading, setTableLoading] = useState(true);
   const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
-  const [page, setPage] = useState(1);
-  const [filters, setFilters] = useState<LeadFiltersState>({
-    search: '', stage: '', city: '', assignedToId: '', sourceType: '',
-  });
+  const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') ?? '1')));
+  const [filters, setFilters] = useState<LeadFiltersState>(() => filtersFromParams(searchParams));
+
+  // Mirror filters/page into the URL whenever they change, without adding a
+  // history entry per keystroke/click (replace, not push).
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set('search', filters.search);
+    if (filters.stage) params.set('stage', filters.stage);
+    if (filters.city) params.set('city', filters.city);
+    if (filters.assignedToId) params.set('assignedToId', filters.assignedToId);
+    if (filters.sourceType) params.set('sourceType', filters.sourceType);
+    if (page > 1) params.set('page', String(page));
+    const qs = params.toString();
+    router.replace(qs ? `/admin/crm?${qs}` : '/admin/crm', { scroll: false });
+  }, [filters, page, router]);
 
   useEffect(() => {
     fetch('/api/crm/stats')

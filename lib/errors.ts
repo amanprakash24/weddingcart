@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
 
 // Repository error contract — see docs/repository-contract.md.
@@ -38,4 +40,21 @@ export async function withPrismaErrors<T>(entity: string, fn: () => Promise<T>):
     }
     throw err;
   }
+}
+
+// One shared mapping from thrown errors to HTTP responses, per
+// docs/repository-contract.md's "that mapping lives in one place" rule —
+// first real use is the Sprint 5.2 Lead Workspace mutation routes.
+export function handleApiError(err: unknown): NextResponse {
+  if (err instanceof NotFoundError) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 404 });
+  }
+  if (err instanceof DuplicateError) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 409 });
+  }
+  if (err instanceof ZodError) {
+    return NextResponse.json({ success: false, error: 'Invalid request', issues: err.issues }, { status: 400 });
+  }
+  console.error(err);
+  return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
 }

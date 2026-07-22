@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import CrmDashboardClient from '@/components/crm/CrmDashboardClient';
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 };
 
 export default function CrmPage() {
-  return <CrmDashboardClient />;
+  return (
+    <Suspense fallback={null}>
+      <CrmDashboardClient />
+    </Suspense>
+  );
 }
