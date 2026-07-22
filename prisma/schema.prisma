@@ -371,6 +371,7 @@ model Lead {
   tasks         Task[]
   activities    ActivityLog[]
   quotations    Quotation[]
+  insights      LeadInsight[]
   wedding       Wedding?
 
   @@map("leads")
@@ -404,6 +405,7 @@ model Enquiry {
   tasks         Task[]
   activities    ActivityLog[]
   quotations    Quotation[]
+  insights      LeadInsight[]
   wedding       Wedding?
 
   @@map("enquiries")
@@ -444,6 +446,7 @@ model Consultation {
   tasks         Task[]
   activities    ActivityLog[]
   quotations    Quotation[]
+  insights      LeadInsight[]
   wedding       Wedding?
 
   @@map("consultations")
@@ -615,6 +618,40 @@ model Quotation {
   updatedAt      DateTime        @updatedAt
 
   @@map("quotations")
+}
+
+// docs/wedding-os/02-crm.md "AI insight storage" — a separate, versioned
+// entity rather than nullable columns on Lead/Enquiry/Consultation, so
+// regenerating a summary doesn't silently overwrite history and AI vs.
+// human provenance stays auditable via generatedBy.
+enum InsightGeneratedBy {
+  AI
+  HUMAN
+}
+
+model LeadInsight {
+  id String @id @default(uuid())
+
+  // Exactly one of these three is set (application-enforced), same pattern as Quotation.
+  leadId         String?
+  lead           Lead?         @relation(fields: [leadId], references: [id])
+  enquiryId      String?
+  enquiry        Enquiry?      @relation(fields: [enquiryId], references: [id])
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+
+  generatedBy InsightGeneratedBy
+  // Specific provenance (e.g. "manual", "gpt-5") — generatedBy is the coarse AI/HUMAN category.
+  source      String?
+  summary     String
+  nextAction  String?
+  sentiment   String?
+  confidence  Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("lead_insights")
 }
 
 // =====================================================================
