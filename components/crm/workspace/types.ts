@@ -2,6 +2,7 @@
 // fields as ISO strings (JSON serialization), same convention as
 // components/crm/types.ts's LeadInboxItem vs. the service's Date fields.
 import type { PipelineStage, SourceType } from '@/components/crm/types';
+import type { LostReason } from '@/lib/crm/pipeline';
 
 export interface WorkspaceActivity {
   id: string;
@@ -42,7 +43,11 @@ export interface LeadWorkspace {
     id: string;
     pipelineStage: PipelineStage;
     assignedTo: { id: string; name: string | null } | null;
-    lostReason: string | null;
+    assignedBy: { id: string; name: string | null } | null;
+    assignedAt: string | null;
+    lostReason: LostReason | null;
+    lostReasonDetail: string | null;
+    holdReason: string | null;
     createdAt: string;
   };
   customer: { name: string | null; phone: string; email: string | null; city: string | null };

@@ -117,22 +117,25 @@ model User {
   // Phase B back-relations (Wedding OS) — every internal team member (Founder/
   // Sales/Operations) and Vendor/Customer login funnels through this same User
   // table; these are the many places Wedding OS entities reference a user.
-  weddingsAsCustomer      Wedding[]           @relation("WeddingCustomer")
-  weddingsAsCoordinator   Wedding[]           @relation("WeddingCoordinator")
-  leadsAssigned           Lead[]
-  enquiriesAssigned       Enquiry[]
-  consultationsAssigned   Consultation[]
-  tasksAssigned           Task[]              @relation("TaskAssignedTo")
-  tasksCreated            Task[]              @relation("TaskCreatedBy")
-  activitiesPerformed     ActivityLog[]       @relation("ActivityPerformedBy")
-  activitiesApproved      ActivityLog[]       @relation("ActivityApprovedBy")
-  approvalsRequested      ApprovalRequest[]   @relation("ApprovalRequestedBy")
-  approvalsGiven          ApprovalRequest[]   @relation("ApprovalApprovedBy")
-  timelineMilestonesOwned TimelineMilestone[]
-  documentsUploaded       Document[]
-  quotationsCreated       Quotation[]
-  aiConversations         AiConversation[]
-  notifications           Notification[]
+  weddingsAsCustomer        Wedding[]           @relation("WeddingCustomer")
+  weddingsAsCoordinator     Wedding[]           @relation("WeddingCoordinator")
+  leadsAssigned             Lead[]              @relation("LeadAssignedTo")
+  leadsAssignedByMe         Lead[]              @relation("LeadAssignedBy")
+  enquiriesAssigned         Enquiry[]           @relation("EnquiryAssignedTo")
+  enquiriesAssignedByMe     Enquiry[]           @relation("EnquiryAssignedBy")
+  consultationsAssigned     Consultation[]      @relation("ConsultationAssignedTo")
+  consultationsAssignedByMe Consultation[]      @relation("ConsultationAssignedBy")
+  tasksAssigned             Task[]              @relation("TaskAssignedTo")
+  tasksCreated              Task[]              @relation("TaskCreatedBy")
+  activitiesPerformed       ActivityLog[]       @relation("ActivityPerformedBy")
+  activitiesApproved        ActivityLog[]       @relation("ActivityApprovedBy")
+  approvalsRequested        ApprovalRequest[]   @relation("ApprovalRequestedBy")
+  approvalsGiven            ApprovalRequest[]   @relation("ApprovalApprovedBy")
+  timelineMilestonesOwned   TimelineMilestone[]
+  documentsUploaded         Document[]
+  quotationsCreated         Quotation[]
+  aiConversations           AiConversation[]
+  notifications             Notification[]
 
   @@map("users")
 }
@@ -364,15 +367,27 @@ model Lead {
 
   // Phase B (CRM, docs/wedding-os/02-crm.md) — additive, existing `customerId`
   // stays as the eventual Wedding link (populated on WON, see Wedding.sourceLeadId).
-  pipelineStage PipelineStage @default(NEW)
-  assignedToId  String?
-  assignedTo    User?         @relation(fields: [assignedToId], references: [id])
-  lostReason    String?
-  tasks         Task[]
-  activities    ActivityLog[]
-  quotations    Quotation[]
-  insights      LeadInsight[]
-  wedding       Wedding?
+  pipelineStage    PipelineStage @default(NEW)
+  assignedToId     String?
+  assignedTo       User?         @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
+  // Sprint 5.3 — "Assigned To/By/At" per the workflow-engine reframing; full
+  // assignment history also lands in ActivityLog(ASSIGNED), these columns are
+  // just the current value, same pattern as lostReason below.
+  assignedById     String?
+  assignedBy       User?         @relation("LeadAssignedBy", fields: [assignedById], references: [id])
+  assignedAt       DateTime?
+  // lostReason is a closed set (Sprint 5.3 state machine) with an optional
+  // free-text elaboration only used when OTHER is picked. holdReason is free
+  // text (no closed set requested) and clears once a lead leaves ON_HOLD —
+  // the permanent record of both lives in ActivityLog(STATUS_CHANGED).
+  lostReason       LostReason?
+  lostReasonDetail String?
+  holdReason       String?
+  tasks            Task[]
+  activities       ActivityLog[]
+  quotations       Quotation[]
+  insights         LeadInsight[]
+  wedding          Wedding?
 
   @@map("leads")
 }
@@ -398,15 +413,20 @@ model Enquiry {
   updatedAt      DateTime      @updatedAt
 
   // Phase B (CRM) — see Lead's identical addition for the reasoning
-  pipelineStage PipelineStage @default(NEW)
-  assignedToId  String?
-  assignedTo    User?         @relation(fields: [assignedToId], references: [id])
-  lostReason    String?
-  tasks         Task[]
-  activities    ActivityLog[]
-  quotations    Quotation[]
-  insights      LeadInsight[]
-  wedding       Wedding?
+  pipelineStage    PipelineStage @default(NEW)
+  assignedToId     String?
+  assignedTo       User?         @relation("EnquiryAssignedTo", fields: [assignedToId], references: [id])
+  assignedById     String?
+  assignedBy       User?         @relation("EnquiryAssignedBy", fields: [assignedById], references: [id])
+  assignedAt       DateTime?
+  lostReason       LostReason?
+  lostReasonDetail String?
+  holdReason       String?
+  tasks            Task[]
+  activities       ActivityLog[]
+  quotations       Quotation[]
+  insights         LeadInsight[]
+  wedding          Wedding?
 
   @@map("enquiries")
 }
@@ -439,15 +459,20 @@ model Consultation {
   updatedAt      DateTime           @updatedAt
 
   // Phase B (CRM) — see Lead's identical addition for the reasoning
-  pipelineStage PipelineStage @default(NEW)
-  assignedToId  String?
-  assignedTo    User?         @relation(fields: [assignedToId], references: [id])
-  lostReason    String?
-  tasks         Task[]
-  activities    ActivityLog[]
-  quotations    Quotation[]
-  insights      LeadInsight[]
-  wedding       Wedding?
+  pipelineStage    PipelineStage @default(NEW)
+  assignedToId     String?
+  assignedTo       User?         @relation("ConsultationAssignedTo", fields: [assignedToId], references: [id])
+  assignedById     String?
+  assignedBy       User?         @relation("ConsultationAssignedBy", fields: [assignedById], references: [id])
+  assignedAt       DateTime?
+  lostReason       LostReason?
+  lostReasonDetail String?
+  holdReason       String?
+  tasks            Task[]
+  activities       ActivityLog[]
+  quotations       Quotation[]
+  insights         LeadInsight[]
+  wedding          Wedding?
 
   @@map("consultations")
 }
@@ -588,6 +613,19 @@ enum PipelineStage {
   NEGOTIATION
   WON
   LOST
+  // Sprint 5.3 — pause state, not terminal; resumes to any active stage.
+  // Displays as "On Hold" — see components/crm/types.ts's STAGE_LABELS.
+  ON_HOLD
+}
+
+// Sprint 5.3 — closed set for the LOST transition (docs/wedding-os/02-crm.md
+// state machine). OTHER pairs with Lead/Enquiry/Consultation.lostReasonDetail.
+enum LostReason {
+  BUDGET_ISSUE
+  DATE_UNAVAILABLE
+  CHOSE_COMPETITOR
+  NO_RESPONSE
+  OTHER
 }
 
 enum QuotationStatus {
@@ -957,6 +995,7 @@ enum ActivityType {
   TIMELINE_DELAYED
   DOCUMENT_UPLOADED
   AI_DRAFT_CREATED
+  ASSIGNED // Sprint 5.3 — lead/enquiry/consultation reassignment
 }
 
 model ActivityLog {

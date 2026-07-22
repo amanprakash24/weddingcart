@@ -8,7 +8,7 @@ const TYPE_LABELS: Record<string, string> = {
   STATUS_CHANGED: 'Status Changed', VENDOR_CONFIRMED: 'Vendor Confirmed', VENDOR_DECLINED: 'Vendor Declined',
   PAYMENT_RECEIVED: 'Payment Received', TASK_CREATED: 'Task Created', TASK_COMPLETED: 'Task Completed',
   TASK_OVERDUE: 'Task Overdue', TIMELINE_DELAYED: 'Timeline Delayed', DOCUMENT_UPLOADED: 'Document Uploaded',
-  AI_DRAFT_CREATED: 'AI Draft Created',
+  AI_DRAFT_CREATED: 'AI Draft Created', ASSIGNED: 'Assigned',
 };
 
 function timeAgo(iso: string): string {

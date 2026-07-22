@@ -222,7 +222,7 @@ async function countAcrossAll(filter: {
 
 async function countByStage(): Promise<Record<PipelineStage, number>> {
   const stages: PipelineStage[] = [
-    'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'WON', 'LOST',
+    'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'WON', 'LOST', 'ON_HOLD',
   ];
   const counts = await Promise.all(stages.map((stage) => countAcrossAll({ pipelineStage: stage })));
   return Object.fromEntries(stages.map((stage, i) => [stage, counts[i]])) as Record<PipelineStage, number>;

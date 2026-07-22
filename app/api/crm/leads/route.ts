@@ -6,7 +6,7 @@ import type { PipelineStage } from '@/generated/prisma/enums';
 import type { SourceType } from '@/services/leadInbox.service';
 
 const VALID_STAGES: PipelineStage[] = [
-  'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'WON', 'LOST',
+  'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'WON', 'LOST', 'ON_HOLD',
 ];
 const VALID_SOURCE_TYPES: SourceType[] = ['LEAD', 'ENQUIRY', 'CONSULTATION'];
 

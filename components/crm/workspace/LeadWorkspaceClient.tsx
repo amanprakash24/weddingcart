@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { SourceType } from '@/components/crm/types';
 import type { LeadWorkspace } from './types';
 import LeadWorkspaceHeader from './LeadWorkspaceHeader';
+import type { StageTransitionInput } from './StageControl';
 import CustomerCard from './CustomerCard';
 import WeddingDetailsCard from './WeddingDetailsCard';
 import VendorInterestPanel from './VendorInterestPanel';
@@ -60,6 +61,14 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
     await postJson(`${basePath}/tasks/${taskId}`, { status }, 'PATCH');
     load();
   };
+  const transitionStage = async (input: StageTransitionInput) => {
+    await postJson(`${basePath}/stage`, input, 'PATCH');
+    load();
+  };
+  const assign = async (assignedToId: string | null) => {
+    await postJson(`${basePath}/assign`, { assignedToId }, 'PATCH');
+    load();
+  };
 
   // Only the initial load blanks the page — a mutation-triggered reload
   // (add note/task, complete task) keeps the current content visible and
@@ -78,7 +87,12 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <LeadWorkspaceHeader subject={workspace.subject} customerName={customerName} />
+      <LeadWorkspaceHeader
+        subject={workspace.subject}
+        customerName={customerName}
+        onTransition={transitionStage}
+        onAssign={assign}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <CustomerCard customer={workspace.customer} />

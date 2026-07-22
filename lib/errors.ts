@@ -13,6 +13,15 @@ export class NotFoundError extends Error {
   }
 }
 
+// Sprint 5.3 — a stage change rejected by the pipeline state machine
+// (lib/crm/pipeline.ts), or a required reason missing for that transition.
+export class InvalidTransitionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidTransitionError';
+  }
+}
+
 export class DuplicateError extends Error {
   constructor(
     entity: string,
@@ -51,6 +60,9 @@ export function handleApiError(err: unknown): NextResponse {
   }
   if (err instanceof DuplicateError) {
     return NextResponse.json({ success: false, error: err.message }, { status: 409 });
+  }
+  if (err instanceof InvalidTransitionError) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
   }
   if (err instanceof ZodError) {
     return NextResponse.json({ success: false, error: 'Invalid request', issues: err.issues }, { status: 400 });
