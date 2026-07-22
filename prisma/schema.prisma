@@ -1012,6 +1012,13 @@ model ActivityLog {
   performedById String?
   performedBy   User?   @relation("ActivityPerformedBy", fields: [performedById], references: [id])
 
+  // Sprint 5.4 — structured mirror of a STATUS_CHANGED entry's stage
+  // transition, populated only by leadWorkspace.service.ts's transitionStage().
+  // `summary` stays the human-readable line; Pipeline Velocity and similar
+  // analytics read these instead of parsing display text.
+  fromStage PipelineStage?
+  toStage   PipelineStage?
+
   // Same "exactly one subject" pattern as Task — spans pre- and
   // post-conversion so a coordinator never needs a separate CRM log.
   leadId          String?

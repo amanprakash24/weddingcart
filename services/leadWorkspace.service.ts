@@ -284,6 +284,8 @@ export const leadWorkspaceService = {
           type: ActivityType.STATUS_CHANGED,
           summary: `Stage changed: ${STAGE_LABELS[fromStage]} → ${STAGE_LABELS[input.toStage]}`,
           detail: input.reason ?? null,
+          fromStage,
+          toStage: input.toStage,
           performedBy: input.actorId ? { connect: { id: input.actorId } } : undefined,
           ...subjectCreateData(sourceType, id),
         },
