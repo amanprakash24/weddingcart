@@ -230,6 +230,52 @@ avoided everywhere else. The identical rule applies to the `Booking` path once
 `Booking.customerId` is populated (§5 above) — same seam, same rule, applied
 symmetrically.
 
+## 5.2 Resolved: Wedding lifecycle — `WeddingStatus` transitions (decided 2026-07-22)
+
+Design workshop question going into Milestone 6: what is the lifecycle of a
+`Wedding` itself (not the CRM pipeline that precedes it)? `WeddingStatus` already
+existed from the Phase B schema (`PLANNING`/`ACTIVE`/`COMPLETED`/`CANCELLED`,
+deliberately coarse per the "store events, not dashboard state" principle —
+readiness/vendor-assignment granularity lives one level down, on
+`VendorBooking.status` per vendor per `WeddingEvent`, not flattened onto
+`Wedding`). Two real gaps remained: no `POSTPONED` state, and no decided
+transition triggers.
+
+**Added `POSTPONED`** (migration `20260722113554_add_wedding_postponed_status`,
+applied to staging) — resumable back to `ACTIVE`, same shape as `ON_HOLD` in
+`PipelineStage`. Rejected handling postponement as a bare `WeddingEvent.date`
+edit: a stalled wedding needs to stay visibly stalled on dashboards, not look
+identical to one progressing normally just because a date moved.
+
+**Transition triggers, decided asymmetrically:**
+- **`PLANNING → ACTIVE`: automatic**, fired the moment the first
+  `VendorBooking.status` on any of the Wedding's events reaches `CONFIRMED`.
+  Objective, data-driven signal — real execution has actually started — not a
+  judgment call, so no reason to gate it behind a manual click.
+- **`ACTIVE → COMPLETED`: manual**, an explicit coordinator action. Rejected
+  auto-completing once all events' dates have passed and all `VendorBooking`s
+  are `COMPLETED` — "done" has real tail-work (final payment reconciliation,
+  review collection, post-event follow-ups) that a date passing doesn't
+  guarantee happened. Same controlled-transition precedent as the Lead pipeline
+  (`lib/crm/pipeline.ts`) — the system may *suggest* completion once the
+  automatic conditions are met, but doesn't fire it. `POSTPONED`/`CANCELLED`
+  remain coordinator-triggered only, no automatic path into either.
+
+**Not yet built**: the actual transition-matrix implementation
+(`lib/wedding/lifecycle.ts` or equivalent, mirroring `lib/crm/pipeline.ts`'s
+pattern) and the event listener that fires `PLANNING → ACTIVE` off
+`VendorBooking.status` — this section records the decision, Milestone 6
+implementation builds it.
+
+**Why:** Same "resolve real questions when they're cheap" discipline as the CRM
+pipeline's Sprint 5.3 design — a Wedding's status drives Today's Work, Operations
+Dashboard, Vendor Dashboard, Customer Portal, Finance, AI, and Reports, so it's
+worth a real design pass before code, not silent extrapolation.
+**How to apply:** When Milestone 6 implementation builds the Wedding transition
+logic, follow this exact trigger design (auto forward on real vendor-confirmation
+data, manual for completion and both off-ramps) rather than re-deriving it or
+copying the CRM pipeline's fully-manual pattern uncritically.
+
 ## 6. Bounded contexts (summary)
 
 | Context | Owns |

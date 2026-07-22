@@ -700,6 +700,11 @@ model LeadInsight {
 enum WeddingStatus {
   PLANNING
   ACTIVE
+  // Resumable, like ON_HOLD in PipelineStage — a stalled wedding needs to stay
+  // visible as stalled on dashboards, not silently look identical to normal
+  // progress just because a WeddingEvent.date got pushed back. Decided
+  // 2026-07-22, domain-model.md §5.2.
+  POSTPONED
   COMPLETED
   CANCELLED
 }
