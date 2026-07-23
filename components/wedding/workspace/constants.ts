@@ -1,0 +1,40 @@
+import type { WeddingStatus, WeddingHealth } from './types';
+
+export const STATUS_LABELS: Record<WeddingStatus, string> = {
+  PLANNING: 'Planning',
+  ACTIVE: 'Active',
+  POSTPONED: 'Postponed',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+
+export const STATUS_COLORS: Record<WeddingStatus, string> = {
+  PLANNING: 'bg-blue-100 text-blue-700',
+  ACTIVE: 'bg-emerald-100 text-emerald-700',
+  POSTPONED: 'bg-amber-100 text-amber-700',
+  COMPLETED: 'bg-gray-200 text-gray-600',
+  CANCELLED: 'bg-red-100 text-red-700',
+};
+
+// Mirrors lib/wedding/lifecycle.ts's WEDDING_STATUS_TRANSITIONS — PLANNING is
+// intentionally absent as a target anywhere except from POSTPONED, since
+// PLANNING->ACTIVE only ever happens automatically (domain-model.md §5.2).
+export const WEDDING_STATUS_TRANSITIONS: Record<WeddingStatus, WeddingStatus[]> = {
+  PLANNING: ['POSTPONED', 'CANCELLED'],
+  ACTIVE: ['COMPLETED', 'POSTPONED', 'CANCELLED'],
+  POSTPONED: ['PLANNING', 'ACTIVE'],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
+export const HEALTH_LABELS: Record<WeddingHealth, string> = {
+  HEALTHY: 'Healthy',
+  AT_RISK: 'At Risk',
+  OVERDUE: 'Overdue',
+};
+
+export const HEALTH_COLORS: Record<WeddingHealth, string> = {
+  HEALTHY: 'bg-emerald-100 text-emerald-700',
+  AT_RISK: 'bg-amber-100 text-amber-700',
+  OVERDUE: 'bg-red-100 text-red-700',
+};
