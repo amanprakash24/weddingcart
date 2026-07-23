@@ -9,9 +9,10 @@ import { leadInsightRepository } from '@/repositories/leadInsight.repository';
 import { subjectWhere, subjectCreateData } from '@/lib/crm/subject';
 import { canTransition } from '@/lib/crm/pipeline';
 import { STAGE_LABELS } from '@/components/crm/types';
-import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
+import { NotFoundError, InvalidTransitionError, ConversionLockedError } from '@/lib/errors';
+import { findWeddingForSource } from '@/services/weddingConversion.service';
 import type { SourceType } from '@/services/leadInbox.service';
-import type { Lead, Enquiry, Consultation, Task, ActivityLog, LeadInsight, Prisma } from '@/generated/prisma/client';
+import type { Lead, Enquiry, Consultation, Task, ActivityLog, LeadInsight, Wedding, Prisma } from '@/generated/prisma/client';
 import {
   TaskContext,
   ActivityType,
@@ -39,6 +40,10 @@ export interface LeadWorkspace {
     lostReasonDetail: string | null;
     holdReason: string | null;
     createdAt: Date;
+    // Set once this subject has converted (domain-model.md §5.1) — presence
+    // alone is what the UI uses to render the read-only banner + link
+    // forward; absence means the mutation controls (stage/assign/task) stay live.
+    wedding: { id: string; weddingNumber: string } | null;
   };
   customer: { name: string | null; phone: string; email: string | null; city: string | null };
   weddingDetails: {
@@ -142,15 +147,29 @@ function toVendorInterest(sourceType: SourceType, subject: Subject): LeadWorkspa
   return [];
 }
 
+// Shared guard for every mutation below except addNote — throws once the
+// subject has a Wedding on file rather than leaving it to each call site to
+// remember. Returns void; callers that already have the subject loaded don't
+// need the return value, this is purely a gate.
+async function assertNotConverted(sourceType: SourceType, id: string): Promise<void> {
+  const wedding = await findWeddingForSource(sourceType, id);
+  if (wedding) {
+    throw new ConversionLockedError(
+      `This ${sourceType.toLowerCase()} converted to Wedding ${wedding.weddingNumber} and is read-only`
+    );
+  }
+}
+
 export const leadWorkspaceService = {
   async getWorkspace(sourceType: SourceType, id: string): Promise<LeadWorkspace> {
     const subject = await findSubject(sourceType, id);
     const where = subjectWhere(sourceType, id);
 
-    const [{ data: tasks }, { data: timeline }, { data: insights }] = await Promise.all([
+    const [{ data: tasks }, { data: timeline }, { data: insights }, wedding] = await Promise.all([
       taskRepository.findMany({ where, orderBy: { createdAt: 'desc' } }),
       activityLogRepository.findMany({ where }),
       leadInsightRepository.findMany({ where }),
+      findWeddingForSource(sourceType, id) as Promise<Wedding | null>,
     ]);
 
     const nameById = await resolveUserNames([
@@ -174,6 +193,7 @@ export const leadWorkspaceService = {
         lostReasonDetail: subject.lostReasonDetail,
         holdReason: subject.holdReason,
         createdAt: subject.createdAt,
+        wedding: wedding ? { id: wedding.id, weddingNumber: wedding.weddingNumber } : null,
       },
       customer: toCustomer(sourceType, subject),
       weddingDetails: toWeddingDetails(sourceType, subject),
@@ -212,6 +232,7 @@ export const leadWorkspaceService = {
     }
   ): Promise<Task> {
     await findSubject(sourceType, id);
+    await assertNotConverted(sourceType, id);
     return taskRepository.create({
       context: TaskContext.SALES_FOLLOWUP,
       title: input.title,
@@ -252,6 +273,7 @@ export const leadWorkspaceService = {
     }
   ): Promise<Subject> {
     const subject = await findSubject(sourceType, id);
+    await assertNotConverted(sourceType, id);
     const fromStage = subject.pipelineStage;
 
     if (!canTransition(fromStage, input.toStage)) {
@@ -316,6 +338,7 @@ export const leadWorkspaceService = {
     { assignedToId, actorId }: { assignedToId: string | null; actorId: string | null }
   ): Promise<Subject> {
     await findSubject(sourceType, id);
+    await assertNotConverted(sourceType, id);
 
     return prisma.$transaction(async (tx) => {
       const updated = await updateSubject(

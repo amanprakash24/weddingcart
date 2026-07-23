@@ -32,6 +32,17 @@ export class DuplicateError extends Error {
   }
 }
 
+// Milestone 6 — a Lead/Enquiry/Consultation that has already converted into a
+// Wedding is read-only for pipeline/deal fields (domain-model.md §5.1). Thrown
+// by services/leadWorkspace.service.ts's mutation methods once a Wedding link
+// exists; addNote is deliberately exempt (still allowed post-conversion).
+export class ConversionLockedError extends Error {
+  constructor(message = 'This record has converted to a Wedding and is read-only') {
+    super(message);
+    this.name = 'ConversionLockedError';
+  }
+}
+
 // Wraps a repository call, translating known Prisma error codes into the
 // typed domain errors above. Unrecognized errors are rethrown as-is.
 export async function withPrismaErrors<T>(entity: string, fn: () => Promise<T>): Promise<T> {
@@ -63,6 +74,9 @@ export function handleApiError(err: unknown): NextResponse {
   }
   if (err instanceof InvalidTransitionError) {
     return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+  }
+  if (err instanceof ConversionLockedError) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 409 });
   }
   if (err instanceof ZodError) {
     return NextResponse.json({ success: false, error: 'Invalid request', issues: err.issues }, { status: 400 });

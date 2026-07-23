@@ -23,6 +23,22 @@ export const weddingRepository = {
     return tx.wedding.findUnique({ where: { sourceBookingId: bookingId } });
   },
 
+  // Same idempotency + lock-check role as findBySourceBookingId, for the CRM
+  // path (domain-model.md §5.1) — a Lead/Enquiry/Consultation should never
+  // spawn two Weddings, and their presence is also what makes the source
+  // record read-only (services/leadWorkspace.service.ts's assertNotConverted).
+  async findBySourceLeadId(leadId: string, tx: Tx | typeof prisma = prisma): Promise<Wedding | null> {
+    return tx.wedding.findUnique({ where: { sourceLeadId: leadId } });
+  },
+
+  async findBySourceEnquiryId(enquiryId: string, tx: Tx | typeof prisma = prisma): Promise<Wedding | null> {
+    return tx.wedding.findUnique({ where: { sourceEnquiryId: enquiryId } });
+  },
+
+  async findBySourceConsultationId(consultationId: string, tx: Tx | typeof prisma = prisma): Promise<Wedding | null> {
+    return tx.wedding.findUnique({ where: { sourceConsultationId: consultationId } });
+  },
+
   async findMany(
     { where, skip, take, orderBy }: FindManyParams,
     tx: Tx | typeof prisma = prisma

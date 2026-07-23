@@ -14,10 +14,14 @@ export default function TaskPanel({
   tasks,
   onAddTask,
   onCompleteTask,
+  readOnly = false,
 }: {
   tasks: WorkspaceTask[];
   onAddTask: (title: string) => Promise<void>;
   onCompleteTask: (taskId: string, status: 'DONE' | 'CANCELLED') => Promise<void>;
+  // Set once the subject has converted to a Wedding (domain-model.md §5.1) —
+  // follow-up tasks are Sales' tool, meaningless once Operations owns the record.
+  readOnly?: boolean;
 }) {
   const [title, setTitle] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -41,21 +45,23 @@ export default function TaskPanel({
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 className="text-sm font-semibold text-gray-900 mb-3">Follow-ups</h2>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="New follow-up…"
-          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-all bg-gray-50 focus:bg-white"
-        />
-        <button
-          type="submit"
-          disabled={submitting || !title.trim()}
-          className="px-4 py-2 rounded-xl text-sm font-medium bg-amber-500 text-white disabled:opacity-40 hover:bg-amber-600 transition-colors"
-        >
-          Add
-        </button>
-      </form>
+      {!readOnly && (
+        <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="New follow-up…"
+            className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-all bg-gray-50 focus:bg-white"
+          />
+          <button
+            type="submit"
+            disabled={submitting || !title.trim()}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-amber-500 text-white disabled:opacity-40 hover:bg-amber-600 transition-colors"
+          >
+            Add
+          </button>
+        </form>
+      )}
 
       {open.length === 0 && closed.length === 0 ? (
         <p className="text-sm text-gray-400">No follow-ups scheduled.</p>

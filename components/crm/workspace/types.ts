@@ -49,6 +49,7 @@ export interface LeadWorkspace {
     lostReasonDetail: string | null;
     holdReason: string | null;
     createdAt: string;
+    wedding: { id: string; weddingNumber: string } | null;
   };
   customer: { name: string | null; phone: string; email: string | null; city: string | null };
   weddingDetails: {

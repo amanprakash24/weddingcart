@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SourceType } from '@/components/crm/types';
 import type { LeadWorkspace } from './types';
+import { useRouter } from 'next/navigation';
 import LeadWorkspaceHeader from './LeadWorkspaceHeader';
 import type { StageTransitionInput } from './StageControl';
+import type { ConvertToWeddingInput } from './ConvertToWeddingDialog';
 import CustomerCard from './CustomerCard';
 import WeddingDetailsCard from './WeddingDetailsCard';
 import VendorInterestPanel from './VendorInterestPanel';
@@ -19,6 +21,7 @@ async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = '
 }
 
 export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: SourceType; id: string }) {
+  const router = useRouter();
   const [workspace, setWorkspace] = useState<LeadWorkspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +72,18 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
     await postJson(`${basePath}/assign`, { assignedToId }, 'PATCH');
     load();
   };
+  // Navigates straight into the new Workspace on success rather than
+  // reloading this now-locked one — there's nothing left to do here.
+  const convert = async (input: ConvertToWeddingInput) => {
+    const res = await fetch(`${basePath}/convert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    const payload = await res.json();
+    if (!res.ok || !payload.success) throw new Error(payload.error ?? 'Failed to create Wedding Workspace');
+    router.push(`/admin/weddings/${payload.data.id}`);
+  };
 
   // Only the initial load blanks the page — a mutation-triggered reload
   // (add note/task, complete task) keeps the current content visible and
@@ -90,8 +105,10 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
       <LeadWorkspaceHeader
         subject={workspace.subject}
         customerName={customerName}
+        customerCity={workspace.customer.city ?? ''}
         onTransition={transitionStage}
         onAssign={assign}
+        onConvert={convert}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -102,7 +119,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
       <VendorInterestPanel vendorInterest={workspace.vendorInterest} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <TaskPanel tasks={workspace.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
+        <TaskPanel tasks={workspace.tasks} onAddTask={addTask} onCompleteTask={completeTask} readOnly={!!workspace.subject.wedding} />
         <InsightsPanel insights={workspace.insights} />
       </div>
 
