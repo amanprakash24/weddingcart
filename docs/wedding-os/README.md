@@ -1,0 +1,152 @@
+# Wedding OS — Functional Design
+
+Part 3 of the product sequence (Vision & PRD → Architecture & Database → **Functional
+Design** → implementation). This is where every Wedding OS feature gets specified
+before it's coded — the goal is that by the time the Postgres migration
+(`docs/postgres-migration-plan.md` and friends) is done, there's a complete,
+version-controlled blueprint for what gets built next, not a blank slate.
+
+None of this depends on Milestone 3 finishing. It also isn't blocked on it.
+
+## Documents
+
+- **`01-command-center.md`** — Founder, Sales, Operations, and Vendor dashboards.
+- **`02-crm.md`** — lead lifecycle, follow-up engine, sales pipeline.
+- **`03-wedding-workspace.md`** — per-wedding view: timeline, events, vendors, budget, documents, tasks, communication, health score.
+- **`04-vendor-os.md`** — profile self-service, availability/calendar, booking confirmation, packages, earnings, reviews, Vendor Score.
+- **`05-customer-portal.md`** — written last on purpose, after AI. Couple-facing view of the Wedding Workspace data: overview, timeline, vendor directory, payments (Razorpay), budget (margin-filtered), documents, communication.
+- **`06-finance.md`** — payments (Razorpay), vendor payouts, commission, GST data requirements, profit reporting.
+- **`07-ai-assistant.md`** — AI mapped across every role (Founder/Sales/Operations/Vendor/Customer), 3-level framework (Assistant/Copilot/Autonomous — v1 ships Assistant+Copilot only), closes the AI-upgrade loop left open by 02/03/04.
+- **`user-journeys.md`** — three end-to-end journeys (Customer, Venue Owner, Founder), each grounded in real entities/gaps from the docs above. Not a new design pass — evidence for *why* Role-Based Experience matters, not a restatement of it.
+
+## Phase B: domain model → schema
+
+4-step process, chosen deliberately over jumping straight to Prisma: (1) resolve
+open product/UX questions the domain model surfaces, (2) domain model in business
+language, (3) physical Prisma schema, (4) schema review against the Entity Review
+Framework — before any implementation.
+
+- **`domain-model.md`** — Steps 1/2: business entities, relationships, the Wedding
+  Aggregate (validated against every Wedding Workspace screen), bounded contexts,
+  and the Step 4 review framework (5 questions every entity should answer: owner,
+  independence, soft-delete, audit trail, AI read/write). Resolved along the way:
+  `Booking` also converts into `Wedding` (via `CONFIRMED`), and the wedding date is
+  collected at checkout, not at confirmation — `Booking` gains `weddingDate`
+  (required), `weddingType`/`guestCount` (optional).
+- **`schema-draft-1-notes.md`** — Step 3: the physical Prisma schema itself lives
+  in `prisma/schema.prisma` (branch `feat/wedding-os-schema`), organized into the
+  same bounded-context sections as `domain-model.md`. This doc explains what's
+  genuinely new vs. Phase A's additive-only changes, the decisions made while
+  writing it (`Role.OPERATIONS` added, "store events not state" implemented via
+  `ActivityLog`, `VendorPaymentDetails` isolated for sensitivity), and a self-check
+  against the primary conversion workflow — one gap flagged (automatic `Invoice`
+  generation on conversion is a business-logic question, not modeled as a schema
+  trigger). `npx prisma format`/`generate` both pass clean.
+- **`step4-workflow-review.md`** — Step 4: all 6 named workflows traced against
+  the actual schema. 1 real schema gap found (`BookingItem.vendorId` nullable vs.
+  `VendorBooking.vendorId` required — resolved as a conversion-logic decision, not
+  a schema change), 1 small fix applied directly (`Wedding.completedAt`), and 1
+  open product question resolved into a real identity redesign the same day:
+  `User.role` replaced by `UserRole` (multi-role per person) +
+  `CustomerProfile`/`VendorProfile`/`EmployeeProfile` — see the file for the full
+  ripple into already-shipped Milestone 1 auth code.
+- **`track-b-conversion-pipeline.md`** — implementation *prep* (not a production
+  feature — migration is still paused on staging): repositories + a transactional,
+  idempotent service for exactly the prioritized `Booking(CONFIRMED) → Wedding →
+  WeddingEvent → VendorBooking → Tasks → ActivityLog` pipeline. Not wired to any
+  live route. Invoice/Payment creation deliberately excluded from this pass.
+
+## Status: first-pass specification complete
+
+All 7 modules have a first-pass functional design as of this doc. Each doc's "data
+model gaps" section is the collected input for the Phase B schema design (the
+`Wedding`/`WeddingEvent`/`VendorBooking`/`Payment`/`Task`/`ActivityLog`/`Document`
+entities named throughout this set, on top of the Phase A schema already migrated
+in `docs/postgres-migration-plan.md`). Phase B schema design is the next real
+decision point — not implementation of any single module yet.
+
+## North Star Metric (decided 2026-07-21)
+
+**Successful Wedding Bookings Completed** — not Leads. Leads are top-of-funnel and
+can be inflated by volume without reflecting real business outcomes (a lead that
+never converts, or a wedding that books but falls through before completion,
+shouldn't count). `Wedding.completedAt` (added during the Step 4 schema review,
+`step4-workflow-review.md`) is the concrete field this metric is measured against
+— it already exists, no new schema needed to start tracking this.
+
+Every future milestone should be evaluated against whether it moves this number,
+not a proxy metric (lead volume, follow-up count, dashboard views) that can look
+good without it.
+
+## Product Architecture: Three Products, One Platform (decided 2026-07-21)
+
+Shaadi Shopping OS is explicitly three product surfaces sharing one backend/database,
+not one undifferentiated app:
+
+- **Product A — Marketplace** (`shaadishopping.com`, public): where a customer
+  discovers vendors. Already built, MongoDB-era, migrating module-by-module.
+- **Product B — Wedding Operations OS** (`/admin`, internal): used by
+  ShaadiShopping's own Founder/Sales/Operations team — the Command Center, CRM,
+  Wedding Workspace, Finance.
+- **Product C — Vendor OS** (`/vendor`): used directly by banquet halls,
+  photographers, decorators, and other vendors — self-service profile,
+  availability, bookings, earnings (`04-vendor-os.md`).
+
+Same Prisma schema, same Next.js deployment, same auth system (Milestone 4) — the
+separation is architectural (route/UI/permission boundaries), not separate
+infrastructure. **Product C is the literal seed of the multi-tenancy/SaaS
+direction below**: a Vendor OS built cleanly for ShaadiShopping's own vendors is
+most of what an eventual external-tenant SaaS product would need to reuse — which
+is exactly why the multi-tenancy question is worth keeping visible now rather than
+only when a specific external customer asks for it.
+
+## Future Direction — open, strategic, not yet decided (2026-07-21)
+
+These are real long-term ambitions for the platform, kept visible here so they
+shape decisions early (cheaply) rather than being rediscovered later (expensively)
+— same discipline as every other "flag the gap, don't silently resolve it" entry
+in this doc set. None of these are scoped or greenlit; they're direction, not
+commitments.
+
+- **Multi-tenancy** — today, every model (`Wedding`, `Vendor`, `Booking`, `User`,
+  …) implicitly belongs to one business, ShaadiShopping. If this platform is ever
+  sold to other banquet halls, wedding planners, photographers, decorators,
+  caterers, makeup artists, DJs, or event companies as their own tenant, that's a
+  fundamentally different data-isolation model (e.g. a `tenantId` on every table
+  vs. separate deployments per customer) — not a small add-on. **Nothing needs to
+  change today**, but schema/API decisions between now and Milestone 5+ should be
+  made aware this question exists, the way the identity redesign (`User`↔`Vendor`↔
+  `Customer`) was resolved early specifically because retrofitting it later would
+  have been far more expensive.
+- **SaaS licensing model** — pricing/packaging for a hypothetical external-tenant
+  version. Not scoped.
+- **Marketplace + SaaS coexistence** — ShaadiShopping's own marketplace
+  (customer-facing, ShaadiShopping is the brand) and a hypothetical white-label
+  SaaS product (other businesses' own brand) are different products sharing a
+  platform — how they coexist architecturally and commercially is undecided.
+- **White-label possibility** (future) — letting a tenant present the product
+  under their own brand, not ShaadiShopping's.
+- **Voice-first UX** (future) — relevant given the "non-technical business owner"
+  usability bar in `01-command-center.md`'s Product Principle section; not
+  designed.
+- **Beginner Mode** (future) — a simplified onboarding/first-run experience,
+  distinct from the permanent Role-Based Experience principle (which is about
+  role-relevant scope, not skill level).
+- **AI roadmap** — `07-ai-assistant.md` already specifies the 3-level
+  (Assistant/Copilot/Autonomous) framework for v1; this entry is a placeholder for
+  whatever comes after that, not a new AI plan.
+
+**Litmus test for what to build next, at every milestone from here on** (the
+user's own framing): *"Will this help convert more bookings or operate weddings
+more efficiently?"* and *"Will this still work when 10,000 vendors across many
+categories are using it?"* — build if yes, defer if no.
+
+## Relationship to the Postgres migration
+
+These specs will surface data-model requirements (new entities, new fields) that
+don't exist in `prisma/schema.prisma` yet — that schema was deliberately scoped to a
+1:1 port of the current Mongo collections (Phase A), with the `Wedding` entity and
+everything downstream of it explicitly deferred to "Phase B." Each doc in this set
+should end with a **"Data model gaps"** section listing exactly what Phase B needs to
+add, so the eventual schema migration is driven by real functional requirements
+instead of guessing ahead of time.

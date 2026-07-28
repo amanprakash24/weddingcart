@@ -1,0 +1,1294 @@
+// Phase A: 1:1 relational port of the current MongoDB/Mongoose data model
+// (Marketplace/CRM sections below). See docs/postgres-migration-plan.md.
+//
+// Phase B (added 2026-07-19): the Wedding OS schema, per docs/wedding-os/domain-model.md.
+// Deliberately NOT a continuation of Phase A's 1:1-port style — greenfield modeling
+// around the Wedding aggregate, coexisting with the migrated marketplace tables
+// rather than forcing new concepts into old ones. Phase A models below gain only
+// additive fields/back-relations (marked "Phase B addition") — nothing existing
+// is removed or renamed.
+//
+// Organized into commented sections per docs/wedding-os/domain-model.md's bounded
+// contexts: Marketplace, CRM, Wedding OS, Finance, Vendor OS, Identity, AI,
+// Shared (entities referenced across contexts by design: Task, ActivityLog,
+// ApprovalRequest). One physical file for now — the section comments are the
+// navigation aid.
+//
+// Architectural principle applied throughout Phase B, per explicit instruction:
+// "don't store dashboard state, store events." Wedding/VendorBooking/Task carry
+// ordinary mutable status fields (for query simplicity), but every meaningful
+// transition should also write an ActivityLog entry — ActivityLog is the
+// append-only event trail (no updatedAt, immutable by convention) that Health
+// Score, progress %, and AI summaries derive from, rather than a separately
+// cached "health" column that can drift from reality. This is a lighter
+// state+event-log hybrid, not full event sourcing — flagged as a deliberate
+// choice, not the only option.
+
+// Prisma 7: connection URL lives in prisma.config.ts (CLI) and is passed via a
+// driver adapter to the PrismaClient constructor at runtime (see lib/prisma.ts) —
+// `url`/`directUrl` are no longer valid in the schema's datasource block.
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums (Marketplace/CRM, Phase A) ----------
+
+enum Role {
+  SUPER_ADMIN
+  SALES
+  // Phase B addition — resolves the "Operations role" question left open in
+  // docs/wedding-os/01-command-center.md §2. Chose a real enum value over a
+  // permission-flag-on-SALES approach for consistency with how every other
+  // role in this codebase is modeled. Flagging the call, not silently assuming
+  // it's uncontroversial — reversible if a flag-based approach is preferred later.
+  OPERATIONS
+  VENDOR
+  CUSTOMER
+}
+
+enum ApplicationStatus {
+  NEW
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  CLOSED
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum ConsultationStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+}
+
+enum BlogStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// ---------- Auth (Auth.js) ----------
+
+// Credentials-only (no OAuth) for Phase A, so no Account/Session/VerificationToken
+// adapter tables — session strategy is JWT. Add the adapter tables later if an
+// OAuth provider is introduced.
+model User {
+  id           String   @id @default(uuid())
+  name         String?
+  email        String?  @unique
+  phone        String?  @unique
+  // Set only for SUPER_ADMIN / SALES / OPERATIONS (credentials login).
+  // Null for VENDOR / CUSTOMER, which authenticate via phone + OTP.
+  passwordHash String?
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Identity/role redesign (Step 4 review, 2026-07-19): one User per phone
+  // number can now hold MULTIPLE roles (e.g. a vendor who also books their own
+  // wedding as a customer) — replaces the single `role Role` field. Role-
+  // specific data lives in the profile tables below, not flat on User, so
+  // identity stays separate from capability-specific fields.
+  roles           UserRole[]
+  customerProfile CustomerProfile?
+  vendorProfile   VendorProfile?
+  employeeProfile EmployeeProfile?
+
+  // Phase B back-relations (Wedding OS) — every internal team member (Founder/
+  // Sales/Operations) and Vendor/Customer login funnels through this same User
+  // table; these are the many places Wedding OS entities reference a user.
+  weddingsAsCustomer        Wedding[]           @relation("WeddingCustomer")
+  weddingsAsCoordinator     Wedding[]           @relation("WeddingCoordinator")
+  leadsAssigned             Lead[]              @relation("LeadAssignedTo")
+  leadsAssignedByMe         Lead[]              @relation("LeadAssignedBy")
+  enquiriesAssigned         Enquiry[]           @relation("EnquiryAssignedTo")
+  enquiriesAssignedByMe     Enquiry[]           @relation("EnquiryAssignedBy")
+  consultationsAssigned     Consultation[]      @relation("ConsultationAssignedTo")
+  consultationsAssignedByMe Consultation[]      @relation("ConsultationAssignedBy")
+  tasksAssigned             Task[]              @relation("TaskAssignedTo")
+  tasksCreated              Task[]              @relation("TaskCreatedBy")
+  activitiesPerformed       ActivityLog[]       @relation("ActivityPerformedBy")
+  activitiesApproved        ActivityLog[]       @relation("ActivityApprovedBy")
+  approvalsRequested        ApprovalRequest[]   @relation("ApprovalRequestedBy")
+  approvalsGiven            ApprovalRequest[]   @relation("ApprovalApprovedBy")
+  timelineMilestonesOwned   TimelineMilestone[]
+  documentsUploaded         Document[]
+  quotationsCreated         Quotation[]
+  aiConversations           AiConversation[]
+  notifications             Notification[]
+
+  @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role
+  createdAt DateTime @default(now())
+
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+// Intentionally thin for v1 — no customer-specific field has been named by any
+// Wedding OS doc yet beyond what Couple/Wedding already capture. Exists now so
+// the identity/profile separation is established structurally; extend with
+// real fields (saved addresses, preferences) when a real need names one,
+// rather than inventing fields speculatively.
+model CustomerProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("customer_profiles")
+}
+
+// Replaces the old `User.vendorId` direct field — the link between a login
+// identity and the (already rich) Vendor business-listing record, which stays
+// unchanged as the actual profile data.
+model VendorProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendorId  String   @unique
+  vendor    Vendor   @relation(fields: [vendorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("vendor_profiles")
+}
+
+// Intentionally thin for v1, same reasoning as CustomerProfile — for
+// SUPER_ADMIN/SALES/OPERATIONS team members. Extend when a real
+// employee-specific field is needed (department, hire date, etc.).
+model EmployeeProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@map("employee_profiles")
+}
+
+// Ephemeral phone verification for public lead capture (not a login session).
+// No DB-native TTL in Postgres — app must filter `WHERE expiresAt > now()`,
+// and a daily cron/cleanup job should delete expired rows.
+model Otp {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@map("otps")
+}
+
+// Security checklist item #2 (docs/security-checklist.md) — rate limiting on
+// login attempts. No in-memory approach (a Map, a simple counter) is reliable
+// here: Vercel is serverless/multi-instance, so in-memory state doesn't
+// persist or share across invocations. Postgres-backed instead — consistent
+// with the frozen stack (no new infra like Redis) and works correctly
+// regardless of how many instances are handling requests. One row per
+// attempt (not a running counter) so the lockout window is a simple count
+// query, not a field that needs careful concurrent-update handling.
+model LoginAttempt {
+  id         String   @id @default(uuid())
+  identifier String // email or phone attempted against a Credentials provider
+  success    Boolean
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+  @@map("login_attempts")
+}
+
+// ---------- Catalog ----------
+
+model Category {
+  id            String   @id @default(uuid())
+  // Original Mongo `_id` (ObjectId, stringified), preserved on every migrated
+  // table (not User/Otp — those have no Mongo source). Exists solely so
+  // scripts/validate-post-migration.mjs can match records across the two
+  // databases for checksum comparison — never exposed via any API response.
+  legacyMongoId String?  @unique
+  slug          String   @unique // was Mongo's human-readable `id` field (e.g. "venue", "makeup")
+  name          String
+  icon          String
+  description   String
+  image         String
+  isSpecial     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vendors            Vendor[]
+  vendorApplications VendorApplication[]
+  commissionRates    CommissionRate[] // Phase B — nullable-categoryId rows are the global default rate
+
+  @@map("categories")
+}
+
+model Vendor {
+  id               String   @id @default(uuid())
+  legacyMongoId    String?  @unique
+  slug             String   @unique // was Mongo's human-readable `id` field, still used in /vendors/[id] URLs
+  name             String
+  ownerName        String   @default("")
+  ownerPhone       String   @default("")
+  ownerEmail       String   @default("")
+  categoryId       String
+  category         Category @relation(fields: [categoryId], references: [id])
+  city             String
+  address          String   @default("")
+  mapEmbedUrl      String   @default("")
+  priceMin         Int
+  priceMax         Int
+  rating           Float    @default(4.5)
+  reviewCount      Int      @default(0)
+  image            String
+  images           String[] @default([])
+  virtualTourVideo String   @default("")
+  description      String
+  features         String[] @default([])
+  isFeatured       Boolean  @default(false)
+  sortOrder        Int      @default(999)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  packages      VendorPackage[]
+  faqs          VendorFaq[]
+  application   VendorApplication?
+  vendorProfile VendorProfile? // Phase B — replaces the old direct User.vendorId link
+  bookingItems  BookingItem[]
+  enquiries     Enquiry[]
+
+  // Phase B (Wedding OS / Vendor OS / Finance)
+  vendorBookings VendorBooking[]
+  payouts        Payout[]
+  availability   VendorAvailability[]
+  reviews        Review[]
+  paymentDetails VendorPaymentDetails?
+
+  @@index([categoryId, city, rating])
+  @@map("vendors")
+}
+
+model VendorPackage {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  vendorId      String
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  name          String
+  description   String
+  price         Int
+  features      String[] @default([])
+  isPopular     Boolean  @default(false)
+  isPerPlate    Boolean  @default(false)
+  image         String   @default("")
+
+  vendorBookings VendorBooking[] // Phase B
+
+  @@map("vendor_packages")
+}
+
+model VendorFaq {
+  id            String  @id @default(uuid())
+  legacyMongoId String? @unique
+  vendorId      String
+  vendor        Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  question      String
+  answer        String
+
+  @@map("vendor_faqs")
+}
+
+model VendorApplication {
+  id              String            @id @default(uuid())
+  legacyMongoId   String?           @unique
+  businessName    String
+  ownerName       String
+  ownerPhone      String
+  ownerEmail      String
+  categoryId      String
+  category        Category          @relation(fields: [categoryId], references: [id])
+  city            String
+  priceMin        Int               @default(0)
+  priceMax        Int               @default(0)
+  experience      String            @default("")
+  description     String            @default("")
+  instagram       String            @default("")
+  website         String            @default("")
+  coverImage      String            @default("")
+  portfolioImages String[]          @default([])
+  foodMenuImages  String[]          @default([])
+  status          ApplicationStatus @default(NEW)
+  vendorId        String?           @unique
+  vendor          Vendor?           @relation(fields: [vendorId], references: [id])
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("vendor_applications")
+}
+
+// ---------- Leads / bookings / consultations ----------
+// customerId is reserved (nullable, no FK enforced yet) on every lead-shaped
+// table so Phase B can link these rows to a Customer/Wedding without a
+// second destructive schema migration.
+
+model Lead {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  phone         String
+  whatsapp      Boolean  @default(false)
+  source        String   @default("popup")
+  customerId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Phase B (CRM, docs/wedding-os/02-crm.md) — additive, existing `customerId`
+  // stays as the eventual Wedding link (populated on WON, see Wedding.sourceLeadId).
+  pipelineStage    PipelineStage @default(NEW)
+  assignedToId     String?
+  assignedTo       User?         @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
+  // Sprint 5.3 — "Assigned To/By/At" per the workflow-engine reframing; full
+  // assignment history also lands in ActivityLog(ASSIGNED), these columns are
+  // just the current value, same pattern as lostReason below.
+  assignedById     String?
+  assignedBy       User?         @relation("LeadAssignedBy", fields: [assignedById], references: [id])
+  assignedAt       DateTime?
+  // lostReason is a closed set (Sprint 5.3 state machine) with an optional
+  // free-text elaboration only used when OTHER is picked. holdReason is free
+  // text (no closed set requested) and clears once a lead leaves ON_HOLD —
+  // the permanent record of both lives in ActivityLog(STATUS_CHANGED).
+  lostReason       LostReason?
+  lostReasonDetail String?
+  holdReason       String?
+  tasks            Task[]
+  activities       ActivityLog[]
+  quotations       Quotation[]
+  insights         LeadInsight[]
+  wedding          Wedding?
+
+  @@map("leads")
+}
+
+model Enquiry {
+  id             String        @id @default(uuid())
+  legacyMongoId  String?       @unique
+  vendorId       String
+  vendor         Vendor        @relation(fields: [vendorId], references: [id])
+  vendorName     String
+  vendorCategory String
+  name           String
+  phone          String
+  email          String?
+  city           String
+  eventDate      String
+  guestCount     String?
+  eventType      String
+  message        String?
+  status         EnquiryStatus @default(NEW)
+  customerId     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Phase B (CRM) — see Lead's identical addition for the reasoning
+  pipelineStage    PipelineStage @default(NEW)
+  assignedToId     String?
+  assignedTo       User?         @relation("EnquiryAssignedTo", fields: [assignedToId], references: [id])
+  assignedById     String?
+  assignedBy       User?         @relation("EnquiryAssignedBy", fields: [assignedById], references: [id])
+  assignedAt       DateTime?
+  lostReason       LostReason?
+  lostReasonDetail String?
+  holdReason       String?
+  tasks            Task[]
+  activities       ActivityLog[]
+  quotations       Quotation[]
+  insights         LeadInsight[]
+  wedding          Wedding?
+
+  @@map("enquiries")
+}
+
+model Consultation {
+  id             String             @id @default(uuid())
+  legacyMongoId  String?            @unique
+  name           String
+  phone          String
+  email          String             @default("")
+  city           String?
+  eventType      String             @default("wedding")
+  weddingDate    String
+  days           Int
+  guestCount     Int
+  foodPreference String             @default("veg")
+  services       String[]           @default([])
+  venueType      String             @default("")
+  preferredTime  String?
+  message        String?
+  cartItems      Json?
+  totalBudget    Int?
+  status         ConsultationStatus @default(NEW)
+  // weddingStyle / budgetRange / consultationDate were written by the API but
+  // absent from the Mongoose schema (drift). Live-data audit (2026-07-19,
+  // 16/16 docs) found them 0% populated — dropped rather than carried forward
+  // as permanently-empty columns. See docs/postgres-migration-plan.md §5.
+  customerId     String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  // Phase B (CRM) — see Lead's identical addition for the reasoning
+  pipelineStage    PipelineStage @default(NEW)
+  assignedToId     String?
+  assignedTo       User?         @relation("ConsultationAssignedTo", fields: [assignedToId], references: [id])
+  assignedById     String?
+  assignedBy       User?         @relation("ConsultationAssignedBy", fields: [assignedById], references: [id])
+  assignedAt       DateTime?
+  lostReason       LostReason?
+  lostReasonDetail String?
+  holdReason       String?
+  tasks            Task[]
+  activities       ActivityLog[]
+  quotations       Quotation[]
+  insights         LeadInsight[]
+  wedding          Wedding?
+
+  @@map("consultations")
+}
+
+model Booking {
+  id            String        @id @default(uuid())
+  legacyMongoId String?       @unique
+  name          String
+  phone         String
+  city          String
+  total         Int
+  status        BookingStatus @default(NEW)
+  customerId    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Phase B — resolved 2026-07-19 (docs/wedding-os/domain-model.md §5): collected
+  // at checkout, not at confirmation. weddingDate is the "Booking Date" concept
+  // (customer's intended date, may change) — becomes the first WeddingEvent's
+  // default date on conversion, distinct from WeddingEvent.date going forward.
+  // Nullable at the DB level only because existing Bookings predate this field —
+  // the checkout form must treat it as required for every new submission
+  // (application-level validation, not a DB constraint, so historical rows don't
+  // need a backfill to stay valid).
+  weddingDate DateTime?
+  weddingType String?
+  guestCount  Int?
+
+  items   BookingItem[]
+  wedding Wedding? // set once status reaches CONFIRMED and this converts
+
+  @@map("bookings")
+}
+
+model BookingItem {
+  id             String  @id @default(uuid())
+  legacyMongoId  String? @unique
+  bookingId      String
+  booking        Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vendorId       String?
+  vendor         Vendor? @relation(fields: [vendorId], references: [id])
+  vendorName     String
+  vendorCategory String
+  packageName    String
+  price          Int
+  quantity       Int
+
+  @@map("booking_items")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  legacyMongoId String?       @unique
+  invoiceNumber String        @unique
+  clientName    String
+  clientPhone   String
+  clientEmail   String?
+  clientCity    String?
+  eventDate     String?
+  eventType     String?
+  subtotal      Int
+  discount      Int           @default(0)
+  gstEnabled    Boolean       @default(true)
+  gstAmount     Int           @default(0)
+  total         Int
+  amountPaid    Int           @default(0)
+  notes         String?
+  status        InvoiceStatus @default(DRAFT)
+  customerId    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items InvoiceItem[]
+
+  // Phase B (Finance, docs/wedding-os/06-finance.md) — weddingId links this
+  // invoice to a Wedding once one exists. `amountPaid` above stays as a Phase A
+  // column for now; 06-finance.md §2 proposes it become computed-on-read from
+  // `payments` in Step 3's application layer, not renamed/removed here to avoid
+  // a breaking change to Milestone 2's existing repository/service code.
+  weddingId String?
+  wedding   Wedding?  @relation(fields: [weddingId], references: [id])
+  payments  Payment[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id            String  @id @default(uuid())
+  legacyMongoId String? @unique
+  invoiceId     String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description   String
+  vendorName    String?
+  amount        Int
+  quantity      Int     @default(1)
+
+  @@map("invoice_items")
+}
+
+// ---------- Content ----------
+
+model Blog {
+  id             String     @id @default(uuid())
+  legacyMongoId  String?    @unique
+  title          String
+  slug           String     @unique
+  excerpt        String     @default("")
+  content        String
+  coverImage     String     @default("")
+  author         String     @default("ShaadiShopping Team")
+  category       String     @default("Wedding Tips")
+  tags           String[]   @default([])
+  seoTitle       String     @default("")
+  seoDescription String     @default("")
+  status         BlogStatus @default(DRAFT)
+  publishedAt    DateTime?
+  readTime       Int        @default(1)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([category, status])
+  @@map("blogs")
+}
+
+// =====================================================================
+// CRM (Phase B additions — docs/wedding-os/02-crm.md)
+// Lead/Enquiry/Consultation stay separate capture tables (Phase A decision,
+// reaffirmed in domain-model.md) but share this pipeline shape.
+// =====================================================================
+
+enum PipelineStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  SITE_VISIT_SCHEDULED
+  QUOTATION_SENT
+  NEGOTIATION
+  WON
+  LOST
+  // Sprint 5.3 — pause state, not terminal; resumes to any active stage.
+  // Displays as "On Hold" — see components/crm/types.ts's STAGE_LABELS.
+  ON_HOLD
+}
+
+// Sprint 5.3 — closed set for the LOST transition (docs/wedding-os/02-crm.md
+// state machine). OTHER pairs with Lead/Enquiry/Consultation.lostReasonDetail.
+enum LostReason {
+  BUDGET_ISSUE
+  DATE_UNAVAILABLE
+  CHOSE_COMPETITOR
+  NO_RESPONSE
+  OTHER
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Quotation {
+  id             String          @id @default(uuid())
+  // Exactly one of these three should be set (application-enforced — a
+  // Quotation belongs to whichever capture entity is being worked, not all three).
+  leadId         String?
+  lead           Lead?           @relation(fields: [leadId], references: [id])
+  enquiryId      String?
+  enquiry        Enquiry?        @relation(fields: [enquiryId], references: [id])
+  consultationId String?
+  consultation   Consultation?   @relation(fields: [consultationId], references: [id])
+  amount         Int
+  validUntil     DateTime?
+  status         QuotationStatus @default(DRAFT)
+  pdfUrl         String?
+  createdById    String?
+  createdBy      User?           @relation(fields: [createdById], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("quotations")
+}
+
+// docs/wedding-os/02-crm.md "AI insight storage" — a separate, versioned
+// entity rather than nullable columns on Lead/Enquiry/Consultation, so
+// regenerating a summary doesn't silently overwrite history and AI vs.
+// human provenance stays auditable via generatedBy.
+enum InsightGeneratedBy {
+  AI
+  HUMAN
+}
+
+model LeadInsight {
+  id String @id @default(uuid())
+
+  // Exactly one of these three is set (application-enforced), same pattern as Quotation.
+  leadId         String?
+  lead           Lead?         @relation(fields: [leadId], references: [id])
+  enquiryId      String?
+  enquiry        Enquiry?      @relation(fields: [enquiryId], references: [id])
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+
+  generatedBy InsightGeneratedBy
+  // Specific provenance (e.g. "manual", "gpt-5") — generatedBy is the coarse AI/HUMAN category.
+  source      String?
+  summary     String
+  nextAction  String?
+  sentiment   String?
+  confidence  Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("lead_insights")
+}
+
+// =====================================================================
+// Wedding OS (Phase B — docs/wedding-os/03-wedding-workspace.md and friends)
+// Wedding is the aggregate root; see docs/wedding-os/domain-model.md §3.
+// =====================================================================
+
+enum WeddingStatus {
+  PLANNING
+  ACTIVE
+  // Resumable, like ON_HOLD in PipelineStage — a stalled wedding needs to stay
+  // visible as stalled on dashboards, not silently look identical to normal
+  // progress just because a WeddingEvent.date got pushed back. Decided
+  // 2026-07-22, domain-model.md §5.2.
+  POSTPONED
+  COMPLETED
+  CANCELLED
+}
+
+// NOT a health indicator (ON_TRACK/AT_RISK/etc.) — that's computed from
+// ActivityLog + child entity state at read time, per the "store events, not
+// dashboard state" principle. This is the Wedding's actual lifecycle stage.
+enum WeddingSource {
+  CRM
+  BOOKING
+}
+
+model Wedding {
+  id            String        @id @default(uuid())
+  weddingNumber String        @unique // human-readable reference, e.g. WED-2026-0001
+  status        WeddingStatus @default(PLANNING)
+  source        WeddingSource
+  primaryDate   DateTime // convenience cache of the main event's date — WeddingEvent rows are the source of truth
+  city          String
+  guestCount    Int?
+  weddingType   String?
+  totalBudget   Int? // planned budget; seeded from Consultation.totalBudget or Booking.total, editable after
+
+  // Exactly one of these four is set, matching WeddingSource — the two live
+  // conversion paths resolved in domain-model.md §5. @unique enforces one
+  // Wedding per source record (a Lead can't spawn two Weddings).
+  sourceLeadId         String?       @unique
+  sourceLead           Lead?         @relation(fields: [sourceLeadId], references: [id])
+  sourceEnquiryId      String?       @unique
+  sourceEnquiry        Enquiry?      @relation(fields: [sourceEnquiryId], references: [id])
+  sourceConsultationId String?       @unique
+  sourceConsultation   Consultation? @relation(fields: [sourceConsultationId], references: [id])
+  sourceBookingId      String?       @unique
+  sourceBooking        Booking?      @relation(fields: [sourceBookingId], references: [id])
+
+  customerId    String?
+  customer      User?   @relation("WeddingCustomer", fields: [customerId], references: [id])
+  coordinatorId String?
+  coordinator   User?   @relation("WeddingCoordinator", fields: [coordinatorId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  // Distinct from `updatedAt` (which any field edit touches) — needed for
+  // "time from creation to completion" reporting. Found during the Step 4
+  // workflow review (Wedding Completion), added directly rather than flagged
+  // since it's a safe, uncontroversial addition.
+  completedAt DateTime?
+
+  couple             Couple?
+  events             WeddingEvent[]
+  tasks              Task[]
+  activities         ActivityLog[]
+  documents          Document[]
+  invoices           Invoice[]
+  timelineMilestones TimelineMilestone[]
+  reviews            Review[]
+  aiConversations    AiConversation[]
+
+  @@map("weddings")
+}
+
+model Couple {
+  id                String   @id @default(uuid())
+  weddingId         String   @unique
+  wedding           Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  brideName         String?
+  bridePhone        String?
+  groomName         String?
+  groomPhone        String?
+  familyContacts    Json? // flexible [{name, relation, phone}] list — a rigid sub-table is unwarranted for v1
+  preferredLanguage String?
+  preferences       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("couples")
+}
+
+enum WeddingEventType {
+  ENGAGEMENT
+  HALDI
+  MEHNDI
+  SANGEET
+  WEDDING
+  RECEPTION
+  OTHER
+}
+
+model WeddingEvent {
+  id           String           @id @default(uuid())
+  weddingId    String
+  wedding      Wedding          @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  type         WeddingEventType
+  label        String? // overrides the default type label — required in practice when type=OTHER
+  date         DateTime
+  startTime    String? // simple "18:00"-style string — a full TZ-aware time type is unwarranted for v1
+  venueName    String?
+  venueAddress String?
+  city         String
+  budget       Int? // planned budget for THIS event; Wedding.totalBudget is the rollup, not duplicated here
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  vendorBookings VendorBooking[]
+  tasks          Task[]
+
+  @@map("wedding_events")
+}
+
+enum VendorBookingStatus {
+  PENDING_VENDOR_CONFIRMATION
+  CONFIRMED
+  DECLINED
+  // Only used if the "coordinator proposes, customer approves" UX direction
+  // from docs/wedding-os/05-customer-portal.md §3 is the one chosen — included
+  // now so Step 3 doesn't need a second migration if it is.
+  CUSTOMER_APPROVAL_PENDING
+  CANCELLED
+  COMPLETED
+}
+
+model VendorBooking {
+  id              String              @id @default(uuid())
+  weddingEventId  String
+  weddingEvent    WeddingEvent        @relation(fields: [weddingEventId], references: [id], onDelete: Cascade)
+  vendorId        String
+  vendor          Vendor              @relation(fields: [vendorId], references: [id])
+  vendorPackageId String?
+  vendorPackage   VendorPackage?      @relation(fields: [vendorPackageId], references: [id])
+  status          VendorBookingStatus @default(PENDING_VENDOR_CONFIRMATION)
+  agreedPrice     Int
+  declineReason   String?
+  respondedAt     DateTime? // vendor's accept/decline timestamp — feeds Vendor Score's response-time component
+  onTimeService   Boolean? // set post-event; feeds Vendor Score's on-time component (docs/wedding-os/04-vendor-os.md §7)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  tasks      Task[]
+  activities ActivityLog[]
+  documents  Document[]
+  payouts    Payout[]
+
+  @@map("vendor_bookings")
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+model TimelineMilestone {
+  id          String              @id @default(uuid())
+  weddingId   String
+  wedding     Wedding             @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  label       String // e.g. "Venue Booked" — the default 11-step sequence in 03-wedding-workspace.md §3 is a starting template, not a fixed schema
+  sortOrder   Int
+  ownerId     String?
+  owner       User?               @relation(fields: [ownerId], references: [id])
+  dueDate     DateTime?
+  status      MilestoneStatus     @default(PENDING)
+  // v1 supports a single upstream dependency per milestone, not a full DAG —
+  // sufficient for a linear-with-occasional-branches timeline, revisit if a
+  // real wedding needs more complex dependency graphs than this expresses.
+  dependsOnId String?
+  dependsOn   TimelineMilestone?  @relation("MilestoneDependency", fields: [dependsOnId], references: [id])
+  dependents  TimelineMilestone[] @relation("MilestoneDependency")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("timeline_milestones")
+}
+
+enum DocumentCategory {
+  CONTRACT
+  QUOTATION
+  INVOICE
+  ID_PROOF
+  VENUE_AGREEMENT
+  FLOOR_PLAN
+  MENU
+  RECEIPT
+  OTHER
+}
+
+enum DocumentVisibility {
+  INTERNAL
+  CUSTOMER_VISIBLE
+}
+
+model Document {
+  id              String             @id @default(uuid())
+  weddingId       String
+  wedding         Wedding            @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  vendorBookingId String? // set for vendor-specific docs (quotations/receipts tied to one VendorBooking)
+  vendorBooking   VendorBooking?     @relation(fields: [vendorBookingId], references: [id])
+  category        DocumentCategory
+  // Default INTERNAL is deliberate — a document must be explicitly marked
+  // customer-visible, not accidentally exposed by omission. See
+  // docs/wedding-os/05-customer-portal.md §3's Documents section.
+  visibility      DocumentVisibility @default(INTERNAL)
+  fileName        String
+  url             String // Cloudinary URL — same upload pattern as every other image/file in this app, no new storage system
+  uploadedById    String?
+  uploadedBy      User?              @relation(fields: [uploadedById], references: [id])
+  createdAt       DateTime           @default(now())
+
+  @@map("documents")
+}
+
+// =====================================================================
+// Shared / cross-context entities (docs/wedding-os/domain-model.md §1)
+// Referenced by both CRM and Wedding contexts by design — unifying these
+// avoids two near-identical, drifting systems (one per context).
+// =====================================================================
+
+enum TaskContext {
+  SALES_FOLLOWUP
+  WEDDING_TASK
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  context     TaskContext
+  title       String
+  description String?
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  dueAt       DateTime?
+  completedAt DateTime?
+
+  assignedToId String?
+  assignedTo   User?   @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+  createdById  String?
+  createdBy    User?   @relation("TaskCreatedBy", fields: [createdById], references: [id])
+
+  // Exactly one subject is set, matching `context` — SALES_FOLLOWUP tasks
+  // reference one of lead/enquiry/consultation, WEDDING_TASK tasks reference
+  // wedding (and optionally a specific event/vendorBooking within it).
+  leadId          String?
+  lead            Lead?          @relation(fields: [leadId], references: [id])
+  enquiryId       String?
+  enquiry         Enquiry?       @relation(fields: [enquiryId], references: [id])
+  consultationId  String?
+  consultation    Consultation?  @relation(fields: [consultationId], references: [id])
+  weddingId       String?
+  wedding         Wedding?       @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  weddingEventId  String?
+  weddingEvent    WeddingEvent?  @relation(fields: [weddingEventId], references: [id])
+  vendorBookingId String?
+  vendorBooking   VendorBooking? @relation(fields: [vendorBookingId], references: [id])
+
+  // Per docs/wedding-os/07-ai-assistant.md — AI can suggest (Level 2) but not
+  // create unilaterally in v1; a suggested Task should go through
+  // ApprovalRequest before this flag is trusted as "a human signed off."
+  aiSuggested Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("tasks")
+}
+
+enum ActivityType {
+  CALL
+  WHATSAPP
+  EMAIL
+  MEETING
+  NOTE // "Notes" from early sketches — modeled as an entry type here, not a 4th table (domain-model.md §4)
+  // System-generated event types — this list is what fulfills "store events,
+  // not state" in practice. Extend this enum, don't add parallel status columns.
+  STATUS_CHANGED
+  VENDOR_CONFIRMED
+  VENDOR_DECLINED
+  PAYMENT_RECEIVED
+  TASK_CREATED
+  TASK_COMPLETED
+  TASK_OVERDUE
+  TIMELINE_DELAYED
+  DOCUMENT_UPLOADED
+  AI_DRAFT_CREATED
+  ASSIGNED // Sprint 5.3 — lead/enquiry/consultation reassignment
+}
+
+model ActivityLog {
+  id      String       @id @default(uuid())
+  type    ActivityType
+  summary String // short human-readable line, e.g. "Vendor confirmed for Sangeet"
+  detail  String? // longer note/body — call notes, AI draft content, etc.
+
+  // Per docs/wedding-os/07-ai-assistant.md §3's guardrail: every AI-drafted
+  // entry must be flagged as such, and if it was externally sent, who approved it.
+  aiGenerated   Boolean @default(false)
+  approvedById  String?
+  approvedBy    User?   @relation("ActivityApprovedBy", fields: [approvedById], references: [id])
+  performedById String?
+  performedBy   User?   @relation("ActivityPerformedBy", fields: [performedById], references: [id])
+
+  // Sprint 5.4 — structured mirror of a STATUS_CHANGED entry's stage
+  // transition, populated only by leadWorkspace.service.ts's transitionStage().
+  // `summary` stays the human-readable line; Pipeline Velocity and similar
+  // analytics read these instead of parsing display text.
+  fromStage PipelineStage?
+  toStage   PipelineStage?
+
+  // Same "exactly one subject" pattern as Task — spans pre- and
+  // post-conversion so a coordinator never needs a separate CRM log.
+  leadId          String?
+  lead            Lead?          @relation(fields: [leadId], references: [id])
+  enquiryId       String?
+  enquiry         Enquiry?       @relation(fields: [enquiryId], references: [id])
+  consultationId  String?
+  consultation    Consultation?  @relation(fields: [consultationId], references: [id])
+  weddingId       String?
+  wedding         Wedding?       @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  vendorBookingId String?
+  vendorBooking   VendorBooking? @relation(fields: [vendorBookingId], references: [id])
+
+  // Deliberately no `updatedAt` — append-only/immutable by convention, the
+  // event trail this system's Health Score and AI summaries derive from.
+  createdAt DateTime @default(now())
+
+  @@index([weddingId, createdAt])
+  @@map("activity_logs")
+}
+
+enum ApprovalSubjectType {
+  VENDOR_PROFILE_CHANGE
+  AI_DRAFT
+  CUSTOMER_VENDOR_APPROVAL
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Unifies three previously-separate-sounding approval flows named across
+// 04-vendor-os.md, 05-customer-portal.md, and 07-ai-assistant.md — one entity,
+// three subject types, instead of three near-identical tables that would
+// drift from each other over time. `subjectId` is resolved at the application
+// layer based on `subjectType` (no DB-level polymorphic FK in Postgres).
+model ApprovalRequest {
+  id            String              @id @default(uuid())
+  subjectType   ApprovalSubjectType
+  subjectId     String
+  requestedById String?
+  requestedBy   User?               @relation("ApprovalRequestedBy", fields: [requestedById], references: [id])
+  status        ApprovalStatus      @default(PENDING)
+  approvedById  String?
+  approvedBy    User?               @relation("ApprovalApprovedBy", fields: [approvedById], references: [id])
+  approvedAt    DateTime?
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("approval_requests")
+}
+
+// =====================================================================
+// Finance (Phase B — docs/wedding-os/06-finance.md)
+// Deliberately does NOT encode GST/tax treatment — only the data shape
+// needed to support whatever structure a CA confirms. See the doc for why.
+// =====================================================================
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  invoiceId         String
+  invoice           Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount            Int
+  // Razorpay's method string (upi/card/netbanking/wallet/...) — kept as plain
+  // text rather than a rigid enum since Razorpay's own method list can change
+  // independent of this schema.
+  method            String
+  razorpayPaymentId String?       @unique
+  razorpayOrderId   String?
+  status            PaymentStatus @default(SUCCESS)
+  paidAt            DateTime      @default(now())
+  createdAt         DateTime      @default(now())
+
+  @@map("payments")
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+model Payout {
+  id               String        @id @default(uuid())
+  vendorBookingId  String
+  vendorBooking    VendorBooking @relation(fields: [vendorBookingId], references: [id])
+  vendorId         String
+  vendor           Vendor        @relation(fields: [vendorId], references: [id])
+  grossAmount      Int // VendorBooking.agreedPrice at time of payout
+  // Rate is a snapshot at payout time, not a live reference to CommissionRate —
+  // so a later rate-config change never silently rewrites historical payouts.
+  commissionRate   Float
+  commissionAmount Int
+  netAmount        Int
+  status           PayoutStatus  @default(PENDING)
+  payoutBatchId    String?
+  payoutBatch      PayoutBatch?  @relation(fields: [payoutBatchId], references: [id])
+  paidAt           DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@map("payouts")
+}
+
+// Only meaningful if payouts end up cyclical/batched rather than per-booking —
+// docs/wedding-os/06-finance.md flags payout timing as still an open business
+// decision. Included now so Step 3 doesn't need a second migration either way.
+model PayoutBatch {
+  id          String    @id @default(uuid())
+  status      String    @default("PENDING")
+  totalAmount Int
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  payouts Payout[]
+
+  @@map("payout_batches")
+}
+
+// null categoryId = the global default rate. Only needed if commission varies
+// by category — docs/wedding-os/06-finance.md §4 flags this as undecided;
+// modeled now so both a flat and a per-category rate are representable.
+model CommissionRate {
+  id            String    @id @default(uuid())
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id])
+  rate          Float // percentage, e.g. 10.0 = 10%
+  effectiveFrom DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+
+  @@map("commission_rates")
+}
+
+// =====================================================================
+// Vendor OS (Phase B — docs/wedding-os/04-vendor-os.md)
+// =====================================================================
+
+enum AvailabilityStatus {
+  AVAILABLE
+  TENTATIVE
+  BOOKED
+  BLOCKED
+}
+
+model VendorAvailability {
+  id        String             @id @default(uuid())
+  vendorId  String
+  vendor    Vendor             @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  date      DateTime           @db.Date
+  status    AvailabilityStatus @default(AVAILABLE)
+  note      String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@unique([vendorId, date])
+  @@map("vendor_availability")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  vendorId   String
+  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  weddingId  String?
+  wedding    Wedding? @relation(fields: [weddingId], references: [id])
+  authorName String
+  rating     Int // 1-5
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@map("reviews")
+}
+
+// Isolated from Vendor deliberately — sensitive/regulated data (bank/UPI
+// details) benefits from its own table with stricter access control, not just
+// a flag on the main Vendor record. Application layer must encrypt at rest;
+// Prisma does not do this automatically. See docs/wedding-os/06-finance.md §3.
+model VendorPaymentDetails {
+  id                String   @id @default(uuid())
+  vendorId          String   @unique
+  vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  accountHolderName String?
+  bankAccountNumber String? // TODO Step 3 implementation: encrypt at rest before this goes live
+  ifscCode          String?
+  upiId             String?
+  gstin             String? // docs/wedding-os/06-finance.md §5 — pending CA confirmation of actual usage
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("vendor_payment_details")
+}
+
+// =====================================================================
+// AI (Phase B — docs/wedding-os/07-ai-assistant.md)
+// v1 scope is Level 1 (Assistant) + Level 2 (Copilot) only — this table logs
+// every AI interaction regardless of level, for the same audit-trail reason
+// ActivityLog.aiGenerated exists.
+// =====================================================================
+
+enum AiConversationChannel {
+  CUSTOMER_QA
+  SALES_DRAFT
+  VENDOR_DRAFT
+  SUMMARY
+}
+
+model AiConversation {
+  id        String                @id @default(uuid())
+  channel   AiConversationChannel
+  weddingId String?
+  wedding   Wedding?              @relation(fields: [weddingId], references: [id])
+  userId    String?
+  user      User?                 @relation(fields: [userId], references: [id])
+  prompt    String
+  response  String
+  createdAt DateTime              @default(now())
+
+  @@map("ai_conversations")
+}
+
+// =====================================================================
+// Notifications — surfaced in this pass because 04/05/07 all named
+// "reminder"/"alert"/"notify" behaviors without a delivery mechanism behind
+// them. Distinct from ActivityLog: ActivityLog records what happened,
+// Notification is about alerting a specific user about it.
+// =====================================================================
+
+enum NotificationChannel {
+  IN_APP
+  WHATSAPP
+  EMAIL
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  READ
+  FAILED
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id])
+  channel   NotificationChannel
+  title     String
+  body      String
+  status    NotificationStatus  @default(PENDING)
+  readAt    DateTime?
+  sentAt    DateTime?
+  // Loose reference, not a hard FK — a notification can be about many kinds of
+  // subject (wedding, task, payment reminder); resolved at the application layer.
+  weddingId String?
+  taskId    String?
+  createdAt DateTime            @default(now())
+
+  @@map("notifications")
+}

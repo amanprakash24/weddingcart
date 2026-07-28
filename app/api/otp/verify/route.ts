@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import OTP from '@/lib/models/OTP';
+import { otpService } from '@/services/otp.service';
 
 export async function POST(req: Request) {
   try {
@@ -10,15 +9,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Phone and code are required' }, { status: 400 });
     }
 
-    await connectDB();
+    const valid = await otpService.verifyCode(phone, code);
 
-    const record = await OTP.findOne({ phone, code });
-
-    if (!record) {
+    if (!valid) {
       return NextResponse.json({ success: false, message: 'Invalid or expired OTP. Please try again.' }, { status: 400 });
     }
-
-    await OTP.deleteOne({ _id: record._id });
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -1,0 +1,10 @@
+{
+  "startedAt": "2026-07-19T18:07:28.589Z",
+  "finishedAt": "2026-07-19T18:07:32.181Z",
+  "sourceCount": 47,
+  "migrated": 47,
+  "skipped": 0,
+  "failed": 0,
+  "validationStatus": "PASS",
+  "durationMs": 3592
+}

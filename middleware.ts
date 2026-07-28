@@ -1,56 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
+import { ADMIN_ROLES, Role } from '@/lib/auth/roles';
 
-const COOKIE_NAME = 'admin_session';
-
-async function hmacHex(secret: string, data: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  return Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-async function validTokens(): Promise<string[]> {
-  const secret = process.env.ADMIN_SECRET || 'fallback-secret';
-  const [adminToken, superToken] = await Promise.all([
-    hmacHex(secret, `${process.env.ADMIN_USERNAME}:${process.env.ADMIN_PASSWORD}`),
-    hmacHex(secret, `${process.env.SUPER_ADMIN_USERNAME}:${process.env.SUPER_ADMIN_PASSWORD}`),
-  ]);
-  return [adminToken, superToken];
-}
+// Milestone 4 (Authentication Transition): NextAuth JWT replaces the legacy
+// HMAC admin_session cookie. getToken() reads/verifies the JWT cookie
+// directly (Edge-compatible, no DB round-trip), unlike lib/auth/session.ts's
+// getSession(), which needs the full NextAuth request context middleware
+// doesn't have.
+const PORTALS: { prefix: string; loginPath: string; roles: Role[] }[] = [
+  { prefix: '/admin', loginPath: '/admin/login', roles: ADMIN_ROLES },
+  { prefix: '/vendor', loginPath: '/vendor/login', roles: [Role.VENDOR] },
+  { prefix: '/customer', loginPath: '/customer/login', roles: [Role.CUSTOMER] },
+];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith('/admin/login') || pathname.startsWith('/api/admin/login')) {
-    return NextResponse.next();
-  }
+  const portal = PORTALS.find((p) => pathname.startsWith(p.prefix));
+  if (!portal) return NextResponse.next();
 
-  if (!pathname.startsWith('/admin')) {
-    return NextResponse.next();
-  }
+  // The login page itself must stay reachable while logged out.
+  if (pathname.startsWith(portal.loginPath)) return NextResponse.next();
 
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  if (!token) {
-    return NextResponse.redirect(new URL('/admin/login', req.url));
-  }
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const roles = (token?.roles as Role[] | undefined) ?? [];
 
-  const allowed = await validTokens();
-  if (!allowed.includes(token)) {
-    const res = NextResponse.redirect(new URL('/admin/login', req.url));
-    res.cookies.set(COOKIE_NAME, '', { maxAge: 0, path: '/' });
-    return res;
+  if (!token || !roles.some((role) => portal.roles.includes(role))) {
+    return NextResponse.redirect(new URL(portal.loginPath, req.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/vendor/:path*', '/customer/:path*'],
 };

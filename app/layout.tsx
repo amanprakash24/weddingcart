@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { Playfair_Display, Cormorant_Garamond, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
+import AuthSessionProvider from '@/components/AuthSessionProvider';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CartDrawer from '@/components/CartDrawer';
@@ -99,17 +100,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body className="bg-[#FFFAF5] text-[#2D2D2D] min-h-screen antialiased" suppressHydrationWarning>
-        <CartProvider>
+        <AuthSessionProvider>
+          <CartProvider>
 
-          <Suspense><ScrollToTop /></Suspense>
-          <Navbar />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
-          <CartDrawer />
-          <CartFAB />
-          <ContactBanner />
-          <Suspense><LeadCapturePopup /></Suspense>
-        </CartProvider>
+            <Suspense><ScrollToTop /></Suspense>
+            <Navbar />
+            <main className="min-h-screen">{children}</main>
+            <Footer />
+            <CartDrawer />
+            <CartFAB />
+            <ContactBanner />
+            <Suspense><LeadCapturePopup /></Suspense>
+          </CartProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );
