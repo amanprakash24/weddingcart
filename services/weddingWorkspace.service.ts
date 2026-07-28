@@ -4,6 +4,7 @@ import { weddingRepository } from '@/repositories/wedding.repository';
 import { coupleRepository } from '@/repositories/couple.repository';
 import { weddingEventRepository } from '@/repositories/weddingEvent.repository';
 import { vendorBookingRepository } from '@/repositories/vendorBooking.repository';
+import { vendorRepository } from '@/repositories/vendor.repository';
 import { taskRepository } from '@/repositories/task.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { timelineMilestoneRepository } from '@/repositories/timelineMilestone.repository';
@@ -283,6 +284,83 @@ export const weddingWorkspaceService = {
 
       return updated;
     });
+  },
+
+  // Milestone 6 follow-up (2026-07-26 verification found the gap): the only
+  // way a VendorBooking previously came to exist was convertBookingToWedding's
+  // per-item loop (Track B, Booking-sourced weddings) — a CRM-sourced Wedding
+  // had no path to ever get its first VendorBooking, so it could never reach
+  // ACTIVE. Mirrors that same per-item block (VendorBooking + confirm Task +
+  // ActivityLog, one transaction) rather than inventing a new shape.
+  async addVendorBooking(
+    weddingId: string,
+    input: { weddingEventId: string; vendorId: string; agreedPrice: number },
+    actorId: string | null
+  ) {
+    await findWeddingOrThrow(weddingId);
+
+    const event = await weddingEventRepository.findById(input.weddingEventId);
+    if (!event || event.weddingId !== weddingId) {
+      throw new NotFoundError('WeddingEvent', input.weddingEventId);
+    }
+
+    const vendor = await vendorRepository.findById(input.vendorId);
+    if (!vendor) throw new NotFoundError('Vendor', input.vendorId);
+
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const vendorBooking = await vendorBookingRepository.create(
+        {
+          weddingEvent: { connect: { id: input.weddingEventId } },
+          vendor: { connect: { id: input.vendorId } },
+          agreedPrice: input.agreedPrice,
+          status: 'PENDING_VENDOR_CONFIRMATION',
+        },
+        tx
+      );
+
+      await taskRepository.create(
+        {
+          context: 'WEDDING_TASK',
+          title: `Confirm booking with ${vendor.name}`,
+          priority: 'MEDIUM',
+          wedding: { connect: { id: weddingId } },
+          weddingEvent: { connect: { id: input.weddingEventId } },
+          vendorBooking: { connect: { id: vendorBooking.id } },
+        },
+        tx
+      );
+
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: `Vendor booking added: ${vendor.name} (₹${input.agreedPrice.toLocaleString('en-IN')}), pending confirmation`,
+          wedding: { connect: { id: weddingId } },
+          vendorBooking: { connect: { id: vendorBooking.id } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+
+      return vendorBooking;
+    });
+  },
+
+  // Admin-only vendor lookup for the "Add Vendor Booking" picker. Deliberately
+  // not vendorRepository.findMany/vendorService.search — same reasoning
+  // getWorkspace's own vendor lookup already documents: those force a
+  // packages/faqs include this picker doesn't need and don't expose category
+  // as a plain string. /api/vendors can't be reused either — it's still
+  // Mongo-backed (module cutover hasn't reached Vendors yet) and
+  // VendorBooking.vendorId is a Postgres Vendor.id FK, not a Mongo _id.
+  async searchVendors(q: string) {
+    if (q.trim().length < 2) return [];
+    const vendors = await prisma.vendor.findMany({
+      where: { name: { contains: q.trim(), mode: 'insensitive' } },
+      select: { id: true, name: true, city: true, category: { select: { name: true } } },
+      orderBy: { name: 'asc' },
+      take: 10,
+    });
+    return vendors.map((v) => ({ id: v.id, name: v.name, city: v.city, category: v.category.name }));
   },
 
   async transitionStatus(weddingId: string, toStatus: WeddingStatus) {

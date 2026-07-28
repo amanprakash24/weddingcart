@@ -26,6 +26,13 @@ export interface WorkspaceVendorBooking {
   onTimeService: boolean | null;
 }
 
+export interface VendorSearchResult {
+  id: string;
+  name: string;
+  city: string;
+  category: string;
+}
+
 export interface WorkspaceWeddingEvent {
   id: string;
   type: string;

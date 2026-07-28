@@ -67,6 +67,10 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     await postJson(`${basePath}/vendor-bookings/${vbId}`, { status, declineReason }, 'PATCH');
     load();
   };
+  const addVendorBooking = async (weddingEventId: string, vendorId: string, agreedPrice: number) => {
+    await postJson(`${basePath}/vendor-bookings`, { weddingEventId, vendorId, agreedPrice });
+    load();
+  };
   const updateMilestoneStatus = async (milestoneId: string, status: MilestoneStatus) => {
     await postJson(`${basePath}/milestones/${milestoneId}`, { status }, 'PATCH');
     load();
@@ -92,7 +96,11 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         <Documents documents={workspace.documents} />
       </div>
 
-      <WeddingEvents events={workspace.events} onUpdateVendorBookingStatus={updateVendorBookingStatus} />
+      <WeddingEvents
+        events={workspace.events}
+        onUpdateVendorBookingStatus={updateVendorBookingStatus}
+        onAddVendorBooking={addVendorBooking}
+      />
 
       <TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} />
 
