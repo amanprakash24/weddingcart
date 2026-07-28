@@ -9,7 +9,8 @@ import CoupleCard from './CoupleCard';
 import WeddingEvents from './WeddingEvents';
 import TimelineMilestones from './TimelineMilestones';
 import Documents from './Documents';
-import type { WeddingWorkspace, WeddingStatus, VendorBookingStatus, MilestoneStatus } from './types';
+import Finance from './Finance';
+import type { WeddingWorkspace, WeddingStatus, VendorBookingStatus, MilestoneStatus, CreateInvoiceInput } from './types';
 
 async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = 'POST') {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -71,6 +72,10 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     await postJson(`${basePath}/vendor-bookings`, { weddingEventId, vendorId, agreedPrice });
     load();
   };
+  const createInvoice = async (input: CreateInvoiceInput) => {
+    await postJson(`${basePath}/invoices`, input);
+    load();
+  };
   const updateMilestoneStatus = async (milestoneId: string, status: MilestoneStatus) => {
     await postJson(`${basePath}/milestones/${milestoneId}`, { status }, 'PATCH');
     load();
@@ -101,6 +106,8 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         onUpdateVendorBookingStatus={updateVendorBookingStatus}
         onAddVendorBooking={addVendorBooking}
       />
+
+      <Finance finance={workspace.finance} onCreateInvoice={createInvoice} />
 
       <TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} />
 
