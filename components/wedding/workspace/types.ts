@@ -13,6 +13,8 @@ export type VendorBookingStatus =
   | 'COMPLETED';
 export type MilestoneStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED';
 export type WeddingHealth = 'HEALTHY' | 'AT_RISK' | 'OVERDUE';
+export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID';
+export type PaymentStatus = 'SUCCESS' | 'FAILED' | 'REFUNDED';
 
 export interface WorkspaceVendorBooking {
   id: string;
@@ -63,6 +65,59 @@ export interface WorkspaceDocument {
   createdAt: string;
 }
 
+export interface WorkspaceInvoiceItem {
+  id: string;
+  description: string;
+  vendorName: string | null;
+  amount: number;
+  quantity: number;
+}
+
+export interface WorkspacePayment {
+  id: string;
+  amount: number;
+  method: string;
+  status: PaymentStatus;
+  paidAt: string;
+}
+
+export interface WorkspaceInvoice {
+  id: string;
+  invoiceNumber: string;
+  clientName: string;
+  status: InvoiceStatus;
+  subtotal: number;
+  discount: number;
+  gstEnabled: boolean;
+  gstAmount: number;
+  total: number;
+  amountPaid: number;
+  outstanding: number;
+  createdAt: string;
+  items: WorkspaceInvoiceItem[];
+  payments: WorkspacePayment[];
+}
+
+export interface WorkspaceFinance {
+  budget: { planned: number | null; committed: number; variance: number | null };
+  invoices: WorkspaceInvoice[];
+  totals: { invoicedTotal: number; collected: number; outstanding: number };
+}
+
+export interface CreateInvoiceInput {
+  clientName: string;
+  clientPhone: string;
+  clientEmail?: string;
+  clientCity?: string;
+  eventDate?: string;
+  eventType?: string;
+  gstEnabled: boolean;
+  gstAmount: number;
+  discount: number;
+  notes?: string;
+  items: { description: string; vendorName?: string; amount: number; quantity: number }[];
+}
+
 export interface WeddingWorkspace {
   wedding: {
     id: string;
@@ -93,5 +148,6 @@ export interface WeddingWorkspace {
   activity: WorkspaceActivity[];
   tasks: WorkspaceTask[];
   documents: WorkspaceDocument[];
+  finance: WorkspaceFinance;
   insights: WorkspaceInsight[];
 }

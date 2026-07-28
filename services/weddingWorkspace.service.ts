@@ -9,10 +9,11 @@ import { taskRepository } from '@/repositories/task.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { timelineMilestoneRepository } from '@/repositories/timelineMilestone.repository';
 import { documentRepository } from '@/repositories/document.repository';
+import { invoiceRepository } from '@/repositories/invoice.repository';
 import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
 import { canTransitionWedding, maybeActivateWedding } from '@/lib/wedding/lifecycle';
 import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
-import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus } from '@/generated/prisma/enums';
+import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus } from '@/generated/prisma/enums';
 import type { Wedding, Task, ActivityLog, Document, TimelineMilestone, Prisma } from '@/generated/prisma/client';
 
 // Milestone 6 Phase 6.2 — one aggregate read model, same Workspace Loader
@@ -42,6 +43,35 @@ export interface WeddingWorkspaceEvent {
   }[];
 }
 
+// Sprint 7.1 — Payment/Invoice/Payout/CommissionRate were already modeled in
+// the Phase B schema pass but never wired to any repository/route until now.
+// `budget.committed` reuses the vendorBookings already fetched below (no
+// duplicate query); `invoices[].amountPaid` is computed from `payments`
+// rather than trusted from the stored Invoice.amountPaid column, per
+// docs/wedding-os/06-finance.md §2's "computed-on-read" design. Payouts/
+// commission are deliberately absent — Sprint 7.3's job, once a real
+// CommissionRate exists to compute them from.
+export interface WeddingWorkspaceFinance {
+  budget: { planned: number | null; committed: number; variance: number | null };
+  invoices: {
+    id: string;
+    invoiceNumber: string;
+    clientName: string;
+    status: InvoiceStatus;
+    subtotal: number;
+    discount: number;
+    gstEnabled: boolean;
+    gstAmount: number;
+    total: number;
+    amountPaid: number;
+    outstanding: number;
+    createdAt: Date;
+    items: { id: string; description: string; vendorName: string | null; amount: number; quantity: number }[];
+    payments: { id: string; amount: number; method: string; status: PaymentStatus; paidAt: Date }[];
+  }[];
+  totals: { invoicedTotal: number; collected: number; outstanding: number };
+}
+
 export interface WeddingWorkspace {
   wedding: Wedding & { coordinatorName: string | null; customerName: string | null };
   health: WeddingHealth;
@@ -58,6 +88,7 @@ export interface WeddingWorkspace {
   activity: (ActivityLog & { performedByName: string | null })[];
   tasks: (Task & { assignedToName: string | null })[];
   documents: Document[];
+  finance: WeddingWorkspaceFinance;
   // No backing entity yet — LeadInsight is hard-typed to lead/enquiry/
   // consultation, has no weddingId (checked against the real schema before
   // planning Milestone 6). Empty-safe placeholder, not faked data.
@@ -70,11 +101,25 @@ async function findWeddingOrThrow(id: string): Promise<Wedding> {
   return wedding;
 }
 
+// INV-YYYYMM-NNNN, sequential within the month — same format already live in
+// the legacy Mongo-era route (app/api/invoices/route.ts), for consistency
+// rather than inventing a new numbering scheme. That route stays Mongo-backed
+// (Invoices is last in the module cutover order); these wedding-linked
+// invoices are Postgres-only and coexist with it, same pattern Wedding/CRM
+// already established. Counts against `tx.invoice` (not a new-rows-only
+// counter) since migrated legacy invoices land in this same table too.
+async function generateInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
+  const now = new Date();
+  const bucket = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`;
+  const count = await tx.invoice.count({ where: { invoiceNumber: { startsWith: bucket } } });
+  return `${bucket}${String(count + 1).padStart(4, '0')}`;
+}
+
 export const weddingWorkspaceService = {
   async getWorkspace(id: string): Promise<WeddingWorkspace> {
     const wedding = await findWeddingOrThrow(id);
 
-    const [couple, { data: events }, { data: tasks }, { data: activity }, timeline, { data: documents }] =
+    const [couple, { data: events }, { data: tasks }, { data: activity }, timeline, { data: documents }, { data: invoices }] =
       await Promise.all([
         coupleRepository.findByWeddingId(id),
         weddingEventRepository.findMany({ where: { weddingId: id }, orderBy: { date: 'asc' } }),
@@ -82,6 +127,7 @@ export const weddingWorkspaceService = {
         activityLogRepository.findMany({ where: { weddingId: id } }),
         timelineMilestoneRepository.findMany({ where: { weddingId: id }, orderBy: { sortOrder: 'asc' } }),
         documentRepository.findMany({ where: { weddingId: id }, orderBy: { createdAt: 'desc' } }),
+        invoiceRepository.findMany({ where: { weddingId: id }, orderBy: { createdAt: 'desc' } }),
       ]);
 
     const eventIds = events.map((e) => e.id);
@@ -146,6 +192,61 @@ export const weddingWorkspaceService = {
       })),
     });
 
+    // committed = agreed vendor spend still on the books. Excludes CANCELLED/
+    // DECLINED bookings — a judgment call, since 03-wedding-workspace.md §6
+    // doesn't specify a status filter for "sum of VendorBooking.price".
+    const committed = vendorBookings
+      .filter((vb) => vb.status !== 'CANCELLED' && vb.status !== 'DECLINED')
+      .reduce((sum, vb) => sum + vb.agreedPrice, 0);
+
+    const financeInvoices = invoices.map((inv) => {
+      const amountPaid = inv.payments
+        .filter((p) => p.status === 'SUCCESS')
+        .reduce((sum, p) => sum + p.amount, 0);
+      return {
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        clientName: inv.clientName,
+        status: inv.status,
+        subtotal: inv.subtotal,
+        discount: inv.discount,
+        gstEnabled: inv.gstEnabled,
+        gstAmount: inv.gstAmount,
+        total: inv.total,
+        amountPaid,
+        outstanding: inv.total - amountPaid,
+        createdAt: inv.createdAt,
+        items: inv.items.map((i) => ({
+          id: i.id,
+          description: i.description,
+          vendorName: i.vendorName,
+          amount: i.amount,
+          quantity: i.quantity,
+        })),
+        payments: inv.payments.map((p) => ({
+          id: p.id,
+          amount: p.amount,
+          method: p.method,
+          status: p.status,
+          paidAt: p.paidAt,
+        })),
+      };
+    });
+
+    const finance: WeddingWorkspaceFinance = {
+      budget: {
+        planned: wedding.totalBudget,
+        committed,
+        variance: wedding.totalBudget !== null ? wedding.totalBudget - committed : null,
+      },
+      invoices: financeInvoices,
+      totals: {
+        invoicedTotal: financeInvoices.reduce((sum, i) => sum + i.total, 0),
+        collected: financeInvoices.reduce((sum, i) => sum + i.amountPaid, 0),
+        outstanding: financeInvoices.reduce((sum, i) => sum + i.outstanding, 0),
+      },
+    };
+
     return {
       wedding: {
         ...wedding,
@@ -174,6 +275,7 @@ export const weddingWorkspaceService = {
         assignedToName: t.assignedToId ? (nameById.get(t.assignedToId) ?? null) : null,
       })),
       documents,
+      finance,
       insights: [],
     };
   },
@@ -361,6 +463,78 @@ export const weddingWorkspaceService = {
       take: 10,
     });
     return vendors.map((v) => ({ id: v.id, name: v.name, city: v.city, category: v.category.name }));
+  },
+
+  // Sprint 7.1 — Invoice is safe to make creatable now (an internal admin
+  // record, same trust level as VendorBooking.agreedPrice: a coordinator
+  // typing in a real number). Payment is not — its schema is Razorpay-shaped
+  // (razorpayPaymentId/razorpayOrderId), so a fake "Create Payment" would
+  // either lie about money that didn't move or invent a manual-payment
+  // concept nothing has asked for. Payment creation waits for Sprint 7.2/7.5
+  // (Razorpay integration); this method deliberately never touches it.
+  async createInvoice(
+    weddingId: string,
+    input: {
+      clientName: string;
+      clientPhone: string;
+      clientEmail?: string;
+      clientCity?: string;
+      eventDate?: string;
+      eventType?: string;
+      gstEnabled: boolean;
+      gstAmount: number;
+      discount: number;
+      notes?: string;
+      items: { description: string; vendorName?: string; amount: number; quantity: number }[];
+    },
+    actorId: string | null
+  ) {
+    const wedding = await findWeddingOrThrow(weddingId);
+
+    // Server computes totals from line items — never trusts a client-sent
+    // subtotal/total. gstAmount/discount stay admin-typed inputs (no
+    // auto-calculated GST %), per docs/wedding-os/06-finance.md §5's flag
+    // that GST treatment is a real compliance question, not to be defaulted.
+    const subtotal = input.items.reduce((sum, i) => sum + i.amount * i.quantity, 0);
+    const total = subtotal - input.discount + input.gstAmount;
+
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const invoiceNumber = await generateInvoiceNumber(tx);
+      const invoice = await invoiceRepository.create(
+        {
+          invoiceNumber,
+          clientName: input.clientName,
+          clientPhone: input.clientPhone,
+          clientEmail: input.clientEmail,
+          clientCity: input.clientCity,
+          eventDate: input.eventDate,
+          eventType: input.eventType,
+          subtotal,
+          discount: input.discount,
+          gstEnabled: input.gstEnabled,
+          gstAmount: input.gstAmount,
+          total,
+          notes: input.notes,
+          status: 'DRAFT',
+          customerId: wedding.customerId ?? undefined,
+          wedding: { connect: { id: weddingId } },
+          items: { create: input.items },
+        },
+        tx
+      );
+
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: `Invoice ${invoiceNumber} created (₹${total.toLocaleString('en-IN')})`,
+          wedding: { connect: { id: weddingId } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+
+      return invoice;
+    });
   },
 
   async transitionStatus(weddingId: string, toStatus: WeddingStatus) {
