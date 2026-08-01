@@ -13,7 +13,7 @@ import { invoiceRepository } from '@/repositories/invoice.repository';
 import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
 import { canTransitionWedding, maybeActivateWedding } from '@/lib/wedding/lifecycle';
 import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
-import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus } from '@/generated/prisma/enums';
+import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus } from '@/generated/prisma/enums';
 import type { Wedding, Task, ActivityLog, Document, TimelineMilestone, Prisma } from '@/generated/prisma/client';
 
 // Milestone 6 Phase 6.2 — one aggregate read model, same Workspace Loader
@@ -67,7 +67,21 @@ export interface WeddingWorkspaceFinance {
     outstanding: number;
     createdAt: Date;
     items: { id: string; description: string; vendorName: string | null; amount: number; quantity: number }[];
-    payments: { id: string; amount: number; method: string; status: PaymentStatus; paidAt: Date }[];
+    payments: {
+      id: string;
+      amount: number;
+      method: string;
+      status: PaymentStatus;
+      paidAt: Date;
+      razorpayPaymentId: string | null;
+    }[];
+    paymentLinks: {
+      id: string;
+      shortUrl: string;
+      status: PaymentLinkStatus;
+      expiresAt: Date | null;
+      createdAt: Date;
+    }[];
   }[];
   totals: { invoicedTotal: number; collected: number; outstanding: number };
 }
@@ -229,6 +243,14 @@ export const weddingWorkspaceService = {
           method: p.method,
           status: p.status,
           paidAt: p.paidAt,
+          razorpayPaymentId: p.razorpayPaymentId,
+        })),
+        paymentLinks: inv.paymentLinks.map((l) => ({
+          id: l.id,
+          shortUrl: l.shortUrl,
+          status: l.status,
+          expiresAt: l.expiresAt,
+          createdAt: l.createdAt,
         })),
       };
     });

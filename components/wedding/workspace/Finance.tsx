@@ -2,7 +2,12 @@
 
 import { useState } from 'react';
 import type { WorkspaceFinance, WorkspaceInvoice, CreateInvoiceInput } from './types';
-import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from './constants';
+import {
+  INVOICE_STATUS_LABELS,
+  INVOICE_STATUS_COLORS,
+  PAYMENT_LINK_STATUS_LABELS,
+  PAYMENT_LINK_STATUS_COLORS,
+} from './constants';
 
 const money = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
@@ -29,7 +34,32 @@ function BudgetBlock({ budget }: { budget: WorkspaceFinance['budget'] }) {
   );
 }
 
-function InvoiceCard({ invoice }: { invoice: WorkspaceInvoice }) {
+function InvoiceCard({
+  weddingId,
+  invoice,
+  onGeneratePaymentLink,
+}: {
+  weddingId: string;
+  invoice: WorkspaceInvoice;
+  onGeneratePaymentLink: (invoiceId: string) => Promise<void>;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  const hasActiveLink = invoice.paymentLinks.some((l) => l.status === 'CREATED');
+
+  const generate = async () => {
+    setGenerating(true);
+    setGenError(null);
+    try {
+      await onGeneratePaymentLink(invoice.id);
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Failed to generate payment link');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <li className="border border-gray-100 rounded-xl p-3">
       <div className="flex items-center justify-between mb-1">
@@ -61,13 +91,47 @@ function InvoiceCard({ invoice }: { invoice: WorkspaceInvoice }) {
       {invoice.payments.length === 0 ? (
         <p className="text-xs text-gray-400">No payments recorded yet.</p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="space-y-1 mb-2">
           {invoice.payments.map((p) => (
-            <li key={p.id} className="text-xs text-gray-500">
-              {money(p.amount)} via {p.method} — {new Date(p.paidAt).toLocaleDateString()}
+            <li key={p.id} className="text-xs text-gray-500 flex items-center justify-between">
+              <span>
+                {money(p.amount)} via {p.method} — {new Date(p.paidAt).toLocaleDateString()}
+              </span>
+              <a
+                href={`/api/weddings/${weddingId}/invoices/${invoice.id}/payments/${p.id}/receipt`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-600 hover:underline"
+              >
+                Receipt
+              </a>
             </li>
           ))}
         </ul>
+      )}
+
+      {invoice.paymentLinks.length > 0 && (
+        <ul className="space-y-1 mb-2">
+          {invoice.paymentLinks.map((l) => (
+            <li key={l.id} className="text-xs text-gray-500 flex items-center gap-2">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${PAYMENT_LINK_STATUS_COLORS[l.status]}`}>
+                {PAYMENT_LINK_STATUS_LABELS[l.status]}
+              </span>
+              {l.status === 'CREATED' && (
+                <a href={l.shortUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline truncate">
+                  {l.shortUrl}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {genError && <p className="text-xs text-red-500 mb-1">{genError}</p>}
+      {invoice.outstanding > 0 && !hasActiveLink && (
+        <button disabled={generating} onClick={generate} className="text-xs text-emerald-600 hover:underline disabled:opacity-40">
+          {generating ? 'Generating…' : '+ Generate Payment Link'}
+        </button>
       )}
     </li>
   );
@@ -234,11 +298,15 @@ function CreateInvoiceForm({
 }
 
 export default function Finance({
+  weddingId,
   finance,
   onCreateInvoice,
+  onGeneratePaymentLink,
 }: {
+  weddingId: string;
   finance: WorkspaceFinance;
   onCreateInvoice: (input: CreateInvoiceInput) => Promise<void>;
+  onGeneratePaymentLink: (invoiceId: string) => Promise<void>;
 }) {
   const [creating, setCreating] = useState(false);
 
@@ -252,7 +320,7 @@ export default function Finance({
       ) : (
         <ul className="space-y-2 mb-2">
           {finance.invoices.map((invoice) => (
-            <InvoiceCard key={invoice.id} invoice={invoice} />
+            <InvoiceCard key={invoice.id} weddingId={weddingId} invoice={invoice} onGeneratePaymentLink={onGeneratePaymentLink} />
           ))}
         </ul>
       )}

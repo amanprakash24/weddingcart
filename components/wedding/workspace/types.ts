@@ -15,6 +15,7 @@ export type MilestoneStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED';
 export type WeddingHealth = 'HEALTHY' | 'AT_RISK' | 'OVERDUE';
 export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID';
 export type PaymentStatus = 'SUCCESS' | 'FAILED' | 'REFUNDED';
+export type PaymentLinkStatus = 'CREATED' | 'PAID' | 'EXPIRED' | 'CANCELLED';
 
 export interface WorkspaceVendorBooking {
   id: string;
@@ -79,6 +80,15 @@ export interface WorkspacePayment {
   method: string;
   status: PaymentStatus;
   paidAt: string;
+  razorpayPaymentId: string | null;
+}
+
+export interface WorkspacePaymentLink {
+  id: string;
+  shortUrl: string;
+  status: PaymentLinkStatus;
+  expiresAt: string | null;
+  createdAt: string;
 }
 
 export interface WorkspaceInvoice {
@@ -96,6 +106,7 @@ export interface WorkspaceInvoice {
   createdAt: string;
   items: WorkspaceInvoiceItem[];
   payments: WorkspacePayment[];
+  paymentLinks: WorkspacePaymentLink[];
 }
 
 export interface WorkspaceFinance {

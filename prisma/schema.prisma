@@ -136,6 +136,7 @@ model User {
   quotationsCreated         Quotation[]
   aiConversations           AiConversation[]
   notifications             Notification[]
+  paymentLinks              PaymentLink[]
 
   @@map("users")
 }
@@ -552,9 +553,10 @@ model Invoice {
   // column for now; 06-finance.md §2 proposes it become computed-on-read from
   // `payments` in Step 3's application layer, not renamed/removed here to avoid
   // a breaking change to Milestone 2's existing repository/service code.
-  weddingId String?
-  wedding   Wedding?  @relation(fields: [weddingId], references: [id])
-  payments  Payment[]
+  weddingId    String?
+  wedding      Wedding?      @relation(fields: [weddingId], references: [id])
+  payments     Payment[]
+  paymentLinks PaymentLink[]
 
   @@map("invoices")
 }
@@ -1107,6 +1109,34 @@ model Payment {
   createdAt         DateTime      @default(now())
 
   @@map("payments")
+}
+
+enum PaymentLinkStatus {
+  CREATED
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+// Sprint 7.2 — tracks a sent-but-not-yet-paid Razorpay Payment Link so admins
+// can see "link sent, awaiting payment" without a fake/nullable Payment row.
+// Payment stays "money that actually moved" (Sprint 7.1's rule); this is the
+// pending-state table that rule implies is needed alongside it.
+model PaymentLink {
+  id                    String            @id @default(uuid())
+  invoiceId             String
+  invoice               Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  razorpayPaymentLinkId String            @unique
+  shortUrl              String
+  amount                Int
+  status                PaymentLinkStatus @default(CREATED)
+  expiresAt             DateTime?
+  createdById           String?
+  createdBy             User?             @relation(fields: [createdById], references: [id])
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@map("payment_links")
 }
 
 enum PayoutStatus {
