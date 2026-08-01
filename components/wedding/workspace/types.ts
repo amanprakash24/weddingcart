@@ -16,6 +16,17 @@ export type WeddingHealth = 'HEALTHY' | 'AT_RISK' | 'OVERDUE';
 export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID';
 export type PaymentStatus = 'SUCCESS' | 'FAILED' | 'REFUNDED';
 export type PaymentLinkStatus = 'CREATED' | 'PAID' | 'EXPIRED' | 'CANCELLED';
+export type PayoutStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
+
+export interface WorkspacePayout {
+  id: string;
+  grossAmount: number;
+  commissionRate: number;
+  commissionAmount: number;
+  netAmount: number;
+  status: PayoutStatus;
+  paidAt: string | null;
+}
 
 export interface WorkspaceVendorBooking {
   id: string;
@@ -27,6 +38,7 @@ export interface WorkspaceVendorBooking {
   declineReason: string | null;
   respondedAt: string | null;
   onTimeService: boolean | null;
+  payout: WorkspacePayout | null;
 }
 
 export interface VendorSearchResult {

@@ -10,10 +10,11 @@ import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { timelineMilestoneRepository } from '@/repositories/timelineMilestone.repository';
 import { documentRepository } from '@/repositories/document.repository';
 import { invoiceRepository } from '@/repositories/invoice.repository';
+import { payoutRepository } from '@/repositories/payout.repository';
 import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
 import { canTransitionWedding, maybeActivateWedding } from '@/lib/wedding/lifecycle';
 import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
-import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus } from '@/generated/prisma/enums';
+import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus, type PayoutStatus } from '@/generated/prisma/enums';
 import type { Wedding, Task, ActivityLog, Document, TimelineMilestone, Prisma } from '@/generated/prisma/client';
 
 // Milestone 6 Phase 6.2 — one aggregate read model, same Workspace Loader
@@ -40,6 +41,15 @@ export interface WeddingWorkspaceEvent {
     declineReason: string | null;
     respondedAt: Date | null;
     onTimeService: boolean | null;
+    payout: {
+      id: string;
+      grossAmount: number;
+      commissionRate: number;
+      commissionAmount: number;
+      netAmount: number;
+      status: PayoutStatus;
+      paidAt: Date | null;
+    } | null;
   }[];
 }
 
@@ -162,6 +172,12 @@ export const weddingWorkspaceService = {
       : [];
     const vendorById = new Map(vendors.map((v) => [v.id, v]));
 
+    const vendorBookingIds = vendorBookings.map((vb) => vb.id);
+    const { data: payouts } = vendorBookingIds.length
+      ? await payoutRepository.findMany({ where: { vendorBookingId: { in: vendorBookingIds } } })
+      : { data: [] };
+    const payoutByBookingId = new Map(payouts.map((p) => [p.vendorBookingId, p]));
+
     const nameById = await resolveUserNames([
       wedding.coordinatorId,
       wedding.customerId,
@@ -193,6 +209,19 @@ export const weddingWorkspaceService = {
             declineReason: vb.declineReason,
             respondedAt: vb.respondedAt,
             onTimeService: vb.onTimeService,
+            payout: (() => {
+              const p = payoutByBookingId.get(vb.id);
+              if (!p) return null;
+              return {
+                id: p.id,
+                grossAmount: p.grossAmount,
+                commissionRate: p.commissionRate,
+                commissionAmount: p.commissionAmount,
+                netAmount: p.netAmount,
+                status: p.status,
+                paidAt: p.paidAt,
+              };
+            })(),
           };
         }),
     }));
@@ -375,7 +404,13 @@ export const weddingWorkspaceService = {
   // vendor-facing self-service confirm flow exists yet (Vendor OS, a later
   // milestone), so this is Operations recording a real confirmation (phone
   // call, WhatsApp, etc.), not a placeholder.
-  async updateVendorBookingStatus(weddingId: string, vendorBookingId: string, status: VendorBookingStatus, declineReason?: string) {
+  async updateVendorBookingStatus(
+    weddingId: string,
+    vendorBookingId: string,
+    status: VendorBookingStatus,
+    declineReason?: string,
+    onTimeService?: boolean
+  ) {
     const vendorBooking = await vendorBookingRepository.findById(vendorBookingId);
     if (!vendorBooking) throw new NotFoundError('VendorBooking', vendorBookingId);
     const event = await weddingEventRepository.findById(vendorBooking.weddingEventId);
@@ -387,15 +422,33 @@ export const weddingWorkspaceService = {
         {
           status,
           declineReason: status === 'DECLINED' ? (declineReason ?? null) : null,
-          respondedAt: new Date(),
+          // respondedAt is specifically the vendor's accept/decline
+          // timestamp — Sprint 7.3 leaves it untouched on a COMPLETED
+          // transition rather than overloading it as a completion time.
+          respondedAt: status === 'CONFIRMED' || status === 'DECLINED' ? new Date() : vendorBooking.respondedAt,
+          // Sprint 7.3 — captured only on COMPLETED, cheap to record now for
+          // the future Vendor Score (docs/wedding-os/04-vendor-os.md §7).
+          onTimeService: status === 'COMPLETED' ? onTimeService ?? null : vendorBooking.onTimeService,
         },
         tx
       );
 
       await activityLogRepository.create(
         {
-          type: status === 'CONFIRMED' ? ActivityType.VENDOR_CONFIRMED : status === 'DECLINED' ? ActivityType.VENDOR_DECLINED : ActivityType.STATUS_CHANGED,
-          summary: `Vendor booking ${status === 'CONFIRMED' ? 'confirmed' : status === 'DECLINED' ? 'declined' : `set to ${status}`}`,
+          type:
+            status === 'CONFIRMED'
+              ? ActivityType.VENDOR_CONFIRMED
+              : status === 'DECLINED'
+                ? ActivityType.VENDOR_DECLINED
+                : ActivityType.STATUS_CHANGED,
+          summary:
+            status === 'CONFIRMED'
+              ? 'Vendor booking confirmed'
+              : status === 'DECLINED'
+                ? 'Vendor booking declined'
+                : status === 'COMPLETED'
+                  ? `Vendor booking marked completed${onTimeService === false ? ' (late)' : ''}`
+                  : `Vendor booking set to ${status}`,
           wedding: { connect: { id: weddingId } },
           vendorBooking: { connect: { id: vendorBookingId } },
         },
