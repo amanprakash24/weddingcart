@@ -76,6 +76,10 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     await postJson(`${basePath}/invoices`, input);
     load();
   };
+  const generatePaymentLink = async (invoiceId: string) => {
+    await postJson(`${basePath}/invoices/${invoiceId}/payment-link`, {});
+    load();
+  };
   const updateMilestoneStatus = async (milestoneId: string, status: MilestoneStatus) => {
     await postJson(`${basePath}/milestones/${milestoneId}`, { status }, 'PATCH');
     load();
@@ -107,7 +111,12 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         onAddVendorBooking={addVendorBooking}
       />
 
-      <Finance finance={workspace.finance} onCreateInvoice={createInvoice} />
+      <Finance
+        weddingId={id}
+        finance={workspace.finance}
+        onCreateInvoice={createInvoice}
+        onGeneratePaymentLink={generatePaymentLink}
+      />
 
       <TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} />
 

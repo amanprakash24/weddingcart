@@ -11,16 +11,16 @@ export interface FindManyParams {
   orderBy?: Prisma.InvoiceOrderByWithRelationInput;
 }
 
-// Every caller this sprint (the Wedding Finance section) needs both line
-// items and payments to render an invoice, so unlike the minimal
-// vendorBooking.repository.ts template, `items`/`payments` are always
-// included rather than left to each caller to request.
-const withItemsAndPayments = { items: true, payments: true } satisfies Prisma.InvoiceInclude;
-export type InvoiceWithDetails = Prisma.InvoiceGetPayload<{ include: typeof withItemsAndPayments }>;
+// Every caller this sprint (the Wedding Finance section) needs line items,
+// payments, and payment links to render an invoice, so unlike the minimal
+// vendorBooking.repository.ts template, they're always included rather than
+// left to each caller to request.
+const withInvoiceDetails = { items: true, payments: true, paymentLinks: true } satisfies Prisma.InvoiceInclude;
+export type InvoiceWithDetails = Prisma.InvoiceGetPayload<{ include: typeof withInvoiceDetails }>;
 
 export const invoiceRepository = {
   async findById(id: string, tx: Tx | typeof prisma = prisma): Promise<InvoiceWithDetails | null> {
-    return tx.invoice.findUnique({ where: { id }, include: withItemsAndPayments });
+    return tx.invoice.findUnique({ where: { id }, include: withInvoiceDetails });
   },
 
   async findMany(
@@ -28,14 +28,14 @@ export const invoiceRepository = {
     tx: Tx | typeof prisma = prisma
   ): Promise<{ data: InvoiceWithDetails[]; total: number }> {
     const [data, total] = await Promise.all([
-      tx.invoice.findMany({ where, skip, take, orderBy, include: withItemsAndPayments }),
+      tx.invoice.findMany({ where, skip, take, orderBy, include: withInvoiceDetails }),
       tx.invoice.count({ where }),
     ]);
     return { data, total };
   },
 
   async create(data: Prisma.InvoiceCreateInput, tx: Tx | typeof prisma = prisma): Promise<InvoiceWithDetails> {
-    return withPrismaErrors('Invoice', () => tx.invoice.create({ data, include: withItemsAndPayments }));
+    return withPrismaErrors('Invoice', () => tx.invoice.create({ data, include: withInvoiceDetails }));
   },
 
   async update(
@@ -43,10 +43,10 @@ export const invoiceRepository = {
     data: Prisma.InvoiceUpdateInput,
     tx: Tx | typeof prisma = prisma
   ): Promise<InvoiceWithDetails> {
-    return withPrismaErrors('Invoice', () => tx.invoice.update({ where: { id }, data, include: withItemsAndPayments }));
+    return withPrismaErrors('Invoice', () => tx.invoice.update({ where: { id }, data, include: withInvoiceDetails }));
   },
 
   async delete(id: string, tx: Tx | typeof prisma = prisma): Promise<InvoiceWithDetails> {
-    return withPrismaErrors('Invoice', () => tx.invoice.delete({ where: { id }, include: withItemsAndPayments }));
+    return withPrismaErrors('Invoice', () => tx.invoice.delete({ where: { id }, include: withInvoiceDetails }));
   },
 };
