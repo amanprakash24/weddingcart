@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import type { PipelineStage } from '@/generated/prisma/enums';
+import { commissionRateRepository } from '@/repositories/commissionRate.repository';
 
 // Sprint 5.4 — Founder Dashboard. Today's Work stays on the existing
 // leadInboxService.stats()/`/api/crm/stats` (Sprint 5.1, unchanged); this
@@ -14,7 +15,15 @@ export interface FounderDashboard {
     invoicedThisMonth: { count: number; total: number };
     paymentsToday: number;
   };
-  commission: { confirmed: number; pendingWeddings: number };
+  commission: {
+    confirmed: number;
+    pendingWeddings: number;
+    expected: number;
+    outstandingPayoutAmount: number;
+    pendingPayoutCount: number;
+    grossMargin: number;
+  };
+  revenueByMonth: { month: string; total: number }[];
   pipelineHealth: { newThisWeek: number; convertedThisWeek: number; lostThisWeek: number; onHold: number };
   velocity: { stage: PipelineStage; avgDays: number | null; sampleSize: number }[];
   vendorAvailability: { date: string; categories: { category: string; counts: Record<string, number> }[] };
@@ -55,11 +64,22 @@ async function countAcrossAll(where: SubjectCountWhere): Promise<number> {
   return leads + enquiries + consultations;
 }
 
+// Sprint 7.4 — `Invoice.amountPaid` is a Phase A stored column that every
+// other Wedding OS code path (weddingWorkspace.service.ts, payment.service.ts)
+// already treats as superseded by computed-on-read Payment sums. This was
+// the one holdout still trusting it; fixed to match.
 async function getRevenue(): Promise<FounderDashboard['revenue']> {
   const now = new Date();
-  const [outstandingAgg, collectedAgg, monthAgg, paymentsTodayAgg] = await Promise.all([
-    prisma.invoice.aggregate({ where: { status: { notIn: ['DRAFT', 'PAID'] } }, _sum: { total: true, amountPaid: true } }),
-    prisma.invoice.aggregate({ where: { status: { not: 'DRAFT' } }, _sum: { amountPaid: true } }),
+  const [totalAgg, outstandingPaidAgg, collectedAgg, monthAgg, paymentsTodayAgg] = await Promise.all([
+    prisma.invoice.aggregate({ where: { status: { notIn: ['DRAFT', 'PAID'] } }, _sum: { total: true } }),
+    prisma.payment.aggregate({
+      where: { status: 'SUCCESS', invoice: { status: { notIn: ['DRAFT', 'PAID'] } } },
+      _sum: { amount: true },
+    }),
+    prisma.payment.aggregate({
+      where: { status: 'SUCCESS', invoice: { status: { not: 'DRAFT' } } },
+      _sum: { amount: true },
+    }),
     prisma.invoice.aggregate({
       where: { status: { not: 'DRAFT' }, createdAt: { gte: startOfMonth(now) } },
       _sum: { total: true },
@@ -69,19 +89,87 @@ async function getRevenue(): Promise<FounderDashboard['revenue']> {
   ]);
 
   return {
-    outstanding: (outstandingAgg._sum.total ?? 0) - (outstandingAgg._sum.amountPaid ?? 0),
-    totalCollected: collectedAgg._sum.amountPaid ?? 0,
+    outstanding: (totalAgg._sum.total ?? 0) - (outstandingPaidAgg._sum.amount ?? 0),
+    totalCollected: collectedAgg._sum.amount ?? 0,
     invoicedThisMonth: { count: monthAgg._count, total: monthAgg._sum.total ?? 0 },
     paymentsToday: paymentsTodayAgg._sum.amount ?? 0,
   };
 }
 
+// Sprint 7.4 — live-computed forecast, nothing stored: commission that would
+// be realized if every currently-CONFIRMED booking completed at today's
+// rates. Empty-safe short-circuit avoids resolving any CommissionRate at all
+// when there's nothing to compute, same pattern as getVelocity()'s 0-sample case.
+async function getExpectedCommission(): Promise<number> {
+  const confirmedBookings = await prisma.vendorBooking.findMany({
+    where: { status: 'CONFIRMED' },
+    select: { agreedPrice: true, vendor: { select: { categoryId: true } } },
+  });
+  if (confirmedBookings.length === 0) return 0;
+
+  const categoryIds = [...new Set(confirmedBookings.map((b) => b.vendor.categoryId))];
+  const rates = await Promise.all(categoryIds.map((id) => commissionRateRepository.findCurrentRate(id)));
+  const rateByCategoryId = new Map(categoryIds.map((id, i) => [id, rates[i].rate]));
+
+  return confirmedBookings.reduce((sum, b) => {
+    const rate = rateByCategoryId.get(b.vendor.categoryId)!;
+    return sum + Math.round((b.agreedPrice * rate) / 100);
+  }, 0);
+}
+
 async function getCommission(): Promise<FounderDashboard['commission']> {
-  const [payoutAgg, pendingWeddings] = await Promise.all([
-    prisma.payout.aggregate({ where: { status: 'PAID' }, _sum: { commissionAmount: true } }),
+  const [paidPayoutAgg, pendingPayoutAgg, allSuccessfulPaymentsAgg, pendingWeddings, expected] = await Promise.all([
+    prisma.payout.aggregate({ where: { status: 'PAID' }, _sum: { commissionAmount: true, netAmount: true } }),
+    prisma.payout.aggregate({ where: { status: 'PENDING' }, _sum: { netAmount: true }, _count: true }),
+    // No invoice-status filter, deliberately different from revenue.totalCollected
+    // above — a successful payment means money moved regardless of the
+    // invoice's current display status. This is the cash side of Gross Margin.
+    prisma.payment.aggregate({ where: { status: 'SUCCESS' }, _sum: { amount: true } }),
     prisma.wedding.count({ where: { status: { not: 'COMPLETED' } } }),
+    getExpectedCommission(),
   ]);
-  return { confirmed: payoutAgg._sum.commissionAmount ?? 0, pendingWeddings };
+
+  return {
+    confirmed: paidPayoutAgg._sum.commissionAmount ?? 0,
+    pendingWeddings,
+    expected,
+    outstandingPayoutAmount: pendingPayoutAgg._sum.netAmount ?? 0,
+    pendingPayoutCount: pendingPayoutAgg._count,
+    // Gross Margin (cash) can genuinely diverge from confirmed commission
+    // (accrual) when an invoice bundles GST/discounts/non-vendor-booking
+    // line items — that's a real reconciliation signal, not a bug.
+    grossMargin: (allSuccessfulPaymentsAgg._sum.amount ?? 0) - (paidPayoutAgg._sum.netAmount ?? 0),
+  };
+}
+
+// Last 6 months of successful-payment revenue, bucketed in JS rather than a
+// SQL groupBy/date_trunc — same precedent as getVelocity() below for
+// time-based aggregation. Every month is present even at 0 (no "only push if
+// non-zero" shortcut), so a real empty month reads as 0, not missing.
+async function getRevenueByMonth(): Promise<FounderDashboard['revenueByMonth']> {
+  const now = new Date();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  const payments = await prisma.payment.findMany({
+    where: { status: 'SUCCESS', paidAt: { gte: sixMonthsAgo } },
+    select: { amount: true, paidAt: true },
+  });
+
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+  const totalsByMonth = new Map<string, number>();
+  for (const p of payments) {
+    const key = monthKey(p.paidAt);
+    totalsByMonth.set(key, (totalsByMonth.get(key) ?? 0) + p.amount);
+  }
+
+  const result: FounderDashboard['revenueByMonth'] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = monthKey(d);
+    result.push({ month: key, total: totalsByMonth.get(key) ?? 0 });
+  }
+  return result;
 }
 
 async function getPipelineHealth(): Promise<FounderDashboard['pipelineHealth']> {
@@ -234,16 +322,17 @@ async function getTeamPerformance(): Promise<FounderDashboard['teamPerformance']
 
 export const founderDashboardService = {
   async getDashboard(date: Date = new Date()): Promise<FounderDashboard> {
-    const [revenue, commission, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance] =
+    const [revenue, commission, revenueByMonth, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance] =
       await Promise.all([
         getRevenue(),
         getCommission(),
+        getRevenueByMonth(),
         getPipelineHealth(),
         getVelocity(),
         getVendorAvailability(date),
         getFollowUpHealth(),
         getTeamPerformance(),
       ]);
-    return { revenue, commission, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance };
+    return { revenue, commission, revenueByMonth, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance };
   },
 };

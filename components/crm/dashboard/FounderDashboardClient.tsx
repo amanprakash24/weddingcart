@@ -5,6 +5,7 @@ import TodaysWork from '@/components/crm/TodaysWork';
 import type { LeadInboxStats } from '@/components/crm/types';
 import BusinessPerformanceCard from './BusinessPerformanceCard';
 import CommissionCard from './CommissionCard';
+import RevenueByMonthCard from './RevenueByMonthCard';
 import PipelineHealthCard from './PipelineHealthCard';
 import PipelineVelocityCard from './PipelineVelocityCard';
 import VendorAvailabilityCard from './VendorAvailabilityCard';
@@ -58,6 +59,8 @@ export default function FounderDashboardClient() {
             <BusinessPerformanceCard revenue={dashboard.revenue} />
             <CommissionCard commission={dashboard.commission} />
           </div>
+
+          <RevenueByMonthCard revenueByMonth={dashboard.revenueByMonth} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <PipelineHealthCard pipelineHealth={dashboard.pipelineHealth} />
