@@ -6,32 +6,23 @@ import { JsonLd } from '@/components/JsonLd';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
-  title: "Shaadi Shopping | ShaadiShopping — #1 Wedding Planning in Patna & India",
+  title: "Shaadi Shopping | Trusted Wedding Planning & Verified Vendors in Patna",
   description:
-    'Shaadi Shopping (ShaadiShopping) — India\'s most trusted wedding planning platform. Book verified venues, photographers, caterers, makeup artists, mehndi & decorators in Patna, Bihar & across India. Free expert consultation.',
-  keywords: [
-    'shaadi shopping', 'shaadishopping', 'shaadi shopping patna', 'shaadi shopping india',
-    'shaadi', 'shaadi planning', 'shadi planning', 'shaadi vendors', 'online shaadi booking',
-    'wedding vendors Patna', 'wedding venues Bihar', 'wedding planning Patna',
-    'bridal makeup Patna', 'wedding caterers Patna', 'wedding decorators Patna',
-    'shaadi vendors Patna', 'best wedding vendors India', 'wedding booking platform India',
-    'vivah planning India', 'byah planning Bihar', 'wedding platform Bihar',
-    'shaadi ki tayari', 'wedding vendors near me', 'top wedding vendors Patna',
-  ],
+    'Plan your wedding with confidence. Compare verified banquet halls, photographers, caterers, decorators and more in Patna. Get a dedicated Wedding Expert from planning to vidai—free of cost.',
   alternates: { canonical: BASE_URL },
   openGraph: {
-    title: "ShaadiShopping — India's #1 Wedding Planning & Vendor Booking Platform",
-    description: 'Book top wedding vendors across India — venues, photographers, caterers, makeup artists, mehndi, decorators & more. Specialising in Patna, Bihar weddings.',
+    title: "ShaadiShopping — Wedding Planning in Patna",
+    description: 'Your trusted wedding planner in Patna. Find verified wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
     url: BASE_URL,
     type: 'website',
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — India's #1 Wedding Planning Platform" }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'ShaadiShopping — Wedding Planning in Patna' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "ShaadiShopping — India's #1 Wedding Planning & Vendor Booking Platform",
-    description: 'Book top wedding vendors across India — venues, photographers, caterers, makeup artists, mehndi, decorators & more.',
+    title: "ShaadiShopping — Wedding Planning in Patna",
+    description: 'Your trusted wedding planner in Patna. Find verified wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
     images: ['/opengraph-image'],
   },
 };
@@ -42,7 +33,7 @@ const websiteSchema = {
   name: 'ShaadiShopping',
   alternateName: ['Shaadi Shopping', 'ShaadiShopping.com', 'शादी शॉपिंग'],
   url: BASE_URL,
-  description: "India's #1 shaadi planning & wedding vendor booking platform — expert-guided from Venue to Vidaai.",
+  description: 'Shaadi Shopping helps families plan weddings in Patna with verified venues, trusted vendors, transparent quotations, and one dedicated Wedding Expert from planning to vidai.',
   potentialAction: {
     '@type': 'SearchAction',
     target: {
