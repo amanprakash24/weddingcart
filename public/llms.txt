@@ -8,7 +8,7 @@ ShaadiShopping is not a listings-only directory — every enquiry is followed up
 
 - [Homepage](https://www.shaadishopping.com/): What ShaadiShopping does, featured vendors, and how the platform works end-to-end.
 - [Plan Your Wedding](https://www.shaadishopping.com/plan): Guided wizard where couples submit city, budget, guest count, and service needs to get matched with vendors and an expert consultant.
-- [Venues in Patna](https://www.shaadishopping.com/venues-in-patna): Curated directory of top banquet halls and wedding venues in Patna, with real photos and pricing.
+- [Venues in Patna](https://www.shaadishopping.com/venues/patna): Curated directory of top banquet halls and wedding venues in Patna, with real photos and pricing. Locality guides for Danapur, Saguna Mor, Boring Road, Bailey Road, and Kankarbagh.
 - [Patna hub](https://www.shaadishopping.com/cities/patna): City landing page linking to every vendor category available in Patna (venues, catering, décor, photography, makeup, mehndi, DJ/band, planning).
 - [Blog](https://www.shaadishopping.com/blog): Wedding planning guides — e.g. court marriage registration in Bihar, best banquet halls in Patna, venue spotlights.
 - [About](https://www.shaadishopping.com/about): ShaadiShopping's mission, team, and why couples choose the platform over generic listing sites.

@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         destination: 'https://www.shaadishopping.com/:path*',
         permanent: true,
       },
+      {
+        source: '/venues-in-patna',
+        destination: '/venues/patna',
+        permanent: true,
+      },
     ];
   },
   images: {

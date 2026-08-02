@@ -46,7 +46,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Patna city landing page (other Bihar cities added via biharCityRoutes above)
     { url: `${BASE_URL}/cities/patna`,            lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.95 },
     // Venue landing pages — indexed per robots.ts and each page's own metadata
-    { url: `${BASE_URL}/venues-in-patna`,         lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.97 },
+    { url: `${BASE_URL}/venues/patna`,               lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.97 },
+    { url: `${BASE_URL}/venues/patna/danapur`,       lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.9 },
+    { url: `${BASE_URL}/venues/patna/saguna-mor`,    lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.9 },
+    { url: `${BASE_URL}/venues/patna/boring-road`,   lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.85 },
+    { url: `${BASE_URL}/venues/patna/bailey-road`,   lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.85 },
+    { url: `${BASE_URL}/venues/patna/kankarbagh`,    lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.85 },
     { url: `${BASE_URL}/lp/touch-of-cozy`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/lp/swayamvar-hall`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/lp/7-vachan-patna`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },

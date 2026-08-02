@@ -3,12 +3,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { JsonLd } from '@/components/JsonLd';
 import { Star, MapPin, Users, CheckCircle, ChevronRight, Phone } from 'lucide-react';
+import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
-const PAGE_URL = `${BASE_URL}/venues-in-patna`;
-const SHAADI_PHONE = '+917646028228';
-const SHAADI_PHONE_DISPLAY = '+91 76460 28228';
-const SHAADI_WA = `https://wa.me/${SHAADI_PHONE}?text=Hi%2C%20I%20am%20looking%20for%20a%20wedding%20venue%20in%20Patna.%20Please%20help.`;
+const PAGE_URL = `${BASE_URL}/venues/patna`;
+const SHAADI_WA = shaadiWhatsAppLink('Hi, I am looking for a wedding venue in Patna. Please help.');
 
 export const metadata: Metadata = {
   title: 'Wedding Venues in Patna — Compare & Book Top Halls (2025) | ShaadiShopping',
@@ -120,6 +119,45 @@ const VENUES = [
   },
 ];
 
+const AREAS = [
+  {
+    area: 'Rajeev Nagar / Mica Colony',
+    desc: 'A fast-growing belt with newer, well-maintained venues. Best for intimate weddings (under 250 guests) with modern setups. Excellent road access via Atal Path.',
+    venues: ['Touch of Cozy'],
+    links: ['/lp/touch-of-cozy'],
+    price: 'From ₹999/plate',
+  },
+  {
+    area: 'Danapur / Gola Road',
+    desc: "Patna's most active wedding corridor. Large halls that handle 500+ guest baraats with ease. Multi-day functions, home stay accommodation, and experienced teams.",
+    venues: ['Swayamvar Hall & Homestay'],
+    links: ['/lp/swayamvar-hall'],
+    price: 'From ₹1,000/plate',
+    guideHref: '/venues/patna/danapur',
+  },
+  {
+    area: 'Judges Colony / Saguna Mor',
+    desc: 'Emerging wedding zone along Danapur Khagaul Road. Newer venues with competitive pricing, in-house DJ, rooftop options, and guest rooms.',
+    venues: ['7 Vachan'],
+    links: ['/lp/7-vachan-patna'],
+    price: 'From ₹1,100/plate',
+    guideHref: '/venues/patna/saguna-mor',
+  },
+  {
+    area: 'Digha / Rukanpura',
+    desc: 'West Patna\'s wedding belt, serving Digha, Ashiyana Nagar, Patliputra, Kurji & Boring Road. Indoor hall plus outdoor lawn on one property, with the highest guest capacity of any venue here.',
+    venues: ['Ashiyana Resort'],
+    links: ['/vendors/ashiyana-resort-rukanpura'],
+    price: 'From ₹900/plate',
+  },
+];
+
+const MORE_AREAS = [
+  { name: 'Boring Road', href: '/venues/patna/boring-road', desc: 'One of Patna\'s busiest commercial roads — see nearby verified venues.' },
+  { name: 'Bailey Road', href: '/venues/patna/bailey-road', desc: 'Patna\'s premier shopping & residential corridor — a wedding area guide.' },
+  { name: 'Kankarbagh', href: '/venues/patna/kankarbagh', desc: 'One of Patna\'s largest residential localities — a wedding area guide.' },
+];
+
 const FAQS = [
   {
     q: 'How much does a wedding venue cost in Patna?',
@@ -167,7 +205,8 @@ const breadcrumbSchema = {
   '@type': 'BreadcrumbList',
   itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-    { '@type': 'ListItem', position: 2, name: 'Wedding Venues in Patna', item: PAGE_URL },
+    { '@type': 'ListItem', position: 2, name: 'Venues', item: `${BASE_URL}/venues/patna` },
+    { '@type': 'ListItem', position: 3, name: 'Patna', item: PAGE_URL },
   ],
 };
 
@@ -181,7 +220,7 @@ const faqSchema = {
   })),
 };
 
-export default function VenuesInPatnaPage() {
+export default function VenuesPatnaPage() {
   return (
     <>
       <JsonLd data={itemListSchema} />
@@ -415,36 +454,7 @@ export default function VenuesInPatnaPage() {
             </h2>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              {
-                area: 'Rajeev Nagar / Mica Colony',
-                desc: 'A fast-growing belt with newer, well-maintained venues. Best for intimate weddings (under 250 guests) with modern setups. Excellent road access via Atal Path.',
-                venues: ['Touch of Cozy'],
-                links: ['/lp/touch-of-cozy'],
-                price: 'From ₹999/plate',
-              },
-              {
-                area: 'Danapur / Gola Road',
-                desc: "Patna's most active wedding corridor. Large halls that handle 500+ guest baraats with ease. Multi-day functions, home stay accommodation, and experienced teams.",
-                venues: ['Swayamvar Hall & Homestay'],
-                links: ['/lp/swayamvar-hall'],
-                price: 'From ₹1,000/plate',
-              },
-              {
-                area: 'Judges Colony / Saguna Mor',
-                desc: 'Emerging wedding zone along Danapur Khagaul Road. Newer venues with competitive pricing, in-house DJ, rooftop options, and guest rooms.',
-                venues: ['7 Vachan'],
-                links: ['/lp/7-vachan-patna'],
-                price: 'From ₹1,100/plate',
-              },
-              {
-                area: 'Digha / Rukanpura',
-                desc: 'West Patna\'s wedding belt, serving Digha, Ashiyana Nagar, Patliputra, Kurji & Boring Road. Indoor hall plus outdoor lawn on one property, with the highest guest capacity of any venue here.',
-                venues: ['Ashiyana Resort'],
-                links: ['/vendors/ashiyana-resort-rukanpura'],
-                price: 'From ₹900/plate',
-              },
-            ].map(({ area, desc, venues, links, price }) => (
+            {AREAS.map(({ area, desc, venues, links, price, guideHref }) => (
               <div key={area} className="bg-white rounded-2xl border border-[#C5A46D]/15 p-6">
                 <h3 className="font-bold text-[#2A1F1B] text-base mb-2" style={{ fontFamily: 'var(--font-playfair, serif)' }}>{area}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed mb-4">{desc}</p>
@@ -455,9 +465,30 @@ export default function VenuesInPatnaPage() {
                       <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" /> {v}
                     </Link>
                   ))}
+                  {guideHref && (
+                    <Link href={guideHref} className="flex items-center gap-2 text-[#6B5B4D] text-xs font-semibold hover:underline">
+                      <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" /> Read Area Guide
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* More areas we serve — guide-only, no fabricated listings */}
+          <div className="mt-10 bg-white rounded-2xl border border-[#C5A46D]/15 p-6 sm:p-8">
+            <h3 className="font-bold text-[#2A1F1B] text-base mb-1" style={{ fontFamily: 'var(--font-playfair, serif)' }}>More Patna Areas We Serve</h3>
+            <p className="text-gray-500 text-sm mb-5">
+              We&apos;re still onboarding verified venues in these areas. Our Wedding Expert can recommend nearby verified venues that match your budget.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {MORE_AREAS.map(({ name, href, desc }) => (
+                <Link key={name} href={href} className="group block rounded-xl border border-[#C5A46D]/15 hover:border-[#C5A46D]/40 px-4 py-4 transition-colors">
+                  <p className="font-semibold text-[#2A1F1B] text-sm group-hover:text-[#8B1A4A] transition-colors mb-1">{name}</p>
+                  <p className="text-gray-500 text-xs leading-relaxed">{desc}</p>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
