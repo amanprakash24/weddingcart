@@ -14,6 +14,19 @@ const nextConfig: NextConfig = {
         destination: '/venues/patna',
         permanent: true,
       },
+      {
+        source: '/lp/swayamvar-hall',
+        destination: '/vendors/swayamvar-hall-patna',
+        permanent: true,
+      },
+      {
+        // Pre-existing DB-backed vendor record (id: "swayamvar-hall") was rendering
+        // a separate, lower-quality generic page via app/vendors/[id] — redirect it
+        // into the canonical page so there's exactly one URL for this venue.
+        source: '/vendors/swayamvar-hall',
+        destination: '/vendors/swayamvar-hall-patna',
+        permanent: true,
+      },
     ];
   },
   images: {

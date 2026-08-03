@@ -45,7 +45,7 @@ const VENUES: LocalityVenue[] = [
     nonVegPrice: 1300,
     rooms: 'Home stay available',
     highlights: ['AC banquet hall', 'In-house catering & décor', 'Stage & sound setup', 'Power backup', '10+ years experience'],
-    href: '/lp/swayamvar-hall',
+    href: '/vendors/swayamvar-hall-patna',
     image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782029500/shaadishopping/swayamvar-hall/best-banquet-hall-swayamvar.jpg',
     imageAlt: 'Swayamvar Hall banquet hall, Danapur Patna',
   },
@@ -105,7 +105,7 @@ const localBusinessSchema = {
   },
   priceRange: '₹1,000–₹1,300 per plate',
   aggregateRating: { '@type': 'AggregateRating', ratingValue: VENUES[0].rating, reviewCount: 500 },
-  url: `${BASE_URL}/lp/swayamvar-hall`,
+  url: `${BASE_URL}/vendors/swayamvar-hall-patna`,
 };
 
 export default function DanapurVenuesPage() {

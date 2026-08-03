@@ -233,7 +233,7 @@ export default function CitiesSection() {
 
             {/* Swayamvar Hall */}
             <Link
-              href="/lp/swayamvar-hall"
+              href="/vendors/swayamvar-hall-patna"
               className="group relative rounded-2xl overflow-hidden bg-white border border-[#C5A46D]/20 hover:border-[#C5A46D]/50 shadow-sm hover:shadow-md transition-all duration-300"
             >
               <div className="relative aspect-[16/9] overflow-hidden">

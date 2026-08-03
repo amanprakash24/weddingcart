@@ -79,7 +79,7 @@ const VENUES = [
     highlights: ['AC banquet hall', 'In-house catering & décor', 'Stage & sound setup', 'Power backup', '10+ years experience'],
     badge: 'Trusted · Danapur',
     badgeColor: 'bg-[#8B1A4A]',
-    href: '/lp/swayamvar-hall',
+    href: '/vendors/swayamvar-hall-patna',
     image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782029500/shaadishopping/swayamvar-hall/best-banquet-hall-swayamvar.jpg',
     imageAlt: 'Swayamvar Hall banquet hall, Danapur Patna',
   },
@@ -131,7 +131,7 @@ const AREAS = [
     area: 'Danapur / Gola Road',
     desc: "Patna's most active wedding corridor. Large halls that handle 500+ guest baraats with ease. Multi-day functions, home stay accommodation, and experienced teams.",
     venues: ['Swayamvar Hall & Homestay'],
-    links: ['/lp/swayamvar-hall'],
+    links: ['/vendors/swayamvar-hall-patna'],
     price: 'From ₹1,000/plate',
     guideHref: '/venues/patna/danapur',
   },
@@ -422,7 +422,7 @@ export default function VenuesPatnaPage() {
                 <tbody className="divide-y divide-[#C5A46D]/10">
                   {[
                     { name: 'Touch of Cozy', area: 'Rajeev Nagar', rating: '5.0★', veg: '₹999', nonVeg: '₹1,199', rooms: '5 rooms', cap: '200', href: '/lp/touch-of-cozy' },
-                    { name: 'Swayamvar Hall', area: 'Danapur', rating: '4.8★', veg: '₹1,000', nonVeg: '₹1,300', rooms: 'Home stay', cap: '500', href: '/lp/swayamvar-hall' },
+                    { name: 'Swayamvar Hall', area: 'Danapur', rating: '4.8★', veg: '₹1,000', nonVeg: '₹1,300', rooms: 'Home stay', cap: '500', href: '/vendors/swayamvar-hall-patna' },
                     { name: '7 Vachan', area: 'Saguna Mor', rating: '4.6★', veg: '₹1,100', nonVeg: '₹1,300', rooms: '7 rooms', cap: '500+', href: '/lp/7-vachan-patna' },
                     { name: 'Ashiyana Resort', area: 'Digha', rating: '5.0★', veg: '₹900', nonVeg: '₹1,000', rooms: '10 rooms', cap: '600', href: '/vendors/ashiyana-resort-rukanpura' },
                   ].map((row, i) => (
