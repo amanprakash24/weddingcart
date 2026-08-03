@@ -37,11 +37,11 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com'),
   title: {
-    default: "ShaadiShopping — India's Expert Wedding Planning & Coordination Platform",
+    default: "ShaadiShopping — Patna's Trusted Wedding Planning Platform",
     template: '%s | ShaadiShopping',
   },
   description:
-    "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert wedding coordination from Venue to Vidaai.",
+    "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
   keywords: [
     'shaadi', 'shadi', 'shaadi planning', 'shaadi vendors', 'online shaadi booking',
     'vivah', 'byah', 'vivah planning India',
@@ -63,18 +63,18 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: "ShaadiShopping — India's Expert Wedding Coordination Platform",
-    description: "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert coordination from Venue to Vidaai.",
+    title: "ShaadiShopping — Patna's Trusted Wedding Planning Platform",
+    description: "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
     type: 'website',
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
     url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — India's Expert Wedding Coordination Platform" }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — Patna's Trusted Wedding Planning Platform" }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ShaadiShopping — India\'s Expert Wedding Coordination Platform',
-    description: "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert coordination from Venue to Vidaai.",
+    title: "ShaadiShopping — Patna's Trusted Wedding Planning Platform",
+    description: "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
     site: '@ShaadiShopping',
     images: ['/opengraph-image'],
   },

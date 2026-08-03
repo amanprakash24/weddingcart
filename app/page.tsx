@@ -121,7 +121,7 @@ const faqSchema = {
       name: 'Which are the best banquet halls in Patna for weddings?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Top banquet halls in Patna for weddings include Swayamvar Hall & Homestay (Danapur, up to 700 guests), Touch of Cozy (Rajeev Nagar), and 7 Vachan (Saguna Mor). ShaadiShopping has verified 50+ venues across Patna with pricing from ₹999/plate.',
+        text: 'Top banquet halls in Patna for weddings include Swayamvar Hall & Homestay (Danapur, up to 700 guests), Touch of Cozy (Rajeev Nagar), and 7 Vachan (Saguna Mor). ShaadiShopping verifies every venue it lists, with pricing from ₹999/plate.',
       },
     },
     {
@@ -145,7 +145,7 @@ const faqSchema = {
       name: 'Does ShaadiShopping plan weddings outside Patna?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes, ShaadiShopping plans weddings across India including Delhi, Mumbai, Jaipur, Bangalore, Udaipur, Goa, Hyderabad, Chennai, and Kolkata. We specialise in destination weddings and have a network of 500+ verified vendors across 25+ cities.',
+        text: "ShaadiShopping is Patna's trusted wedding planning platform, currently expanding across Bihar. Couples in cities like Muzaffarpur, Gaya, Bhagalpur, and Darbhanga are served from our Patna vendor network, with the same dedicated Wedding Expert guiding every booking.",
       },
     },
     {

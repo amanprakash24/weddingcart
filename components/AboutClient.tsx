@@ -30,7 +30,7 @@ const VALUES = [
   {
     icon: Users,
     title: 'Community First',
-    desc: 'We are building a community of couples and vendors across India, rooted in trust, transparency, and shared celebrations.',
+    desc: 'We are building a community of couples and vendors across Patna and Bihar, rooted in trust, transparency, and shared celebrations.',
     color: 'bg-emerald-50 text-emerald-500',
   },
   {
@@ -42,10 +42,10 @@ const VALUES = [
 ];
 
 const STATS = [
-  { value: '10,000+', label: 'Happy Couples' },
-  { value: '500+',    label: 'Verified Vendors' },
-  { value: '25+',     label: 'Cities Covered' },
-  { value: '4.9★',   label: 'Average Rating' },
+  { value: '1',      label: 'Dedicated Wedding Expert Per Couple' },
+  { value: '100%',   label: 'Free for Couples' },
+  { value: 'Patna',  label: 'Where We Started' },
+  { value: 'Bihar',  label: 'Where We\'re Expanding' },
 ];
 
 export default function AboutClient() {
@@ -94,7 +94,7 @@ export default function AboutClient() {
               variants={fadeUp}
               className="text-white/70 text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed"
             >
-              ShaadiShopping was born from a simple belief — that planning your wedding should feel exciting, not exhausting. We are India&apos;s most trusted wedding marketplace, connecting couples with the best vendors across the country.
+              ShaadiShopping was born from a simple belief — that planning your wedding should feel exciting, not exhausting. We&apos;re Patna&apos;s trusted wedding planning platform, giving every couple one dedicated Wedding Expert from booking to vidaai.
             </motion.p>
           </motion.div>
         </div>
@@ -181,16 +181,16 @@ export default function AboutClient() {
 
               <div className="space-y-4 text-gray-600 text-base leading-relaxed">
                 <p>
-                  <span className="font-semibold text-gray-800">Anisha Kumari</span> founded ShaadiShopping with a dream — to make wedding planning accessible, joyful, and stress-free for every couple in India.
+                  <span className="font-semibold text-gray-800">Anisha Kumari</span> founded ShaadiShopping with a dream — to make wedding planning accessible, joyful, and stress-free for every couple in Patna and Bihar.
                 </p>
                 <p>
                   Growing up in Patna, Bihar, she witnessed how families struggled to find reliable vendors for their most important celebrations. The process was fragmented, time-consuming, and often filled with uncertainty.
                 </p>
                 <p>
-                  With a passion for weddings and a deep understanding of the Indian market, Anisha built ShaadiShopping from the ground up — a single platform where couples can discover, compare, and book the best wedding vendors across the country, all with complete confidence.
+                  With a passion for weddings and a deep understanding of the local market, Anisha built ShaadiShopping from the ground up — a single platform where couples can discover, compare, and book the best wedding vendors in Patna, all with complete confidence.
                 </p>
                 <p>
-                  Today, ShaadiShopping serves thousands of couples from Bihar to Bangalore, from Goa to Gujarat — and the mission remains the same: <span className="font-semibold text-amber-600">everything for your big day.</span>
+                  Today, ShaadiShopping is Patna&apos;s trusted wedding planning platform, expanding across Bihar — and the mission remains the same: <span className="font-semibold text-amber-600">everything for your big day.</span>
                 </p>
               </div>
 
@@ -230,12 +230,12 @@ export default function AboutClient() {
               </span>
             </motion.h2>
             <motion.p variants={fadeUp} className="text-white/70 text-lg leading-relaxed max-w-2xl mx-auto mb-12">
-              We are on a mission to transform the Indian wedding industry — making it more transparent, accessible, and joyful. From small-town celebrations to grand destination weddings, ShaadiShopping is for every couple, every budget, and every dream.
+              We are on a mission to transform wedding planning — starting in Patna and expanding across Bihar — making it more transparent, accessible, and joyful. ShaadiShopping is for every couple, every budget, and every dream.
             </motion.p>
 
             <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
               {[
-                { title: 'Discover', desc: 'Browse 500+ verified vendors across 20+ categories and 25+ cities — all in one place.' },
+                { title: 'Discover', desc: 'Browse verified vendors across every wedding category in Patna — all in one place.' },
                 { title: 'Compare', desc: 'Read real reviews, compare packages and prices, and shortlist the perfect vendors for your day.' },
                 { title: 'Book', desc: 'Book with confidence knowing every vendor is verified and our team is here to support you.' },
               ].map((item) => (

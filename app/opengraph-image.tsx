@@ -87,7 +87,7 @@ export default async function Image() {
             marginBottom: '20px',
           }}
         >
-          India&apos;s Expert Wedding Platform
+          Patna&apos;s Trusted Wedding Platform
         </div>
 
         {/* Description */}

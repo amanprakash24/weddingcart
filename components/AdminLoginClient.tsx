@@ -41,7 +41,7 @@ export default function AdminLoginClient() {
             ShaadiShopping
           </div>
           <h1 className="text-3xl font-bold text-gray-900 font-[Playfair_Display,serif]">Admin Panel</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to manage your wedding marketplace</p>
+          <p className="text-gray-500 text-sm mt-1">Sign in to manage your wedding planning platform</p>
         </div>
 
         {/* Card */}
