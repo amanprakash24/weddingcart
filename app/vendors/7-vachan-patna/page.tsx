@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { JsonLd } from '@/components/JsonLd';
-import SevenVachanClient from '@/components/SevenVachanClient';
+import SevenVachanVendorPageClient from '@/components/SevenVachanVendorPageClient';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
-const PAGE_URL = `${BASE_URL}/lp/7-vachan-patna`;
+const PAGE_URL = `${BASE_URL}/vendors/7-vachan-patna`;
 
 export const metadata: Metadata = {
   title: '7 Vachan — Banquet Hall & Wedding Venue in Judges Colony, Patna',
@@ -47,7 +47,8 @@ const localBusinessSchema = {
   description:
     "Patna's trusted banquet hall and event venue in Judges Colony, near Saguna Mor, Danapur Khagaul Road. Hosting weddings, receptions, engagements, birthdays, baby showers, and corporate events since 2016. Rated 4.6★ across 55 reviews.",
   url: PAGE_URL,
-  telephone: '+919980122191',
+  // ShaadiShopping's own number, not the venue's — all booking enquiries route through us.
+  telephone: '+917646028228',
   priceRange: '₹1,100 – ₹1,300 per plate',
   openingHours: 'Mo-Su 09:00-22:00',
   foundingDate: '2016',
@@ -124,10 +125,10 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: 'How do I book 7 Vachan through ShaadiShopping?',
+      name: 'How do I book a venue visit at 7 Vachan through ShaadiShopping?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Fill the free quote form on the 7 Vachan page or call +91 76460 28228. ShaadiShopping is the authorised booking partner and will confirm date availability and pricing at no cost to couples.',
+        text: 'Fill the free quote form on the 7 Vachan page, WhatsApp us, or call +91 76460 28228. ShaadiShopping is the authorised booking partner and will confirm date availability, arrange a venue visit, and share pricing at no cost to couples.',
       },
     },
   ],
@@ -138,18 +139,19 @@ const breadcrumbSchema = {
   '@type': 'BreadcrumbList',
   itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-    { '@type': 'ListItem', position: 2, name: 'Wedding Venues in Patna', item: `${BASE_URL}/categories/venue` },
-    { '@type': 'ListItem', position: 3, name: '7 Vachan', item: PAGE_URL },
+    { '@type': 'ListItem', position: 2, name: 'Venues', item: `${BASE_URL}/venues/patna` },
+    { '@type': 'ListItem', position: 3, name: 'Saguna Mor', item: `${BASE_URL}/venues/patna/saguna-mor` },
+    { '@type': 'ListItem', position: 4, name: '7 Vachan', item: PAGE_URL },
   ],
 };
 
-export default function SevenVachanPage() {
+export default function SevenVachanVendorPage() {
   return (
     <>
       <JsonLd data={localBusinessSchema} />
       <JsonLd data={faqSchema} />
       <JsonLd data={breadcrumbSchema} />
-      <SevenVachanClient />
+      <SevenVachanVendorPageClient />
     </>
   );
 }

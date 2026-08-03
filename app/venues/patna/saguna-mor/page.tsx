@@ -45,7 +45,7 @@ const VENUES: LocalityVenue[] = [
     nonVegPrice: 1300,
     rooms: '7 guest rooms',
     highlights: ['In-house DJ', 'Rooftop venue option', 'Play area for kids', 'Wheelchair accessible', 'Est. 2016'],
-    href: '/lp/7-vachan-patna',
+    href: '/vendors/7-vachan-patna',
     image: 'https://content.jdmagicbox.com/v2/comp/patna/z3/0612px612.x612.250508092933.e8z3/catalogue/7-vachan-judges-colony-patna-banquet-halls-z4mw544mkw.jpg',
     imageAlt: '7 Vachan banquet hall, Judges Colony Saguna Mor Patna',
   },
@@ -105,7 +105,7 @@ const localBusinessSchema = {
   },
   priceRange: '₹1,100–₹1,300 per plate',
   aggregateRating: { '@type': 'AggregateRating', ratingValue: VENUES[0].rating, reviewCount: 55 },
-  url: `${BASE_URL}/lp/7-vachan-patna`,
+  url: `${BASE_URL}/vendors/7-vachan-patna`,
 };
 
 export default function SagunaMorVenuesPage() {

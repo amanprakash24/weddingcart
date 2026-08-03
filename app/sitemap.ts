@@ -52,9 +52,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/venues/patna/boring-road`,   lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.85 },
     { url: `${BASE_URL}/venues/patna/bailey-road`,   lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.85 },
     { url: `${BASE_URL}/venues/patna/kankarbagh`,    lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.85 },
-    { url: `${BASE_URL}/lp/touch-of-cozy`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/vendors/touch-of-cozy-patna`,        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/vendors/swayamvar-hall-patna`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${BASE_URL}/lp/7-vachan-patna`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/vendors/7-vachan-patna`,       lastModified: new Date(), changeFrequency: 'monthly', priority: 0.85 },
     // High-value blog posts pinned at top priority
     { url: `${BASE_URL}/blog/court-marriage-registration-patna-bihar`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },
     { url: `${BASE_URL}/blog/best-banquet-hall-in-patna`,              lastModified: new Date(), changeFrequency: 'monthly', priority: 0.92 },

@@ -5,11 +5,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   Phone, CheckCircle, Star, MapPin, Users, Home,
-  ArrowRight, ShieldCheck, Clock, Music, Car,
+  ArrowRight, ShieldCheck, Clock, Music, Car, ChevronRight, ChevronDown, Calendar,
 } from 'lucide-react';
+import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
 
-const SHAADI_PHONE = '+917646028228';
-const SHAADI_PHONE_DISPLAY = '+91 76460 28228';
+const WHATSAPP_LINK = shaadiWhatsAppLink('Hi, I am interested in 7 Vachan, Saguna Mor. Please share pricing and availability.');
 
 const FEATURES = [
   'AC Banquet Hall (Multiple Capacities)',
@@ -56,13 +56,71 @@ const GALLERY = [
   },
 ];
 
-export default function SevenVachanClient() {
+const FAQS = [
+  {
+    q: 'Is 7 Vachan a good banquet hall in Patna?',
+    a: '7 Vachan is a trusted banquet hall in Judges Colony, near Saguna Mor, Patna, rated 4.6★ across 55 reviews. It offers a fully AC hall, in-house catering, 7 guest rooms, an in-house DJ, and parking — popular for weddings, receptions, engagements, and corporate events since 2016.',
+  },
+  {
+    q: 'What is the catering price at 7 Vachan Patna?',
+    a: '7 Vachan offers in-house catering starting from ₹1,100 per plate, with packages ranging up to ₹1,300 per plate depending on the menu selected.',
+  },
+  {
+    q: 'Does 7 Vachan have guest rooms for outstation family?',
+    a: 'Yes. 7 Vachan has 7 guest rooms available for outstation family members, which is useful for multi-day wedding functions.',
+  },
+  {
+    q: 'Where is 7 Vachan located in Patna?',
+    a: '7 Vachan is located near Fashion Factory Godawari Complex, opposite Purise Hospital, Saguna Mor, Danapur Khagaul Road, Judges Colony, Patna – 801503.',
+  },
+  {
+    q: 'Does 7 Vachan have an in-house DJ and parking?',
+    a: 'Yes. 7 Vachan includes an in-house DJ, on-site parking, wheelchair accessibility, a play area, and a rooftop venue option as part of its amenities.',
+  },
+  {
+    q: 'How do I book a venue visit at 7 Vachan through ShaadiShopping?',
+    a: 'Fill the free quote form on this page, WhatsApp us, or call +91 76460 28228. ShaadiShopping is the authorised booking partner and will confirm date availability, arrange a venue visit, and share pricing at no cost to couples.',
+  },
+];
+
+const NEARBY_AREAS = [
+  { name: 'Danapur — Full Area Guide', href: '/venues/patna/danapur', desc: 'Just up Danapur Khagaul Road — Patna\'s most active wedding corridor.' },
+  { name: 'Saguna Mor — Full Area Guide', href: '/venues/patna/saguna-mor', desc: 'Budget, capacity & parking guidance for this whole wedding zone.' },
+  { name: 'All Patna Venues', href: '/venues/patna', desc: 'Compare every verified venue we list across Patna.' },
+];
+
+const RELATED_VENUES = [
+  {
+    name: 'Swayamvar Hall & Homestay',
+    area: 'Danapur',
+    price: 'From ₹1,000/plate',
+    href: '/vendors/swayamvar-hall-patna',
+    image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782029500/shaadishopping/swayamvar-hall/best-banquet-hall-swayamvar.jpg',
+  },
+  {
+    name: 'Touch of Cozy',
+    area: 'Rajeev Nagar',
+    price: 'From ₹999/plate',
+    href: '/vendors/touch-of-cozy-patna',
+    image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1783232556/shaadishopping/touch-of-cozy/touch-of-cozy-entrance.jpg',
+  },
+  {
+    name: 'Ashiyana Resort',
+    area: 'Digha, Rukanpura',
+    price: 'From ₹900/plate',
+    href: '/vendors/ashiyana-resort-rukanpura',
+    image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1783059452/shaadishopping/ashiyana-resort/x2svqkmeyizqreenyaxg.webp',
+  },
+];
+
+export default function SevenVachanVendorPageClient() {
   const [form, setForm] = useState({
     name: '', phone: '', eventDate: '', guestCount: '', message: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const isValidPhone = (v: string) => /^\d{10}$/.test(v.replace(/[\s\-\+\(\)]/g, ''));
 
@@ -88,8 +146,8 @@ export default function SevenVachanClient() {
           eventDate: form.eventDate,
           guestCount: form.guestCount,
           eventType: 'wedding',
-          message: form.message || 'Enquiry from landing page',
-          source: 'lp-7-vachan-patna',
+          message: form.message || 'Enquiry from vendor page',
+          source: 'vendors-7-vachan-patna',
         }),
       });
       setSubmitted(true);
@@ -140,15 +198,24 @@ export default function SevenVachanClient() {
 
             {/* Left — copy */}
             <div>
+              <nav className="flex items-center flex-wrap gap-2 text-white/40 text-[0.7rem] mb-5">
+                <Link href="/" className="hover:text-white/70 transition-colors">Home</Link>
+                <ChevronRight className="w-3 h-3" />
+                <Link href="/venues/patna" className="hover:text-white/70 transition-colors">Venues in Patna</Link>
+                <ChevronRight className="w-3 h-3" />
+                <Link href="/venues/patna/saguna-mor" className="hover:text-white/70 transition-colors">Saguna Mor</Link>
+              </nav>
+
               <div className="inline-flex items-center gap-2 bg-[#C5A46D]/15 border border-[#C5A46D]/30 text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.18em] px-3 py-1.5 rounded-full mb-5">
                 <MapPin className="w-3 h-3" /> Judges Colony, Saguna Mor, Patna · Verified Venue
               </div>
 
               <h1
-                className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4"
+                className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white leading-tight mb-4"
                 style={{ fontFamily: 'var(--font-playfair, serif)' }}
               >
-                7 Vachan<br />
+                7 Vachan
+                <br />
                 <span
                   style={{
                     background: 'linear-gradient(135deg, #e8d5b0, #C5A46D)',
@@ -157,7 +224,7 @@ export default function SevenVachanClient() {
                     backgroundClip: 'text',
                   }}
                 >
-                  Banquet &amp; Event Venue
+                  Banquet Hall in Judges Colony, Saguna Mor
                 </span>
               </h1>
 
@@ -192,13 +259,23 @@ export default function SevenVachanClient() {
               </div>
 
               {/* Mobile CTA */}
-              <a
-                href="#enquiry-form"
-                className="lg:hidden inline-flex items-center gap-2 bg-[#8B1A4A] text-white font-bold px-8 py-4 rounded-full text-sm shadow-xl hover:opacity-90 transition-all"
-                style={{ boxShadow: '0 8px 32px rgba(139,26,74,0.5)' }}
-              >
-                Get Free Quote <ArrowRight className="w-4 h-4" />
-              </a>
+              <div className="flex flex-wrap gap-3 lg:hidden">
+                <a
+                  href="#enquiry-form"
+                  className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white font-bold px-7 py-4 rounded-full text-sm shadow-xl hover:opacity-90 transition-all"
+                  style={{ boxShadow: '0 8px 32px rgba(139,26,74,0.5)' }}
+                >
+                  Get Free Quote <ArrowRight className="w-4 h-4" />
+                </a>
+                <a
+                  href={WHATSAPP_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#25D366] text-white font-bold px-7 py-4 rounded-full text-sm shadow-xl hover:opacity-90 transition-all"
+                >
+                  WhatsApp Us
+                </a>
+              </div>
             </div>
 
             {/* Right — lead form */}
@@ -300,10 +377,12 @@ export default function SevenVachanClient() {
                     </div>
                   </form>
 
-                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-2">
-                    <span className="text-xs text-gray-400">Or call directly:</span>
-                    <a href={`tel:${SHAADI_PHONE}`} className="text-xs font-bold text-[#8B1A4A] hover:underline">
-                      {SHAADI_PHONE_DISPLAY}
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-4">
+                    <a href={`tel:${SHAADI_PHONE}`} className="flex items-center gap-1.5 text-xs font-bold text-[#8B1A4A] hover:underline">
+                      <Phone className="w-3.5 h-3.5" /> Call
+                    </a>
+                    <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold text-[#25D366] hover:underline">
+                      WhatsApp
                     </a>
                   </div>
                 </>
@@ -483,7 +562,15 @@ export default function SevenVachanClient() {
                   href="#enquiry-form"
                   className="inline-flex items-center justify-center gap-2 bg-[#8B1A4A] text-white font-semibold px-6 py-3.5 rounded-full text-sm hover:opacity-90 transition-all"
                 >
-                  Book This Venue <ArrowRight className="w-4 h-4" />
+                  Book a Venue Visit <ArrowRight className="w-4 h-4" />
+                </a>
+                <a
+                  href={WHATSAPP_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 bg-[#25D366] text-white font-semibold px-6 py-3.5 rounded-full text-sm hover:opacity-90 transition-all"
+                >
+                  WhatsApp Us
                 </a>
                 <a
                   href={`tel:${SHAADI_PHONE}`}
@@ -508,6 +595,97 @@ export default function SevenVachanClient() {
         </div>
       </section>
 
+      {/* ── NEARBY AREAS ── */}
+      <section className="bg-[#FFFAF5] border-y border-[#C5A46D]/15 py-12 sm:py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 text-center" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+            Nearby Patna Wedding Areas
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {NEARBY_AREAS.map(({ name, href, desc }) => (
+              <Link key={name} href={href} className="group block rounded-xl border border-[#C5A46D]/15 hover:border-[#C5A46D]/40 bg-white px-4 py-4 transition-colors">
+                <p className="font-semibold text-gray-900 text-sm group-hover:text-[#8B1A4A] transition-colors mb-1 flex items-center gap-1">
+                  {name} <ChevronRight className="w-3.5 h-3.5" />
+                </p>
+                <p className="text-gray-500 text-xs leading-relaxed">{desc}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── RELATED VENUES ── */}
+      <section className="bg-white py-14 sm:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.2em] mb-2">Compare Options</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+              Related Venues in Patna
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {RELATED_VENUES.map((venue) => (
+              <Link
+                key={venue.name}
+                href={venue.href}
+                className="group relative rounded-2xl overflow-hidden bg-[#FFFAF5] border border-[#C5A46D]/15 hover:border-[#C5A46D]/40 shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <div className="relative aspect-[4/3]">
+                  <Image
+                    src={venue.image}
+                    alt={venue.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <p className="text-white font-bold text-sm" style={{ fontFamily: 'var(--font-playfair, serif)' }}>{venue.name}</p>
+                    <p className="text-white/70 text-xs">{venue.area}</p>
+                  </div>
+                </div>
+                <div className="p-3 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#8B1A4A]">{venue.price}</span>
+                  <span className="text-[#C5A46D] text-xs font-semibold group-hover:translate-x-1 transition-transform">View →</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section className="bg-[#FFFAF5] py-14 sm:py-20">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.2em] mb-2">FAQ</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+              Frequently Asked Questions
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {FAQS.map((faq, i) => (
+              <div key={i} className="bg-white border border-[#C5A46D]/20 rounded-2xl overflow-hidden">
+                <button
+                  className="w-full flex items-center justify-between px-5 py-4 text-left"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                >
+                  <span className="text-sm font-semibold text-gray-900 pr-4">{faq.q}</span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-[#C5A46D] flex-shrink-0 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {openFaq === i && (
+                  <div className="px-5 pb-4">
+                    <p className="text-sm text-gray-600 leading-relaxed">{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── BOTTOM CTA ── */}
       <section className="bg-[#8B1A4A] py-12 sm:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -525,7 +703,15 @@ export default function SevenVachanClient() {
               href="#enquiry-form"
               className="inline-flex items-center justify-center gap-2 bg-white text-[#8B1A4A] font-bold px-8 py-4 rounded-full text-sm hover:opacity-90 transition-all shadow-lg"
             >
-              Check Availability <ArrowRight className="w-4 h-4" />
+              Book a Venue Visit <Calendar className="w-4 h-4" />
+            </a>
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 bg-[#25D366] text-white font-bold px-8 py-4 rounded-full text-sm hover:opacity-90 transition-all shadow-lg"
+            >
+              WhatsApp Us
             </a>
             <a
               href={`tel:${SHAADI_PHONE}`}
@@ -548,19 +734,27 @@ export default function SevenVachanClient() {
       </div>
 
       {/* ── STICKY MOBILE CTA ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white border-t border-gray-100 px-4 py-3 flex gap-3 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white border-t border-gray-100 px-4 py-3 flex gap-2 shadow-2xl">
         <a
           href="#enquiry-form"
-          className="flex-1 flex items-center justify-center bg-[#8B1A4A] text-white font-bold py-3.5 rounded-xl text-sm"
+          className="flex-1 flex items-center justify-center bg-[#8B1A4A] text-white font-bold py-3.5 rounded-xl text-xs"
           style={{ boxShadow: '0 4px 16px rgba(139,26,74,0.4)' }}
         >
           Get Free Quote
         </a>
         <a
-          href={`tel:${SHAADI_PHONE}`}
-          className="flex items-center justify-center gap-1.5 border border-gray-200 text-gray-700 px-4 py-3.5 rounded-xl text-sm font-semibold"
+          href={WHATSAPP_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1 bg-[#25D366] text-white px-3.5 py-3.5 rounded-xl text-xs font-semibold"
         >
-          <Phone className="w-4 h-4" /> Call
+          WhatsApp
+        </a>
+        <a
+          href={`tel:${SHAADI_PHONE}`}
+          className="flex items-center justify-center gap-1 border border-gray-200 text-gray-700 px-3.5 py-3.5 rounded-xl text-xs font-semibold"
+        >
+          <Phone className="w-3.5 h-3.5" />
         </a>
       </div>
 

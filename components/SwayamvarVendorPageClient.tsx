@@ -97,14 +97,14 @@ const RELATED_VENUES = [
     name: 'Touch of Cozy',
     area: 'Rajeev Nagar',
     price: 'From ₹999/plate',
-    href: '/lp/touch-of-cozy',
+    href: '/vendors/touch-of-cozy-patna',
     image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1783232556/shaadishopping/touch-of-cozy/touch-of-cozy-entrance.jpg',
   },
   {
     name: '7 Vachan',
     area: 'Saguna Mor',
     price: 'From ₹1,100/plate',
-    href: '/lp/7-vachan-patna',
+    href: '/vendors/7-vachan-patna',
     image: 'https://content.jdmagicbox.com/v2/comp/patna/z3/0612px612.x612.250508092933.e8z3/catalogue/7-vachan-judges-colony-patna-banquet-halls-z4mw544mkw.jpg',
   },
   {

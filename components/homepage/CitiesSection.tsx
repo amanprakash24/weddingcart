@@ -200,7 +200,7 @@ export default function CitiesSection() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {/* Touch of Cozy */}
             <Link
-              href="/lp/touch-of-cozy"
+              href="/vendors/touch-of-cozy-patna"
               className="group relative rounded-2xl overflow-hidden bg-white border border-[#C5A46D]/20 hover:border-[#C5A46D]/50 shadow-sm hover:shadow-md transition-all duration-300"
             >
               <div className="relative aspect-[16/9] overflow-hidden">
@@ -266,7 +266,7 @@ export default function CitiesSection() {
 
             {/* 7 Vachan */}
             <Link
-              href="/lp/7-vachan-patna"
+              href="/vendors/7-vachan-patna"
               className="group relative rounded-2xl overflow-hidden bg-white border border-[#C5A46D]/20 hover:border-[#C5A46D]/50 shadow-sm hover:shadow-md transition-all duration-300"
             >
               <div className="relative aspect-[16/9] overflow-hidden">

@@ -27,6 +27,16 @@ const nextConfig: NextConfig = {
         destination: '/vendors/swayamvar-hall-patna',
         permanent: true,
       },
+      {
+        source: '/lp/touch-of-cozy',
+        destination: '/vendors/touch-of-cozy-patna',
+        permanent: true,
+      },
+      {
+        source: '/lp/7-vachan-patna',
+        destination: '/vendors/7-vachan-patna',
+        permanent: true,
+      },
     ];
   },
   images: {

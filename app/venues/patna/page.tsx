@@ -62,7 +62,7 @@ const VENUES = [
     highlights: ['In-house café', 'FSSAI certified kitchen', 'Valet parking (40 cars)', 'Baraat permitted', 'GST registered'],
     badge: 'New · Rajeev Nagar',
     badgeColor: 'bg-[#C5A46D]',
-    href: '/lp/touch-of-cozy',
+    href: '/vendors/touch-of-cozy-patna',
     image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1783232556/shaadishopping/touch-of-cozy/touch-of-cozy-entrance.jpg',
     imageAlt: 'Touch of Cozy banquet hall entrance, Mica Colony Rajeev Nagar Patna',
   },
@@ -96,7 +96,7 @@ const VENUES = [
     highlights: ['In-house DJ', 'Rooftop venue option', 'Play area for kids', 'Wheelchair accessible', 'Est. 2016'],
     badge: '4.6★ · Saguna Mor',
     badgeColor: 'bg-[#C5A46D]',
-    href: '/lp/7-vachan-patna',
+    href: '/vendors/7-vachan-patna',
     image: 'https://content.jdmagicbox.com/v2/comp/patna/z3/0612px612.x612.250508092933.e8z3/catalogue/7-vachan-judges-colony-patna-banquet-halls-z4mw544mkw.jpg',
     imageAlt: '7 Vachan banquet hall, Judges Colony Saguna Mor Patna',
   },
@@ -124,7 +124,7 @@ const AREAS = [
     area: 'Rajeev Nagar / Mica Colony',
     desc: 'A fast-growing belt with newer, well-maintained venues. Best for intimate weddings (under 250 guests) with modern setups. Excellent road access via Atal Path.',
     venues: ['Touch of Cozy'],
-    links: ['/lp/touch-of-cozy'],
+    links: ['/vendors/touch-of-cozy-patna'],
     price: 'From ₹999/plate',
   },
   {
@@ -139,7 +139,7 @@ const AREAS = [
     area: 'Judges Colony / Saguna Mor',
     desc: 'Emerging wedding zone along Danapur Khagaul Road. Newer venues with competitive pricing, in-house DJ, rooftop options, and guest rooms.',
     venues: ['7 Vachan'],
-    links: ['/lp/7-vachan-patna'],
+    links: ['/vendors/7-vachan-patna'],
     price: 'From ₹1,100/plate',
     guideHref: '/venues/patna/saguna-mor',
   },
@@ -421,9 +421,9 @@ export default function VenuesPatnaPage() {
                 </thead>
                 <tbody className="divide-y divide-[#C5A46D]/10">
                   {[
-                    { name: 'Touch of Cozy', area: 'Rajeev Nagar', rating: '5.0★', veg: '₹999', nonVeg: '₹1,199', rooms: '5 rooms', cap: '200', href: '/lp/touch-of-cozy' },
+                    { name: 'Touch of Cozy', area: 'Rajeev Nagar', rating: '5.0★', veg: '₹999', nonVeg: '₹1,199', rooms: '5 rooms', cap: '200', href: '/vendors/touch-of-cozy-patna' },
                     { name: 'Swayamvar Hall', area: 'Danapur', rating: '4.8★', veg: '₹1,000', nonVeg: '₹1,300', rooms: 'Home stay', cap: '500', href: '/vendors/swayamvar-hall-patna' },
-                    { name: '7 Vachan', area: 'Saguna Mor', rating: '4.6★', veg: '₹1,100', nonVeg: '₹1,300', rooms: '7 rooms', cap: '500+', href: '/lp/7-vachan-patna' },
+                    { name: '7 Vachan', area: 'Saguna Mor', rating: '4.6★', veg: '₹1,100', nonVeg: '₹1,300', rooms: '7 rooms', cap: '500+', href: '/vendors/7-vachan-patna' },
                     { name: 'Ashiyana Resort', area: 'Digha', rating: '5.0★', veg: '₹900', nonVeg: '₹1,000', rooms: '10 rooms', cap: '600', href: '/vendors/ashiyana-resort-rukanpura' },
                   ].map((row, i) => (
                     <tr key={row.name} className={i % 2 === 0 ? 'bg-[#FFFAF5]' : 'bg-white'}>
