@@ -1165,6 +1165,9 @@ model Payout {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
+  // Sprint 7.3 — one payout per booking; app-level eligibility checks in
+  // payout.service.ts are backed by this DB-level constraint against a race.
+  @@unique([vendorBookingId])
   @@map("payouts")
 }
 

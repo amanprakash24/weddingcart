@@ -14,6 +14,8 @@ import { handleApiError } from '@/lib/errors';
 const bodySchema = z.object({
   status: z.enum(['PENDING_VENDOR_CONFIRMATION', 'CONFIRMED', 'DECLINED', 'CUSTOMER_APPROVAL_PENDING', 'CANCELLED', 'COMPLETED']),
   declineReason: z.string().trim().min(1).optional(),
+  // Sprint 7.3 — captured only when status is COMPLETED.
+  onTimeService: z.boolean().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
@@ -24,8 +26,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id, vbId } = await params;
   try {
-    const { status, declineReason } = bodySchema.parse(await req.json());
-    const vendorBooking = await weddingWorkspaceService.updateVendorBookingStatus(id, vbId, status, declineReason);
+    const { status, declineReason, onTimeService } = bodySchema.parse(await req.json());
+    const vendorBooking = await weddingWorkspaceService.updateVendorBookingStatus(id, vbId, status, declineReason, onTimeService);
     return NextResponse.json({ success: true, data: vendorBooking });
   } catch (err) {
     return handleApiError(err);

@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import type { WorkspaceWeddingEvent, VendorBookingStatus, VendorSearchResult } from './types';
+import { PAYOUT_STATUS_LABELS, PAYOUT_STATUS_COLORS } from './constants';
+
+const money = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 const VB_STATUS_LABELS: Record<VendorBookingStatus, string> = {
   PENDING_VENDOR_CONFIRMATION: 'Pending Confirmation',
@@ -29,9 +32,13 @@ const VB_STATUS_COLORS: Record<VendorBookingStatus, string> = {
 function VendorBookingRow({
   vb,
   onUpdateStatus,
+  onCalculatePayout,
+  onMarkPayoutPaid,
 }: {
   vb: WorkspaceWeddingEvent['vendorBookings'][number];
-  onUpdateStatus: (vbId: string, status: VendorBookingStatus, declineReason?: string) => Promise<void>;
+  onUpdateStatus: (vbId: string, status: VendorBookingStatus, declineReason?: string, onTimeService?: boolean) => Promise<void>;
+  onCalculatePayout: (vbId: string) => Promise<void>;
+  onMarkPayoutPaid: (payoutId: string) => Promise<void>;
 }) {
   const [updating, setUpdating] = useState(false);
 
@@ -47,9 +54,40 @@ function VendorBookingRow({
       }
       return;
     }
+    if (status === 'COMPLETED') {
+      const onTime = window.confirm('Was the vendor service on time? OK = Yes, Cancel = No');
+      if (!window.confirm('Mark this booking completed?')) return;
+      setUpdating(true);
+      try {
+        await onUpdateStatus(vb.id, status, undefined, onTime);
+      } finally {
+        setUpdating(false);
+      }
+      return;
+    }
     setUpdating(true);
     try {
       await onUpdateStatus(vb.id, status);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const calculatePayout = async () => {
+    setUpdating(true);
+    try {
+      await onCalculatePayout(vb.id);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const markPaid = async () => {
+    if (!vb.payout) return;
+    if (!window.confirm('Confirm the bank/UPI transfer has been made manually?')) return;
+    setUpdating(true);
+    try {
+      await onMarkPayoutPaid(vb.payout.id);
     } finally {
       setUpdating(false);
     }
@@ -61,9 +99,19 @@ function VendorBookingRow({
         <div className="text-gray-900 font-medium">{vb.vendorName}</div>
         <div className="text-gray-400 text-xs">{vb.vendorCategory} · ₹{vb.agreedPrice.toLocaleString('en-IN')}</div>
         {vb.status === 'DECLINED' && vb.declineReason && <div className="text-red-500 text-xs mt-0.5">{vb.declineReason}</div>}
+        {vb.payout && (
+          <div className="text-gray-400 text-xs mt-0.5">
+            Gross {money(vb.payout.grossAmount)} · Commission {money(vb.payout.commissionAmount)} ({vb.payout.commissionRate}%) · Net {money(vb.payout.netAmount)}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${VB_STATUS_COLORS[vb.status]}`}>{VB_STATUS_LABELS[vb.status]}</span>
+        {vb.payout && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${PAYOUT_STATUS_COLORS[vb.payout.status]}`}>
+            {PAYOUT_STATUS_LABELS[vb.payout.status]}
+          </span>
+        )}
         {vb.status === 'PENDING_VENDOR_CONFIRMATION' && (
           <>
             <button disabled={updating} onClick={() => handle('CONFIRMED')} className="text-xs text-emerald-600 hover:underline disabled:opacity-40">
@@ -73,6 +121,21 @@ function VendorBookingRow({
               Decline
             </button>
           </>
+        )}
+        {vb.status === 'CONFIRMED' && (
+          <button disabled={updating} onClick={() => handle('COMPLETED')} className="text-xs text-emerald-600 hover:underline disabled:opacity-40">
+            Mark Completed
+          </button>
+        )}
+        {vb.status === 'COMPLETED' && !vb.payout && (
+          <button disabled={updating} onClick={calculatePayout} className="text-xs text-emerald-600 hover:underline disabled:opacity-40">
+            + Calculate Payout
+          </button>
+        )}
+        {vb.payout && vb.payout.status === 'PENDING' && (
+          <button disabled={updating} onClick={markPaid} className="text-xs text-emerald-600 hover:underline disabled:opacity-40">
+            Mark Paid
+          </button>
         )}
       </div>
     </li>
@@ -202,10 +265,14 @@ export default function WeddingEvents({
   events,
   onUpdateVendorBookingStatus,
   onAddVendorBooking,
+  onCalculatePayout,
+  onMarkPayoutPaid,
 }: {
   events: WorkspaceWeddingEvent[];
-  onUpdateVendorBookingStatus: (vbId: string, status: VendorBookingStatus, declineReason?: string) => Promise<void>;
+  onUpdateVendorBookingStatus: (vbId: string, status: VendorBookingStatus, declineReason?: string, onTimeService?: boolean) => Promise<void>;
   onAddVendorBooking: (eventId: string, vendorId: string, agreedPrice: number) => Promise<void>;
+  onCalculatePayout: (vbId: string) => Promise<void>;
+  onMarkPayoutPaid: (payoutId: string) => Promise<void>;
 }) {
   const [addingFor, setAddingFor] = useState<string | null>(null);
   return (
@@ -229,7 +296,13 @@ export default function WeddingEvents({
               ) : (
                 <ul className="space-y-2 mb-2">
                   {event.vendorBookings.map((vb) => (
-                    <VendorBookingRow key={vb.id} vb={vb} onUpdateStatus={onUpdateVendorBookingStatus} />
+                    <VendorBookingRow
+                      key={vb.id}
+                      vb={vb}
+                      onUpdateStatus={onUpdateVendorBookingStatus}
+                      onCalculatePayout={onCalculatePayout}
+                      onMarkPayoutPaid={onMarkPayoutPaid}
+                    />
                   ))}
                 </ul>
               )}

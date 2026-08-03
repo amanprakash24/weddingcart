@@ -64,12 +64,20 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     await postJson(`${basePath}/status`, { toStatus }, 'PATCH');
     load();
   };
-  const updateVendorBookingStatus = async (vbId: string, status: VendorBookingStatus, declineReason?: string) => {
-    await postJson(`${basePath}/vendor-bookings/${vbId}`, { status, declineReason }, 'PATCH');
+  const updateVendorBookingStatus = async (vbId: string, status: VendorBookingStatus, declineReason?: string, onTimeService?: boolean) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}`, { status, declineReason, onTimeService }, 'PATCH');
     load();
   };
   const addVendorBooking = async (weddingEventId: string, vendorId: string, agreedPrice: number) => {
     await postJson(`${basePath}/vendor-bookings`, { weddingEventId, vendorId, agreedPrice });
+    load();
+  };
+  const calculatePayout = async (vbId: string) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}/payout`, {});
+    load();
+  };
+  const markPayoutPaid = async (payoutId: string) => {
+    await postJson(`${basePath}/payouts/${payoutId}`, { status: 'PAID' }, 'PATCH');
     load();
   };
   const createInvoice = async (input: CreateInvoiceInput) => {
@@ -109,6 +117,8 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         events={workspace.events}
         onUpdateVendorBookingStatus={updateVendorBookingStatus}
         onAddVendorBooking={addVendorBooking}
+        onCalculatePayout={calculatePayout}
+        onMarkPayoutPaid={markPayoutPaid}
       />
 
       <Finance
