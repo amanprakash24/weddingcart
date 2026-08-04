@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { User, Phone, Mail, Calendar, Users, UtensilsCrossed, Building2, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Heart, Clock, X, MapPin } from 'lucide-react';
 import WeddingDashboardClient from '@/components/WeddingDashboardClient';
@@ -63,6 +64,15 @@ const VENUE_TYPES = [
 
 const TIMES = ['9:00 AM', '11:00 AM', '1:00 PM', '3:00 PM', '5:00 PM', '7:00 PM'];
 
+// Maps the homepage budget-picker slugs (?budget=...) to the nearest existing budgetRange tier below.
+const BUDGET_QUERY_MAP: Record<string, string> = {
+  'under-5': 'under-5L',
+  '5-10': '5-10L',
+  '10-15': '10-20L',
+  '15-25': '20-50L',
+  '25-plus': '20-50L',
+};
+
 interface FormData {
   name: string; phone: string; email: string; city: string; weddingDate: string;
   days: number; guestCount: number; foodPreference: string; weddingStyle: string;
@@ -73,6 +83,7 @@ interface FormData {
 
 export default function PlanPageClient() {
   const { items, total, clearCart } = useCart();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -84,6 +95,11 @@ export default function PlanPageClient() {
     eventType: 'wedding',
     services: [], meals: {}, venueType: '', consultationDate: '', preferredTime: '', message: '',
   });
+
+  useEffect(() => {
+    const mapped = BUDGET_QUERY_MAP[searchParams.get('budget') ?? ''];
+    if (mapped) setForm((f) => ({ ...f, budgetRange: mapped }));
+  }, [searchParams]);
 
   const eventLabel = EVENT_LABELS[form.eventType] || 'Event';
 

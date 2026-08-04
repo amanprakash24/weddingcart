@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { JsonLd } from '@/components/JsonLd';
-import TouchOfCozyClient from '@/components/TouchOfCozyClient';
+import TouchOfCozyVendorPageClient from '@/components/TouchOfCozyVendorPageClient';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
-const PAGE_URL = `${BASE_URL}/lp/touch-of-cozy`;
+const PAGE_URL = `${BASE_URL}/vendors/touch-of-cozy-patna`;
 
 export const metadata: Metadata = {
   title: 'Touch of Cozy — Best Banquet Hall in Patna | Rajeev Nagar, Mica Colony',
@@ -155,18 +155,18 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: 'How do I book Touch of Cozy banquet hall in Patna?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'You can book Touch of Cozy by filling the enquiry form on this page or calling +91-76460-28228. ShaadiShopping handles all Touch of Cozy bookings and provides free consultation to help you choose the right package for your event.',
-      },
-    },
-    {
-      '@type': 'Question',
       name: 'Where is Touch of Cozy located in Patna?',
       acceptedAnswer: {
         '@type': 'Answer',
         text: 'Touch of Cozy is located at Road No. 23, Near Atal Path Branch Road, Mica Colony, Rajeev Nagar, Patna – 800012. It is easily accessible from Boring Road, Bailey Road, and the Patna bypass.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'How do I book a venue visit at Touch of Cozy?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'You can book a venue visit by filling the enquiry form on this page, messaging us on WhatsApp, or calling +91-76460-28228. ShaadiShopping handles all Touch of Cozy bookings and provides free consultation to help you choose the right package for your event.',
       },
     },
   ],
@@ -177,18 +177,18 @@ const breadcrumbSchema = {
   '@type': 'BreadcrumbList',
   itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-    { '@type': 'ListItem', position: 2, name: 'Wedding Venues in Patna', item: `${BASE_URL}/categories/venue` },
+    { '@type': 'ListItem', position: 2, name: 'Venues', item: `${BASE_URL}/venues/patna` },
     { '@type': 'ListItem', position: 3, name: 'Touch of Cozy', item: PAGE_URL },
   ],
 };
 
-export default function TouchOfCozyPage() {
+export default function TouchOfCozyVendorPage() {
   return (
     <>
       <JsonLd data={localBusinessSchema} />
       <JsonLd data={faqSchema} />
       <JsonLd data={breadcrumbSchema} />
-      <TouchOfCozyClient />
+      <TouchOfCozyVendorPageClient />
     </>
   );
 }

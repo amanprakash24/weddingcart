@@ -361,7 +361,7 @@ export default function VendorPortfolioClient({ id }: { id: string }) {
             Verified & Listed on ShaadiShopping
           </p>
           <div className="hidden sm:block h-3 w-px bg-[#C5A46D]/20" />
-          <p className="text-gray-500 text-xs">India&apos;s Trusted Wedding Platform</p>
+          <p className="text-gray-500 text-xs">Patna&apos;s Trusted Wedding Platform</p>
         </div>
       </div>
 
@@ -552,7 +552,7 @@ export default function VendorPortfolioClient({ id }: { id: string }) {
             <ShieldCheck className="w-4 h-4 text-[#C5A46D]" />
             <span className="text-gray-400 text-xs">
               Listed & verified by <Link href="/" className="text-[#C5A46D] font-semibold hover:underline">ShaadiShopping</Link>
-              {' '}— India&apos;s Wedding Platform
+              {' '}— Patna&apos;s Wedding Planning Platform
             </span>
           </div>
           <Link href={`/vendors/${vendor.id}`}

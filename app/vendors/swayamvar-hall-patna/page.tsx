@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { JsonLd } from '@/components/JsonLd';
-import SwayamvarLandingClient from '@/components/SwayamvarLandingClient';
+import SwayamvarVendorPageClient from '@/components/SwayamvarVendorPageClient';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
-const PAGE_URL = `${BASE_URL}/lp/swayamvar-hall`;
+const PAGE_URL = `${BASE_URL}/vendors/swayamvar-hall-patna`;
 
 export const metadata: Metadata = {
   title: 'Swayamvar Hall & Homestay — Best Banquet Hall in Danapur, Patna',
@@ -150,10 +150,10 @@ const faqSchema = {
     },
     {
       '@type': 'Question',
-      name: 'How do I book Swayamvar Hall through ShaadiShopping?',
+      name: 'How do I book a venue visit at Swayamvar Hall through ShaadiShopping?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Fill the free quote form on the Swayamvar Hall page or call +91 76460 28228. ShaadiShopping is the authorised booking partner. Our Patna team will check date availability and share pricing — completely free for couples.',
+        text: 'Fill the free quote form on the Swayamvar Hall page, WhatsApp us, or call +91 76460 28228. ShaadiShopping is the authorised booking partner. Our Patna team will check date availability, arrange a venue visit, and share pricing — completely free for couples.',
       },
     },
   ],
@@ -164,18 +164,19 @@ const breadcrumbSchema = {
   '@type': 'BreadcrumbList',
   itemListElement: [
     { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
-    { '@type': 'ListItem', position: 2, name: 'Wedding Venues in Patna', item: `${BASE_URL}/categories/venue` },
-    { '@type': 'ListItem', position: 3, name: 'Swayamvar Hall & Homestay', item: PAGE_URL },
+    { '@type': 'ListItem', position: 2, name: 'Venues', item: `${BASE_URL}/venues/patna` },
+    { '@type': 'ListItem', position: 3, name: 'Danapur', item: `${BASE_URL}/venues/patna/danapur` },
+    { '@type': 'ListItem', position: 4, name: 'Swayamvar Hall & Homestay', item: PAGE_URL },
   ],
 };
 
-export default function SwayamvarLandingPage() {
+export default function SwayamvarVendorPage() {
   return (
     <>
       <JsonLd data={localBusinessSchema} />
       <JsonLd data={faqSchema} />
       <JsonLd data={breadcrumbSchema} />
-      <SwayamvarLandingClient />
+      <SwayamvarVendorPageClient />
     </>
   );
 }

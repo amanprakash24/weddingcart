@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Phone } from 'lucide-react';
@@ -43,7 +42,7 @@ export default function HeroSection() {
             className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/15 text-white/80 px-4 py-2 rounded-full text-[0.68rem] sm:text-xs font-medium mb-6 sm:mb-8 tracking-[0.1em] sm:tracking-[0.14em] uppercase"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#C5A46D] flex-shrink-0" />
-            Shaadi Shopping — India&apos;s Expert Wedding Platform
+            Shaadi Shopping — Patna&apos;s Trusted Wedding Planning Platform
           </motion.div>
 
           <h1
@@ -57,7 +56,7 @@ export default function HeroSection() {
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.7, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
               >
-                From Venue&nbsp;
+                Plan Your Wedding&nbsp;
               </motion.span>
               <motion.span
                 className="inline-block"
@@ -65,16 +64,15 @@ export default function HeroSection() {
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               >
-                to&nbsp;
+                in Patna&nbsp;
               </motion.span>
               <motion.span
-                className="inline-block relative"
+                className="inline-block"
                 initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.7, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
               >
-                Vidaai
-                <span className="vidaai-shimmer-overlay" aria-hidden="true">Vidaai</span>
+                With Confidence
               </motion.span>
             </span>
             <span className="hidden sm:block">
@@ -84,10 +82,7 @@ export default function HeroSection() {
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.8, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
               >
-                <span className="text-white/50">— </span>
-                <span className="hero-highlight-cycle-wrap">
-                  <span className="hero-highlight-cycle">We Handle Everything</span>
-                </span>
+                One Dedicated Wedding Expert From Planning to Vidai
               </motion.span>
             </span>
           </h1>
@@ -98,7 +93,7 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
             className="text-white/65 text-sm sm:text-lg mb-8 sm:mb-10 max-w-md sm:max-w-xl leading-relaxed"
           >
-            Expert consultants. Verified vendors. End-to-end coordination — for your dream Indian wedding.
+            Tell us your budget, wedding date, and guest count. We&apos;ll help you find verified venues and trusted vendors with transparent quotations—all with one dedicated Wedding Expert, free of cost.
           </motion.p>
 
           <motion.div

@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Phone, CheckCircle, Star, MapPin, Users, Calendar, ArrowRight, ShieldCheck, Clock, Sparkles, ChevronDown } from 'lucide-react';
+import { Phone, CheckCircle, Star, MapPin, Users, Calendar, ArrowRight, ShieldCheck, Clock, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
+import { shaadiWhatsAppLink } from '@/lib/shaadiContact';
+
+const WHATSAPP_LINK = shaadiWhatsAppLink('Hi, I am interested in Swayamvar Hall & Homestay, Danapur. Please share pricing and availability.');
 
 const GALLERY_IMAGES = [
   { src: 'https://res.cloudinary.com/djaif7u83/image/upload/v1782029500/shaadishopping/swayamvar-hall/best-banquet-hall-swayamvar.jpg', alt: 'Swayamvar Hall — Best Banquet Hall in Patna' },
@@ -58,8 +61,8 @@ const FAQS = [
     a: 'Swayamvar Hall is located at T Point, Gola Road, near Chanakya Puri, Danapur, Patna – 801503. It is well connected from all parts of Patna and easily accessible from the Patna bypass.',
   },
   {
-    q: 'How do I book Swayamvar Hall through ShaadiShopping?',
-    a: 'Fill the free quote form on this page or call +91 76460 28228. ShaadiShopping is the authorised booking partner for Swayamvar Hall. Our Patna team will check date availability and share pricing — completely free for couples.',
+    q: 'How do I book a venue visit at Swayamvar Hall through ShaadiShopping?',
+    a: 'Fill the free quote form on this page, WhatsApp us, or call +91 76460 28228. ShaadiShopping is the authorised booking partner for Swayamvar Hall. Our Patna team will check date availability, arrange a venue visit, and share pricing — completely free for couples.',
   },
 ];
 
@@ -83,7 +86,37 @@ const BADGES = [
   { icon: Clock, label: 'Quick Response' },
 ];
 
-export default function SwayamvarLandingClient() {
+const NEARBY_AREAS = [
+  { name: 'Danapur — Full Area Guide', href: '/venues/patna/danapur', desc: 'Budget, capacity & parking guidance for the whole Danapur wedding corridor.' },
+  { name: 'Saguna Mor', href: '/venues/patna/saguna-mor', desc: 'Just down Danapur Khagaul Road — newer venues, in-house DJ options.' },
+  { name: 'All Patna Venues', href: '/venues/patna', desc: 'Compare every verified venue we list across Patna.' },
+];
+
+const RELATED_VENUES = [
+  {
+    name: 'Touch of Cozy',
+    area: 'Rajeev Nagar',
+    price: 'From ₹999/plate',
+    href: '/vendors/touch-of-cozy-patna',
+    image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1783232556/shaadishopping/touch-of-cozy/touch-of-cozy-entrance.jpg',
+  },
+  {
+    name: '7 Vachan',
+    area: 'Saguna Mor',
+    price: 'From ₹1,100/plate',
+    href: '/vendors/7-vachan-patna',
+    image: 'https://content.jdmagicbox.com/v2/comp/patna/z3/0612px612.x612.250508092933.e8z3/catalogue/7-vachan-judges-colony-patna-banquet-halls-z4mw544mkw.jpg',
+  },
+  {
+    name: 'Ashiyana Resort',
+    area: 'Digha, Rukanpura',
+    price: 'From ₹900/plate',
+    href: '/vendors/ashiyana-resort-rukanpura',
+    image: 'https://res.cloudinary.com/djaif7u83/image/upload/v1783059452/shaadishopping/ashiyana-resort/x2svqkmeyizqreenyaxg.webp',
+  },
+];
+
+export default function SwayamvarVendorPageClient() {
   const [form, setForm] = useState({
     name: '', phone: '', eventDate: '', guestCount: '', message: '',
   });
@@ -113,8 +146,8 @@ export default function SwayamvarLandingClient() {
           eventDate: form.eventDate,
           guestCount: form.guestCount,
           eventType: 'wedding',
-          message: form.message || 'Enquiry from landing page',
-          source: 'lp-swayamvar-hall',
+          message: form.message || 'Enquiry from vendor page',
+          source: 'vendors-swayamvar-hall-patna',
         }),
       });
       setSubmitted(true);
@@ -160,14 +193,23 @@ export default function SwayamvarLandingClient() {
 
             {/* Left — copy */}
             <div>
+              <nav className="flex items-center flex-wrap gap-2 text-white/40 text-[0.7rem] mb-5">
+                <Link href="/" className="hover:text-white/70 transition-colors">Home</Link>
+                <ChevronRight className="w-3 h-3" />
+                <Link href="/venues/patna" className="hover:text-white/70 transition-colors">Venues in Patna</Link>
+                <ChevronRight className="w-3 h-3" />
+                <Link href="/venues/patna/danapur" className="hover:text-white/70 transition-colors">Danapur</Link>
+              </nav>
+
               <div className="inline-flex items-center gap-2 bg-[#C5A46D]/15 border border-[#C5A46D]/30 text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.18em] px-3 py-1.5 rounded-full mb-5">
                 <MapPin className="w-3 h-3" /> Gola Road, Danapur · Verified Venue
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-                Swayamvar Hall<br />
+              <h1 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-white leading-tight mb-4" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+                Swayamvar Hall &amp; Homestay
+                <br />
                 <span style={{ background: 'linear-gradient(135deg, #e8d5b0, #C5A46D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                  &amp; Homestay
+                  Best Banquet Hall in Danapur, Patna
                 </span>
               </h1>
 
@@ -195,13 +237,23 @@ export default function SwayamvarLandingClient() {
                 ))}
               </div>
 
-              <a
-                href="#enquiry-form"
-                className="lg:hidden inline-flex items-center gap-2 bg-[#8B1A4A] text-white font-bold px-8 py-4 rounded-full text-sm shadow-xl hover:opacity-90 transition-all"
-                style={{ boxShadow: '0 8px 32px rgba(139,26,74,0.5)' }}
-              >
-                Get Free Quote <ArrowRight className="w-4 h-4" />
-              </a>
+              <div className="flex flex-wrap gap-3 lg:hidden">
+                <a
+                  href="#enquiry-form"
+                  className="inline-flex items-center gap-2 bg-[#8B1A4A] text-white font-bold px-7 py-4 rounded-full text-sm shadow-xl hover:opacity-90 transition-all"
+                  style={{ boxShadow: '0 8px 32px rgba(139,26,74,0.5)' }}
+                >
+                  Get Free Quote <ArrowRight className="w-4 h-4" />
+                </a>
+                <a
+                  href={WHATSAPP_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#25D366] text-white font-bold px-7 py-4 rounded-full text-sm shadow-xl hover:opacity-90 transition-all"
+                >
+                  WhatsApp Us
+                </a>
+              </div>
             </div>
 
             {/* Right — lead form */}
@@ -283,9 +335,13 @@ export default function SwayamvarLandingClient() {
                     </div>
                   </form>
 
-                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-2">
-                    <span className="text-xs text-gray-400">Or call directly:</span>
-                    <a href="tel:+917646028228" className="text-xs font-bold text-[#8B1A4A] hover:underline">+91 76460 28228</a>
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-4">
+                    <a href="tel:+917646028228" className="flex items-center gap-1.5 text-xs font-bold text-[#8B1A4A] hover:underline">
+                      <Phone className="w-3.5 h-3.5" /> Call
+                    </a>
+                    <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold text-[#25D366] hover:underline">
+                      WhatsApp
+                    </a>
                   </div>
                 </>
               )}
@@ -442,7 +498,15 @@ export default function SwayamvarLandingClient() {
                   href="#enquiry-form"
                   className="inline-flex items-center justify-center gap-2 bg-[#8B1A4A] text-white font-semibold px-6 py-3.5 rounded-full text-sm hover:opacity-90 transition-all"
                 >
-                  Book This Venue <ArrowRight className="w-4 h-4" />
+                  Book a Venue Visit <ArrowRight className="w-4 h-4" />
+                </a>
+                <a
+                  href={WHATSAPP_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 bg-[#25D366] text-white font-semibold px-6 py-3.5 rounded-full text-sm hover:opacity-90 transition-all"
+                >
+                  WhatsApp Us
                 </a>
                 <a
                   href="tel:+917646028228"
@@ -467,6 +531,65 @@ export default function SwayamvarLandingClient() {
         </div>
       </section>
 
+      {/* ── NEARBY AREAS ── */}
+      <section className="bg-[#FFFAF5] border-y border-[#C5A46D]/15 py-12 sm:py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 text-center" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+            Nearby Patna Wedding Areas
+          </h2>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {NEARBY_AREAS.map(({ name, href, desc }) => (
+              <Link key={name} href={href} className="group block rounded-xl border border-[#C5A46D]/15 hover:border-[#C5A46D]/40 bg-white px-4 py-4 transition-colors">
+                <p className="font-semibold text-gray-900 text-sm group-hover:text-[#8B1A4A] transition-colors mb-1 flex items-center gap-1">
+                  {name} <ChevronRight className="w-3.5 h-3.5" />
+                </p>
+                <p className="text-gray-500 text-xs leading-relaxed">{desc}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── RELATED VENUES ── */}
+      <section className="bg-white py-14 sm:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.2em] mb-2">Compare Options</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+              Related Venues in Patna
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {RELATED_VENUES.map((venue) => (
+              <Link
+                key={venue.name}
+                href={venue.href}
+                className="group relative rounded-2xl overflow-hidden bg-[#FFFAF5] border border-[#C5A46D]/15 hover:border-[#C5A46D]/40 shadow-sm hover:shadow-md transition-all duration-300"
+              >
+                <div className="relative aspect-[4/3]">
+                  <Image
+                    src={venue.image}
+                    alt={venue.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <p className="text-white font-bold text-sm" style={{ fontFamily: 'var(--font-playfair, serif)' }}>{venue.name}</p>
+                    <p className="text-white/70 text-xs">{venue.area}</p>
+                  </div>
+                </div>
+                <div className="p-3 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#8B1A4A]">{venue.price}</span>
+                  <span className="text-[#C5A46D] text-xs font-semibold group-hover:translate-x-1 transition-transform">View →</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── BOTTOM CTA ── */}
       <section className="bg-[#8B1A4A] py-12 sm:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -481,7 +604,15 @@ export default function SwayamvarLandingClient() {
               href="#enquiry-form"
               className="inline-flex items-center justify-center gap-2 bg-white text-[#8B1A4A] font-bold px-8 py-4 rounded-full text-sm hover:opacity-90 transition-all shadow-lg"
             >
-              Check Availability <Calendar className="w-4 h-4" />
+              Book a Venue Visit <Calendar className="w-4 h-4" />
+            </a>
+            <a
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 bg-[#25D366] text-white font-bold px-8 py-4 rounded-full text-sm hover:opacity-90 transition-all shadow-lg"
+            >
+              WhatsApp Us
             </a>
             <a
               href="tel:+917646028228"
@@ -502,19 +633,27 @@ export default function SwayamvarLandingClient() {
       </div>
 
       {/* ── STICKY MOBILE CTA ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white border-t border-gray-100 px-4 py-3 flex gap-3 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden bg-white border-t border-gray-100 px-4 py-3 flex gap-2 shadow-2xl">
         <a
           href="#enquiry-form"
-          className="flex-1 flex items-center justify-center bg-[#8B1A4A] text-white font-bold py-3.5 rounded-xl text-sm"
+          className="flex-1 flex items-center justify-center bg-[#8B1A4A] text-white font-bold py-3.5 rounded-xl text-xs"
           style={{ boxShadow: '0 4px 16px rgba(139,26,74,0.4)' }}
         >
           Get Free Quote
         </a>
         <a
-          href="tel:+917646028228"
-          className="flex items-center justify-center gap-1.5 border border-gray-200 text-gray-700 px-4 py-3.5 rounded-xl text-sm font-semibold"
+          href={WHATSAPP_LINK}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1 bg-[#25D366] text-white px-3.5 py-3.5 rounded-xl text-xs font-semibold"
         >
-          <Phone className="w-4 h-4" /> Call
+          WhatsApp
+        </a>
+        <a
+          href="tel:+917646028228"
+          className="flex items-center justify-center gap-1 border border-gray-200 text-gray-700 px-3.5 py-3.5 rounded-xl text-xs font-semibold"
+        >
+          <Phone className="w-3.5 h-3.5" />
         </a>
       </div>
 

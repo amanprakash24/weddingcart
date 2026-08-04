@@ -5,23 +5,23 @@ import { JsonLd } from '@/components/JsonLd';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
-  title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
+  title: "About ShaadiShopping — Patna's Trusted Wedding Planning Platform",
   description:
-    'Learn about ShaadiShopping — founded by Anisha Kumari in Patna, Bihar. We connect 10,000+ couples with 500+ verified wedding vendors across 25+ cities in India.',
+    "Learn about ShaadiShopping — founded by Anisha Kumari in Patna, Bihar. Every couple gets one dedicated Wedding Expert from booking to vidaai, completely free.",
   alternates: { canonical: `${BASE_URL}/about` },
   openGraph: {
-    title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
+    title: "About ShaadiShopping — Patna's Trusted Wedding Planning Platform",
     description:
-      "Our story, mission, and the team behind India's favourite wedding planning platform. Helping couples plan their dream weddings since day one.",
+      "Our story, mission, and the team behind Patna's trusted wedding planning platform. Helping couples plan their dream weddings since day one.",
     url: `${BASE_URL}/about`,
     type: 'website',
     locale: 'en_IN',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "About ShaadiShopping — India's Wedding Planning Platform" }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "About ShaadiShopping — Patna's Wedding Planning Platform" }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
-    description: "Our story, mission, and the team behind India's favourite wedding planning platform.",
+    title: "About ShaadiShopping — Patna's Trusted Wedding Planning Platform",
+    description: "Our story, mission, and the team behind Patna's trusted wedding planning platform.",
     images: ['/opengraph-image'],
   },
 };
@@ -68,7 +68,7 @@ const aboutFaqJsonLd = {
       name: 'What is ShaadiShopping?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: "ShaadiShopping is India's most trusted wedding planning platform, connecting couples with 500+ verified wedding vendors across 25+ cities. Founded by Anisha Kumari in Patna, Bihar.",
+        text: "ShaadiShopping is Patna's trusted wedding planning platform, connecting couples with verified wedding vendors. Every couple gets one dedicated Wedding Expert from booking to vidaai, completely free. Founded by Anisha Kumari in Patna, Bihar.",
       },
     },
     {
@@ -76,7 +76,7 @@ const aboutFaqJsonLd = {
       name: 'How does ShaadiShopping work?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Browse verified vendors across 20+ categories, compare packages and pricing, book consultations, and plan your entire wedding through one platform. Our expert team also offers personalised planning assistance.',
+        text: 'Browse verified vendors across every wedding category, compare packages and pricing, book consultations, and plan your entire wedding through one platform. Our expert team also offers personalised planning assistance.',
       },
     },
     {
@@ -89,10 +89,10 @@ const aboutFaqJsonLd = {
     },
     {
       '@type': 'Question',
-      name: 'How many cities does ShaadiShopping serve?',
+      name: 'Which cities does ShaadiShopping serve?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'ShaadiShopping serves couples across 25+ cities in India including Delhi, Mumbai, Bangalore, Hyderabad, Chennai, Kolkata, Jaipur, Patna, Lucknow, and more.',
+        text: 'Patna is the primary and most deeply covered market, with expansion across other Bihar cities served from the same vendor network.',
       },
     },
   ],

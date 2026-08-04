@@ -153,10 +153,10 @@ export async function generateMetadata({
       ? `Wedding Vendors in ${name}, Bihar — Venues, Makeup, Catering & More | ShaadiShopping`
       : `Wedding Vendors in ${name} — Venues, Makeup, Catering & More | ShaadiShopping`;
   const description = isPatna
-    ? `Plan your shaadi in Patna, Bihar with India's most trusted wedding platform. Compare verified wedding venues, makeup artists, caterers, decorators & photographers. Get free quotes from 50+ vendors in Patna.`
+    ? `Plan your shaadi in Patna, Bihar with Patna's trusted wedding planning platform. Compare verified wedding venues, makeup artists, caterers, decorators & photographers, with one dedicated Wedding Expert from booking to vidaai.`
     : isBihar
       ? `Plan your shaadi in ${name}, Bihar with ShaadiShopping — Bihar's most trusted wedding platform. Verified venues, makeup artists, caterers, decorators & photographers serving ${name}. Free expert consultation.`
-      : `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from 50+ wedding vendors in ${name}.`;
+      : `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from wedding vendors in ${name}.`;
   const ogImage = meta.heroImage.split('?')[0] + '?w=1200&h=630&fit=crop&q=80';
 
   // Non-Bihar cities: noindex until we have real vendor listings there.
