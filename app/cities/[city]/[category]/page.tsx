@@ -6,6 +6,7 @@ import { connectDB } from '@/lib/mongodb';
 import VendorModel from '@/lib/models/Vendor';
 import { JsonLd } from '@/components/JsonLd';
 import VendorCard from '@/components/VendorCard';
+import RelatedGuides, { type RelatedGuide } from '@/components/RelatedGuides';
 import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
 
@@ -38,6 +39,42 @@ const CATEGORIES: Record<string, { name: string; plural: string; desc: string; p
   catering:     { name: 'Wedding Caterer',          plural: 'Wedding Caterers',          desc: 'veg, non-veg & multi-cuisine catering services',            priceNote: 'From ₹450/plate' },
   'photo-video':{ name: 'Wedding Photographer',     plural: 'Wedding Photographers',     desc: 'candid, traditional & pre-wedding shoot photographers',      priceNote: 'Packages from ₹50,000' },
   planning:     { name: 'Wedding Planner',          plural: 'Wedding Planners',          desc: 'full-service, partial & day-of wedding planners',           priceNote: 'From ₹50,000' },
+};
+
+// Related blog guides per category — shown on Bihar city+category pages
+const CATEGORY_BLOG_GUIDES: Record<string, RelatedGuide[]> = {
+  venue: [
+    { title: 'Best Wedding Venues in Patna, Bihar', href: '/blog/best-wedding-venues-patna-bihar-2025', desc: 'Compare banquet halls, garden lawns & hotel venues across the city.' },
+    { title: 'Best Banquet Halls in Patna', href: '/blog/best-banquet-halls-patna-wedding-marriage-hall', desc: 'Top wedding & marriage halls for 2025.' },
+    { title: 'Outdoor Lawn & Garden Wedding Venues', href: '/blog/outdoor-lawn-garden-wedding-venues-patna', desc: 'Garden and lawn venues across Patna.' },
+  ],
+  makeup: [
+    { title: 'Top Bridal Makeup Artists in Patna, Bihar', href: '/blog/bridal-makeup-artists-patna-bihar', desc: '2025 guide to HD, airbrush & traditional bridal makeup.' },
+  ],
+  mehndi: [
+    { title: 'Mehndi Artists in Patna, Bihar', href: '/blog/mehndi-artists-patna-bihar-bridal-henna', desc: 'Bridal henna pricing & booking guide.' },
+  ],
+  decorator: [
+    { title: 'Best Wedding Decorators in Patna, Bihar', href: '/blog/wedding-decorators-patna-bihar-2025', desc: 'Themes, prices and tips for 2025.' },
+    { title: 'Mandap Decoration Ideas for Bihari Weddings', href: '/blog/mandap-decoration-ideas-bihari-wedding', desc: '2025 design guide for the wedding mandap.' },
+  ],
+  band: [
+    { title: 'Best Baraat Bands in Patna, Bihar', href: '/blog/baraat-bands-patna-bihar-wedding', desc: 'Brass bands for your baraat procession.' },
+  ],
+  dj: [
+    { title: 'DJ Services for Weddings in Patna, Bihar', href: '/blog/dj-services-wedding-patna-bihar', desc: '2025 guide to sound, lighting and pricing.' },
+  ],
+  catering: [
+    { title: 'Best Wedding Caterers in Patna, Bihar', href: '/blog/wedding-caterers-patna-bihar-2025', desc: '2025 guide to menus, pricing and booking.' },
+  ],
+  'photo-video': [
+    { title: 'Best Wedding Photographers in Patna, Bihar', href: '/blog/wedding-photographers-patna-bihar-2025', desc: 'Candid, traditional and pre-wedding shoot experts.' },
+    { title: 'Pre-Wedding Shoot Locations in Patna & Bihar', href: '/blog/pre-wedding-shoot-locations-patna-bihar', desc: '2025 guide to the best photo locations.' },
+  ],
+  planning: [
+    { title: 'Wedding Planners in Patna, Bihar', href: '/blog/wedding-planners-patna-bihar-guide', desc: 'Do you need one, and how to choose.' },
+    { title: 'How to Plan a Bihari Wedding', href: '/blog/how-to-plan-bihari-wedding-complete-guide', desc: 'Complete step-by-step guide for 2025.' },
+  ],
 };
 
 // Patna-specific city+category FAQs (primary market)
@@ -612,6 +649,10 @@ export default async function CityCategoryPage({
           </div>
         </section>
 
+        {city.state === 'Bihar' && CATEGORY_BLOG_GUIDES[catSlug] && (
+          <RelatedGuides guides={CATEGORY_BLOG_GUIDES[catSlug]} heading={`Helpful Guides for ${cat.plural} in ${city.name}`} />
+        )}
+
         {/* CTA */}
         <section className="bg-gradient-to-r from-amber-500 to-rose-500 py-12">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -623,7 +664,7 @@ export default async function CityCategoryPage({
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href="https://wa.me/917646028228?text=Hi%21+I+need+help+finding+a+wedding+vendor+in+${encodeURIComponent(city.name)}"
+                href={`https://wa.me/917646028228?text=${encodeURIComponent(`Hi! I need help finding a wedding vendor in ${city.name}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm"

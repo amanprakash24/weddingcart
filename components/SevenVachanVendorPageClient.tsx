@@ -8,6 +8,13 @@ import {
   ArrowRight, ShieldCheck, Clock, Music, Car, ChevronRight, ChevronDown, Calendar,
 } from 'lucide-react';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
+import RelatedGuides from '@/components/RelatedGuides';
+
+const RELATED_GUIDES = [
+  { title: 'Wedding Venues Near Saguna More & West Patna', href: '/blog/wedding-venues-saguna-more-west-patna', desc: 'Garden lawns and farmhouses in the Saguna More area.' },
+  { title: 'DJ Services for Weddings in Patna', href: '/blog/dj-services-wedding-patna-bihar', desc: '7 Vachan comes with an in-house DJ — here\'s what to expect.' },
+  { title: 'Sangeet Night in Patna — Planning Tips', href: '/blog/sangeet-night-patna-decoration-planning', desc: 'Decoration ideas, DJ vs. live band, and planning tips.' },
+];
 
 const WHATSAPP_LINK = shaadiWhatsAppLink('Hi, I am interested in 7 Vachan, Saguna Mor. Please share pricing and availability.');
 
@@ -685,6 +692,8 @@ export default function SevenVachanVendorPageClient() {
           </div>
         </div>
       </section>
+
+      <RelatedGuides guides={RELATED_GUIDES} heading="Planning a Wedding Near Saguna Mor, Patna?" />
 
       {/* ── BOTTOM CTA ── */}
       <section className="bg-[#8B1A4A] py-12 sm:py-16">

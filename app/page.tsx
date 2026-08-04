@@ -2,8 +2,32 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import HomepageClient from '@/components/HomepageClient';
 import { JsonLd } from '@/components/JsonLd';
+import { connectDB } from '@/lib/mongodb';
+import BlogModel from '@/lib/models/Blog';
+import type { BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
+
+// Highest-value guides, in display priority order
+const TOP_BLOG_SLUGS = [
+  'best-wedding-venues-patna-bihar-2025',
+  'wedding-cost-patna-bihar-budget-guide',
+  'court-marriage-registration-patna-bihar',
+  'best-banquet-halls-patna-wedding-marriage-hall',
+];
+
+async function getTopBlogPosts(): Promise<BlogHighlight[]> {
+  try {
+    await connectDB();
+    const posts = await BlogModel.find({ slug: { $in: TOP_BLOG_SLUGS }, status: 'published' })
+      .select('title slug excerpt coverImage category readTime')
+      .lean<BlogHighlight[]>();
+    const bySlug = new Map(posts.map((p) => [p.slug, p]));
+    return TOP_BLOG_SLUGS.map((slug) => bySlug.get(slug)).filter((p): p is BlogHighlight => Boolean(p));
+  } catch {
+    return [];
+  }
+}
 
 export const metadata: Metadata = {
   title: "Shaadi Shopping | Trusted Wedding Planning & Verified Vendors in Patna",
@@ -159,14 +183,16 @@ const faqSchema = {
   ],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const topBlogPosts = await getTopBlogPosts();
+
   return (
     <>
       <JsonLd data={websiteSchema} />
       <JsonLd data={organizationSchema} />
       <JsonLd data={faqSchema} />
       <Suspense>
-        <HomepageClient />
+        <HomepageClient topBlogPosts={topBlogPosts} />
       </Suspense>
     </>
   );

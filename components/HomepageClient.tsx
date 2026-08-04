@@ -16,6 +16,7 @@ import ExpertSection from './homepage/ExpertSection';
 import FeaturedVendorsSection from './homepage/FeaturedVendorsSection';
 import FinalCtaSection from './homepage/FinalCtaSection';
 import AboutBrandSection from './homepage/AboutBrandSection';
+import BlogHighlightsSection, { type BlogHighlight } from './homepage/BlogHighlightsSection';
 
 const MARQUEE_ITEMS = [
   'Venues', 'Photographers', 'Decorators', 'Mehndi Artists',
@@ -25,7 +26,7 @@ const MARQUEE_ITEMS = [
 
 const TRUST_BADGES = ['Verified Vendors', 'Transparent Quotations', 'Dedicated Wedding Expert', 'Free Consultation'];
 
-export default function HomepageClient() {
+export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: BlogHighlight[] }) {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -103,6 +104,7 @@ export default function HomepageClient() {
           </motion.div>
         </div>
 
+        <BlogHighlightsSection posts={topBlogPosts} />
         <AboutBrandSection />
         <FinalCtaSection />
 

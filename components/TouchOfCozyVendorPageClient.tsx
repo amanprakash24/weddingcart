@@ -8,6 +8,13 @@ import {
   ArrowRight, ShieldCheck, Clock, Utensils, Home, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { shaadiWhatsAppLink } from '@/lib/shaadiContact';
+import RelatedGuides from '@/components/RelatedGuides';
+
+const RELATED_GUIDES = [
+  { title: 'Best Banquet Halls in Patna', href: '/blog/best-banquet-halls-patna-wedding-marriage-hall', desc: 'Top wedding & marriage halls across Patna for 2025.' },
+  { title: 'Wedding Banquets in Patna — Packages & Costs', href: '/blog/wedding-banquet-guide-patna-2025', desc: 'How to book the perfect hall, with packages and pricing.' },
+  { title: 'Complete Wedding Planning Checklist for Bihar', href: '/blog/wedding-planning-checklist-bihar', desc: 'A month-by-month guide to staying on track.' },
+];
 
 const WHATSAPP_LINK = shaadiWhatsAppLink('Hi, I am interested in Touch of Cozy, Rajeev Nagar. Please share pricing and availability.');
 
@@ -773,6 +780,8 @@ export default function TouchOfCozyVendorPageClient() {
           </div>
         </div>
       </section>
+
+      <RelatedGuides guides={RELATED_GUIDES} heading="Planning a Wedding in Rajeev Nagar, Patna?" />
 
       {/* ── BOTTOM CTA ── */}
       <section className="bg-[#8B1A4A] py-12 sm:py-16">

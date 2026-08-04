@@ -5,6 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Phone, CheckCircle, Star, MapPin, Users, Calendar, ArrowRight, ShieldCheck, Clock, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import { shaadiWhatsAppLink } from '@/lib/shaadiContact';
+import RelatedGuides from '@/components/RelatedGuides';
+
+const RELATED_GUIDES = [
+  { title: 'Banquet Halls in Danapur, Patna', href: '/blog/banquet-halls-danapur-patna', desc: "Top picks and what to expect from Danapur's banquet hall scene." },
+  { title: 'Best Wedding Venues in Patna', href: '/blog/best-wedding-venues-patna-bihar-2025', desc: 'Compare banquet halls, lawns and hotel venues across the city.' },
+  { title: 'How Much Does a Wedding Cost in Patna?', href: '/blog/wedding-cost-patna-bihar-budget-guide', desc: 'A complete 2025 budget guide for Patna weddings.' },
+];
 
 const WHATSAPP_LINK = shaadiWhatsAppLink('Hi, I am interested in Swayamvar Hall & Homestay, Danapur. Please share pricing and availability.');
 
@@ -589,6 +596,8 @@ export default function SwayamvarVendorPageClient() {
           </div>
         </div>
       </section>
+
+      <RelatedGuides guides={RELATED_GUIDES} heading="Planning a Wedding in Danapur, Patna?" />
 
       {/* ── BOTTOM CTA ── */}
       <section className="bg-[#8B1A4A] py-12 sm:py-16">
