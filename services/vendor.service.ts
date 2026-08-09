@@ -1,6 +1,7 @@
 import { vendorRepository } from '@/repositories/vendor.repository';
 import { categoryRepository } from '@/repositories/category.repository';
 import { prisma } from '@/lib/prisma';
+import { NotFoundError } from '@/lib/errors';
 import type { Prisma } from '@/generated/prisma/client';
 
 export interface VendorPackageInput {
@@ -97,6 +98,20 @@ export const vendorService = {
   // admin vendor form has no FAQ fields.
   async update(id: string, data: Prisma.VendorUpdateInput, packages?: VendorPackageInput[]) {
     return prisma.$transaction(async (tx) => {
+      // Pre-check the category exists before attempting the nested connect.
+      // Prisma's own P2025 for a failed nested connect never carries the
+      // attempted value, and vendorRepository.update wraps everything in
+      // withPrismaErrors('Vendor', ...), so left alone it surfaces as a
+      // misleading "Vendor not found: unknown" even though the vendor exists
+      // and it's the category that's missing. This doesn't change behavior
+      // for a valid category — one extra indexed lookup by unique slug,
+      // inside the same transaction, before any write.
+      const categorySlug = data.category?.connect?.slug;
+      if (categorySlug !== undefined) {
+        const category = await categoryRepository.findBySlug(categorySlug, tx);
+        if (!category) throw new NotFoundError('Category', categorySlug);
+      }
+
       const vendor = await vendorRepository.update(id, data, tx);
       if (packages) {
         await tx.vendorPackage.deleteMany({ where: { vendorId: id } });
