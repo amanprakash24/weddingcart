@@ -1,5 +1,16 @@
 import { vendorRepository } from '@/repositories/vendor.repository';
+import { categoryRepository } from '@/repositories/category.repository';
+import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
+
+export interface VendorPackageInput {
+  name: string;
+  description: string;
+  price: number;
+  features?: string[];
+  isPopular?: boolean;
+  image?: string;
+}
 
 export interface VendorSearchParams {
   category?: string; // Category slug, e.g. "venue" — matches the current /api/vendors query param
@@ -52,8 +63,20 @@ function buildOrderBy(sort: VendorSearchParams['sort']): Prisma.VendorOrderByWit
 }
 
 export const vendorService = {
-  getById: vendorRepository.findById,
   getBySlug: vendorRepository.findBySlug,
+
+  // Composes across two repositories (Vendor + Category) — per
+  // docs/architecture/repository-contract.md this belongs in the service, not
+  // the repository ("Repository → Repository" composition is disallowed).
+  // Returns the real Category relation as-is; flattening it to a slug string
+  // for the admin frontend contract is a response-shaping concern and happens
+  // in the route handler instead.
+  async getById(id: string) {
+    const vendor = await vendorRepository.findById(id);
+    if (!vendor) return null;
+    const category = await categoryRepository.findById(vendor.categoryId);
+    return { ...vendor, category };
+  },
 
   async search(params: VendorSearchParams) {
     return vendorRepository.findMany({
@@ -65,6 +88,35 @@ export const vendorService = {
   },
 
   create: vendorRepository.create,
-  update: vendorRepository.update,
+
+  // Packages are a full replace (deleteMany + createMany), matching the old
+  // Mongoose embedded-array semantics where the admin form always submits the
+  // complete package list, not a diff. Wrapped in a transaction per
+  // repository-contract.md ("which layer owns transactions? Services.") so a
+  // failure in either half leaves neither applied. FAQs are untouched — the
+  // admin vendor form has no FAQ fields.
+  async update(id: string, data: Prisma.VendorUpdateInput, packages?: VendorPackageInput[]) {
+    return prisma.$transaction(async (tx) => {
+      const vendor = await vendorRepository.update(id, data, tx);
+      if (packages) {
+        await tx.vendorPackage.deleteMany({ where: { vendorId: id } });
+        if (packages.length) {
+          await tx.vendorPackage.createMany({
+            data: packages.map((p) => ({
+              vendorId: id,
+              name: p.name,
+              description: p.description,
+              price: p.price,
+              features: p.features ?? [],
+              isPopular: p.isPopular ?? false,
+              image: p.image ?? '',
+            })),
+          });
+        }
+      }
+      return vendor;
+    });
+  },
+
   delete: vendorRepository.delete,
 };
