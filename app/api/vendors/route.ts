@@ -61,7 +61,56 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const vendor = await vendorService.create(body);
+
+    const {
+      slug,
+      name,
+      ownerName,
+      ownerPhone,
+      ownerEmail,
+      categoryId,
+      city,
+      address,
+      mapEmbedUrl,
+      priceMin,
+      priceMax,
+      rating,
+      reviewCount,
+      image,
+      images,
+      virtualTourVideo,
+      description,
+      features,
+      isFeatured,
+      sortOrder,
+    } = body;
+
+    const vendor = await vendorService.create({
+      slug,
+      name,
+      ownerName,
+      ownerPhone,
+      ownerEmail,
+      category: {
+        connect: {
+          id: categoryId,
+        },
+      },
+      city,
+      address,
+      mapEmbedUrl,
+      priceMin,
+      priceMax,
+      rating,
+      reviewCount,
+      image,
+      images,
+      virtualTourVideo,
+      description,
+      features,
+      isFeatured,
+      sortOrder,
+    });
 
     return NextResponse.json(
       { success: true, data: vendor },
