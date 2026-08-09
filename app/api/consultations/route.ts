@@ -1,20 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import ConsultationModel from '@/lib/models/Consultation';
+import { consultationService } from '@/services/consultation.service';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { requireAdmin } from '@/lib/adminAuth';
+import type { Consultation, ConsultationStatus } from '@/generated/prisma/client';
+
+// Admin UI still expects the legacy Mongo shape: lowercase status
+// ('new'/'contacted'/'closed', Prisma's ConsultationStatus enum is
+// uppercase) and an `_id` field (Prisma's is `id`). Shaping happens here at
+// the route boundary, not in the repository/service.
+function toResponseShape(consultation: Consultation) {
+  return {
+    ...consultation,
+    _id: consultation.id,
+    status: consultation.status.toLowerCase(),
+  };
+}
+
+function toConsultationStatus(status: string | null): ConsultationStatus | undefined {
+  if (status === 'new') return 'NEW';
+  if (status === 'contacted') return 'CONTACTED';
+  if (status === 'closed') return 'CLOSED';
+  return undefined;
+}
 
 export async function GET(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   try {
-    await connectDB();
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-    const query = status ? { status } : {};
-    const consultations = await ConsultationModel.find(query).sort({ createdAt: -1 }).lean();
-    return NextResponse.json({ success: true, data: consultations });
+    const status = toConsultationStatus(searchParams.get('status'));
+    const { data } = await consultationService.list({ status });
+    return NextResponse.json({ success: true, data: data.map(toResponseShape) });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch consultations' }, { status: 500 });
   }
@@ -145,20 +162,24 @@ function buildUserMessage(data: Record<string, unknown>, expertName: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectDB();
     const body = await req.json();
 
-    // Whitelist fields — prevent injecting status or other admin-controlled fields
+    // Whitelist fields — prevent injecting status or other admin-controlled fields.
+    // weddingStyle/budgetRange/consultationDate are intentionally read from
+    // `body` only for the WhatsApp messages below — they were never persisted
+    // even under the old Mongoose schema (silently dropped, confirmed 0%
+    // populated in the live-data audit — see prisma/schema.prisma's
+    // Consultation model comment), so they're not part of the Prisma create.
     const {
       name, phone, email, city, eventType, weddingDate, days, guestCount,
       foodPreference, services, venueType, preferredTime, message,
-      cartItems, totalBudget, weddingStyle, budgetRange, consultationDate,
+      cartItems, totalBudget,
     } = body;
 
-    const consultation = await ConsultationModel.create({
+    const consultation = await consultationService.create({
       name, phone, email, city, eventType, weddingDate, days, guestCount,
       foodPreference, services, venueType, preferredTime, message,
-      cartItems, totalBudget, weddingStyle, budgetRange, consultationDate,
+      cartItems, totalBudget,
     });
 
     const ADMIN_PHONE = process.env.WHATSAPP_ADMIN_PHONE || '917646028228';
@@ -172,7 +193,7 @@ export async function POST(req: NextRequest) {
       sendWhatsAppMessage(`91${phone}`, userMsg),
     ]);
 
-    return NextResponse.json({ success: true, data: consultation }, { status: 201 });
+    return NextResponse.json({ success: true, data: toResponseShape(consultation) }, { status: 201 });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to submit consultation' }, { status: 500 });
   }
