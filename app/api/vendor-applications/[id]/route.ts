@@ -1,48 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import VendorApplicationModel from '@/lib/models/VendorApplication';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorApplicationService } from '@/services/vendorApplication.service';
 import { requireAdmin } from '@/lib/adminAuth';
+import { handleApiError } from '@/lib/errors';
+import type { VendorApplicationWithCategory } from '@/repositories/vendorApplication.repository';
+import type { ApplicationStatus } from '@/generated/prisma/client';
 
-const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80';
-
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
+function toResponseShape(app: VendorApplicationWithCategory) {
+  const { category, ...rest } = app;
+  return { ...rest, _id: app.id, category: category.name, status: app.status.toLowerCase() };
 }
 
-async function createVendorFromApplication(app: InstanceType<typeof VendorApplicationModel>) {
-  const vendorId = `${app.category}-${slugify(app.businessName)}-${Date.now()}`;
-
-  const features: string[] = [];
-  if (app.experience) features.push(`${app.experience} of experience`);
-  if (app.instagram) features.push(`Instagram: ${app.instagram}`);
-  if (app.website) features.push(`Website: ${app.website}`);
-
-  const vendor = await VendorModel.create({
-    id: vendorId,
-    name: app.businessName,
-    ownerName: app.ownerName,
-    ownerPhone: app.ownerPhone,
-    ownerEmail: app.ownerEmail,
-    category: app.category,
-    city: app.city,
-    priceMin: app.priceMin || 0,
-    priceMax: app.priceMax || 0,
-    rating: 0,
-    reviewCount: 0,
-    image: app.coverImage || DEFAULT_IMAGE,
-    images: app.coverImage ? [app.coverImage] : [DEFAULT_IMAGE],
-    description: app.description || `${app.businessName} — a verified ShaadiShopping vendor.`,
-    features,
-    packages: [],
-    isFeatured: false,
-  });
-
-  return vendor.id as string;
+function toApplicationStatus(status: unknown): ApplicationStatus | undefined {
+  if (status === 'new') return 'NEW';
+  if (status === 'approved') return 'APPROVED';
+  if (status === 'rejected') return 'REJECTED';
+  return undefined;
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -50,11 +22,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   try {
-    await connectDB();
     const { id } = await params;
-    const application = await VendorApplicationModel.findById(id);
+    const application = await vendorApplicationService.getById(id);
     if (!application) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
-    return NextResponse.json({ success: true, data: application });
+    return NextResponse.json({ success: true, data: toResponseShape(application) });
   } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch application' }, { status: 500 });
   }
@@ -65,24 +36,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   try {
-    await connectDB();
     const { id } = await params;
-    const { status } = await req.json();
-
-    const existing = await VendorApplicationModel.findById(id);
-    if (!existing) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
-
-    const update: { status: string; vendorId?: string } = { status };
-
-    // Auto-create vendor on first approval
-    if (status === 'approved' && existing.status !== 'approved' && !existing.vendorId) {
-      update.vendorId = await createVendorFromApplication(existing);
+    const body = await req.json();
+    const status = toApplicationStatus(body.status);
+    if (!status) {
+      return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
     }
 
-    const application = await VendorApplicationModel.findByIdAndUpdate(id, update, { new: true });
-    return NextResponse.json({ success: true, data: application });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to update application' }, { status: 500 });
+    const application = await vendorApplicationService.updateStatus(id, status);
+    if (!application) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+
+    return NextResponse.json({ success: true, data: toResponseShape(application) });
+  } catch (err) {
+    return handleApiError(err);
   }
 }
 
@@ -91,11 +57,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   try {
-    await connectDB();
     const { id } = await params;
-    await VendorApplicationModel.findByIdAndDelete(id);
+    await vendorApplicationService.delete(id);
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to delete application' }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err);
   }
 }
