@@ -42,4 +42,13 @@ export const bookingRepository = {
   async update(id: string, data: Prisma.BookingUpdateInput, tx: Tx | typeof prisma = prisma): Promise<Booking> {
     return withPrismaErrors('Booking', () => tx.booking.update({ where: { id }, data }));
   },
+
+  async count(where?: Prisma.BookingWhereInput, tx: Tx | typeof prisma = prisma): Promise<number> {
+    return tx.booking.count({ where });
+  },
+
+  async sumTotal(where: Prisma.BookingWhereInput, tx: Tx | typeof prisma = prisma): Promise<number> {
+    const result = await tx.booking.aggregate({ where, _sum: { total: true } });
+    return result._sum.total ?? 0;
+  },
 };

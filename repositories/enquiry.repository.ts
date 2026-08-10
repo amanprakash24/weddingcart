@@ -39,4 +39,8 @@ export const enquiryRepository = {
   async delete(id: string, tx: Tx | typeof prisma = prisma): Promise<Enquiry> {
     return withPrismaErrors('Enquiry', () => tx.enquiry.delete({ where: { id } }));
   },
+
+  async count(where?: Prisma.EnquiryWhereInput, tx: Tx | typeof prisma = prisma): Promise<number> {
+    return tx.enquiry.count({ where });
+  },
 };

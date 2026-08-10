@@ -54,4 +54,8 @@ export const categoryRepository = {
   async countVendors(categoryId: string, tx: Tx | typeof prisma = prisma): Promise<number> {
     return tx.vendor.count({ where: { categoryId } });
   },
+
+  async count(where?: Prisma.CategoryWhereInput, tx: Tx | typeof prisma = prisma): Promise<number> {
+    return tx.category.count({ where });
+  },
 };

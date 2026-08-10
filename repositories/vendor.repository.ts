@@ -49,4 +49,8 @@ export const vendorRepository = {
   async delete(id: string, tx: Tx | typeof prisma = prisma): Promise<Vendor> {
     return withPrismaErrors('Vendor', () => tx.vendor.delete({ where: { id } }));
   },
+
+  async count(where?: Prisma.VendorWhereInput, tx: Tx | typeof prisma = prisma): Promise<number> {
+    return tx.vendor.count({ where });
+  },
 };
