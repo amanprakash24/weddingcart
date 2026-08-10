@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { categoryRepository } from '@/repositories/category.repository';
 import { JsonLd } from '@/components/JsonLd';
 import VendorPortfolioClient from '@/components/VendorPortfolioClient';
 
@@ -29,18 +29,28 @@ interface VendorMeta {
 
 export async function generateStaticParams() {
   try {
-    await connectDB();
-    const vendors = await VendorModel.find({}).select('id').lean<{ id: string }[]>();
-    return vendors.map((v) => ({ id: v.id }));
+    const { data } = await vendorRepository.findMany({});
+    return data.map((v) => ({ id: v.slug }));
   } catch { return []; }
 }
 
 async function getVendor(id: string): Promise<VendorMeta | null> {
   try {
-    await connectDB();
-    return await VendorModel.findOne({ id })
-      .select('id name city category description priceMin priceMax rating reviewCount image')
-      .lean<VendorMeta>();
+    const vendor = await vendorRepository.findBySlug(id);
+    if (!vendor) return null;
+    const category = await categoryRepository.findById(vendor.categoryId);
+    return {
+      id: vendor.slug,
+      name: vendor.name,
+      city: vendor.city,
+      category: category?.slug ?? '',
+      description: vendor.description,
+      priceMin: vendor.priceMin,
+      priceMax: vendor.priceMax,
+      rating: vendor.rating,
+      reviewCount: vendor.reviewCount,
+      image: vendor.image,
+    };
   } catch { return null; }
 }
 

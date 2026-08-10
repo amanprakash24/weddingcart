@@ -1,8 +1,7 @@
 import { MetadataRoute } from 'next';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
-import CategoryModel from '@/lib/models/Category';
-import BlogModel from '@/lib/models/Blog';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { categoryRepository } from '@/repositories/category.repository';
+import { blogRepository } from '@/repositories/blog.repository';
 import { BIHAR_CITY_SLUGS } from '@/data/biharCities';
 
 export const dynamic = 'force-dynamic';
@@ -78,11 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   try {
-    await connectDB();
-
-    const categories = await CategoryModel.find({})
-      .select('id updatedAt')
-      .lean<{ id: string; updatedAt?: Date }[]>();
+    const { data: categories } = await categoryRepository.findMany({});
 
     // /categories/[slug] permanently redirects to /cities/patna/[slug] for the
     // main categories — those city URLs are already in the sitemap, so only
@@ -90,35 +85,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const REDIRECTING_SLUGS = new Set(CATEGORY_SLUGS);
 
     categoryRoutes = categories
-      .filter(cat => !REDIRECTING_SLUGS.has(cat.id))
+      .filter(cat => !REDIRECTING_SLUGS.has(cat.slug))
       .map(cat => ({
-        url: `${BASE_URL}/categories/${cat.id}`,
+        url: `${BASE_URL}/categories/${cat.slug}`,
         lastModified: cat.updatedAt ?? STATIC_LAST_MODIFIED,
         changeFrequency: 'weekly',
         priority: 0.8,
       }));
 
-    const vendors = await VendorModel.find({})
-      .select('id updatedAt')
-      .lean<{ id: string; updatedAt?: Date }[]>();
+    const { data: vendors } = await vendorRepository.findMany({});
 
     vendorRoutes = vendors.map(vendor => ({
-      url: `${BASE_URL}/vendors/${vendor.id}`,
+      url: `${BASE_URL}/vendors/${vendor.slug}`,
       lastModified: vendor.updatedAt ?? STATIC_LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 0.7,
     }));
 
     portfolioRoutes = vendors.map(vendor => ({
-      url: `${BASE_URL}/portfolio/${vendor.id}`,
+      url: `${BASE_URL}/portfolio/${vendor.slug}`,
       lastModified: vendor.updatedAt ?? STATIC_LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 0.6,
     }));
 
-    const blogs = await BlogModel.find({ status: 'published' })
-      .select('slug updatedAt publishedAt')
-      .lean<{ slug: string; updatedAt?: Date; publishedAt?: Date }[]>();
+    const { data: blogs } = await blogRepository.findMany({ where: { status: 'PUBLISHED' } });
 
     blogRoutes = blogs
       .filter(blog => !PINNED_BLOG_SLUGS.has(blog.slug))
