@@ -132,7 +132,7 @@ async function findWeddingOrThrow(id: string): Promise<Wedding> {
 // invoices are Postgres-only and coexist with it, same pattern Wedding/CRM
 // already established. Counts against `tx.invoice` (not a new-rows-only
 // counter) since migrated legacy invoices land in this same table too.
-async function generateInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
+export async function generateInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
   const now = new Date();
   const bucket = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`;
   const count = await tx.invoice.count({ where: { invoiceNumber: { startsWith: bucket } } });
