@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MapPin, ChevronRight, Phone, MessageCircle } from 'lucide-react';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { JsonLd } from '@/components/JsonLd';
 import VendorCard from '@/components/VendorCard';
 import RelatedGuides, { type RelatedGuide } from '@/components/RelatedGuides';
@@ -386,20 +386,21 @@ async function getVendors(
   isBihar: boolean,
 ): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
-    await connectDB();
-    const vendors = await VendorModel.find({ city: cityName, category: catSlug })
-      .sort({ isFeatured: -1, rating: -1 })
-      .lean();
-    if (vendors.length > 0) {
-      return { vendors: JSON.parse(JSON.stringify(vendors)) as Vendor[], fromNetwork: false };
+    const { data } = await vendorRepository.findMany({
+      where: { city: cityName, category: { slug: catSlug } },
+      orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+    });
+    if (data.length > 0) {
+      return { vendors: await toLegacyVendors(data), fromNetwork: false };
     }
     // Bihar cities without local listings: show the Patna network vendors that
     // serve them, so the page is never an empty soft-404.
     if (isBihar && cityName !== 'Patna') {
-      const network = await VendorModel.find({ city: 'Patna', category: catSlug })
-        .sort({ isFeatured: -1, rating: -1 })
-        .lean();
-      return { vendors: JSON.parse(JSON.stringify(network)) as Vendor[], fromNetwork: network.length > 0 };
+      const { data: network } = await vendorRepository.findMany({
+        where: { city: 'Patna', category: { slug: catSlug } },
+        orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+      });
+      return { vendors: await toLegacyVendors(network), fromNetwork: network.length > 0 };
     }
     return { vendors: [], fromNetwork: false };
   } catch {

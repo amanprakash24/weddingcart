@@ -2,8 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import HomepageClient from '@/components/HomepageClient';
 import { JsonLd } from '@/components/JsonLd';
-import { connectDB } from '@/lib/mongodb';
-import BlogModel from '@/lib/models/Blog';
+import { blogRepository } from '@/repositories/blog.repository';
 import type { BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
@@ -18,12 +17,20 @@ const TOP_BLOG_SLUGS = [
 
 async function getTopBlogPosts(): Promise<BlogHighlight[]> {
   try {
-    await connectDB();
-    const posts = await BlogModel.find({ slug: { $in: TOP_BLOG_SLUGS }, status: 'published' })
-      .select('title slug excerpt coverImage category readTime')
-      .lean<BlogHighlight[]>();
-    const bySlug = new Map(posts.map((p) => [p.slug, p]));
-    return TOP_BLOG_SLUGS.map((slug) => bySlug.get(slug)).filter((p): p is BlogHighlight => Boolean(p));
+    const { data } = await blogRepository.findMany({
+      where: { slug: { in: TOP_BLOG_SLUGS }, status: 'PUBLISHED' },
+    });
+    const bySlug = new Map(data.map((p) => [p.slug, p]));
+    return TOP_BLOG_SLUGS.map((slug) => bySlug.get(slug))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p))
+      .map((p) => ({
+        title: p.title,
+        slug: p.slug,
+        excerpt: p.excerpt,
+        coverImage: p.coverImage,
+        category: p.category,
+        readTime: p.readTime,
+      }));
   } catch {
     return [];
   }
