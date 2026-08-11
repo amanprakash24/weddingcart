@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/JsonLd';
 import CityPageClient from '@/components/CityPageClient';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
 
@@ -103,22 +103,23 @@ function defaultFaqs(name: string, state: string) {
 
 async function getInitialVendors(cityName: string, isBihar: boolean): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
-    await connectDB();
-    const vendors = await VendorModel.find({ city: cityName })
-      .sort({ isFeatured: -1, rating: -1 })
-      .limit(6)
-      .lean();
-    if (vendors.length > 0) {
-      return { vendors: JSON.parse(JSON.stringify(vendors)) as Vendor[], fromNetwork: false };
+    const { data } = await vendorRepository.findMany({
+      where: { city: cityName },
+      orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+      take: 6,
+    });
+    if (data.length > 0) {
+      return { vendors: await toLegacyVendors(data), fromNetwork: false };
     }
     // Bihar cities without local listings: show the Patna network vendors that
     // serve them, so the page is never an empty soft-404.
     if (isBihar && cityName !== 'Patna') {
-      const network = await VendorModel.find({ city: 'Patna' })
-        .sort({ isFeatured: -1, rating: -1 })
-        .limit(6)
-        .lean();
-      return { vendors: JSON.parse(JSON.stringify(network)) as Vendor[], fromNetwork: true };
+      const { data: network } = await vendorRepository.findMany({
+        where: { city: 'Patna' },
+        orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+        take: 6,
+      });
+      return { vendors: await toLegacyVendors(network), fromNetwork: true };
     }
     return { vendors: [], fromNetwork: false };
   } catch {

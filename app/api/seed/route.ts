@@ -1,41 +1,35 @@
 import { NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import CategoryModel from '@/lib/models/Category';
-import VendorModel from '@/lib/models/Vendor';
-import BlogModel from '@/lib/models/Blog';
-import { CATEGORIES, VENDORS } from '@/data/seedData';
-import { BLOG_POSTS } from '@/data/blogSeedData';
-import { requireAdmin } from '@/lib/adminAuth';
+import { requireRole } from '@/lib/auth/session';
+import { Role } from '@/lib/auth/roles';
+import { seedService } from '@/services/seed.service';
 
+// Lockdown per docs/database/postgres-migration-plan.md's "Decision 1 —
+// /api/seed lockdown": never accessible in production regardless of
+// session, SUPER_ADMIN-only elsewhere, and requires an explicit
+// SEED_ENABLED=true env var as a second safeguard so a stray staging
+// deploy or misconfigured session can't trigger a reseed.
 export async function POST() {
-  if (!(await requireAdmin())) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+  }
+
+  const session = await requireRole([Role.SUPER_ADMIN]);
+  if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
+
+  if (process.env.SEED_ENABLED !== 'true') {
+    return NextResponse.json(
+      { success: false, error: 'Seeding is disabled (set SEED_ENABLED=true to enable)' },
+      { status: 403 }
+    );
+  }
+
   try {
-    await connectDB();
-
-    await CategoryModel.deleteMany({});
-    await VendorModel.deleteMany({});
-
-    await CategoryModel.insertMany(CATEGORIES);
-    await VendorModel.insertMany(VENDORS);
-
-    // Upsert blog posts by slug — never overwrites manually edited posts
-    let blogsInserted = 0;
-    for (const post of BLOG_POSTS) {
-      const exists = await BlogModel.findOne({ slug: post.slug });
-      if (!exists) {
-        await BlogModel.create({
-          ...post,
-          publishedAt: post.status === 'published' ? new Date() : null,
-        });
-        blogsInserted++;
-      }
-    }
-
+    const blogsInserted = await seedService.seedBlogs();
     return NextResponse.json({
       success: true,
-      message: `Seeded ${CATEGORIES.length} categories, ${VENDORS.length} vendors, ${blogsInserted} blog posts`,
+      message: `Seeded ${blogsInserted} blog posts. Category/vendor reseeding has been removed — see docs/database/postgres-migration-plan.md.`,
     });
   } catch (error) {
     console.error('Seed error:', error);
@@ -44,5 +38,5 @@ export async function POST() {
 }
 
 export async function GET() {
-  return NextResponse.json({ message: 'Use POST to seed the database' });
+  return NextResponse.json({ message: 'Use POST to seed blog posts (categories/vendors are no longer reseeded)' });
 }

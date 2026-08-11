@@ -78,7 +78,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
-    url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com',
+    url: resolveSiteUrl().toString(),
     images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — Patna's Trusted Wedding Planning Platform" }],
   },
   twitter: {
