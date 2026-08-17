@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, MotionConfig } from 'framer-motion';
 import { Phone } from 'lucide-react';
 import HeroSection from './homepage/HeroSection';
+import ValuePropsSection from './homepage/ValuePropsSection';
 import BudgetSection from './homepage/BudgetSection';
 import TrustStats from './homepage/TrustStats';
 import JourneySection from './homepage/JourneySection';
@@ -56,6 +57,8 @@ export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: B
         </div>
 
         <HeroSection />
+
+        <ValuePropsSection />
 
         <BudgetSection />
 
