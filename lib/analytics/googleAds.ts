@@ -30,5 +30,7 @@ export function trackConsultationLeadConversion(): void {
 
   window.gtag('event', 'conversion', {
     send_to: `${CONVERSION_ID}/${CONVERSION_LABEL}`,
+    value: 1,
+    currency: 'INR',
   });
 }
