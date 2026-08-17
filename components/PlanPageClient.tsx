@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { User, Phone, Mail, Calendar, Users, UtensilsCrossed, Building2, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Heart, Clock, X, MapPin } from 'lucide-react';
 import WeddingDashboardClient from '@/components/WeddingDashboardClient';
+import { trackConsultationLeadConversion } from '@/lib/analytics/googleAds';
 
 const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 import { useCart } from '@/context/CartContext';
@@ -148,6 +149,7 @@ export default function PlanPageClient() {
       if (data.success) {
         setSuccess(true);
         clearCart();
+        trackConsultationLeadConversion();
       } else {
         alert('Something went wrong. Please try again.');
       }
