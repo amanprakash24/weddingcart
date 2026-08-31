@@ -55,13 +55,21 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({ success: true });
-    } else {
+    } else if (process.env.NODE_ENV !== 'production') {
       // Dev mode — WhatsApp not configured, return code in response for testing
       console.log(`\n[OTP DEV] ─────────────────────────────`);
       console.log(`  WhatsApp : +91 ${phone}`);
       console.log(`  Code     : ${code}`);
       console.log(`────────────────────────────────────────\n`);
       return NextResponse.json({ success: true, devCode: code });
+    } else {
+      // Production with WhatsApp unconfigured/misconfigured — never expose
+      // the OTP. Fail with a safe error instead.
+      console.error('[OTP send] WhatsApp is not configured in production');
+      return NextResponse.json(
+        { success: false, message: 'Unable to send OTP right now. Please try again later.' },
+        { status: 500 }
+      );
     }
   } catch (err) {
     console.error('[OTP send]', err);

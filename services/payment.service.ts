@@ -89,6 +89,9 @@ export const paymentService = {
       clientPhone: invoice.clientPhone,
       clientEmail: invoice.clientEmail ?? undefined,
       description: `Invoice ${invoice.invoiceNumber}`,
+      // Real money — never fall back to a fake dev_* link if Razorpay isn't
+      // configured. Fail closed, matching event.service.ts's ticket checkout.
+      allowDevelopmentFallback: false,
     });
 
     if (!result.ok) {
