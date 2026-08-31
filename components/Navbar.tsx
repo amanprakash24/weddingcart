@@ -136,12 +136,6 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    setMobileOpen(false);
-    setMegaOpen(false);
-    setSearchOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (megaRef.current && !megaRef.current.contains(e.target as Node)) {
         setMegaOpen(false);

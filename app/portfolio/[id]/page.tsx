@@ -29,7 +29,7 @@ interface VendorMeta {
 
 export async function generateStaticParams() {
   try {
-    const { data } = await vendorRepository.findMany({});
+    const { data } = await vendorRepository.findMany({ where: { status: 'PUBLISHED' } });
     return data.map((v) => ({ id: v.slug }));
   } catch { return []; }
 }
@@ -37,7 +37,7 @@ export async function generateStaticParams() {
 async function getVendor(id: string): Promise<VendorMeta | null> {
   try {
     const vendor = await vendorRepository.findBySlug(id);
-    if (!vendor) return null;
+    if (!vendor || vendor.status !== 'PUBLISHED') return null;
     const category = await categoryRepository.findById(vendor.categoryId);
     return {
       id: vendor.slug,
@@ -57,7 +57,7 @@ async function getVendor(id: string): Promise<VendorMeta | null> {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const vendor = await getVendor(id);
-  if (!vendor) return { title: 'Portfolio Not Found' };
+  if (!vendor) return { title: 'Portfolio Not Found', robots: { index: false, follow: false } };
 
   const cat = CATEGORY_LABELS[vendor.category] ?? vendor.category;
   const title = `${vendor.name} — ${cat} in ${vendor.city} | Portfolio`;

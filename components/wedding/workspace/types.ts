@@ -58,6 +58,7 @@ export interface WorkspaceWeddingEvent {
   venueAddress: string | null;
   city: string;
   budget: number | null;
+  tasks: { id: string; title: string; status: string; dueAt: string | null }[];
   vendorBookings: WorkspaceVendorBooking[];
 }
 
@@ -172,5 +173,16 @@ export interface WeddingWorkspace {
   tasks: WorkspaceTask[];
   documents: WorkspaceDocument[];
   finance: WorkspaceFinance;
+  guests: {
+    id: string;
+    name: string;
+    phone: string | null;
+    email: string | null;
+    category: string | null;
+    accompanyingGuests: number;
+    rsvpStatus: string;
+    rsvpToken: string;
+    functionResponses: { status: string; weddingEvent: { id: string; type: string; label: string | null } }[];
+  }[];
   insights: WorkspaceInsight[];
 }

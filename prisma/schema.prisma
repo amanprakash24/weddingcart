@@ -249,32 +249,50 @@ model Category {
   @@map("categories")
 }
 
+// Vendor Portal — admin publishing workflow. PUBLISHED is the only status
+// visible to anonymous/public callers (see vendor.service.ts's buildWhere
+// and every public route's status gate); DRAFT/PENDING_VERIFICATION are
+// admin-only, reachable through /admin/vendors and an authenticated preview
+// of the public profile.
+enum VendorStatus {
+  DRAFT
+  PENDING_VERIFICATION
+  PUBLISHED
+}
+
 model Vendor {
-  id               String   @id @default(uuid())
-  legacyMongoId    String?  @unique
-  slug             String   @unique // was Mongo's human-readable `id` field, still used in /vendors/[id] URLs
+  id               String       @id @default(uuid())
+  legacyMongoId    String?      @unique
+  slug             String       @unique // was Mongo's human-readable `id` field, still used in /vendors/[id] URLs
   name             String
-  ownerName        String   @default("")
-  ownerPhone       String   @default("")
-  ownerEmail       String   @default("")
+  ownerName        String       @default("")
+  ownerPhone       String       @default("")
+  ownerEmail       String       @default("")
   categoryId       String
-  category         Category @relation(fields: [categoryId], references: [id])
+  category         Category     @relation(fields: [categoryId], references: [id])
   city             String
-  address          String   @default("")
-  mapEmbedUrl      String   @default("")
+  address          String       @default("")
+  mapEmbedUrl      String       @default("")
   priceMin         Int
   priceMax         Int
-  rating           Float    @default(4.5)
-  reviewCount      Int      @default(0)
+  rating           Float        @default(4.5)
+  reviewCount      Int          @default(0)
   image            String
-  images           String[] @default([])
-  virtualTourVideo String   @default("")
+  images           String[]     @default([])
+  virtualTourVideo String       @default("")
   description      String
-  features         String[] @default([])
-  isFeatured       Boolean  @default(false)
-  sortOrder        Int      @default(999)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  features         String[]     @default([])
+  isFeatured       Boolean      @default(false)
+  sortOrder        Int          @default(999)
+  status           VendorStatus @default(DRAFT)
+  // Structured (not folded into `features`) because the marketplace card
+  // and search need to sort/filter on these directly — e.g. "capacity
+  // 200-500", not parse it out of free text. Nullable: most vendor
+  // categories (photographers, makeup artists, ...) have neither.
+  guestCapacity    Int?
+  venueType        String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   packages      VendorPackage[]
   faqs          VendorFaq[]
@@ -290,7 +308,10 @@ model Vendor {
   reviews        Review[]
   paymentDetails VendorPaymentDetails?
 
-  @@index([categoryId, city, rating])
+  // categoryId+city+status is every public listing query's exact where
+  // clause (city/category page, sitemap, /api/vendors search); rating stays
+  // last since it's usually a sort key layered on top, not a filter.
+  @@index([categoryId, city, status, rating])
   @@map("vendors")
 }
 
@@ -574,6 +595,133 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  CANCELLED
+}
+
+enum EventPassTypeStatus {
+  ACTIVE
+  HIDDEN
+}
+
+enum EventOrderStatus {
+  PENDING
+  PAID
+  PAYMENT_SUCCESS
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum EventTicketStatus {
+  ACTIVE
+  CHECKED_IN
+  CANCELLED
+}
+
+model Event {
+  id           String      @id @default(uuid())
+  slug         String      @unique
+  name         String
+  date         DateTime
+  time         String?
+  venueName    String
+  venueAddress String?
+  description  String      @default("")
+  coverImage   String      @default("")
+  capacity     Int?
+  status       EventStatus @default(DRAFT)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  passTypes EventPassType[]
+  orders    EventOrder[]
+  tickets   EventTicket[]
+
+  @@map("events")
+}
+
+model EventPassType {
+  id             String              @id @default(uuid())
+  eventId        String
+  event          Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name           String
+  description    String              @default("")
+  price          Int
+  peopleIncluded Int                 @default(1)
+  foodIncluded   Boolean             @default(false)
+  salesLimit     Int?
+  status         EventPassTypeStatus @default(ACTIVE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  tickets EventTicket[]
+  orders  EventOrder[]
+
+  @@unique([eventId, name])
+  @@map("event_pass_types")
+}
+
+model EventOrder {
+  id                    String           @id @default(uuid())
+  eventId               String
+  event                 Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  passTypeId            String
+  passType              EventPassType    @relation(fields: [passTypeId], references: [id])
+  quantity              Int
+  customerName          String
+  customerPhone         String
+  customerEmail         String?
+  amount                Int
+  currency              String           @default("INR")
+  status                EventOrderStatus @default(PENDING)
+  paymentProvider       String?
+  paymentReference      String?
+  razorpayPaymentLinkId String?          @unique
+  razorpayPaymentId     String?          @unique
+  paidAt                DateTime?
+  confirmedAt           DateTime?
+  notes                 String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  tickets EventTicket[]
+
+  @@map("event_orders")
+}
+
+model EventWebhookEvent {
+  id          String   @id @default(uuid())
+  provider    String
+  eventId     String   @unique
+  event       String
+  processedAt DateTime @default(now())
+
+  @@map("event_webhook_events")
+}
+
+model EventTicket {
+  id            String            @id @default(uuid())
+  eventId       String
+  event         Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderId       String
+  order         EventOrder        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  passTypeId    String
+  passType      EventPassType     @relation(fields: [passTypeId], references: [id], onDelete: Cascade)
+  ticketCode    String            @unique
+  qrCode        String            @unique
+  attendeeName  String?
+  attendeePhone String?
+  checkInStatus EventTicketStatus @default(ACTIVE)
+  checkedInAt   DateTime?
+  createdAt     DateTime          @default(now())
+
+  @@map("event_tickets")
+}
+
 // ---------- Content ----------
 
 model Blog {
@@ -764,6 +912,8 @@ model Wedding {
   timelineMilestones TimelineMilestone[]
   reviews            Review[]
   aiConversations    AiConversation[]
+  approvals          ApprovalRequest[] @relation("ApprovalWedding")
+  guests             Guest[]
 
   @@map("weddings")
 }
@@ -812,8 +962,52 @@ model WeddingEvent {
 
   vendorBookings VendorBooking[]
   tasks          Task[]
+  approvals      ApprovalRequest[]
+  guestResponses GuestFunctionResponse[]
 
   @@map("wedding_events")
+}
+
+enum GuestRsvpStatus {
+  PENDING
+  ATTENDING
+  NOT_ATTENDING
+  MAYBE
+}
+
+model Guest {
+  id                 String          @id @default(uuid())
+  weddingId          String
+  wedding            Wedding         @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  name               String
+  phone              String?
+  email              String?
+  category           String?
+  accompanyingGuests Int             @default(0)
+  rsvpStatus         GuestRsvpStatus @default(PENDING)
+  notes              String?
+  rsvpToken          String          @unique @default(uuid())
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  functionResponses GuestFunctionResponse[]
+
+  @@index([weddingId, rsvpStatus])
+  @@map("guests")
+}
+
+model GuestFunctionResponse {
+  id          String          @id @default(uuid())
+  guestId     String
+  guest       Guest           @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  weddingEventId String
+  weddingEvent WeddingEvent   @relation(fields: [weddingEventId], references: [id], onDelete: Cascade)
+  status      GuestRsvpStatus @default(PENDING)
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([guestId, weddingEventId])
+  @@index([weddingEventId, status])
+  @@map("guest_function_responses")
 }
 
 enum VendorBookingStatus {
@@ -828,6 +1022,14 @@ enum VendorBookingStatus {
   COMPLETED
 }
 
+enum VenueBookingStatus {
+  PENDING
+  READY_FOR_SETUP
+  SETUP_IN_PROGRESS
+  READY
+  COMPLETED
+}
+
 model VendorBooking {
   id              String              @id @default(uuid())
   weddingEventId  String
@@ -837,6 +1039,7 @@ model VendorBooking {
   vendorPackageId String?
   vendorPackage   VendorPackage?      @relation(fields: [vendorPackageId], references: [id])
   status          VendorBookingStatus @default(PENDING_VENDOR_CONFIRMATION)
+  venueStatus     VenueBookingStatus  @default(PENDING)
   agreedPrice     Int
   declineReason   String?
   respondedAt     DateTime? // vendor's accept/decline timestamp — feeds Vendor Score's response-time component
@@ -1003,6 +1206,10 @@ enum ActivityType {
   DOCUMENT_UPLOADED
   AI_DRAFT_CREATED
   ASSIGNED // Sprint 5.3 — lead/enquiry/consultation reassignment
+  APPROVAL_REQUESTED
+  APPROVAL_APPROVED
+  APPROVAL_CHANGES_REQUESTED
+  APPROVAL_CANCELLED
 }
 
 model ActivityLog {
@@ -1048,14 +1255,24 @@ model ActivityLog {
 }
 
 enum ApprovalSubjectType {
+  SERVICE_SELECTION
+  DECORATION
+  MENU
+  DESIGN
+  QUOTATION
+  OTHER
   VENDOR_PROFILE_CHANGE
   AI_DRAFT
   CUSTOMER_VENDOR_APPROVAL
 }
 
 enum ApprovalStatus {
+  DRAFT
+  PENDING_CLIENT
   PENDING
   APPROVED
+  CHANGES_REQUESTED
+  CANCELLED
   REJECTED
 }
 
@@ -1068,6 +1285,14 @@ model ApprovalRequest {
   id            String              @id @default(uuid())
   subjectType   ApprovalSubjectType
   subjectId     String
+  title         String?
+  description   String?
+  amount        Int?
+  deadline      DateTime?
+  weddingId     String?
+  wedding       Wedding?            @relation("ApprovalWedding", fields: [weddingId], references: [id], onDelete: Cascade)
+  weddingEventId String?
+  weddingEvent  WeddingEvent?      @relation(fields: [weddingEventId], references: [id], onDelete: SetNull)
   requestedById String?
   requestedBy   User?               @relation("ApprovalRequestedBy", fields: [requestedById], references: [id])
   status        ApprovalStatus      @default(PENDING)
@@ -1075,6 +1300,7 @@ model ApprovalRequest {
   approvedBy    User?               @relation("ApprovalApprovedBy", fields: [approvedById], references: [id])
   approvedAt    DateTime?
   notes         String?
+  clientComment String?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 

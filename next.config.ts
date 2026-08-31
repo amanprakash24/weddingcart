@@ -10,8 +10,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: '/venues/patna',
+        destination: '/cities/patna/venue',
+        permanent: true,
+      },
+      {
         source: '/venues-in-patna',
-        destination: '/venues/patna',
+        destination: '/cities/patna/venue',
         permanent: true,
       },
       {

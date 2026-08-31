@@ -27,6 +27,11 @@ export const vendorRepository = {
     return tx.vendor.findUnique({ where: { slug }, include: withRelations });
   },
 
+  async slugExists(slug: string, tx: Tx | typeof prisma = prisma): Promise<boolean> {
+    const row = await tx.vendor.findUnique({ where: { slug }, select: { id: true } });
+    return row !== null;
+  },
+
   async findMany(
     { where, skip, take, orderBy }: FindManyParams,
     tx: Tx | typeof prisma = prisma

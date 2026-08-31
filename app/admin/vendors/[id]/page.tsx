@@ -1,11 +1,11 @@
-import { Suspense } from 'react';
-import AdminVendorDetailClient from '@/components/AdminVendorDetailClient';
+import AdminVendorFormClient from '@/components/AdminVendorFormClient';
 
-export default async function AdminVendorDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export const metadata = {
+  title: 'Edit Vendor — Admin',
+  robots: { index: false, follow: false },
+};
+
+export default async function EditVendorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return (
-    <Suspense>
-      <AdminVendorDetailClient vendorId={id} />
-    </Suspense>
-  );
+  return <AdminVendorFormClient vendorId={id} />;
 }

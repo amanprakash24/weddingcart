@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import type { PipelineStage } from '@/generated/prisma/enums';
+import { commandCenterService, type CommandCenter } from '@/services/commandCenter.service';
 
 // Sprint 5.4 — Founder Dashboard. Today's Work stays on the existing
 // leadInboxService.stats()/`/api/crm/stats` (Sprint 5.1, unchanged); this
@@ -8,6 +9,7 @@ import type { PipelineStage } from '@/generated/prisma/enums';
 // independent, individually empty-safe queries.
 
 export interface FounderDashboard {
+  commandCenter: CommandCenter;
   revenue: {
     outstanding: number;
     totalCollected: number;
@@ -234,8 +236,9 @@ async function getTeamPerformance(): Promise<FounderDashboard['teamPerformance']
 
 export const founderDashboardService = {
   async getDashboard(date: Date = new Date()): Promise<FounderDashboard> {
-    const [revenue, commission, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance] =
+    const [commandCenter, revenue, commission, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance] =
       await Promise.all([
+        commandCenterService.getDashboard(date),
         getRevenue(),
         getCommission(),
         getPipelineHealth(),
@@ -244,6 +247,6 @@ export const founderDashboardService = {
         getFollowUpHealth(),
         getTeamPerformance(),
       ]);
-    return { revenue, commission, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance };
+    return { commandCenter, revenue, commission, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance };
   },
 };

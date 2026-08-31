@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CalendarDays, MapPin, Users, Wallet } from 'lucide-react';
 import { STATUS_LABELS, STATUS_COLORS, WEDDING_STATUS_TRANSITIONS, HEALTH_LABELS, HEALTH_COLORS } from './constants';
 import type { WeddingWorkspace, WeddingStatus } from './types';
 import { useState } from 'react';
@@ -9,10 +9,12 @@ import { useState } from 'react';
 export default function WeddingHeader({
   wedding,
   health,
+  outstanding,
   onTransition,
 }: {
   wedding: WeddingWorkspace['wedding'];
   health: WeddingWorkspace['health'];
+  outstanding: number;
   onTransition: (toStatus: WeddingStatus) => Promise<void>;
 }) {
   const router = useRouter();
@@ -47,9 +49,9 @@ export default function WeddingHeader({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif]">{wedding.weddingNumber}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif]">{wedding.customerName || wedding.weddingNumber}</h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            {wedding.city} · {new Date(wedding.primaryDate).toLocaleDateString()} · {wedding.source === 'CRM' ? 'From CRM' : 'From Booking'}
+            {wedding.weddingNumber} · {wedding.source === 'CRM' ? 'From CRM' : 'From Booking'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -85,11 +87,15 @@ export default function WeddingHeader({
         </form>
       )}
 
-      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-        {wedding.coordinatorName && <span>Coordinator: {wedding.coordinatorName}</span>}
-        {wedding.guestCount && <span>{wedding.guestCount} guests</span>}
-        {wedding.totalBudget && <span>Budget: ₹{wedding.totalBudget.toLocaleString('en-IN')}</span>}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="rounded-xl border border-gray-100 bg-white p-3"><CalendarDays className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] uppercase text-gray-400">Event type</p><p className="text-sm font-medium text-gray-900">{wedding.weddingType || 'Event'}</p></div>
+        <div className="rounded-xl border border-gray-100 bg-white p-3"><CalendarDays className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] uppercase text-gray-400">Date</p><p className="text-sm font-medium text-gray-900">{new Date(wedding.primaryDate).toLocaleDateString('en-IN')}</p></div>
+        <div className="rounded-xl border border-gray-100 bg-white p-3"><MapPin className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] uppercase text-gray-400">Location</p><p className="truncate text-sm font-medium text-gray-900">{wedding.city}</p></div>
+        <div className="rounded-xl border border-gray-100 bg-white p-3"><Users className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] uppercase text-gray-400">Guests</p><p className="text-sm font-medium text-gray-900">{wedding.guestCount ?? '—'}</p></div>
+        <div className="rounded-xl border border-gray-100 bg-white p-3"><Wallet className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] uppercase text-gray-400">Budget</p><p className="text-sm font-medium text-gray-900">{wedding.totalBudget !== null ? `₹${wedding.totalBudget.toLocaleString('en-IN')}` : '—'}</p></div>
+        <div className="rounded-xl border border-gray-100 bg-white p-3"><Wallet className="mb-1 h-4 w-4 text-rose-500" /><p className="text-[10px] uppercase text-gray-400">Outstanding</p><p className="text-sm font-medium text-amber-700">₹{outstanding.toLocaleString('en-IN')}</p></div>
       </div>
+      <p className="text-sm text-gray-500">Coordinator: <span className="font-medium text-gray-900">{wedding.coordinatorName || 'Unassigned'}</span></p>
     </div>
   );
 }
