@@ -105,8 +105,13 @@ export const vendorService = {
   // Returns the real Category relation as-is; flattening it to a slug string
   // for the admin frontend contract is a response-shaping concern and happens
   // in the route handler instead.
+  // Public vendor URLs (and every client-side re-fetch off them —
+  // VendorDetailClient, VendorPortfolioClient) pass the slug, not the Prisma
+  // id (see schema.prisma's note on Vendor.slug). Falls back to a slug
+  // lookup so GET /api/vendors/[id] resolves both; admin's real-id calls
+  // still short-circuit on the first branch, unchanged.
   async getById(id: string) {
-    const vendor = await vendorRepository.findById(id);
+    const vendor = await vendorRepository.findById(id) ?? await vendorRepository.findBySlug(id);
     if (!vendor) return null;
     const category = await categoryRepository.findById(vendor.categoryId);
     return { ...vendor, category };
