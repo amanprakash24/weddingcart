@@ -49,7 +49,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Patna city landing page (other Bihar cities added via biharCityRoutes above)
     { url: `${BASE_URL}/cities/patna`,            lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.95 },
     // Venue landing pages — indexed per robots.ts and each page's own metadata
-    { url: `${BASE_URL}/venues/patna`,               lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.97 },
     { url: `${BASE_URL}/venues/patna/danapur`,       lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.9 },
     { url: `${BASE_URL}/venues/patna/saguna-mor`,    lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.9 },
     { url: `${BASE_URL}/venues/patna/boring-road`,   lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.85 },
@@ -93,7 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       }));
 
-    const { data: vendors } = await vendorRepository.findMany({});
+    const { data: vendors } = await vendorRepository.findMany({ where: { status: 'PUBLISHED' } });
 
     vendorRoutes = vendors.map(vendor => ({
       url: `${BASE_URL}/vendors/${vendor.slug}`,

@@ -168,21 +168,21 @@ export default function DanapurVenuesPage() {
               ₹5 lakh and ₹50 lakh depending on guest count and the level of décor and entertainment involved.
             </p>
             <p>
-              <strong className="text-[#2A1F1B]">Best guest capacities.</strong> Danapur halls are generally built for
-              scale — 400 to 500+ guests is common, which is well suited to multi-day Bihari weddings where the baraat,
-              reception, and family functions can each draw a large crowd. One important distinction worth knowing before
-              you book: a hall&apos;s advertised "capacity" is often a standing or event-floor figure, not the number of
-              guests it can comfortably seat for a sit-down dinner. Always ask a venue for its seated dinner capacity
-              specifically — it&apos;s usually meaningfully lower than the headline number.
-            </p>
+  <strong className="text-[#2A1F1B]">Best guest capacities.</strong> Danapur halls are generally built for
+  scale — 400 to 500+ guests is common, which is well suited to multi-day Bihari weddings where the baraat,
+  reception, and family functions can each draw a large crowd. One important distinction worth knowing before
+  you book: a hall&apos;s advertised &quot;capacity&quot; is often a standing or event-floor figure, not the number of
+  guests it can comfortably seat for a sit-down dinner. Always ask a venue for its seated dinner capacity
+  specifically — it&apos;s usually meaningfully lower than the headline number.
+</p>
             <p>
-              <strong className="text-[#2A1F1B]">Parking and accessibility.</strong> Because Danapur&apos;s roads were
-              built wider than much of central Patna, vehicle access and parking tend to be less chaotic here than at
-              venues tucked into older, narrower neighbourhoods. That said, "ample parking" is a claim every venue makes —
-              what matters is the actual number of vehicles a hall can accommodate on its own premises versus on the
-              street outside. Danapur is also home to Danapur Railway Junction, one of the region&apos;s major stations,
-              which is a genuine convenience if a large share of your guest list is travelling in from outside Patna.
-            </p>
+  <strong className="text-[#2A1F1B]">Parking and accessibility.</strong> Because Danapur&apos;s roads were
+  built wider than much of central Patna, vehicle access and parking tend to be less chaotic here than at
+  venues tucked into older, narrower neighbourhoods. That said, &quot;ample parking&quot; is a claim every venue makes —
+  what matters is the actual number of vehicles a hall can accommodate on its own premises versus on the
+  street outside. Danapur is also home to Danapur Railway Junction, one of the region&apos;s major stations,
+  which is a genuine convenience if a large share of your guest list is travelling in from outside Patna.
+</p>
             <p>
               <strong className="text-[#2A1F1B]">Nearby wedding shopping.</strong> Danapur itself is primarily a
               residential and venue corridor rather than a shopping destination. For lehengas, jewellery, and wedding

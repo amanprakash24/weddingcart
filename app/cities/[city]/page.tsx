@@ -8,6 +8,7 @@ import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
@@ -104,7 +105,7 @@ function defaultFaqs(name: string, state: string) {
 async function getInitialVendors(cityName: string, isBihar: boolean): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
     const { data } = await vendorRepository.findMany({
-      where: { city: cityName },
+      where: { city: cityName, status: 'PUBLISHED' },
       orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
       take: 6,
     });
@@ -115,7 +116,7 @@ async function getInitialVendors(cityName: string, isBihar: boolean): Promise<{ 
     // serve them, so the page is never an empty soft-404.
     if (isBihar && cityName !== 'Patna') {
       const { data: network } = await vendorRepository.findMany({
-        where: { city: 'Patna' },
+        where: { city: 'Patna', status: 'PUBLISHED' },
         orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
         take: 6,
       });

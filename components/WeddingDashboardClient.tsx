@@ -113,7 +113,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             <p className="text-gray-900 font-semibold text-base">
               Your Wedding Expert will call on <span className="text-emerald-700">{formatDate(form.consultationDate)}</span> at <span className="text-emerald-700">{form.preferredTime}</span>
             </p>
-            <p className="text-gray-500 text-sm mt-1">They'll review your full plan, suggest vendors, and answer all your questions.</p>
+            <p className="text-gray-500 text-sm mt-1">They&apos;ll review your full plan, suggest vendors, and answer all your questions.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <a
@@ -235,8 +235,8 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Services You've Selected</h2>
-                <p className="text-gray-500 text-sm mt-0.5">We'll find top-rated vendors in {form.city} for your {eventLabel.toLowerCase()}</p>
+                <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Services You&apos;ve Selected</h2>
+                <p className="text-gray-500 text-sm mt-0.5">We&apos;ll find top-rated vendors in {form.city} for your {eventLabel.toLowerCase()}</p>
               </div>
               <span className="text-xs font-semibold bg-rose-100 text-rose-700 px-3 py-1 rounded-full">{selectedServices.length} services</span>
             </div>

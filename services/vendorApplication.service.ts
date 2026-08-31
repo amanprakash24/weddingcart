@@ -5,17 +5,10 @@ import {
 import { categoryRepository } from '@/repositories/category.repository';
 import { vendorRepository } from '@/repositories/vendor.repository';
 import { NotFoundError } from '@/lib/errors';
+import { slugify } from '@/lib/slug';
 import type { ApplicationStatus, Prisma } from '@/generated/prisma/client';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80';
-
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-}
 
 export interface VendorApplicationCreateData {
   businessName: string;
@@ -78,6 +71,11 @@ async function approveVendorApplication(app: VendorApplicationWithCategory) {
     images: app.coverImage ? [app.coverImage] : [DEFAULT_IMAGE],
     description: app.description || `${app.businessName} — a verified ShaadiShopping vendor.`,
     features,
+    // Explicit, not the Vendor.status column default (DRAFT) — approving an
+    // application already IS this flow's review step, so the resulting
+    // vendor should go live immediately, matching pre-status-field behavior,
+    // not sit in Draft awaiting a second separate publish action.
+    status: 'PUBLISHED',
   });
 }
 

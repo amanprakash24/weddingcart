@@ -551,7 +551,6 @@ export default function BlogListClient() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
     const cat = category === 'All' ? '' : category;
     fetch(`/api/blogs?category=${encodeURIComponent(cat)}&page=${page}&limit=9`)
       .then(r => r.json())

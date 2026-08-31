@@ -19,6 +19,15 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     if (!vendor) {
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     }
+    // Draft/pending-verification vendors are admin-only — this is the one
+    // gate that protects them everywhere this route is read from: the admin
+    // edit form (which needs it), and the public VendorDetailClient/
+    // VendorPortfolioClient (which fetch this same route client-side, after
+    // the page itself has already rendered, so a page-level check alone
+    // isn't enough).
+    if (vendor.status !== 'PUBLISHED' && !(await requireAdmin())) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
     return NextResponse.json({ success: true, data: toResponseShape(vendor) });
   } catch {
     return NextResponse.json(
@@ -44,17 +53,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ownerEmail,
       category: categorySlug,
       city,
+      address,
+      mapEmbedUrl,
       priceMin,
       priceMax,
-      rating,
-      reviewCount,
+      guestCapacity,
+      venueType,
       description,
       features,
       isFeatured,
+      status,
       virtualTourVideo,
       image,
       images,
       packages,
+      faqs,
     } = body;
 
     await vendorService.update(
@@ -64,20 +77,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ownerName,
         ownerPhone,
         ownerEmail,
-        category: { connect: { slug: categorySlug } },
+        ...(categorySlug !== undefined ? { category: { connect: { slug: categorySlug } } } : {}),
         city,
+        address,
+        mapEmbedUrl,
         priceMin,
         priceMax,
-        rating,
-        reviewCount,
+        guestCapacity,
+        venueType,
         description,
         features,
         isFeatured,
+        status,
         virtualTourVideo,
         image,
         images,
       },
-      packages
+      { packages, faqs }
     );
 
     // Re-fetch the fully composed record (packages + flattened category) so
