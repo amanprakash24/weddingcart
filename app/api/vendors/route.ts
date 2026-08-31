@@ -61,7 +61,8 @@ export async function GET(req: NextRequest) {
       page,
       limit,
     });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/vendors failed:', err);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch vendors' },
       { status: 500 }
@@ -135,7 +136,8 @@ export async function POST(req: NextRequest) {
       { success: true, data: vendor },
       { status: 201 }
     );
-  } catch {
+  } catch (err) {
+    console.error('POST /api/vendors failed:', err);
     return NextResponse.json(
       { success: false, error: 'Failed to create vendor' },
       { status: 500 }
