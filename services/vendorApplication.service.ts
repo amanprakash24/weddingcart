@@ -4,9 +4,13 @@ import {
 } from '@/repositories/vendorApplication.repository';
 import { categoryRepository } from '@/repositories/category.repository';
 import { vendorRepository } from '@/repositories/vendor.repository';
-import { NotFoundError } from '@/lib/errors';
+import { prisma } from '@/lib/prisma';
+import { NotFoundError, DuplicateError } from '@/lib/errors';
 import { slugify } from '@/lib/slug';
+import { Role } from '@/lib/auth/roles';
 import type { ApplicationStatus, Prisma } from '@/generated/prisma/client';
+
+type Tx = Prisma.TransactionClient;
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80';
 
@@ -45,7 +49,7 @@ export interface VendorApplicationCreateData {
 // in every newly-generated vendor slug. Using category.slug is a strict
 // improvement with no contract to preserve — this string was never exposed
 // to any caller, just generated fresh at approval time.
-async function approveVendorApplication(app: VendorApplicationWithCategory) {
+async function approveVendorApplication(app: VendorApplicationWithCategory, tx: Tx) {
   const slug = `${app.category.slug}-${slugify(app.businessName)}-${Date.now()}`;
 
   const features: string[] = [];
@@ -76,7 +80,40 @@ async function approveVendorApplication(app: VendorApplicationWithCategory) {
     // vendor should go live immediately, matching pre-status-field behavior,
     // not sit in Draft awaiting a second separate publish action.
     status: 'PUBLISHED',
+  }, tx);
+}
+
+// Links the approved vendor's phone number to a real login: find-or-create
+// the User, add VENDOR to their roles (existing roles — e.g. CUSTOMER, if
+// this phone already booked their own wedding — are left untouched, since
+// one phone can hold multiple roles per the Step 4 schema review), and
+// create the VendorProfile that ties that login to this Vendor. Runs inside
+// the same transaction as the Vendor creation and application update, so a
+// partial failure never leaves an orphaned Vendor or a stuck application.
+async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: Tx) {
+  const user = await tx.user.findUnique({
+    where: { phone: ownerPhone },
+    include: { vendorProfile: true },
   });
+
+  // Never reassign an existing VendorProfile to a different vendor — fail
+  // safely (rolls back the whole transaction) instead of silently changing
+  // who this phone number logs in as.
+  if (user?.vendorProfile && user.vendorProfile.vendorId !== vendorId) {
+    throw new DuplicateError('VendorProfile', 'phone');
+  }
+
+  const resolvedUser = user ?? (await tx.user.create({ data: { phone: ownerPhone } }));
+
+  await tx.userRole.upsert({
+    where: { userId_role: { userId: resolvedUser.id, role: Role.VENDOR } },
+    create: { userId: resolvedUser.id, role: Role.VENDOR },
+    update: {},
+  });
+
+  if (!user?.vendorProfile) {
+    await tx.vendorProfile.create({ data: { userId: resolvedUser.id, vendorId } });
+  }
 }
 
 export const vendorApplicationService = {
@@ -116,21 +153,28 @@ export const vendorApplicationService = {
     });
   },
 
-  // Auto-creates the Vendor on the FIRST transition to APPROVED only —
-  // mirrors the old Mongo guard (status transitioning + no vendorId yet)
-  // exactly, so re-approving or re-saving never creates a duplicate Vendor.
+  // Auto-creates the Vendor + login account on the FIRST transition to
+  // APPROVED only — mirrors the old Mongo guard (status transitioning + no
+  // vendorId yet) exactly, so re-approving or re-saving never creates a
+  // duplicate Vendor, User, or VendorProfile.
   async updateStatus(id: string, status: ApplicationStatus) {
     const existing = await vendorApplicationRepository.findById(id);
     if (!existing) return null;
 
-    const data: Prisma.VendorApplicationUpdateInput = { status };
-
-    if (status === 'APPROVED' && existing.status !== 'APPROVED' && !existing.vendorId) {
-      const vendor = await approveVendorApplication(existing);
-      data.vendor = { connect: { id: vendor.id } };
+    const shouldProvision = status === 'APPROVED' && existing.status !== 'APPROVED' && !existing.vendorId;
+    if (!shouldProvision) {
+      return vendorApplicationRepository.update(id, { status });
     }
 
-    return vendorApplicationRepository.update(id, data);
+    // Vendor creation, user/role/profile provisioning, and the application's
+    // own status+vendorId update all happen in one transaction — a failure
+    // in any part (e.g. this phone is already linked to a different vendor)
+    // rolls everything back, so nothing is left orphaned or half-approved.
+    return prisma.$transaction(async (tx) => {
+      const vendor = await approveVendorApplication(existing, tx);
+      await provisionVendorAccount(existing.ownerPhone, vendor.id, tx);
+      return vendorApplicationRepository.update(id, { status, vendor: { connect: { id: vendor.id } } }, tx);
+    });
   },
 
   delete: (id: string) => vendorApplicationRepository.delete(id),
