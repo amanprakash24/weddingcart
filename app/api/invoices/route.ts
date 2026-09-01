@@ -23,7 +23,8 @@ export async function GET() {
   try {
     const { data } = await invoiceService.list();
     return NextResponse.json({ success: true, data: data.map(toResponseShape) });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/invoices failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch invoices' }, { status: 500 });
   }
 }

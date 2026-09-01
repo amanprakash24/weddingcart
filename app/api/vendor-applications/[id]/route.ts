@@ -26,7 +26,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const application = await vendorApplicationService.getById(id);
     if (!application) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     return NextResponse.json({ success: true, data: toResponseShape(application) });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/vendor-applications/[id] failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch application' }, { status: 500 });
   }
 }

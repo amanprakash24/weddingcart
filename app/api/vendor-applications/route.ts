@@ -35,7 +35,8 @@ export async function GET(req: NextRequest) {
 
     const { data } = await vendorApplicationService.list({ status });
     return NextResponse.json({ success: true, data: data.map(toResponseShape) });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/vendor-applications failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch applications' }, { status: 500 });
   }
 }
