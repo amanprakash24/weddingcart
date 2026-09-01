@@ -411,6 +411,15 @@ model Lead {
   insights         LeadInsight[]
   wedding          Wedding?
 
+  // Production-hardening audit (2026-09-01): pipelineStage/assignedToId are
+  // filtered on every CRM Lead Inbox, Command Center, and Founder Dashboard
+  // load (leadInbox.service.ts, commandCenter.service.ts,
+  // founderDashboard.service.ts's getTeamPerformance, which queries
+  // {assignedToId, pipelineStage} together per sales rep); createdAt is the
+  // default list() sort and every dashboard's date-range count filter.
+  @@index([pipelineStage])
+  @@index([assignedToId, pipelineStage])
+  @@index([createdAt])
   @@map("leads")
 }
 
@@ -450,6 +459,11 @@ model Enquiry {
   insights         LeadInsight[]
   wedding          Wedding?
 
+  // Production-hardening audit (2026-09-01) — see Lead's identical indexes
+  // for the reasoning.
+  @@index([pipelineStage])
+  @@index([assignedToId, pipelineStage])
+  @@index([createdAt])
   @@map("enquiries")
 }
 
@@ -496,6 +510,11 @@ model Consultation {
   insights         LeadInsight[]
   wedding          Wedding?
 
+  // Production-hardening audit (2026-09-01) — see Lead's identical indexes
+  // for the reasoning.
+  @@index([pipelineStage])
+  @@index([assignedToId, pipelineStage])
+  @@index([createdAt])
   @@map("consultations")
 }
 
