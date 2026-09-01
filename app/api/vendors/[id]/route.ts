@@ -29,7 +29,8 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     }
     return NextResponse.json({ success: true, data: toResponseShape(vendor) });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/vendors/[id] failed:', err);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch vendor' },
       { status: 500 }

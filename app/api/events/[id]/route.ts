@@ -40,6 +40,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     return NextResponse.json({ success: true, data: event });
   } catch (error) {
+    console.error('PUT /api/events/[id] failed:', error);
     const message = error instanceof Error ? error.message : 'Failed to update event';
     return NextResponse.json({ success: false, error: message }, { status: 400 });
   }

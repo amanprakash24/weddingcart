@@ -13,6 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const ticket = await eventService.checkIn(id, body.ticketId);
     return NextResponse.json({ success: true, data: { id, ticket } });
   } catch (error) {
+    console.error('POST /api/events/[id]/checkin failed:', error);
     const message = error instanceof Error ? error.message : 'Failed to check in ticket';
     return NextResponse.json({ success: false, error: message }, { status: 400 });
   }

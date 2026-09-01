@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
     const status = toConsultationStatus(searchParams.get('status'));
     const { data } = await consultationService.list({ status });
     return NextResponse.json({ success: true, data: data.map(toResponseShape) });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/consultations failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch consultations' }, { status: 500 });
   }
 }
@@ -194,7 +195,8 @@ export async function POST(req: NextRequest) {
     ]);
 
     return NextResponse.json({ success: true, data: toResponseShape(consultation) }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error('POST /api/consultations failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to submit consultation' }, { status: 500 });
   }
 }

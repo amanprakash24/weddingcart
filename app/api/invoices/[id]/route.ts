@@ -26,7 +26,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const invoice = await invoiceService.getById(id);
     if (!invoice) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     return NextResponse.json({ success: true, data: toResponseShape(invoice) });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/invoices/[id] failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch invoice' }, { status: 500 });
   }
 }

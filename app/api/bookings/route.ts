@@ -18,7 +18,8 @@ export async function GET() {
   try {
     const { data } = await bookingService.list();
     return NextResponse.json({ success: true, data: data.map(toResponseShape) });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/bookings failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch bookings' }, { status: 500 });
   }
 }
@@ -31,7 +32,8 @@ export async function POST(req: NextRequest) {
     const booking = await bookingService.create({ name, phone, city, items, total });
 
     return NextResponse.json({ success: true, data: toResponseShape(booking) }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error('POST /api/bookings failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to create booking' }, { status: 500 });
   }
 }

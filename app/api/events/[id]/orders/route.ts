@@ -18,6 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (error) {
+    console.error('POST /api/events/[id]/orders failed:', error);
     const message = error instanceof Error ? error.message : 'Failed to create order';
     return NextResponse.json({ success: false, error: message }, { status: 400 });
   }

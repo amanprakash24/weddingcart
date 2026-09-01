@@ -16,7 +16,8 @@ export async function GET() {
   try {
     const { data } = await leadService.list();
     return NextResponse.json({ success: true, data: data.map(toResponseShape) });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/leads failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch leads' }, { status: 500 });
   }
 }
@@ -29,7 +30,8 @@ export async function POST(req: NextRequest) {
     }
     await leadService.create({ phone, whatsapp: !!whatsapp });
     return NextResponse.json({ success: true }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error('POST /api/leads failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to save lead' }, { status: 500 });
   }
 }

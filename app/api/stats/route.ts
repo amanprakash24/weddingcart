@@ -9,7 +9,8 @@ export async function GET() {
   try {
     const data = await statsService.get();
     return NextResponse.json({ success: true, data });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/stats failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch stats' }, { status: 500 });
   }
 }

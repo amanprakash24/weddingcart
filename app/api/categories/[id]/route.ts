@@ -11,7 +11,8 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     }
     return NextResponse.json({ success: true, data: category });
-  } catch {
+  } catch (err) {
+    console.error('GET /api/categories/[id] failed:', err);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch category' },
       { status: 500 }
