@@ -63,14 +63,23 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const title = `${vendor.name} — ${cat} in ${vendor.city} | Portfolio`;
   const description = `View the portfolio of ${vendor.name}, a verified ${cat} in ${vendor.city}. ${vendor.description.slice(0, 130)}... Verified by ShaadiShopping.`;
 
+  // Same vendor entity/content as /vendors/[id] (this page is a shareable,
+  // admin-generated presentation of it, copied via AdminClient's "copy
+  // portfolio link" — not a distinct browsing path; nothing in the public
+  // site links here). Canonical points at /vendors/[id], the page every
+  // category/city listing and the JSON-LD @id below already treat as
+  // authoritative, so search engines consolidate ranking signal onto one
+  // URL instead of splitting it across two near-identical pages.
+  const canonicalUrl = `${BASE_URL}/vendors/${id}`;
+
   return {
     title,
     description,
-    alternates: { canonical: `${BASE_URL}/portfolio/${id}` },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
-      url: `${BASE_URL}/portfolio/${id}`,
+      url: canonicalUrl,
       type: 'website',
       locale: 'en_IN',
       images: vendor.image ? [{ url: vendor.image, width: 1200, height: 630, alt: vendor.name }] : [],
