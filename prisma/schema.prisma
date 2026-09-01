@@ -1474,7 +1474,14 @@ model VendorPaymentDetails {
   vendorId          String   @unique
   vendor            Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   accountHolderName String?
-  bankAccountNumber String? // TODO Step 3 implementation: encrypt at rest before this goes live
+  // SECURITY: deliberately unused today — confirmed 2026-09-01 that no
+  // repository, service, API route, or admin/vendor-portal UI anywhere
+  // reads or writes this model (payouts are calculation + manual
+  // PENDING->PAID tracking only, see payout.service.ts; payout timing/
+  // disbursement is still an open decision, docs/wedding-os/06-finance.md
+  // §"open questions"). DO NOT wire bankAccountNumber into any code path
+  // without column-level encryption at rest first.
+  bankAccountNumber String?
   ifscCode          String?
   upiId             String?
   gstin             String? // docs/wedding-os/06-finance.md §5 — pending CA confirmation of actual usage
