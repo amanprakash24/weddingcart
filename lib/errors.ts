@@ -57,6 +57,14 @@ export async function withPrismaErrors<T>(entity: string, fn: () => Promise<T>):
         const field = Array.isArray(err.meta?.target) ? err.meta.target[0] : String(err.meta?.target ?? 'field');
         throw new DuplicateError(entity, field);
       }
+      // Foreign-key restrict violation (e.g. deleting a Vendor that still
+      // has VendorBooking/Payout rows referencing it) — the DB-level
+      // protection was already correct, it just fell through to a generic
+      // 500 with no explanation. Reuses InvalidTransitionError (free-form
+      // message, 400) rather than inventing a new error class.
+      if (err.code === 'P2003') {
+        throw new InvalidTransitionError(`${entity} cannot be deleted: it still has related records referencing it`);
+      }
     }
     throw err;
   }
