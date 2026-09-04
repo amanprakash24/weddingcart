@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import VendorDetailClient from '@/components/VendorDetailClient';
 import { JsonLd } from '@/components/JsonLd';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { categoryRepository } from '@/repositories/category.repository';
 
 export const revalidate = 3600;
 
@@ -77,21 +77,39 @@ function humanizeSlug(slug: string): string {
 
 export async function generateStaticParams() {
   try {
-    await connectDB();
-    const vendors = await VendorModel.find({}).select('id').lean<{ id: string }[]>();
-    return vendors.map((v) => ({ id: v.id }));
+    const { data } = await vendorRepository.findMany({ where: { status: 'PUBLISHED' } });
+    return data.map((v) => ({ id: v.slug }));
   } catch {
     return [];
   }
 }
 
+// locality/openingHours have no Prisma equivalent — they were Mongo-only
+// fields, confirmed unset on every live vendor today (0 of 87), so both
+// callers' existing fallback paths (extractLocality() from address; omit
+// openingHours from JSON-LD when absent) already produce identical output.
 async function getVendorMeta(id: string): Promise<VendorMeta | null> {
   try {
-    await connectDB();
-    const vendor = await VendorModel.findOne({ id })
-      .select('id name city address ownerPhone category description priceMin priceMax rating reviewCount image faqs locality openingHours')
-      .lean<VendorMeta>();
-    return vendor;
+    const vendor = await vendorRepository.findBySlug(id);
+    if (!vendor || vendor.status !== 'PUBLISHED') return null;
+    const category = await categoryRepository.findById(vendor.categoryId);
+    return {
+      id: vendor.slug,
+      name: vendor.name,
+      city: vendor.city,
+      address: vendor.address || undefined,
+      ownerPhone: vendor.ownerPhone || undefined,
+      category: category?.slug ?? '',
+      description: vendor.description,
+      priceMin: vendor.priceMin,
+      priceMax: vendor.priceMax,
+      rating: vendor.rating,
+      reviewCount: vendor.reviewCount,
+      image: vendor.image,
+      faqs: vendor.faqs.map((f) => ({ q: f.question, a: f.answer })),
+      locality: undefined,
+      openingHours: undefined,
+    };
   } catch {
     return null;
   }
@@ -101,7 +119,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const vendor = await getVendorMeta(id);
 
-  if (!vendor) return { title: 'Not Found', robots: { index: false } };
+  if (!vendor) return { title: 'Not Found', robots: { index: false, follow: false } };
 
   const isVenue = vendor.category === 'venue';
   const catLabel = CATEGORY_LABELS[vendor.category] ?? vendor.category;
@@ -134,6 +152,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       ...localityKeywords,
     ],
     alternates: { canonical: url },
+    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,

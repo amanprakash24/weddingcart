@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { otpRepository } from '@/repositories/otp.repository';
 
 // Re-implements the Mongo-era OTP rules (lib/models/OTP.ts: 60s resend cooldown,
@@ -8,7 +9,7 @@ const RESEND_COOLDOWN_SECONDS = 60;
 const OTP_TTL_MINUTES = 5;
 
 function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
 }
 
 export const otpService = {

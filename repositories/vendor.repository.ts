@@ -27,6 +27,11 @@ export const vendorRepository = {
     return tx.vendor.findUnique({ where: { slug }, include: withRelations });
   },
 
+  async slugExists(slug: string, tx: Tx | typeof prisma = prisma): Promise<boolean> {
+    const row = await tx.vendor.findUnique({ where: { slug }, select: { id: true } });
+    return row !== null;
+  },
+
   async findMany(
     { where, skip, take, orderBy }: FindManyParams,
     tx: Tx | typeof prisma = prisma
@@ -48,5 +53,9 @@ export const vendorRepository = {
 
   async delete(id: string, tx: Tx | typeof prisma = prisma): Promise<Vendor> {
     return withPrismaErrors('Vendor', () => tx.vendor.delete({ where: { id } }));
+  },
+
+  async count(where?: Prisma.VendorWhereInput, tx: Tx | typeof prisma = prisma): Promise<number> {
+    return tx.vendor.count({ where });
   },
 };

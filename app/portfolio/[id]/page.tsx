@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { categoryRepository } from '@/repositories/category.repository';
 import { JsonLd } from '@/components/JsonLd';
 import VendorPortfolioClient from '@/components/VendorPortfolioClient';
 
@@ -29,38 +29,57 @@ interface VendorMeta {
 
 export async function generateStaticParams() {
   try {
-    await connectDB();
-    const vendors = await VendorModel.find({}).select('id').lean<{ id: string }[]>();
-    return vendors.map((v) => ({ id: v.id }));
+    const { data } = await vendorRepository.findMany({ where: { status: 'PUBLISHED' } });
+    return data.map((v) => ({ id: v.slug }));
   } catch { return []; }
 }
 
 async function getVendor(id: string): Promise<VendorMeta | null> {
   try {
-    await connectDB();
-    return await VendorModel.findOne({ id })
-      .select('id name city category description priceMin priceMax rating reviewCount image')
-      .lean<VendorMeta>();
+    const vendor = await vendorRepository.findBySlug(id);
+    if (!vendor || vendor.status !== 'PUBLISHED') return null;
+    const category = await categoryRepository.findById(vendor.categoryId);
+    return {
+      id: vendor.slug,
+      name: vendor.name,
+      city: vendor.city,
+      category: category?.slug ?? '',
+      description: vendor.description,
+      priceMin: vendor.priceMin,
+      priceMax: vendor.priceMax,
+      rating: vendor.rating,
+      reviewCount: vendor.reviewCount,
+      image: vendor.image,
+    };
   } catch { return null; }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const vendor = await getVendor(id);
-  if (!vendor) return { title: 'Portfolio Not Found' };
+  if (!vendor) return { title: 'Portfolio Not Found', robots: { index: false, follow: false } };
 
   const cat = CATEGORY_LABELS[vendor.category] ?? vendor.category;
   const title = `${vendor.name} — ${cat} in ${vendor.city} | Portfolio`;
   const description = `View the portfolio of ${vendor.name}, a verified ${cat} in ${vendor.city}. ${vendor.description.slice(0, 130)}... Verified by ShaadiShopping.`;
 
+  // Same vendor entity/content as /vendors/[id] (this page is a shareable,
+  // admin-generated presentation of it, copied via AdminClient's "copy
+  // portfolio link" — not a distinct browsing path; nothing in the public
+  // site links here). Canonical points at /vendors/[id], the page every
+  // category/city listing and the JSON-LD @id below already treat as
+  // authoritative, so search engines consolidate ranking signal onto one
+  // URL instead of splitting it across two near-identical pages.
+  const canonicalUrl = `${BASE_URL}/vendors/${id}`;
+
   return {
     title,
     description,
-    alternates: { canonical: `${BASE_URL}/portfolio/${id}` },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
-      url: `${BASE_URL}/portfolio/${id}`,
+      url: canonicalUrl,
       type: 'website',
       locale: 'en_IN',
       images: vendor.image ? [{ url: vendor.image, width: 1200, height: 630, alt: vendor.name }] : [],

@@ -31,6 +31,7 @@ export interface WeddingWorkspaceEvent {
   venueAddress: string | null;
   city: string;
   budget: number | null;
+  tasks: { id: string; title: string; status: string; dueAt: Date | null }[];
   vendorBookings: {
     id: string;
     vendorId: string;
@@ -113,6 +114,11 @@ export interface WeddingWorkspace {
   tasks: (Task & { assignedToName: string | null })[];
   documents: Document[];
   finance: WeddingWorkspaceFinance;
+  guests: {
+    id: string; name: string; phone: string | null; email: string | null; category: string | null;
+    accompanyingGuests: number; rsvpStatus: string; rsvpToken: string;
+    functionResponses: { status: string; weddingEvent: { id: string; type: string; label: string | null } }[];
+  }[];
   // No backing entity yet — LeadInsight is hard-typed to lead/enquiry/
   // consultation, has no weddingId (checked against the real schema before
   // planning Milestone 6). Empty-safe placeholder, not faked data.
@@ -132,7 +138,7 @@ async function findWeddingOrThrow(id: string): Promise<Wedding> {
 // invoices are Postgres-only and coexist with it, same pattern Wedding/CRM
 // already established. Counts against `tx.invoice` (not a new-rows-only
 // counter) since migrated legacy invoices land in this same table too.
-async function generateInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
+export async function generateInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
   const now = new Date();
   const bucket = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`;
   const count = await tx.invoice.count({ where: { invoiceNumber: { startsWith: bucket } } });
@@ -143,7 +149,7 @@ export const weddingWorkspaceService = {
   async getWorkspace(id: string): Promise<WeddingWorkspace> {
     const wedding = await findWeddingOrThrow(id);
 
-    const [couple, { data: events }, { data: tasks }, { data: activity }, timeline, { data: documents }, { data: invoices }] =
+    const [couple, { data: events }, { data: tasks }, { data: activity }, timeline, { data: documents }, { data: invoices }, guests] =
       await Promise.all([
         coupleRepository.findByWeddingId(id),
         weddingEventRepository.findMany({ where: { weddingId: id }, orderBy: { date: 'asc' } }),
@@ -152,6 +158,7 @@ export const weddingWorkspaceService = {
         timelineMilestoneRepository.findMany({ where: { weddingId: id }, orderBy: { sortOrder: 'asc' } }),
         documentRepository.findMany({ where: { weddingId: id }, orderBy: { createdAt: 'desc' } }),
         invoiceRepository.findMany({ where: { weddingId: id }, orderBy: { createdAt: 'desc' } }),
+        prisma.guest.findMany({ where: { weddingId: id }, include: { functionResponses: { include: { weddingEvent: { select: { id: true, type: true, label: true } } } } }, orderBy: { name: 'asc' } }),
       ]);
 
     const eventIds = events.map((e) => e.id);
@@ -195,6 +202,9 @@ export const weddingWorkspaceService = {
       venueAddress: event.venueAddress,
       city: event.city,
       budget: event.budget,
+      tasks: tasks
+        .filter((task) => task.weddingEventId === event.id)
+        .map((task) => ({ id: task.id, title: task.title, status: task.status, dueAt: task.dueAt })),
       vendorBookings: vendorBookings
         .filter((vb) => vb.weddingEventId === event.id)
         .map((vb) => {
@@ -327,6 +337,7 @@ export const weddingWorkspaceService = {
       })),
       documents,
       finance,
+      guests,
       insights: [],
     };
   },

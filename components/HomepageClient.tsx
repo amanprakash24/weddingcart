@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { motion, MotionConfig } from 'framer-motion';
 import { Phone } from 'lucide-react';
 import HeroSection from './homepage/HeroSection';
+import ValuePropsSection from './homepage/ValuePropsSection';
+import BudgetSection from './homepage/BudgetSection';
 import TrustStats from './homepage/TrustStats';
 import JourneySection from './homepage/JourneySection';
 import WeddingStylesSection from './homepage/WeddingStylesSection';
@@ -15,6 +17,7 @@ import ExpertSection from './homepage/ExpertSection';
 import FeaturedVendorsSection from './homepage/FeaturedVendorsSection';
 import FinalCtaSection from './homepage/FinalCtaSection';
 import AboutBrandSection from './homepage/AboutBrandSection';
+import BlogHighlightsSection, { type BlogHighlight } from './homepage/BlogHighlightsSection';
 
 const MARQUEE_ITEMS = [
   'Venues', 'Photographers', 'Decorators', 'Mehndi Artists',
@@ -22,9 +25,9 @@ const MARQUEE_ITEMS = [
   'Jewellery', 'Pandits',
 ];
 
-const AS_SEEN_IN = ['Vogue India', 'WeddingSutra', 'Brides Today', 'The Wedding Filmer', 'HT Brunch'];
+const TRUST_BADGES = ['Verified Vendors', 'Transparent Quotations', 'Dedicated Wedding Expert', 'Free Consultation'];
 
-export default function HomepageClient() {
+export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: BlogHighlight[] }) {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -55,6 +58,10 @@ export default function HomepageClient() {
 
         <HeroSection />
 
+        <ValuePropsSection />
+
+        <BudgetSection />
+
         {/* Marquee */}
         <div className="bg-[#2A1F1B] py-3.5 overflow-hidden border-b border-[#C5A46D]/15">
           <div className="flex animate-marquee whitespace-nowrap">
@@ -80,17 +87,8 @@ export default function HomepageClient() {
         <ExpertSection />
         <FeaturedVendorsSection />
 
-        {/* As Seen In */}
+        {/* Trust Badges */}
         <div className="bg-[#FAF5EE] border-y border-[#C5A46D]/8 py-8 overflow-hidden">
-          <motion.p
-            className="text-center text-[0.58rem] tracking-[0.3em] uppercase text-[#C5A46D]/45 mb-5"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
-            Featured In
-          </motion.p>
           <motion.div
             className="flex items-center gap-8 sm:gap-14 overflow-x-auto scrollbar-hide px-6 sm:justify-center sm:flex-wrap pb-1"
             initial={{ opacity: 0, y: 10 }}
@@ -98,17 +96,18 @@ export default function HomepageClient() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.1 }}
           >
-            {AS_SEEN_IN.map((pub) => (
+            {TRUST_BADGES.map((badge) => (
               <p
-                key={pub}
+                key={badge}
                 className="font-cormorant text-base sm:text-xl italic text-[#8B5A6A]/28 whitespace-nowrap select-none flex-shrink-0"
               >
-                {pub}
+                {badge}
               </p>
             ))}
           </motion.div>
         </div>
 
+        <BlogHighlightsSection posts={topBlogPosts} />
         <AboutBrandSection />
         <FinalCtaSection />
 

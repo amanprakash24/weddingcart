@@ -3,11 +3,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { JsonLd } from '@/components/JsonLd';
 import CityPageClient from '@/components/CityPageClient';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
@@ -103,22 +104,23 @@ function defaultFaqs(name: string, state: string) {
 
 async function getInitialVendors(cityName: string, isBihar: boolean): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
-    await connectDB();
-    const vendors = await VendorModel.find({ city: cityName })
-      .sort({ isFeatured: -1, rating: -1 })
-      .limit(6)
-      .lean();
-    if (vendors.length > 0) {
-      return { vendors: JSON.parse(JSON.stringify(vendors)) as Vendor[], fromNetwork: false };
+    const { data } = await vendorRepository.findMany({
+      where: { city: cityName, status: 'PUBLISHED' },
+      orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+      take: 6,
+    });
+    if (data.length > 0) {
+      return { vendors: await toLegacyVendors(data), fromNetwork: false };
     }
     // Bihar cities without local listings: show the Patna network vendors that
     // serve them, so the page is never an empty soft-404.
     if (isBihar && cityName !== 'Patna') {
-      const network = await VendorModel.find({ city: 'Patna' })
-        .sort({ isFeatured: -1, rating: -1 })
-        .limit(6)
-        .lean();
-      return { vendors: JSON.parse(JSON.stringify(network)) as Vendor[], fromNetwork: true };
+      const { data: network } = await vendorRepository.findMany({
+        where: { city: 'Patna', status: 'PUBLISHED' },
+        orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+        take: 6,
+      });
+      return { vendors: await toLegacyVendors(network), fromNetwork: true };
     }
     return { vendors: [], fromNetwork: false };
   } catch {
@@ -153,10 +155,10 @@ export async function generateMetadata({
       ? `Wedding Vendors in ${name}, Bihar — Venues, Makeup, Catering & More | ShaadiShopping`
       : `Wedding Vendors in ${name} — Venues, Makeup, Catering & More | ShaadiShopping`;
   const description = isPatna
-    ? `Plan your shaadi in Patna, Bihar with India's most trusted wedding platform. Compare verified wedding venues, makeup artists, caterers, decorators & photographers. Get free quotes from 50+ vendors in Patna.`
+    ? `Plan your shaadi in Patna, Bihar with Patna's trusted wedding planning platform. Compare verified wedding venues, makeup artists, caterers, decorators & photographers, with one dedicated Wedding Expert from booking to vidaai.`
     : isBihar
       ? `Plan your shaadi in ${name}, Bihar with ShaadiShopping — Bihar's most trusted wedding platform. Verified venues, makeup artists, caterers, decorators & photographers serving ${name}. Free expert consultation.`
-      : `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from 50+ wedding vendors in ${name}.`;
+      : `Find the best wedding vendors in ${name}, ${state}. Compare verified venues, makeup artists, caterers, decorators & more. Get free quotes from wedding vendors in ${name}.`;
   const ogImage = meta.heroImage.split('?')[0] + '?w=1200&h=630&fit=crop&q=80';
 
   // Non-Bihar cities: noindex until we have real vendor listings there.

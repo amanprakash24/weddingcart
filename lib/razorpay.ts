@@ -9,11 +9,16 @@ export async function createPaymentLink(input: {
   clientPhone: string;
   clientEmail?: string;
   description: string;
+  notes?: Record<string, string>;
+  allowDevelopmentFallback?: boolean;
 }): Promise<{ ok: true; razorpayPaymentLinkId: string; shortUrl: string } | { ok: false; error: string }> {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!keyId || !keySecret) {
+    if (input.allowDevelopmentFallback === false) {
+      return { ok: false, error: 'Razorpay is not configured' };
+    }
     console.log(`[Razorpay DEV] Payment link for invoice ${input.invoiceId}, amount ${input.amount}\n`);
     return { ok: true, razorpayPaymentLinkId: `dev_${input.invoiceId}`, shortUrl: 'https://rzp.io/dev-mode' };
   }
@@ -40,7 +45,7 @@ export async function createPaymentLink(input: {
       // Lets the webhook correlate a paid link back to an Invoice without a
       // separate order-tracking table — Razorpay copies these notes onto the
       // payment entity in webhook payloads too.
-      notes: { invoiceId: input.invoiceId },
+      notes: { invoiceId: input.invoiceId, ...input.notes },
     }),
   });
 

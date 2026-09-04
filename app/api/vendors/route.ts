@@ -1,80 +1,146 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorService } from '@/services/vendor.service';
 import { requireAdmin } from '@/lib/adminAuth';
+import type { VendorStatus } from '@/generated/prisma/client';
 
-type MongoRegex = { $regex: string; $options: string };
-
-interface VendorFilter {
-  category?: string;
-  city?: string;
-  isFeatured?: boolean;
-  rating?: { $gte: number };
-  priceMin?: { $gte: number };
-  priceMax?: { $lte: number };
-  $or?: Array<{ name?: MongoRegex } | { city?: MongoRegex } | { description?: MongoRegex }>;
-}
-
-type SortQuery = Record<string, 1 | -1>;
+const VALID_STATUSES: VendorStatus[] = ['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED'];
 
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
     const { searchParams } = new URL(req.url);
 
-    const category = searchParams.get('category');
-    const city = searchParams.get('city');
-    const search = searchParams.get('search');
+    const category = searchParams.get('category') || undefined;
+    const city = searchParams.get('city') || undefined;
+    const search = searchParams.get('search') || undefined;
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
     const minRating = searchParams.get('minRating');
-    const sort = searchParams.get('sort') || 'rating';
+    const sort = (searchParams.get('sort') || 'rating') as
+      | 'rating'
+      | 'price-asc'
+      | 'price-desc'
+      | 'reviews';
     const featured = searchParams.get('featured');
+
     const limit = parseInt(searchParams.get('limit') || '50');
     const page = parseInt(searchParams.get('page') || '1');
     const skip = (page - 1) * limit;
 
-    const query: VendorFilter = {};
+    // Anonymous callers are always forced to PUBLISHED regardless of what
+    // they pass — this is the one gate that makes every public consumer of
+    // this endpoint (category/city pages, live plan preview, dashboard,
+    // vendor search) show only published vendors, without each of them
+    // remembering to filter status themselves. Only an authenticated admin
+    // may request a specific status or 'all' (the admin vendor list).
+    const isAdmin = await requireAdmin();
+    const requestedStatus = searchParams.get('status');
+    const status = !isAdmin
+      ? 'PUBLISHED'
+      : requestedStatus && requestedStatus !== 'all' && VALID_STATUSES.includes(requestedStatus as VendorStatus)
+        ? (requestedStatus as VendorStatus)
+        : undefined;
 
-    if (category) query.category = category;
-    if (city) query.city = city;
-    if (featured === 'true') query.isFeatured = true;
-    if (minRating) query.rating = { $gte: parseFloat(minRating) };
-    if (minPrice) query.priceMin = { $gte: parseInt(minPrice) };
-    if (maxPrice) query.priceMax = { $lte: parseInt(maxPrice) };
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { city: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-      ];
-    }
+    const result = await vendorService.search({
+      category,
+      city,
+      search,
+      minPrice: minPrice ? parseInt(minPrice) : undefined,
+      maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
+      minRating: minRating ? parseFloat(minRating) : undefined,
+      featured: featured === 'true',
+      status,
+      sort,
+      skip,
+      take: limit,
+    });
 
-    let sortQuery: SortQuery = { sortOrder: 1, isFeatured: -1, rating: -1, reviewCount: -1 };
-    if (sort === 'price-asc') sortQuery = { sortOrder: 1, isFeatured: -1, priceMin: 1 };
-    else if (sort === 'price-desc') sortQuery = { sortOrder: 1, isFeatured: -1, priceMin: -1 };
-    else if (sort === 'reviews') sortQuery = { sortOrder: 1, isFeatured: -1, reviewCount: -1, rating: -1 };
-
-    const [vendors, total] = await Promise.all([
-      VendorModel.find(query).sort(sortQuery).skip(skip).limit(limit).lean(),
-      VendorModel.countDocuments(query),
-    ]);
-    return NextResponse.json({ success: true, data: vendors, total, page, limit });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to fetch vendors' }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      data: result.data,
+      total: result.total,
+      page,
+      limit,
+    });
+  } catch (err) {
+    console.error('GET /api/vendors failed:', err);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch vendors' },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: NextRequest) {
   if (!(await requireAdmin())) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized' },
+      { status: 401 }
+    );
   }
+
   try {
-    await connectDB();
     const body = await req.json();
-    const vendor = await VendorModel.create(body);
-    return NextResponse.json({ success: true, data: vendor }, { status: 201 });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to create vendor' }, { status: 500 });
+
+    // No `slug` here, deliberately — it's always derived server-side from
+    // name+city (vendorService.create), never accepted from the client.
+    const {
+      name,
+      ownerName,
+      ownerPhone,
+      ownerEmail,
+      categoryId,
+      city,
+      address,
+      mapEmbedUrl,
+      priceMin,
+      priceMax,
+      guestCapacity,
+      venueType,
+      image,
+      images,
+      virtualTourVideo,
+      description,
+      features,
+      isFeatured,
+      status,
+      faqs,
+    } = body;
+
+    const vendor = await vendorService.create({
+      name,
+      ownerName,
+      ownerPhone,
+      ownerEmail,
+      categoryId,
+      city,
+      address,
+      mapEmbedUrl,
+      priceMin,
+      priceMax,
+      guestCapacity,
+      venueType,
+      image,
+      images,
+      virtualTourVideo,
+      description,
+      features,
+      isFeatured,
+      status,
+    });
+
+    if (Array.isArray(faqs) && faqs.length) {
+      await vendorService.update(vendor.id, {}, { faqs });
+    }
+
+    return NextResponse.json(
+      { success: true, data: vendor },
+      { status: 201 }
+    );
+  } catch (err) {
+    console.error('POST /api/vendors failed:', err);
+    return NextResponse.json(
+      { success: false, error: 'Failed to create vendor' },
+      { status: 500 }
+    );
   }
 }

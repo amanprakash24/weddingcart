@@ -156,7 +156,7 @@ export default function Footer() {
             </div>
             <div className="h-px w-24 mb-5" style={{ background: 'linear-gradient(to right, #C5A46D, transparent)' }} />
             <p className="text-gray-500 text-sm leading-relaxed mb-2">
-              India&apos;s managed wedding planning &amp; coordination platform — from Venue to Vidaai.
+              Patna&apos;s trusted wedding planning platform, with one dedicated Wedding Expert — from Venue to Vidaai.
             </p>
             <p className="text-[#C5A46D]/60 text-xs mb-6">
               Founded by <span className="text-[#C5A46D]">Anisha Kumari</span> · Patna, Bihar

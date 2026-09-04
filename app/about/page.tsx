@@ -5,23 +5,23 @@ import { JsonLd } from '@/components/JsonLd';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
-  title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
+  title: 'About ShaadiShopping — The Wedding Ecosystem, Powered by Vivah OS',
   description:
-    'Learn about ShaadiShopping — founded by Anisha Kumari in Patna, Bihar. We connect 10,000+ couples with 500+ verified wedding vendors across 25+ cities in India.',
+    "ShaadiShopping is Patna's trusted wedding planning platform — discovery, planning, booking, and execution for couples, venues, and vendors, run on our own technology platform, Vivah OS. Founded by Anisha Kumari, co-founded by Gaurav Sudhanshu.",
   alternates: { canonical: `${BASE_URL}/about` },
   openGraph: {
-    title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
+    title: 'About ShaadiShopping — The Wedding Ecosystem, Powered by Vivah OS',
     description:
-      "Our story, mission, and the team behind India's favourite wedding planning platform. Helping couples plan their dream weddings since day one.",
+      "Our story, our mission, and the team building Patna's trusted wedding planning platform — from the first Shaadi conversation to the final Vidaai.",
     url: `${BASE_URL}/about`,
     type: 'website',
     locale: 'en_IN',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "About ShaadiShopping — India's Wedding Planning Platform" }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "About ShaadiShopping — The Wedding Ecosystem Powered by Vivah OS" }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "About ShaadiShopping — India's Most Trusted Wedding Planning Platform",
-    description: "Our story, mission, and the team behind India's favourite wedding planning platform.",
+    title: 'About ShaadiShopping — The Wedding Ecosystem, Powered by Vivah OS',
+    description: "Our story, our mission, and the team behind Patna's trusted wedding planning platform.",
     images: ['/opengraph-image'],
   },
 };
@@ -32,11 +32,18 @@ const organizationJsonLd = {
   name: 'ShaadiShopping',
   url: BASE_URL,
   logo: `${BASE_URL}/logo.png`,
-  founder: {
-    '@type': 'Person',
-    name: 'Anisha Kumari',
-    jobTitle: 'Founder & CEO',
-  },
+  founder: [
+    {
+      '@type': 'Person',
+      name: 'Anisha Kumari',
+      jobTitle: 'Founder',
+    },
+    {
+      '@type': 'Person',
+      name: 'Gaurav Sudhanshu',
+      jobTitle: 'Co-founder',
+    },
+  ],
   foundingLocation: {
     '@type': 'Place',
     name: 'Patna, Bihar, India',
@@ -68,7 +75,15 @@ const aboutFaqJsonLd = {
       name: 'What is ShaadiShopping?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: "ShaadiShopping is India's most trusted wedding planning platform, connecting couples with 500+ verified wedding vendors across 25+ cities. Founded by Anisha Kumari in Patna, Bihar.",
+        text: "ShaadiShopping is a complete wedding ecosystem covering discovery, planning, booking, and execution for couples, venues, and vendors — connected by our own technology platform, Vivah OS. Every couple gets one dedicated Wedding Expert from booking to vidaai, completely free. Founded by Anisha Kumari, co-founded by Gaurav Sudhanshu, in Patna, Bihar.",
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What is Vivah OS?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: "Vivah OS is the technology and operations platform running behind every ShaadiShopping wedding — connecting the CRM/lead pipeline, Wedding Workspace, Vendor OS, finance, and customer portal on one system, so nothing gets lost between a couple, their venue, and their vendors.",
       },
     },
     {
@@ -76,7 +91,7 @@ const aboutFaqJsonLd = {
       name: 'How does ShaadiShopping work?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Browse verified vendors across 20+ categories, compare packages and pricing, book consultations, and plan your entire wedding through one platform. Our expert team also offers personalised planning assistance.',
+        text: 'Browse verified vendors across every wedding category, compare packages and pricing, book consultations, and plan your entire wedding through one platform. Our expert team also offers personalised planning assistance, coordinated end-to-end through Vivah OS.',
       },
     },
     {
@@ -89,10 +104,10 @@ const aboutFaqJsonLd = {
     },
     {
       '@type': 'Question',
-      name: 'How many cities does ShaadiShopping serve?',
+      name: 'Which cities does ShaadiShopping serve?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'ShaadiShopping serves couples across 25+ cities in India including Delhi, Mumbai, Bangalore, Hyderabad, Chennai, Kolkata, Jaipur, Patna, Lucknow, and more.',
+        text: 'Patna is the primary and most deeply covered market, with expansion across other Bihar cities served from the same vendor network — and a longer-term vision of serving couples across India and destination weddings beyond it.',
       },
     },
   ],

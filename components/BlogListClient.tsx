@@ -275,7 +275,7 @@ function VendorSearchWidget() {
               <span className="italic text-[#C5A46D]"> with Trusted Reviews</span>
             </h2>
             <p className="text-[#9B8B7D] text-sm mt-3">
-              500+ verified vendors · 25+ cities · Thousands of happy couples
+              Verified vendors in Patna · One dedicated Wedding Expert · Completely free
             </p>
           </div>
 
@@ -551,7 +551,6 @@ export default function BlogListClient() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
     const cat = category === 'All' ? '' : category;
     fetch(`/api/blogs?category=${encodeURIComponent(cat)}&page=${page}&limit=9`)
       .then(r => r.json())

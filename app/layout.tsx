@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Script from 'next/script';
 import { Playfair_Display, Cormorant_Garamond, DM_Sans } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import AuthSessionProvider from '@/components/AuthSessionProvider';
@@ -34,14 +35,24 @@ const dmSans = DM_Sans({
   display: 'swap',
 });
 
+const DEFAULT_SITE_URL = 'https://www.shaadishopping.com';
+
+function resolveSiteUrl(): URL {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL);
+  } catch {
+    return new URL(DEFAULT_SITE_URL);
+  }
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com'),
+  metadataBase: resolveSiteUrl(),
   title: {
-    default: "ShaadiShopping — India's Expert Wedding Planning & Coordination Platform",
+    default: "ShaadiShopping — Patna's Trusted Wedding Planning Platform",
     template: '%s | ShaadiShopping',
   },
   description:
-    "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert wedding coordination from Venue to Vidaai.",
+    "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
   keywords: [
     'shaadi', 'shadi', 'shaadi planning', 'shaadi vendors', 'online shaadi booking',
     'vivah', 'byah', 'vivah planning India',
@@ -63,31 +74,33 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   openGraph: {
-    title: "ShaadiShopping — India's Expert Wedding Coordination Platform",
-    description: "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert coordination from Venue to Vidaai.",
+    title: "ShaadiShopping — Patna's Trusted Wedding Planning Platform",
+    description: "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
     type: 'website',
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
-    url: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — India's Expert Wedding Coordination Platform" }],
+    url: resolveSiteUrl().toString(),
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — Patna's Trusted Wedding Planning Platform" }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ShaadiShopping — India\'s Expert Wedding Coordination Platform',
-    description: "Patna's top-ranked wedding planning platform — #1 for best banquet halls in Patna. Book verified venues, catering, décor & more. Expert coordination from Venue to Vidaai.",
+    title: "ShaadiShopping — Patna's Trusted Wedding Planning Platform",
+    description: "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
     site: '@ShaadiShopping',
     images: ['/opengraph-image'],
   },
   robots: { index: true, follow: true },
-  alternates: { canonical: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com' },
+  alternates: { canonical: resolveSiteUrl().toString() },
 };
+
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-XNP0999R4W';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-IN" className={`${playfair.variable} ${cormorant.variable} ${dmSans.variable}`}>
       <head>
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-2RRLZMSQ3R"
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -95,7 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-2RRLZMSQ3R');
+            gtag('config', '${GA_ID}');
           `}
         </Script>
       </head>
@@ -113,6 +126,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Suspense><LeadCapturePopup /></Suspense>
           </CartProvider>
         </AuthSessionProvider>
+        <Analytics />
       </body>
     </html>
   );

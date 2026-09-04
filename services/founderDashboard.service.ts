@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import type { PipelineStage } from '@/generated/prisma/enums';
+import { commandCenterService, type CommandCenter } from '@/services/commandCenter.service';
 import { commissionRateRepository } from '@/repositories/commissionRate.repository';
 
 // Sprint 5.4 — Founder Dashboard. Today's Work stays on the existing
@@ -9,6 +10,7 @@ import { commissionRateRepository } from '@/repositories/commissionRate.reposito
 // independent, individually empty-safe queries.
 
 export interface FounderDashboard {
+  commandCenter: CommandCenter;
   revenue: {
     outstanding: number;
     totalCollected: number;
@@ -107,12 +109,27 @@ async function getExpectedCommission(): Promise<number> {
   });
   if (confirmedBookings.length === 0) return 0;
 
+  // A category with no CommissionRate configured (and no global fallback)
+  // makes findCurrentRate throw — correct behavior for payout.service.ts,
+  // which must never create a payout without a real rate, but this is a
+  // read-only forecast. Treat an unresolved category as a 0 contribution
+  // (logged) rather than failing the whole dashboard over missing config.
   const categoryIds = [...new Set(confirmedBookings.map((b) => b.vendor.categoryId))];
-  const rates = await Promise.all(categoryIds.map((id) => commissionRateRepository.findCurrentRate(id)));
-  const rateByCategoryId = new Map(categoryIds.map((id, i) => [id, rates[i].rate]));
+  const rateEntries = await Promise.all(
+    categoryIds.map(async (id): Promise<[string, number | null]> => {
+      try {
+        return [id, (await commissionRateRepository.findCurrentRate(id)).rate];
+      } catch (err) {
+        console.warn(`getExpectedCommission: no CommissionRate resolvable for category ${id}`, err);
+        return [id, null];
+      }
+    })
+  );
+  const rateByCategoryId = new Map(rateEntries);
 
   return confirmedBookings.reduce((sum, b) => {
-    const rate = rateByCategoryId.get(b.vendor.categoryId)!;
+    const rate = rateByCategoryId.get(b.vendor.categoryId);
+    if (rate == null) return sum;
     return sum + Math.round((b.agreedPrice * rate) / 100);
   }, 0);
 }
@@ -322,17 +339,37 @@ async function getTeamPerformance(): Promise<FounderDashboard['teamPerformance']
 
 export const founderDashboardService = {
   async getDashboard(date: Date = new Date()): Promise<FounderDashboard> {
-    const [revenue, commission, revenueByMonth, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance] =
-      await Promise.all([
-        getRevenue(),
-        getCommission(),
-        getRevenueByMonth(),
-        getPipelineHealth(),
-        getVelocity(),
-        getVendorAvailability(date),
-        getFollowUpHealth(),
-        getTeamPerformance(),
-      ]);
-    return { revenue, commission, revenueByMonth, pipelineHealth, velocity, vendorAvailability, followUpHealth, teamPerformance };
+    const [
+      commandCenter,
+      revenue,
+      commission,
+      revenueByMonth,
+      pipelineHealth,
+      velocity,
+      vendorAvailability,
+      followUpHealth,
+      teamPerformance,
+    ] = await Promise.all([
+      commandCenterService.getDashboard(date),
+      getRevenue(),
+      getCommission(),
+      getRevenueByMonth(),
+      getPipelineHealth(),
+      getVelocity(),
+      getVendorAvailability(date),
+      getFollowUpHealth(),
+      getTeamPerformance(),
+    ]);
+    return {
+      commandCenter,
+      revenue,
+      commission,
+      revenueByMonth,
+      pipelineHealth,
+      velocity,
+      vendorAvailability,
+      followUpHealth,
+      teamPerformance,
+    };
   },
 };

@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { connectDB } from '@/lib/mongodb';
-import BlogModel from '@/lib/models/Blog';
+import { blogRepository } from '@/repositories/blog.repository';
 import { JsonLd } from '@/components/JsonLd';
+import type { Blog } from '@/generated/prisma/client';
 import { Calendar, Clock, ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
@@ -39,11 +39,34 @@ interface BlogData {
   readTime: number;
 }
 
+// Prisma's Blog uses a real Date for publishedAt/updatedAt and an uppercase
+// BlogStatus enum — this page (and its date-string formatting/JSON-LD) was
+// built against the Mongo shape, so that gets produced here rather than
+// changed downstream.
+function toBlogData(blog: Blog): BlogData {
+  return {
+    _id: blog.id,
+    title: blog.title,
+    slug: blog.slug,
+    excerpt: blog.excerpt,
+    content: blog.content,
+    coverImage: blog.coverImage,
+    author: blog.author,
+    category: blog.category,
+    tags: blog.tags,
+    seoTitle: blog.seoTitle,
+    seoDescription: blog.seoDescription,
+    publishedAt: blog.publishedAt ? blog.publishedAt.toISOString() : null,
+    updatedAt: blog.updatedAt ? blog.updatedAt.toISOString() : null,
+    readTime: blog.readTime,
+  };
+}
+
 async function getBlog(slug: string): Promise<BlogData | null> {
   try {
-    await connectDB();
-    const blog = await BlogModel.findOne({ slug, status: 'published' }).lean<BlogData>();
-    return blog;
+    const blog = await blogRepository.findBySlug(slug);
+    if (!blog || blog.status !== 'PUBLISHED') return null;
+    return toBlogData(blog);
   } catch {
     return null;
   }
@@ -51,13 +74,12 @@ async function getBlog(slug: string): Promise<BlogData | null> {
 
 async function getRelatedPosts(category: string, excludeSlug: string): Promise<BlogData[]> {
   try {
-    await connectDB();
-    const posts = await BlogModel.find({ status: 'published', category, slug: { $ne: excludeSlug } })
-      .select('title slug excerpt coverImage category publishedAt readTime author')
-      .sort({ publishedAt: -1 })
-      .limit(3)
-      .lean<BlogData[]>();
-    return posts;
+    const { data } = await blogRepository.findMany({
+      where: { status: 'PUBLISHED', category, slug: { not: excludeSlug } },
+      orderBy: { publishedAt: 'desc' },
+      take: 3,
+    });
+    return data.map(toBlogData);
   } catch {
     return [];
   }

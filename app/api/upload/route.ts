@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, url: result.secure_url });
-  } catch {
+  } catch (err) {
+    console.error('POST /api/upload failed:', err);
     return NextResponse.json({ success: false, error: 'Upload failed' }, { status: 500 });
   }
 }

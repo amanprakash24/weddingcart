@@ -3,9 +3,9 @@ import { permanentRedirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import CategoryPageClient from '@/components/CategoryPageClient';
 import { JsonLd } from '@/components/JsonLd';
-import { connectDB } from '@/lib/mongodb';
-import CategoryModel from '@/lib/models/Category';
-import VendorModel from '@/lib/models/Vendor';
+import { categoryRepository } from '@/repositories/category.repository';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { toLegacyVendors } from '@/lib/serializers/vendor';
 import type { Vendor } from '@/types';
 
 // City name → URL slug map for supported cities
@@ -163,11 +163,12 @@ interface CategoryMeta {
 
 async function getInitialVendors(slug: string): Promise<Vendor[]> {
   try {
-    const vendors = await VendorModel.find({ category: slug })
-      .sort({ sortOrder: 1, isFeatured: -1, rating: -1 })
-      .limit(6)
-      .lean();
-    return JSON.parse(JSON.stringify(vendors)) as Vendor[];
+    const { data } = await vendorRepository.findMany({
+      where: { status: 'PUBLISHED', category: { slug } },
+      orderBy: [{ sortOrder: 'asc' }, { isFeatured: 'desc' }, { rating: 'desc' }],
+      take: 6,
+    });
+    return toLegacyVendors(data);
   } catch {
     return [];
   }
@@ -175,11 +176,9 @@ async function getInitialVendors(slug: string): Promise<Vendor[]> {
 
 async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
   try {
-    await connectDB();
-    const cat = await CategoryModel.findOne({ id: slug })
-      .select('name description image updatedAt')
-      .lean<CategoryMeta>();
-    return cat ?? null;
+    const cat = await categoryRepository.findBySlug(slug);
+    if (!cat) return null;
+    return { name: cat.name, description: cat.description, image: cat.image, updatedAt: cat.updatedAt };
   } catch {
     return null;
   }

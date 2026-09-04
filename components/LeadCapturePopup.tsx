@@ -87,7 +87,7 @@ export default function LeadCapturePopup() {
             <Image src="/logo.png" alt="ShaadiShopping" width={160} height={50} className="h-10 w-auto object-contain brightness-0 invert" />
           </div>
           <h2 className="text-white font-semibold text-lg leading-snug" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-            India&apos;s Expert Wedding Platform
+            Patna&apos;s Trusted Wedding Platform
           </h2>
           <p className="text-white/70 text-sm mt-1.5">
             Share your number & get a <span className="text-[#C5A46D] font-semibold">free consultation</span> with our wedding expert

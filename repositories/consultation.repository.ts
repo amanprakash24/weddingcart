@@ -39,4 +39,8 @@ export const consultationRepository = {
   async delete(id: string, tx: Tx | typeof prisma = prisma): Promise<Consultation> {
     return withPrismaErrors('Consultation', () => tx.consultation.delete({ where: { id } }));
   },
+
+  async count(where?: Prisma.ConsultationWhereInput, tx: Tx | typeof prisma = prisma): Promise<number> {
+    return tx.consultation.count({ where });
+  },
 };

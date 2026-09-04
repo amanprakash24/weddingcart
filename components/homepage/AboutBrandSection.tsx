@@ -18,16 +18,16 @@ export default function AboutBrandSection() {
               What is Shaadi Shopping?
             </h2>
             <p className="text-[#6B5B4E] text-sm sm:text-base leading-relaxed mb-4">
-              <strong>Shaadi Shopping</strong> (ShaadiShopping) is India&apos;s expert-guided wedding planning platform
-              headquartered in Patna, Bihar. Unlike other wedding websites that simply list vendors, Shaadi Shopping
+              <strong>Shaadi Shopping</strong> (ShaadiShopping) is Patna&apos;s trusted, expert-guided wedding planning platform,
+              expanding across Bihar. Unlike other wedding websites that simply list vendors, Shaadi Shopping
               assigns you a dedicated wedding expert who personally guides your entire wedding journey — from finding
               the right venue to coordinating every vendor on your wedding day.
             </p>
             <p className="text-[#6B5B4E] text-sm sm:text-base leading-relaxed mb-6">
-              Since launching, ShaadiShopping has helped over 10,000 couples plan weddings across Patna, Bihar,
-              and 25+ cities in India. Our network includes 500+ verified vendors — banquet halls, bridal makeup
-              artists, photographers, mehndi artists, decorators, caterers, DJs, and wedding bands. Every vendor
-              on Shaadi Shopping is personally verified by our team.
+              Every couple gets one dedicated Wedding Expert from booking to vidaai — completely free. Our network
+              includes verified vendors — banquet halls, bridal makeup artists, photographers, mehndi artists,
+              decorators, caterers, DJs, and wedding bands. Every vendor on Shaadi Shopping is personally verified
+              by our team, and we recommend vendors based on your budget, not commissions.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -48,9 +48,9 @@ export default function AboutBrandSection() {
           <div className="space-y-4">
             {[
               { label: 'Founded', value: 'Patna, Bihar' },
-              { label: 'Couples Served', value: '10,000+' },
-              { label: 'Verified Vendors', value: '500+' },
-              { label: 'Cities Covered', value: '25+ Cities' },
+              { label: 'Wedding Expert', value: '1 Dedicated Expert Per Couple' },
+              { label: 'Vendor Selection', value: 'Budget-Based, Not Commissions' },
+              { label: 'Expanding Across', value: 'Bihar' },
               { label: 'Service', value: '100% Free for Couples' },
               { label: 'Contact', value: '+91-76460-28228' },
             ].map(({ label, value }) => (

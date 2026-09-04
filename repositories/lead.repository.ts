@@ -41,4 +41,8 @@ export const leadRepository = {
   async delete(id: string, tx: Tx | typeof prisma = prisma): Promise<Lead> {
     return withPrismaErrors('Lead', () => tx.lead.delete({ where: { id } }));
   },
+
+  async count(where?: Prisma.LeadWhereInput, tx: Tx | typeof prisma = prisma): Promise<number> {
+    return tx.lead.count({ where });
+  },
 };

@@ -2,13 +2,15 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MapPin, ChevronRight, Phone, MessageCircle } from 'lucide-react';
-import { connectDB } from '@/lib/mongodb';
-import VendorModel from '@/lib/models/Vendor';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { JsonLd } from '@/components/JsonLd';
 import VendorCard from '@/components/VendorCard';
+import RelatedGuides, { type RelatedGuide } from '@/components/RelatedGuides';
 import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
@@ -40,10 +42,46 @@ const CATEGORIES: Record<string, { name: string; plural: string; desc: string; p
   planning:     { name: 'Wedding Planner',          plural: 'Wedding Planners',          desc: 'full-service, partial & day-of wedding planners',           priceNote: 'From ₹50,000' },
 };
 
+// Related blog guides per category — shown on Bihar city+category pages
+const CATEGORY_BLOG_GUIDES: Record<string, RelatedGuide[]> = {
+  venue: [
+    { title: 'Best Wedding Venues in Patna, Bihar', href: '/blog/best-wedding-venues-patna-bihar-2025', desc: 'Compare banquet halls, garden lawns & hotel venues across the city.' },
+    { title: 'Best Banquet Halls in Patna', href: '/blog/best-banquet-halls-patna-wedding-marriage-hall', desc: 'Top wedding & marriage halls for 2025.' },
+    { title: 'Outdoor Lawn & Garden Wedding Venues', href: '/blog/outdoor-lawn-garden-wedding-venues-patna', desc: 'Garden and lawn venues across Patna.' },
+  ],
+  makeup: [
+    { title: 'Top Bridal Makeup Artists in Patna, Bihar', href: '/blog/bridal-makeup-artists-patna-bihar', desc: '2025 guide to HD, airbrush & traditional bridal makeup.' },
+  ],
+  mehndi: [
+    { title: 'Mehndi Artists in Patna, Bihar', href: '/blog/mehndi-artists-patna-bihar-bridal-henna', desc: 'Bridal henna pricing & booking guide.' },
+  ],
+  decorator: [
+    { title: 'Best Wedding Decorators in Patna, Bihar', href: '/blog/wedding-decorators-patna-bihar-2025', desc: 'Themes, prices and tips for 2025.' },
+    { title: 'Mandap Decoration Ideas for Bihari Weddings', href: '/blog/mandap-decoration-ideas-bihari-wedding', desc: '2025 design guide for the wedding mandap.' },
+  ],
+  band: [
+    { title: 'Best Baraat Bands in Patna, Bihar', href: '/blog/baraat-bands-patna-bihar-wedding', desc: 'Brass bands for your baraat procession.' },
+  ],
+  dj: [
+    { title: 'DJ Services for Weddings in Patna, Bihar', href: '/blog/dj-services-wedding-patna-bihar', desc: '2025 guide to sound, lighting and pricing.' },
+  ],
+  catering: [
+    { title: 'Best Wedding Caterers in Patna, Bihar', href: '/blog/wedding-caterers-patna-bihar-2025', desc: '2025 guide to menus, pricing and booking.' },
+  ],
+  'photo-video': [
+    { title: 'Best Wedding Photographers in Patna, Bihar', href: '/blog/wedding-photographers-patna-bihar-2025', desc: 'Candid, traditional and pre-wedding shoot experts.' },
+    { title: 'Pre-Wedding Shoot Locations in Patna & Bihar', href: '/blog/pre-wedding-shoot-locations-patna-bihar', desc: '2025 guide to the best photo locations.' },
+  ],
+  planning: [
+    { title: 'Wedding Planners in Patna, Bihar', href: '/blog/wedding-planners-patna-bihar-guide', desc: 'Do you need one, and how to choose.' },
+    { title: 'How to Plan a Bihari Wedding', href: '/blog/how-to-plan-bihari-wedding-complete-guide', desc: 'Complete step-by-step guide for 2025.' },
+  ],
+};
+
 // Patna-specific city+category FAQs (primary market)
 const PATNA_FAQS: Record<string, { q: string; a: string }[]> = {
   venue: [
-    { q: 'What are the best wedding venues in Patna?', a: 'Top wedding venues in Patna include luxury hotels like Hotel Chanakya and Patliputra Ashok, grand banquet halls on Bailey Road, convention centres like Vaishali Convention Hall (2,000 guests), and garden lawns in Phulwari Sharif and Saguna More. ShaadiShopping lists 35+ verified Patna venues.' },
+    { q: 'What are the best wedding venues in Patna?', a: 'Top wedding venues in Patna include luxury hotels like Hotel Chanakya and Patliputra Ashok, grand banquet halls on Bailey Road, convention centres like Vaishali Convention Hall (2,000 guests), and garden lawns in Phulwari Sharif and Saguna More. ShaadiShopping lists verified Patna venues across every budget.' },
     { q: 'How much does a wedding venue cost in Patna?', a: 'Wedding venue rental in Patna ranges from ₹80,000 for budget halls to ₹4 lakh+ for premium hotels. Bailey Road banquet halls typically cost ₹1–2.5 lakh per event for 400–700 guests.' },
     { q: 'How many guests can Patna wedding venues accommodate?', a: 'Patna venues range from 200 to 2,000 guests. Budget halls fit 200–400, mid-range banquets 400–700, and convention centres like Vaishali Convention Hall handle 2,000+ guests.' },
     { q: 'Which areas in Patna have the most wedding venues?', a: 'Bailey Road and Boring Road are the top venue corridors. Kankarbagh, Danapur, Phulwari Sharif, Rajendra Nagar, and Saguna More also have excellent halls and garden lawns.' },
@@ -120,7 +158,7 @@ function defaultFaqs(cat: { plural: string; name: string }, city: { name: string
 function editorialText(cat: { plural: string; name: string; desc: string }, city: { name: string; state: string }): string {
   if (city.name === 'Patna') {
     const texts: Record<string, string> = {
-      venue: `Patna, the capital of Bihar, is home to a thriving wedding industry with over 35 verified wedding venues listed on ShaadiShopping. From grand convention centres on Bailey Road that accommodate 2,000+ guests, to intimate garden lawns in Phulwari Sharif and riverside properties along the Ganga, Patna offers wedding venues for every budget and style. The peak wedding season runs from October to February, coinciding with the most auspicious muhurat dates in the Hindu calendar. ShaadiShopping is Bihar's most trusted wedding vendor platform — browse real photos, compare packages, and book directly.`,
+      venue: `Patna, the capital of Bihar, is home to a thriving wedding industry with verified wedding venues listed on ShaadiShopping. From grand convention centres on Bailey Road that accommodate 2,000+ guests, to intimate garden lawns in Phulwari Sharif and riverside properties along the Ganga, Patna offers wedding venues for every budget and style. The peak wedding season runs from October to February, coinciding with the most auspicious muhurat dates in the Hindu calendar. ShaadiShopping is Bihar's most trusted wedding vendor platform — browse real photos, compare packages, and book directly.`,
       makeup: `Patna's bridal makeup artists blend traditional Bihari aesthetics with modern techniques to create looks that photograph beautifully and last the full wedding day. Whether you prefer heavy traditional bridal makeup with gold and red tones for the ceremony, or a lighter dewy look for the sangeet and mehndi nights, Patna's professional artists have the skills to deliver. All makeup artists on ShaadiShopping are verified with real portfolio photos and genuine client reviews.`,
       catering: `Wedding catering in Patna combines traditional Bihari flavours — litti chokha, sattu paratha, dal puri, and kheer — with popular Mughlai, North Indian, and Chinese cuisines to create memorable wedding feasts. Patna caterers are experienced in managing large-scale events from 200 to 3,000 guests, with complete staff, equipment, and service. Browse verified caterers on ShaadiShopping and request per-plate quotes for your guest count.`,
       'photo-video': `Wedding photographers in Patna capture the rich visual tapestry of Bihari wedding traditions — from the vibrant haldi and mehndi ceremonies to the emotional kanyadaan and joyful baraat. Many Patna photographers offer pre-wedding shoots at iconic locations like Ganga Ghat, Nalanda ruins, and Rajgir hills. ShaadiShopping lists verified photographers with full wedding galleries so you can assess their style before booking.`,
@@ -160,6 +198,12 @@ export async function generateMetadata({
   if (!city || !cat) return { title: 'Not Found' };
 
   const url = `${BASE_URL}/cities/${citySlug}/${catSlug}`;
+  const publishedCount = await vendorRepository.count({
+    city: city.name,
+    status: 'PUBLISHED',
+    category: { slug: catSlug },
+  });
+  const indexable = publishedCount >= 3;
 
   // Non-Bihar cities: noindex until we have real vendor listings there.
   // Bihar cities are indexed — they are genuinely served from the Patna network.
@@ -179,6 +223,7 @@ export async function generateMetadata({
       title,
       description,
       alternates: { canonical: url },
+      robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
       keywords: [
         `${cat.plural.toLowerCase()} in ${city.name.toLowerCase()}`,
         `${cat.name.toLowerCase()} ${city.name.toLowerCase()}`,
@@ -205,7 +250,7 @@ export async function generateMetadata({
   const PATNA_CATEGORY_SEO: Record<string, { title: string; description: string; keywords: string[] }> = {
     venue: {
       title: 'Venues in Patna for Wedding & Marriage — Banquet Halls, Lawns | ShaadiShopping',
-      description: 'Find the best wedding venues in Patna, Bihar — banquet halls, marriage gardens, convention centres & lawn venues. Compare 35+ verified venues with real photos, pricing & packages. Venue rental from ₹80,000. Get free quotes.',
+      description: 'Find the best wedding venues in Patna, Bihar — banquet halls, marriage gardens, convention centres & lawn venues. Compare verified venues with real photos, pricing & packages. Venue rental from ₹80,000. Get free quotes.',
       keywords: [
         'venues in patna', 'venue in patna', 'wedding venues in patna',
         'marriage hall in patna', 'banquet hall patna', 'shaadi hall patna',
@@ -319,6 +364,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: url },
+    robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
     keywords: [
       `${cat.plural} in ${city.name}`, `${cat.plural} ${city.name}`,
       `wedding ${catSlug} ${city.name}`, `best ${cat.plural} ${city.name}`,
@@ -349,20 +395,21 @@ async function getVendors(
   isBihar: boolean,
 ): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
-    await connectDB();
-    const vendors = await VendorModel.find({ city: cityName, category: catSlug })
-      .sort({ isFeatured: -1, rating: -1 })
-      .lean();
-    if (vendors.length > 0) {
-      return { vendors: JSON.parse(JSON.stringify(vendors)) as Vendor[], fromNetwork: false };
+    const { data } = await vendorRepository.findMany({
+      where: { city: cityName, status: 'PUBLISHED', category: { slug: catSlug } },
+      orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+    });
+    if (data.length > 0) {
+      return { vendors: await toLegacyVendors(data), fromNetwork: false };
     }
     // Bihar cities without local listings: show the Patna network vendors that
     // serve them, so the page is never an empty soft-404.
     if (isBihar && cityName !== 'Patna') {
-      const network = await VendorModel.find({ city: 'Patna', category: catSlug })
-        .sort({ isFeatured: -1, rating: -1 })
-        .lean();
-      return { vendors: JSON.parse(JSON.stringify(network)) as Vendor[], fromNetwork: network.length > 0 };
+      const { data: network } = await vendorRepository.findMany({
+        where: { city: 'Patna', status: 'PUBLISHED', category: { slug: catSlug } },
+        orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
+      });
+      return { vendors: await toLegacyVendors(network), fromNetwork: network.length > 0 };
     }
     return { vendors: [], fromNetwork: false };
   } catch {
@@ -612,6 +659,10 @@ export default async function CityCategoryPage({
           </div>
         </section>
 
+        {city.state === 'Bihar' && CATEGORY_BLOG_GUIDES[catSlug] && (
+          <RelatedGuides guides={CATEGORY_BLOG_GUIDES[catSlug]} heading={`Helpful Guides for ${cat.plural} in ${city.name}`} />
+        )}
+
         {/* CTA */}
         <section className="bg-gradient-to-r from-amber-500 to-rose-500 py-12">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -623,7 +674,7 @@ export default async function CityCategoryPage({
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
-                href="https://wa.me/917646028228?text=Hi%21+I+need+help+finding+a+wedding+vendor+in+${encodeURIComponent(city.name)}"
+                href={`https://wa.me/917646028228?text=${encodeURIComponent(`Hi! I need help finding a wedding vendor in ${city.name}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-sm"

@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { User, Phone, Mail, Calendar, Users, UtensilsCrossed, Building2, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Heart, Clock, X, MapPin } from 'lucide-react';
 import WeddingDashboardClient from '@/components/WeddingDashboardClient';
+import { trackConsultationLeadConversion } from '@/lib/analytics/googleAds';
+import { PlanFormData, EVENT_LABELS } from '@/lib/planPreview';
+import LivePlanPreview from '@/components/plan/LivePlanPreview';
 
 const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 import { useCart } from '@/context/CartContext';
@@ -18,11 +22,6 @@ const EVENT_TYPES = [
   { id: 'corporate',   label: 'Corporate',   icon: '🏢' },
   { id: 'other',       label: 'Other Event', icon: '🎉' },
 ];
-
-const EVENT_LABELS: Record<string, string> = {
-  wedding: 'Wedding', engagement: 'Engagement', birthday: 'Birthday',
-  anniversary: 'Anniversary', corporate: 'Corporate Event', other: 'Event',
-};
 
 const SERVICES = [
   // ── Primary 8 categories (in original order) ──
@@ -63,31 +62,38 @@ const VENUE_TYPES = [
 
 const TIMES = ['9:00 AM', '11:00 AM', '1:00 PM', '3:00 PM', '5:00 PM', '7:00 PM'];
 
-interface FormData {
-  name: string; phone: string; email: string; city: string; weddingDate: string;
-  days: number; guestCount: number; foodPreference: string; weddingStyle: string;
-  budgetRange: string; eventType: string;
-  services: string[]; meals: Record<number, string[]>;
-  venueType: string; consultationDate: string; preferredTime: string; message: string;
-}
+// Maps the homepage budget-picker slugs (?budget=...) to the nearest existing budgetRange tier below.
+const BUDGET_QUERY_MAP: Record<string, string> = {
+  'under-5': 'under-5L',
+  '5-10': '5-10L',
+  '10-15': '10-20L',
+  '15-25': '20-50L',
+  '25-plus': '20-50L',
+};
 
 export default function PlanPageClient() {
   const { items, total, clearCart } = useCart();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
   const [success, setSuccess] = useState(false);
-  const [form, setForm] = useState<FormData>({
+  const [form, setForm] = useState<PlanFormData>({
     name: '', phone: '', email: '', city: 'Patna', weddingDate: '', days: 1,
     guestCount: 100, foodPreference: 'veg', weddingStyle: '', budgetRange: '',
     eventType: 'wedding',
     services: [], meals: {}, venueType: '', consultationDate: '', preferredTime: '', message: '',
   });
 
+  useEffect(() => {
+    const mapped = BUDGET_QUERY_MAP[searchParams.get('budget') ?? ''];
+    if (mapped) setForm((f) => ({ ...f, budgetRange: mapped }));
+  }, [searchParams]);
+
   const eventLabel = EVENT_LABELS[form.eventType] || 'Event';
 
-  const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) =>
+  const updateField = <K extends keyof PlanFormData>(key: K, value: PlanFormData[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const toggleService = (id: string) =>
@@ -132,6 +138,7 @@ export default function PlanPageClient() {
       if (data.success) {
         setSuccess(true);
         clearCart();
+        trackConsultationLeadConversion();
       } else {
         alert('Something went wrong. Please try again.');
       }
@@ -187,7 +194,7 @@ export default function PlanPageClient() {
       </div>
 
       {/* Form */}
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-3xl lg:max-w-6xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6 lg:items-start">
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Step content */}
           <div className="p-6 sm:p-8">
@@ -694,6 +701,10 @@ export default function PlanPageClient() {
               </button>
             )}
           </div>
+        </div>
+
+        <div className="mt-6 lg:mt-0 lg:sticky lg:top-24">
+          <LivePlanPreview form={form} step={step} />
         </div>
       </div>
 

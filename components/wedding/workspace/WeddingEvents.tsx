@@ -277,7 +277,7 @@ export default function WeddingEvents({
   const [addingFor, setAddingFor] = useState<string | null>(null);
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
-      <h2 className="text-sm font-semibold text-gray-900 mb-3">Events & Vendor Bookings</h2>
+      <h2 className="text-lg font-bold text-gray-900 mb-3">Functions & Services</h2>
       {events.length === 0 ? (
         <p className="text-sm text-gray-400">No events yet.</p>
       ) : (
@@ -288,9 +288,15 @@ export default function WeddingEvents({
                 <div>
                   <span className="font-medium text-gray-900 text-sm">{event.label ?? event.type}</span>
                   <span className="text-gray-400 text-xs ml-2">{new Date(event.date).toLocaleDateString()}</span>
+                  {event.startTime && <span className="text-gray-400 text-xs ml-2">{event.startTime}</span>}
                 </div>
-                {event.venueName && <span className="text-xs text-gray-500">{event.venueName}</span>}
+                <div className="text-right text-xs text-gray-500">
+                  <div>{event.venueName || event.city}</div>
+                  <div>{event.tasks.length} task{event.tasks.length === 1 ? '' : 's'} · {event.vendorBookings.length} service{event.vendorBookings.length === 1 ? '' : 's'}</div>
+                </div>
               </div>
+              {event.budget !== null && <p className="mb-2 text-xs text-gray-500">Function budget: {money(event.budget)}</p>}
+              {event.tasks.length > 0 && <ul className="mb-2 space-y-1 border-l-2 border-blue-100 pl-3">{event.tasks.map((task) => <li key={task.id} className={`text-xs ${task.status === 'DONE' ? 'text-gray-400 line-through' : 'text-gray-600'}`}>{task.title}</li>)}</ul>}
               {event.vendorBookings.length === 0 ? (
                 <p className="text-xs text-gray-400 mb-2">No vendors booked for this event yet.</p>
               ) : (

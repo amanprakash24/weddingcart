@@ -9,6 +9,39 @@ const nextConfig: NextConfig = {
         destination: 'https://www.shaadishopping.com/:path*',
         permanent: true,
       },
+      {
+        source: '/venues/patna',
+        destination: '/cities/patna/venue',
+        permanent: true,
+      },
+      {
+        source: '/venues-in-patna',
+        destination: '/cities/patna/venue',
+        permanent: true,
+      },
+      {
+        source: '/lp/swayamvar-hall',
+        destination: '/vendors/swayamvar-hall-patna',
+        permanent: true,
+      },
+      {
+        // Pre-existing DB-backed vendor record (id: "swayamvar-hall") was rendering
+        // a separate, lower-quality generic page via app/vendors/[id] — redirect it
+        // into the canonical page so there's exactly one URL for this venue.
+        source: '/vendors/swayamvar-hall',
+        destination: '/vendors/swayamvar-hall-patna',
+        permanent: true,
+      },
+      {
+        source: '/lp/touch-of-cozy',
+        destination: '/vendors/touch-of-cozy-patna',
+        permanent: true,
+      },
+      {
+        source: '/lp/7-vachan-patna',
+        destination: '/vendors/7-vachan-patna',
+        permanent: true,
+      },
     ];
   },
   images: {

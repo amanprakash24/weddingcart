@@ -11,6 +11,21 @@ import TimelineMilestones from './TimelineMilestones';
 import Documents from './Documents';
 import Finance from './Finance';
 import type { WeddingWorkspace, WeddingStatus, VendorBookingStatus, MilestoneStatus, CreateInvoiceInput } from './types';
+import ServiceRequirements from './ServiceRequirements';
+import Approvals from './Approvals';
+import GuestRsvp from './GuestRsvp';
+
+type Approval = {
+  id: string; subjectType: string; title: string | null; description: string | null; amount: number | null;
+  deadline: string | null; status: string; clientComment: string | null;
+  weddingEvent: { id: string; label: string | null; type: string } | null;
+};
+
+const NAV_ITEMS = [
+  ['overview', 'Overview'], ['functions', 'Functions'], ['services', 'Services'],
+  ['tasks', 'Tasks'], ['timeline', 'Timeline'], ['finance', 'Finance'],
+  ['documents', 'Documents'], ['approvals', 'Approvals'], ['guests', 'Guests & RSVP'], ['activity', 'Activity'],
+];
 
 async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = 'POST') {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -27,6 +42,7 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
   const [workspace, setWorkspace] = useState<WeddingWorkspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [approvals, setApprovals] = useState<Approval[]>([]);
 
   const basePath = `/api/weddings/${id}`;
 
@@ -37,6 +53,9 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         const body = await r.json();
         if (!r.ok || !body.success) throw new Error(body.error ?? 'Failed to load');
         setWorkspace(body.data);
+        fetch(`${basePath}/approvals`).then((r) => r.json()).then((approvalBody) => {
+          if (approvalBody.success) setApprovals(approvalBody.data);
+        });
         setError(null);
       })
       .catch((e: Error) => setError(e.message))
@@ -106,36 +125,47 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <WeddingHeader wedding={workspace.wedding} health={workspace.health} onTransition={transitionStatus} />
+      <WeddingHeader wedding={workspace.wedding} health={workspace.health} outstanding={workspace.finance.totals.outstanding} onTransition={transitionStatus} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <nav aria-label="Event workspace sections" className="sticky top-0 z-10 -mx-2 overflow-x-auto rounded-xl border border-gray-100 bg-white/95 p-2 shadow-sm backdrop-blur">
+        <div className="flex min-w-max gap-1">
+          {NAV_ITEMS.map(([id, label]) => <a key={id} href={`#${id}`} className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-rose-50 hover:text-rose-700">{label}</a>)}
+        </div>
+      </nav>
+
+      <section id="overview" className="scroll-mt-16 rounded-2xl border border-gray-100 bg-white p-5">
+        <h2 className="mb-3 text-lg font-bold text-gray-900">Event overview</h2>
+        <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div><p className="text-xs uppercase text-gray-400">What&apos;s next</p><p className="font-medium text-gray-900">{workspace.tasks.find((task) => task.status !== 'DONE' && task.status !== 'CANCELLED')?.title || 'No open tasks'}</p></div>
+          <div><p className="text-xs uppercase text-gray-400">Functions</p><p className="font-medium text-gray-900">{workspace.events.length || 'None added yet'}</p></div>
+          <div><p className="text-xs uppercase text-gray-400">Services booked</p><p className="font-medium text-gray-900">{workspace.events.reduce((sum, event) => sum + event.vendorBookings.length, 0)}</p></div>
+          <div><p className="text-xs uppercase text-gray-400">Payments</p><p className="font-medium text-gray-900">{workspace.finance.totals.collected > 0 ? `₹${workspace.finance.totals.collected.toLocaleString('en-IN')} collected` : 'No payments recorded'}</p></div>
+        </div>
+      </section>
+
+      <section id="documents" className="scroll-mt-16 grid grid-cols-1 gap-4 md:grid-cols-2">
         <CoupleCard couple={workspace.couple} onSave={saveCouple} />
         <Documents documents={workspace.documents} />
-      </div>
+      </section>
 
-      <WeddingEvents
-        events={workspace.events}
-        onUpdateVendorBookingStatus={updateVendorBookingStatus}
-        onAddVendorBooking={addVendorBooking}
-        onCalculatePayout={calculatePayout}
-        onMarkPayoutPaid={markPayoutPaid}
-      />
+      <section id="functions" className="scroll-mt-16"><WeddingEvents events={workspace.events} onUpdateVendorBookingStatus={updateVendorBookingStatus} onAddVendorBooking={addVendorBooking} onCalculatePayout={calculatePayout} onMarkPayoutPaid={markPayoutPaid} /></section>
 
-      <Finance
-        weddingId={id}
-        finance={workspace.finance}
-        onCreateInvoice={createInvoice}
-        onGeneratePaymentLink={generatePaymentLink}
-      />
+      <section id="services" className="scroll-mt-16"><ServiceRequirements events={workspace.events} /></section>
 
-      <TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} />
+      <section id="approvals" className="scroll-mt-16"><Approvals weddingId={id} events={workspace.events} approvals={approvals} onChange={load} /></section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <section id="guests" className="scroll-mt-16"><GuestRsvp weddingId={id} events={workspace.events} initialGuests={workspace.guests} /></section>
+
+      <section id="finance" className="scroll-mt-16"><Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} /></section>
+
+      <section id="timeline" className="scroll-mt-16"><TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} /></section>
+
+      <section id="tasks" className="scroll-mt-16 grid grid-cols-1 gap-4 md:grid-cols-2">
         <TaskPanel tasks={workspace.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
         <InsightsPanel insights={workspace.insights} />
-      </div>
+      </section>
 
-      <Timeline activities={workspace.activity} onAddNote={addNote} />
+      <section id="activity" className="scroll-mt-16"><Timeline activities={workspace.activity} onAddNote={addNote} /></section>
     </div>
   );
 }

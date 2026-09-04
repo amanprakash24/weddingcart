@@ -2,36 +2,58 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import HomepageClient from '@/components/HomepageClient';
 import { JsonLd } from '@/components/JsonLd';
+import { blogRepository } from '@/repositories/blog.repository';
+import type { BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
+// Highest-value guides, in display priority order
+const TOP_BLOG_SLUGS = [
+  'best-wedding-venues-patna-bihar-2025',
+  'wedding-cost-patna-bihar-budget-guide',
+  'court-marriage-registration-patna-bihar',
+  'best-banquet-halls-patna-wedding-marriage-hall',
+];
+
+async function getTopBlogPosts(): Promise<BlogHighlight[]> {
+  try {
+    const { data } = await blogRepository.findMany({
+      where: { slug: { in: TOP_BLOG_SLUGS }, status: 'PUBLISHED' },
+    });
+    const bySlug = new Map(data.map((p) => [p.slug, p]));
+    return TOP_BLOG_SLUGS.map((slug) => bySlug.get(slug))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p))
+      .map((p) => ({
+        title: p.title,
+        slug: p.slug,
+        excerpt: p.excerpt,
+        coverImage: p.coverImage,
+        category: p.category,
+        readTime: p.readTime,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export const metadata: Metadata = {
-  title: "Shaadi Shopping | ShaadiShopping — #1 Wedding Planning in Patna & India",
+  title: "Shaadi Shopping | Trusted Wedding Planning & Verified Vendors in Patna",
   description:
-    'Shaadi Shopping (ShaadiShopping) — India\'s most trusted wedding planning platform. Book verified venues, photographers, caterers, makeup artists, mehndi & decorators in Patna, Bihar & across India. Free expert consultation.',
-  keywords: [
-    'shaadi shopping', 'shaadishopping', 'shaadi shopping patna', 'shaadi shopping india',
-    'shaadi', 'shaadi planning', 'shadi planning', 'shaadi vendors', 'online shaadi booking',
-    'wedding vendors Patna', 'wedding venues Bihar', 'wedding planning Patna',
-    'bridal makeup Patna', 'wedding caterers Patna', 'wedding decorators Patna',
-    'shaadi vendors Patna', 'best wedding vendors India', 'wedding booking platform India',
-    'vivah planning India', 'byah planning Bihar', 'wedding platform Bihar',
-    'shaadi ki tayari', 'wedding vendors near me', 'top wedding vendors Patna',
-  ],
+    'Plan your wedding with confidence. Compare verified banquet halls, photographers, caterers, decorators and more in Patna. Get a dedicated Wedding Expert from planning to vidai—free of cost.',
   alternates: { canonical: BASE_URL },
   openGraph: {
-    title: "ShaadiShopping — India's #1 Wedding Planning & Vendor Booking Platform",
-    description: 'Book top wedding vendors across India — venues, photographers, caterers, makeup artists, mehndi, decorators & more. Specialising in Patna, Bihar weddings.',
+    title: "ShaadiShopping — Wedding Planning in Patna",
+    description: 'Your trusted wedding planner in Patna. Find verified wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
     url: BASE_URL,
     type: 'website',
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: "ShaadiShopping — India's #1 Wedding Planning Platform" }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'ShaadiShopping — Wedding Planning in Patna' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "ShaadiShopping — India's #1 Wedding Planning & Vendor Booking Platform",
-    description: 'Book top wedding vendors across India — venues, photographers, caterers, makeup artists, mehndi, decorators & more.',
+    title: "ShaadiShopping — Wedding Planning in Patna",
+    description: 'Your trusted wedding planner in Patna. Find verified wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
     images: ['/opengraph-image'],
   },
 };
@@ -42,7 +64,7 @@ const websiteSchema = {
   name: 'ShaadiShopping',
   alternateName: ['Shaadi Shopping', 'ShaadiShopping.com', 'शादी शॉपिंग'],
   url: BASE_URL,
-  description: "India's #1 shaadi planning & wedding vendor booking platform — expert-guided from Venue to Vidaai.",
+  description: 'Shaadi Shopping helps families plan weddings in Patna with verified venues, trusted vendors, transparent quotations, and one dedicated Wedding Expert from planning to vidai.',
   potentialAction: {
     '@type': 'SearchAction',
     target: {
@@ -130,7 +152,7 @@ const faqSchema = {
       name: 'Which are the best banquet halls in Patna for weddings?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Top banquet halls in Patna for weddings include Swayamvar Hall & Homestay (Danapur, up to 700 guests), Touch of Cozy (Rajeev Nagar), and 7 Vachan (Saguna Mor). ShaadiShopping has verified 50+ venues across Patna with pricing from ₹999/plate.',
+        text: 'Top banquet halls in Patna for weddings include Swayamvar Hall & Homestay (Danapur, up to 700 guests), Touch of Cozy (Rajeev Nagar), and 7 Vachan (Saguna Mor). ShaadiShopping verifies every venue it lists, with pricing from ₹999/plate.',
       },
     },
     {
@@ -154,7 +176,7 @@ const faqSchema = {
       name: 'Does ShaadiShopping plan weddings outside Patna?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes, ShaadiShopping plans weddings across India including Delhi, Mumbai, Jaipur, Bangalore, Udaipur, Goa, Hyderabad, Chennai, and Kolkata. We specialise in destination weddings and have a network of 500+ verified vendors across 25+ cities.',
+        text: "ShaadiShopping is Patna's trusted wedding planning platform, currently expanding across Bihar. Couples in cities like Muzaffarpur, Gaya, Bhagalpur, and Darbhanga are served from our Patna vendor network, with the same dedicated Wedding Expert guiding every booking.",
       },
     },
     {
@@ -168,14 +190,16 @@ const faqSchema = {
   ],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const topBlogPosts = await getTopBlogPosts();
+
   return (
     <>
       <JsonLd data={websiteSchema} />
       <JsonLd data={organizationSchema} />
       <JsonLd data={faqSchema} />
       <Suspense>
-        <HomepageClient />
+        <HomepageClient topBlogPosts={topBlogPosts} />
       </Suspense>
     </>
   );

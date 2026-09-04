@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Phone } from 'lucide-react';
@@ -23,7 +22,7 @@ export default function HeroSection() {
       </div>
       <div
         className="absolute inset-0"
-        style={{ background: 'linear-gradient(160deg, rgba(42,31,27,0.78) 0%, rgba(0,0,0,0.12) 55%, rgba(42,31,27,0.85) 100%)' }}
+        style={{ background: 'linear-gradient(160deg, rgba(42,31,27,0.84) 0%, rgba(0,0,0,0.22) 55%, rgba(42,31,27,0.88) 100%)' }}
       />
       <div
         className="absolute inset-0 pointer-events-none animate-hero-glow"
@@ -43,7 +42,7 @@ export default function HeroSection() {
             className="inline-flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/15 text-white/80 px-4 py-2 rounded-full text-[0.68rem] sm:text-xs font-medium mb-6 sm:mb-8 tracking-[0.1em] sm:tracking-[0.14em] uppercase"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#C5A46D] flex-shrink-0" />
-            Shaadi Shopping — India&apos;s Expert Wedding Platform
+            Shaadi Shopping — Patna&apos;s Wedding Planning Platform
           </motion.div>
 
           <h1
@@ -57,7 +56,7 @@ export default function HeroSection() {
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.7, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
               >
-                From Venue&nbsp;
+                Plan Your Wedding&nbsp;
               </motion.span>
               <motion.span
                 className="inline-block"
@@ -65,32 +64,27 @@ export default function HeroSection() {
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
               >
-                to&nbsp;
+                in Patna&nbsp;
               </motion.span>
-              <motion.span
-                className="inline-block relative"
-                initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 0.7, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              >
-                Vidaai
-                <span className="vidaai-shimmer-overlay" aria-hidden="true">Vidaai</span>
-              </motion.span>
-            </span>
-            <span className="hidden sm:block">
               <motion.span
                 className="inline-block"
                 initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 0.8, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.7, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
               >
-                <span className="text-white/50">— </span>
-                <span className="hero-highlight-cycle-wrap">
-                  <span className="hero-highlight-cycle">We Handle Everything</span>
-                </span>
+                With Confidence
               </motion.span>
             </span>
           </h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="font-cormorant italic text-[#C5A46D] text-lg sm:text-xl mb-3 sm:mb-4"
+          >
+            One dedicated wedding expert from planning to Vidai.
+          </motion.p>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -98,7 +92,7 @@ export default function HeroSection() {
             transition={{ duration: 0.6, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
             className="text-white/65 text-sm sm:text-lg mb-8 sm:mb-10 max-w-md sm:max-w-xl leading-relaxed"
           >
-            Expert consultants. Verified vendors. End-to-end coordination — for your dream Indian wedding.
+            Find the right venue, decorator, caterer, photographer, makeup artist and more — based on your date, budget and guest count.
           </motion.p>
 
           <motion.div
@@ -112,13 +106,13 @@ export default function HeroSection() {
               className="inline-flex items-center justify-center gap-2 bg-[#8B1A4A] text-white px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-semibold text-sm shadow-xl hover:opacity-90 transition-all"
               style={{ boxShadow: '0 8px 40px rgba(139,26,74,0.45)' }}
             >
-              Begin Your Journey <ArrowRight className="w-4 h-4" />
+              Begin Your Wedding Journey <ArrowRight className="w-4 h-4" />
             </Link>
             <a
               href="tel:+917646028228"
               className="inline-flex items-center justify-center gap-2 bg-white/8 backdrop-blur-sm border border-white/20 text-white/90 px-6 sm:px-7 py-3.5 sm:py-4 rounded-full font-medium text-sm hover:bg-white/14 transition-all"
             >
-              <Phone className="w-4 h-4" /> Speak With An Expert
+              <Phone className="w-4 h-4" /> Talk to an Expert
             </a>
           </motion.div>
         </div>

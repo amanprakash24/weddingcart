@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/mongodb';
-import CategoryModel from '@/lib/models/Category';
+import { categoryService } from '@/services/category.service';
 import { requireAdmin } from '@/lib/adminAuth';
+import { handleApiError } from '@/lib/errors';
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await connectDB();
     const { id } = await params;
-    const category = await CategoryModel.findOne({ id }).lean();
-    if (!category) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    const category = await categoryService.getById(id);
+    if (!category) {
+      return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
     return NextResponse.json({ success: true, data: category });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to fetch category' }, { status: 500 });
+  } catch (err) {
+    console.error('GET /api/categories/[id] failed:', err);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch category' },
+      { status: 500 }
+    );
   }
 }
 
@@ -19,15 +24,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
+
   try {
-    await connectDB();
     const { id } = await params;
     const body = await req.json();
-    const category = await CategoryModel.findOneAndUpdate({ id }, body, { new: true });
-    if (!category) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+
+    const category = await categoryService.update(id, {
+      name: body.name,
+      icon: body.icon,
+      description: body.description,
+      image: body.image,
+      isSpecial: body.isSpecial,
+    });
+
     return NextResponse.json({ success: true, data: category });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to update category' }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err);
   }
 }
 
@@ -35,12 +47,12 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
+
   try {
-    await connectDB();
     const { id } = await params;
-    await CategoryModel.findOneAndDelete({ id });
+    await categoryService.delete(id);
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to delete category' }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err);
   }
 }
