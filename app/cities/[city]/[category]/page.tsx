@@ -10,6 +10,7 @@ import RelatedGuides, { type RelatedGuide } from '@/components/RelatedGuides';
 import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
@@ -197,6 +198,12 @@ export async function generateMetadata({
   if (!city || !cat) return { title: 'Not Found' };
 
   const url = `${BASE_URL}/cities/${citySlug}/${catSlug}`;
+  const publishedCount = await vendorRepository.count({
+    city: city.name,
+    status: 'PUBLISHED',
+    category: { slug: catSlug },
+  });
+  const indexable = publishedCount >= 3;
 
   // Non-Bihar cities: noindex until we have real vendor listings there.
   // Bihar cities are indexed — they are genuinely served from the Patna network.
@@ -216,6 +223,7 @@ export async function generateMetadata({
       title,
       description,
       alternates: { canonical: url },
+      robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
       keywords: [
         `${cat.plural.toLowerCase()} in ${city.name.toLowerCase()}`,
         `${cat.name.toLowerCase()} ${city.name.toLowerCase()}`,
@@ -356,6 +364,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: url },
+    robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
     keywords: [
       `${cat.plural} in ${city.name}`, `${cat.plural} ${city.name}`,
       `wedding ${catSlug} ${city.name}`, `best ${cat.plural} ${city.name}`,
@@ -387,7 +396,7 @@ async function getVendors(
 ): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
     const { data } = await vendorRepository.findMany({
-      where: { city: cityName, category: { slug: catSlug } },
+      where: { city: cityName, status: 'PUBLISHED', category: { slug: catSlug } },
       orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
     });
     if (data.length > 0) {
@@ -397,7 +406,7 @@ async function getVendors(
     // serve them, so the page is never an empty soft-404.
     if (isBihar && cityName !== 'Patna') {
       const { data: network } = await vendorRepository.findMany({
-        where: { city: 'Patna', category: { slug: catSlug } },
+        where: { city: 'Patna', status: 'PUBLISHED', category: { slug: catSlug } },
         orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
       });
       return { vendors: await toLegacyVendors(network), fromNetwork: network.length > 0 };

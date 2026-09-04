@@ -30,7 +30,9 @@ const SORTS = [
 interface FAQ { q: string; a: string }
 
 interface Props {
-  slug: string;
+  // Omit for a category-agnostic listing (e.g. /vendors) — the vendors API
+  // and vendorService.search() already treat `category` as optional.
+  slug?: string;
   initialCoverImage?: string;
   initialName?: string;
   initialDescription?: string;
@@ -40,7 +42,7 @@ interface Props {
 
 export default function CategoryPageClient({ slug, initialCoverImage, initialName, initialDescription, initialVendors, faqs = [] }: Props) {
   const searchParams = useSearchParams();
-  const info = CATEGORY_INFO[slug] || { name: slug, desc: '', image: '' };
+  const info = (slug && CATEGORY_INFO[slug]) || { name: slug ?? 'Wedding Vendors', desc: '', image: '' };
 
   const [vendors, setVendors] = useState<Vendor[]>(initialVendors ?? []);
   const [category, setCategory] = useState<Category | null>(null);
@@ -56,18 +58,22 @@ export default function CategoryPageClient({ slug, initialCoverImage, initialNam
   const fetchVendors = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ category: slug, sort });
+      const params = new URLSearchParams({ sort });
+      if (slug) params.set('category', slug);
       if (city !== 'All Cities') params.set('city', city);
       if (search) params.set('search', search);
       if (minRating) params.set('minRating', minRating);
 
       const [vRes, cRes] = await Promise.all([
         fetch(`/api/vendors?${params}`),
-        fetch(`/api/categories/${slug}`),
+        slug ? fetch(`/api/categories/${slug}`) : Promise.resolve(null),
       ]);
-      const [vData, cData] = await Promise.all([vRes.json(), cRes.json()]);
+      const vData = await vRes.json();
       if (vData.success) setVendors(vData.data);
-      if (cData.success) setCategory(cData.data);
+      if (cRes) {
+        const cData = await cRes.json();
+        if (cData.success) setCategory(cData.data);
+      }
     } catch {
       setVendors([]);
     } finally {
@@ -111,7 +117,7 @@ export default function CategoryPageClient({ slug, initialCoverImage, initialNam
           </nav>
           <h1 className="text-3xl sm:text-4xl font-bold text-white font-[Playfair_Display,serif]">{initialName || category?.name || info.name}</h1>
           <p className="text-white/80 text-sm mt-1">{initialDescription || category?.description || info.desc}</p>
-          {category && (
+          {(category || !slug) && (
             <div className="flex items-center gap-4 mt-3">
               <span className="bg-white/20 backdrop-blur-sm text-white text-xs px-3 py-1 rounded-full">
                 {vendors.length} vendors found

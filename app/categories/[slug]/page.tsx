@@ -164,7 +164,7 @@ interface CategoryMeta {
 async function getInitialVendors(slug: string): Promise<Vendor[]> {
   try {
     const { data } = await vendorRepository.findMany({
-      where: { category: { slug } },
+      where: { status: 'PUBLISHED', category: { slug } },
       orderBy: [{ sortOrder: 'asc' }, { isFeatured: 'desc' }, { rating: 'desc' }],
       take: 6,
     });

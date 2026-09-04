@@ -272,14 +272,6 @@ export default function AdminClient() {
   const updatePackage = (i: number, key: keyof PackageForm, value: string | boolean) =>
     setPackages((p) => p.map((pkg, idx) => idx === i ? { ...pkg, [key]: value } : pkg));
 
-  const openAddVendor = () => {
-    setEditingVendor(null);
-    setVendorForm(EMPTY_VENDOR);
-    setVendorImages(['']);
-    setPackages([{ ...EMPTY_PACKAGE }]);
-    setShowAddVendor(true);
-  };
-
   const openEditVendor = (v: AnyRecord) => {
     setEditingVendor(v);
     setVendorForm({
@@ -419,15 +411,6 @@ export default function AdminClient() {
     if (!confirm('Delete this special service category?')) return;
     await fetch(`/api/categories/${id}`, { method: 'DELETE' });
     fetchAll();
-  };
-
-  const openAddSpecialVendor = () => {
-    setEditingSpecialVendor(null);
-    setEditingVendor(null);
-    setVendorForm({ ...EMPTY_VENDOR, category: specialCategories[0]?.id || '' });
-    setVendorImages(['']);
-    setPackages([{ ...EMPTY_PACKAGE }]);
-    setShowAddSpecialVendor(true);
   };
 
   const openEditSpecialVendor = (v: AnyRecord) => {
@@ -817,7 +800,7 @@ export default function AdminClient() {
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <h3 className="font-bold text-gray-900 mb-4">Quick Actions</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <button onClick={() => { setTab('vendors'); openAddVendor(); }} className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all">
+                  <button onClick={() => router.push('/admin/vendors/new')} className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all">
                     <Plus className="w-5 h-5" />
                     <div className="text-left">
                       <p className="font-semibold text-sm">Add New Vendor</p>
@@ -865,7 +848,7 @@ export default function AdminClient() {
                       className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
                     />
                   </div>
-                  <button onClick={openAddVendor} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all whitespace-nowrap">
+                  <button onClick={() => router.push('/admin/vendors/new')} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all whitespace-nowrap">
                     <Plus className="w-4 h-4" /> Add Vendor
                   </button>
                 </div>
@@ -1372,7 +1355,7 @@ export default function AdminClient() {
                   <h2 className="text-lg font-bold text-gray-900">Special Service Vendors</h2>
                   <p className="text-gray-400 text-xs mt-0.5">{specialVendors.length} vendors across {specialCategories.length} special services</p>
                 </div>
-                <button onClick={openAddSpecialVendor} disabled={specialCategories.length === 0} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                <button onClick={() => router.push('/admin/vendors/new')} disabled={specialCategories.length === 0} className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                   <Plus className="w-4 h-4" /> Add Vendor
                 </button>
               </div>

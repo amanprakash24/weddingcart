@@ -1,0 +1,4 @@
+CREATE TYPE "VenueBookingStatus" AS ENUM ('PENDING', 'READY_FOR_SETUP', 'SETUP_IN_PROGRESS', 'READY', 'COMPLETED');
+
+ALTER TABLE "vendor_bookings"
+  ADD COLUMN "venueStatus" "VenueBookingStatus" NOT NULL DEFAULT 'PENDING';

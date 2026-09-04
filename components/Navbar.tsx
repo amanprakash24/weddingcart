@@ -136,12 +136,6 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    setMobileOpen(false);
-    setMegaOpen(false);
-    setSearchOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (megaRef.current && !megaRef.current.contains(e.target as Node)) {
         setMegaOpen(false);
@@ -169,8 +163,8 @@ export default function Navbar() {
       <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-9 flex items-center justify-center overflow-hidden px-4">
         <p className="text-[0.62rem] tracking-[0.12em] sm:tracking-[0.22em] whitespace-nowrap truncate text-center">
           <span className="text-[#C5A46D]/45 mr-3 sm:mr-5">✦</span>
-          <span className="hidden sm:inline">Expert Wedding Coordination · From Venue to Vidaai · Across India</span>
-          <span className="sm:hidden">Expert Wedding Coordination · Across India</span>
+          <span className="hidden sm:inline">Expert Wedding Coordination · From Venue to Vidai</span>
+          <span className="sm:hidden">Expert Wedding Coordination · From Venue to Vidai</span>
           <span className="text-[#C5A46D]/45 ml-3 sm:ml-5">✦</span>
         </p>
       </div>

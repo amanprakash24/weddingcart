@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Script from 'next/script';
 import { Playfair_Display, Cormorant_Garamond, DM_Sans } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import AuthSessionProvider from '@/components/AuthSessionProvider';
@@ -125,6 +126,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Suspense><LeadCapturePopup /></Suspense>
           </CartProvider>
         </AuthSessionProvider>
+        <Analytics />
       </body>
     </html>
   );

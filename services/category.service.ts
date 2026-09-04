@@ -6,7 +6,12 @@ import type { Prisma } from '@/generated/prisma/client';
 // handler) to establish the Route Handler -> Service -> Repository layering
 // from day one, per docs/repository-contract.md.
 export const categoryService = {
-  getById: categoryRepository.findById,
+  // Public category pages (and /vendors, which reuses CategoryPageClient)
+  // call GET /api/categories/[id] with the category slug, not the Prisma id
+  // — mirrors the same fallback already applied to vendorService.getById.
+  async getById(id: string) {
+    return (await categoryRepository.findById(id)) ?? categoryRepository.findBySlug(id);
+  },
   getBySlug: categoryRepository.findBySlug,
 
   async list(params: { isSpecial?: boolean; skip?: number; take?: number }) {

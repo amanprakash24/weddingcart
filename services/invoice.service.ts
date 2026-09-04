@@ -1,7 +1,7 @@
 import { invoiceRepository } from '@/repositories/invoice.repository';
 import { generateInvoiceNumber } from '@/services/weddingWorkspace.service';
 import { prisma } from '@/lib/prisma';
-import { NotFoundError } from '@/lib/errors';
+import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
 import type { Prisma } from '@/generated/prisma/client';
 
 export interface InvoiceItemInput {
@@ -57,6 +57,11 @@ export const invoiceService = {
   // invoiceNumber is @unique and both paths now write to the same table,
   // two independent numbering schemes could otherwise collide.
   async create(data: InvoiceCreateData) {
+    // Same bounds check as update() — see its comment for why.
+    if (data.amountPaid !== undefined && (data.amountPaid < 0 || data.amountPaid > data.total)) {
+      throw new InvalidTransitionError(`amountPaid must be between 0 and the invoice total (${data.total})`);
+    }
+
     return prisma.$transaction(async (tx) => {
       const invoiceNumber = await generateInvoiceNumber(tx);
       return invoiceRepository.create(
@@ -97,6 +102,22 @@ export const invoiceService = {
   async update(id: string, data: Prisma.InvoiceUpdateInput, items?: InvoiceItemInput[]) {
     const existing = await invoiceRepository.findById(id);
     if (!existing || existing.weddingId) return null;
+
+    // Standalone invoices have no automated payment collection (no Razorpay
+    // payment-link route exists for them), so amountPaid is a manually
+    // entered field by design — but it was previously accepted with zero
+    // validation, and commandCenter/founderDashboard services read this
+    // column directly into company-wide revenue figures. Bound it against
+    // whichever total applies (the one being set in this same request, if
+    // any, else the invoice's existing total) so a typo or fabricated value
+    // can't corrupt those figures.
+    const amountPaid = typeof data.amountPaid === 'number' ? data.amountPaid : undefined;
+    if (amountPaid !== undefined) {
+      const total = typeof data.total === 'number' ? data.total : existing.total;
+      if (amountPaid < 0 || amountPaid > total) {
+        throw new InvalidTransitionError(`amountPaid must be between 0 and the invoice total (${total})`);
+      }
+    }
 
     return prisma.$transaction(async (tx) => {
       if (items) {

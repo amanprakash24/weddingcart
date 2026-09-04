@@ -77,7 +77,7 @@ function humanizeSlug(slug: string): string {
 
 export async function generateStaticParams() {
   try {
-    const { data } = await vendorRepository.findMany({});
+    const { data } = await vendorRepository.findMany({ where: { status: 'PUBLISHED' } });
     return data.map((v) => ({ id: v.slug }));
   } catch {
     return [];
@@ -91,7 +91,7 @@ export async function generateStaticParams() {
 async function getVendorMeta(id: string): Promise<VendorMeta | null> {
   try {
     const vendor = await vendorRepository.findBySlug(id);
-    if (!vendor) return null;
+    if (!vendor || vendor.status !== 'PUBLISHED') return null;
     const category = await categoryRepository.findById(vendor.categoryId);
     return {
       id: vendor.slug,
@@ -119,7 +119,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const vendor = await getVendorMeta(id);
 
-  if (!vendor) return { title: 'Not Found', robots: { index: false } };
+  if (!vendor) return { title: 'Not Found', robots: { index: false, follow: false } };
 
   const isVenue = vendor.category === 'venue';
   const catLabel = CATEGORY_LABELS[vendor.category] ?? vendor.category;
@@ -152,6 +152,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       ...localityKeywords,
     ],
     alternates: { canonical: url },
+    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,

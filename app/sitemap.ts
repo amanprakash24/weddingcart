@@ -43,13 +43,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE_URL,                        lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'daily',   priority: 1.0 },
     { url: `${BASE_URL}/blog`,              lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'daily',   priority: 0.9 },
+    { url: `${BASE_URL}/vendors`,           lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'daily',   priority: 0.9 },
     { url: `${BASE_URL}/about`,             lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/plan`,              lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/vendor-onboarding`,      lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.5 },
     // Patna city landing page (other Bihar cities added via biharCityRoutes above)
     { url: `${BASE_URL}/cities/patna`,            lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.95 },
     // Venue landing pages — indexed per robots.ts and each page's own metadata
-    { url: `${BASE_URL}/venues/patna`,               lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.97 },
     { url: `${BASE_URL}/venues/patna/danapur`,       lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.9 },
     { url: `${BASE_URL}/venues/patna/saguna-mor`,    lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.9 },
     { url: `${BASE_URL}/venues/patna/boring-road`,   lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.85 },
@@ -66,7 +66,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let categoryRoutes: MetadataRoute.Sitemap = [];
   let vendorRoutes: MetadataRoute.Sitemap = [];
-  let portfolioRoutes: MetadataRoute.Sitemap = [];
   let blogRoutes: MetadataRoute.Sitemap = [];
 
   // Slugs already pinned in staticRoutes — skip in dynamic to avoid duplicates
@@ -93,7 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       }));
 
-    const { data: vendors } = await vendorRepository.findMany({});
+    const { data: vendors } = await vendorRepository.findMany({ where: { status: 'PUBLISHED' } });
 
     vendorRoutes = vendors.map(vendor => ({
       url: `${BASE_URL}/vendors/${vendor.slug}`,
@@ -102,12 +101,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-    portfolioRoutes = vendors.map(vendor => ({
-      url: `${BASE_URL}/portfolio/${vendor.slug}`,
-      lastModified: vendor.updatedAt ?? STATIC_LAST_MODIFIED,
-      changeFrequency: 'weekly',
-      priority: 0.6,
-    }));
+    // /portfolio/[slug] deliberately omitted — same vendor entity/content as
+    // /vendors/[slug] (that page's own canonical now points there, see
+    // app/portfolio/[id]/page.tsx), and it's not a browsable page (no
+    // internal link anywhere in the app points to it; it's an admin-
+    // generated shareable link, copied via AdminClient's "copy portfolio
+    // link"). Submitting a non-canonical URL in the sitemap sends a mixed
+    // signal to search engines, so it's excluded rather than duplicated.
 
     const { data: blogs } = await blogRepository.findMany({ where: { status: 'PUBLISHED' } });
 
@@ -123,5 +123,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Sitemap generation error:', err);
   }
 
-  return [...cityCategoryRoutes, ...biharCityRoutes, ...biharCityCategoryRoutes, ...staticRoutes, ...categoryRoutes, ...vendorRoutes, ...portfolioRoutes, ...blogRoutes];
+  return [...cityCategoryRoutes, ...biharCityRoutes, ...biharCityCategoryRoutes, ...staticRoutes, ...categoryRoutes, ...vendorRoutes, ...blogRoutes];
 }
