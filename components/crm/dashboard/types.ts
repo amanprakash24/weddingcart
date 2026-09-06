@@ -12,7 +12,15 @@ export interface FounderDashboard {
     invoicedThisMonth: { count: number; total: number };
     paymentsToday: number;
   };
-  commission: { confirmed: number; pendingWeddings: number };
+  commission: {
+    confirmed: number;
+    pendingWeddings: number;
+    expected: number;
+    outstandingPayoutAmount: number;
+    pendingPayoutCount: number;
+    grossMargin: number;
+  };
+  revenueByMonth: { month: string; total: number }[];
   pipelineHealth: { newThisWeek: number; convertedThisWeek: number; lostThisWeek: number; onHold: number };
   velocity: { stage: PipelineStage; avgDays: number | null; sampleSize: number }[];
   vendorAvailability: { date: string; categories: { category: string; counts: Record<string, number> }[] };
