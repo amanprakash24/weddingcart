@@ -69,18 +69,40 @@ async function countAcrossAll(where: SubjectCountWhere): Promise<number> {
 // Sprint 7.4 — `Invoice.amountPaid` is a Phase A stored column that every
 // other Wedding OS code path (weddingWorkspace.service.ts, payment.service.ts)
 // already treats as superseded by computed-on-read Payment sums. This was
-// the one holdout still trusting it; fixed to match.
-async function getRevenue(): Promise<FounderDashboard['revenue']> {
+// the one holdout still trusting it; fixed to match — for wedding-linked
+// invoices. Standalone invoices (weddingId: null — the legacy/admin
+// `/api/invoices` path, still actively used by AdminClient.tsx) are the
+// opposite case: no Razorpay payment-link route exists for them, so they
+// never get a Payment row at all. `amountPaid` is their only source of
+// truth, manually maintained and bounds-checked at write time
+// (invoice.service.ts's create()/update()) — falling back to it here (rather
+// than trusting Payment rows universally) avoids silently zeroing out a
+// real, manually-recorded balance. Same paidAmount() split as
+// commandCenter.service.ts.
+//
+// paymentsToday/getRevenueByMonth (below) stay Payment-only, deliberately:
+// both are inherently about *when* a transaction happened, and a standalone
+// invoice's amountPaid has no transaction date at all (Invoice has no
+// "paid at" column, only createdAt/updatedAt, and updatedAt bumps on any
+// field edit, not specifically an amountPaid change) — there's no reliable
+// month/day to attribute it to, so folding it in would misattribute it
+// rather than fix anything. This is a known, accepted gap for those two
+// metrics specifically, not an oversight.
+// Exported (unlike this file's other section-getters) specifically so it's
+// independently unit-testable without mocking every other section's Prisma
+// calls — see founderDashboard.service.test.ts.
+export async function getRevenue(): Promise<FounderDashboard['revenue']> {
   const now = new Date();
-  const [totalAgg, outstandingPaidAgg, collectedAgg, monthAgg, paymentsTodayAgg] = await Promise.all([
-    prisma.invoice.aggregate({ where: { status: { notIn: ['DRAFT', 'PAID'] } }, _sum: { total: true } }),
-    prisma.payment.aggregate({
-      where: { status: 'SUCCESS', invoice: { status: { notIn: ['DRAFT', 'PAID'] } } },
-      _sum: { amount: true },
-    }),
-    prisma.payment.aggregate({
-      where: { status: 'SUCCESS', invoice: { status: { not: 'DRAFT' } } },
-      _sum: { amount: true },
+  const [invoices, monthAgg, paymentsTodayAgg] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { status: { not: 'DRAFT' } },
+      select: {
+        status: true,
+        total: true,
+        amountPaid: true,
+        weddingId: true,
+        payments: { where: { status: 'SUCCESS' }, select: { amount: true } },
+      },
     }),
     prisma.invoice.aggregate({
       where: { status: { not: 'DRAFT' }, createdAt: { gte: startOfMonth(now) } },
@@ -90,9 +112,17 @@ async function getRevenue(): Promise<FounderDashboard['revenue']> {
     prisma.payment.aggregate({ where: { paidAt: { gte: startOfDay(now) }, status: 'SUCCESS' }, _sum: { amount: true } }),
   ]);
 
+  const paid = (invoice: (typeof invoices)[number]): number =>
+    invoice.weddingId === null ? invoice.amountPaid : invoice.payments.reduce((sum, p) => sum + p.amount, 0);
+
+  const nonPaidInvoices = invoices.filter((inv) => inv.status !== 'PAID');
+  const outstandingTotal = nonPaidInvoices.reduce((sum, inv) => sum + inv.total, 0);
+  const outstandingPaid = nonPaidInvoices.reduce((sum, inv) => sum + paid(inv), 0);
+  const totalCollected = invoices.reduce((sum, inv) => sum + paid(inv), 0);
+
   return {
-    outstanding: (totalAgg._sum.total ?? 0) - (outstandingPaidAgg._sum.amount ?? 0),
-    totalCollected: collectedAgg._sum.amount ?? 0,
+    outstanding: outstandingTotal - outstandingPaid,
+    totalCollected,
     invoicedThisMonth: { count: monthAgg._count, total: monthAgg._sum.total ?? 0 },
     paymentsToday: paymentsTodayAgg._sum.amount ?? 0,
   };
