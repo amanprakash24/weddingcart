@@ -20,15 +20,22 @@ function dateValue(value: Date): string {
 }
 
 // `Invoice.amountPaid` is a Phase A stored column, only ever written at
-// manual invoice create/update time — the real Razorpay payment flow
-// (payment.service.ts) never touches it, so it goes stale the moment a real
-// partial payment comes in via a payment link. Same fix as
-// founderDashboard.service.ts's getRevenue() (Sprint 7.4): compute the paid
-// amount live from successful Payment rows instead. Filtered at the query
-// level (not in JS) since the `payments` relation is selected fresh here
-// rather than reused from a shared repository shape.
-type InvoiceWithSuccessfulPayments = { total: number; payments: { amount: number }[] };
+// manual invoice create/update time. For wedding-linked invoices, the real
+// Razorpay payment flow (payment.service.ts) never touches it, so it goes
+// stale the moment a real partial payment comes in via a payment link — same
+// fix as founderDashboard.service.ts's getRevenue() (Sprint 7.4): compute the
+// paid amount live from successful Payment rows instead.
+//
+// Standalone invoices (weddingId: null — the legacy/admin `/api/invoices`
+// path, still actively used by AdminClient.tsx) are the opposite case: no
+// Razorpay payment-link route exists for them, so they never get a Payment
+// row at all. `amountPaid` is their only source of truth, manually maintained
+// and bounds-checked at write time (invoice.service.ts's create()/update()).
+// Falling back to it here (rather than trusting Payment rows universally)
+// avoids silently zeroing out a real, manually-recorded balance.
+type InvoiceWithSuccessfulPayments = { total: number; amountPaid: number; weddingId: string | null; payments: { amount: number }[] };
 function paidAmount(invoice: InvoiceWithSuccessfulPayments): number {
+  if (invoice.weddingId === null) return invoice.amountPaid;
   return invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
 }
 
@@ -143,7 +150,12 @@ export const commandCenterService = {
       }),
       prisma.invoice.findMany({
         where: { status: { not: 'DRAFT' } },
-        select: { total: true, payments: { where: { status: 'SUCCESS' }, select: { amount: true } } },
+        select: {
+          total: true,
+          amountPaid: true,
+          weddingId: true,
+          payments: { where: { status: 'SUCCESS' }, select: { amount: true } },
+        },
       }),
       prisma.invoice.findMany({
         where: { status: { notIn: ['DRAFT', 'PAID'] } },
@@ -153,6 +165,8 @@ export const commandCenterService = {
           clientName: true,
           invoiceNumber: true,
           total: true,
+          amountPaid: true,
+          weddingId: true,
           payments: { where: { status: 'SUCCESS' }, select: { amount: true } },
           paymentLinks: { where: { status: 'CREATED' }, orderBy: { expiresAt: 'asc' }, take: 1, select: { expiresAt: true } },
         },

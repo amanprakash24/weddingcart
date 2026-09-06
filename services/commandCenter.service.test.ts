@@ -13,6 +13,8 @@ interface FixtureInvoice {
   id: string;
   status: 'DRAFT' | 'SENT' | 'PAID';
   total: number;
+  amountPaid: number;
+  weddingId: string | null;
   clientName: string;
   invoiceNumber: string;
   payments: { status: 'SUCCESS' | 'FAILED'; amount: number }[];
@@ -31,6 +33,8 @@ function makeInvoiceFindMany(fixtures: FixtureInvoice[]) {
       clientName: inv.clientName,
       invoiceNumber: inv.invoiceNumber,
       total: inv.total,
+      amountPaid: inv.amountPaid,
+      weddingId: inv.weddingId,
       payments: inv.payments.filter((p) => p.status === 'SUCCESS').map((p) => ({ amount: p.amount })),
       paymentLinks: [] as { expiresAt: Date }[],
     }));
@@ -57,13 +61,15 @@ async function loadServiceWith(fixtures: FixtureInvoice[]) {
   return commandCenterService;
 }
 
-describe('commandCenterService.getDashboard — finance (live Payment rows, not stale amountPaid)', () => {
-  test('excludes an invoice from duePayments once successful Payments cover it in full, even if status has not flipped to PAID yet', async () => {
+describe('commandCenterService.getDashboard — finance (live Payment rows for wedding-linked invoices, Invoice.amountPaid for standalone ones)', () => {
+  test('excludes a wedding-linked invoice from duePayments once successful Payments cover it in full, even if status has not flipped to PAID yet', async () => {
     const fixtures: FixtureInvoice[] = [
       {
         id: 'inv-lagging',
         status: 'SENT', // status hasn't caught up to PAID — this is the exact bug this fix targets
         total: 6000,
+        amountPaid: 0, // stale/never-written for a wedding-linked invoice — must be ignored
+        weddingId: 'wedding-1',
         clientName: 'Lagging Client',
         invoiceNumber: 'INV-LAG',
         payments: [{ status: 'SUCCESS', amount: 6000 }],
@@ -77,12 +83,14 @@ describe('commandCenterService.getDashboard — finance (live Payment rows, not 
     expect(dashboard.finance.outstanding).toBe(0);
   });
 
-  test('computes outstanding/duePayments correctly across unpaid, partially paid, and multiple-payment invoices, ignoring non-SUCCESS payments', async () => {
+  test('computes outstanding/duePayments correctly across unpaid, partially paid, and multiple-payment wedding-linked invoices, ignoring non-SUCCESS payments', async () => {
     const fixtures: FixtureInvoice[] = [
       {
         id: 'inv-partial',
         status: 'SENT',
         total: 10000,
+        amountPaid: 0,
+        weddingId: 'wedding-1',
         clientName: 'Partial Client',
         invoiceNumber: 'INV-A',
         payments: [{ status: 'SUCCESS', amount: 4000 }],
@@ -91,6 +99,8 @@ describe('commandCenterService.getDashboard — finance (live Payment rows, not 
         id: 'inv-paid',
         status: 'PAID', // excluded from duePayments by status; contributes 0 to outstanding
         total: 5000,
+        amountPaid: 0,
+        weddingId: 'wedding-1',
         clientName: 'Paid Client',
         invoiceNumber: 'INV-B',
         payments: [{ status: 'SUCCESS', amount: 5000 }],
@@ -99,6 +109,8 @@ describe('commandCenterService.getDashboard — finance (live Payment rows, not 
         id: 'inv-unpaid',
         status: 'SENT',
         total: 8000,
+        amountPaid: 0,
+        weddingId: 'wedding-1',
         clientName: 'Unpaid Client',
         invoiceNumber: 'INV-C',
         payments: [],
@@ -107,6 +119,8 @@ describe('commandCenterService.getDashboard — finance (live Payment rows, not 
         id: 'inv-multi',
         status: 'SENT',
         total: 12000,
+        amountPaid: 0,
+        weddingId: 'wedding-1',
         clientName: 'Multi Payment Client',
         invoiceNumber: 'INV-D',
         payments: [
@@ -119,6 +133,8 @@ describe('commandCenterService.getDashboard — finance (live Payment rows, not 
         id: 'inv-draft',
         status: 'DRAFT', // must never appear in either figure
         total: 99999,
+        amountPaid: 0,
+        weddingId: 'wedding-1',
         clientName: 'Draft Client',
         invoiceNumber: 'INV-DRAFT',
         payments: [],
@@ -139,5 +155,60 @@ describe('commandCenterService.getDashboard — finance (live Payment rows, not 
     expect(byInvoiceNumber['INV-D']).toBe(5000); // FAILED payment correctly excluded from the paid sum
     expect(byInvoiceNumber['INV-B']).toBeUndefined();
     expect(byInvoiceNumber['INV-DRAFT']).toBeUndefined();
+  });
+
+  test('respects Invoice.amountPaid for a standalone invoice with zero Payment rows, while a wedding-linked invoice in the same batch still uses its Payment sum', async () => {
+    const fixtures: FixtureInvoice[] = [
+      {
+        id: 'inv-standalone',
+        status: 'SENT',
+        total: 10000,
+        amountPaid: 4000, // the only source of truth for this invoice — no Payment rows exist for it
+        weddingId: null, // legacy/admin invoice, created via /api/invoices — no Razorpay integration
+        clientName: 'Standalone Client',
+        invoiceNumber: 'INV-STANDALONE',
+        payments: [],
+      },
+      {
+        id: 'inv-wedding',
+        status: 'SENT',
+        total: 8000,
+        amountPaid: 0, // stale/never-written — must be ignored in favor of the real Payment row below
+        weddingId: 'wedding-1',
+        clientName: 'Wedding Client',
+        invoiceNumber: 'INV-WEDDING',
+        payments: [{ status: 'SUCCESS', amount: 3000 }],
+      },
+    ];
+    const commandCenterService = await loadServiceWith(fixtures);
+    const dashboard = await commandCenterService.getDashboard();
+
+    // outstanding: (10000-4000) + (8000-3000) = 6000 + 5000
+    expect(dashboard.finance.outstanding).toBe(11000);
+    expect(dashboard.today.paymentsDue).toBe(2);
+    const byInvoiceNumber = Object.fromEntries(dashboard.finance.duePayments.map((d) => [d.invoiceNumber, d.amount]));
+    expect(byInvoiceNumber['INV-STANDALONE']).toBe(6000); // respects amountPaid, not the empty Payment array
+    expect(byInvoiceNumber['INV-WEDDING']).toBe(5000); // respects the Payment sum, not the stale amountPaid=0
+  });
+
+  test('treats a fully-paid-via-amountPaid standalone invoice as settled even though it has zero Payment rows', async () => {
+    const fixtures: FixtureInvoice[] = [
+      {
+        id: 'inv-standalone-paid',
+        status: 'SENT', // admin never flipped status to PAID, but amountPaid already covers the total
+        total: 5000,
+        amountPaid: 5000,
+        weddingId: null,
+        clientName: 'Fully Paid Standalone Client',
+        invoiceNumber: 'INV-STANDALONE-PAID',
+        payments: [],
+      },
+    ];
+    const commandCenterService = await loadServiceWith(fixtures);
+    const dashboard = await commandCenterService.getDashboard();
+
+    expect(dashboard.today.paymentsDue).toBe(0);
+    expect(dashboard.finance.duePayments).toHaveLength(0);
+    expect(dashboard.finance.outstanding).toBe(0);
   });
 });
