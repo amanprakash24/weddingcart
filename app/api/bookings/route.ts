@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingService } from '@/services/booking.service';
 import { requireAdmin } from '@/lib/adminAuth';
+import { handleApiError } from '@/lib/errors';
+import { bookingCreateSchema } from './schema';
 import type { Booking } from '@/generated/prisma/client';
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
@@ -26,14 +28,10 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { name, phone, city, items, total } = body;
-
+    const { name, phone, city, items, total } = bookingCreateSchema.parse(await req.json());
     const booking = await bookingService.create({ name, phone, city, items, total });
-
     return NextResponse.json({ success: true, data: toResponseShape(booking) }, { status: 201 });
   } catch (err) {
-    console.error('POST /api/bookings failed:', err);
-    return NextResponse.json({ success: false, error: 'Failed to create booking' }, { status: 500 });
+    return handleApiError(err);
   }
 }
