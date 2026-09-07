@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
+import { buildSecurityHeaders } from "./lib/securityHeaders";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  // Security-hardening audit finding (P2) — no security headers were
+  // configured anywhere (this file had no headers() block, proxy.ts only
+  // does auth redirects). Applied to every route via the catch-all source,
+  // same as this app has no per-route header needs today.
+  async headers() {
+    return [{ source: '/:path*', headers: buildSecurityHeaders(process.env.NODE_ENV) }];
+  },
   async redirects() {
     return [
       {
