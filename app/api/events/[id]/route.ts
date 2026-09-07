@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
 import { eventService } from '@/services/event.service';
+import { handleApiError } from '@/lib/errors';
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,9 +41,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     return NextResponse.json({ success: true, data: event });
   } catch (error) {
-    console.error('PUT /api/events/[id] failed:', error);
-    const message = error instanceof Error ? error.message : 'Failed to update event';
-    return NextResponse.json({ success: false, error: message }, { status: 400 });
+    return handleApiError(error);
   }
 }
 
