@@ -2,7 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { consultationService } from '@/services/consultation.service';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { requireAdmin } from '@/lib/adminAuth';
+import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import type { Consultation, ConsultationStatus } from '@/generated/prisma/client';
+
+// Public, unauthenticated POST that sends a WhatsApp message to the admin's
+// own phone on every submission — unthrottled, this is spammable for real
+// messaging cost/harassment (audit finding). Namespaced so these throttle
+// records stay distinguishable from real login/OTP identifiers sharing the
+// same table (lib/auth/rateLimit.ts).
+const RATE_LIMIT_PREFIX = 'consultation:';
+
+function clientIp(req: NextRequest): string {
+  // Vercel sets x-forwarded-for; first entry is the original client.
+  const forwarded = req.headers.get('x-forwarded-for');
+  return forwarded?.split(',')[0]?.trim() || 'unknown';
+}
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
 // ('new'/'contacted'/'closed', Prisma's ConsultationStatus enum is
@@ -163,6 +177,15 @@ function buildUserMessage(data: Record<string, unknown>, expertName: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
+    if (await isRequestRateLimited(rateLimitId)) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
+    }
+    await recordRequest(rateLimitId);
+
     const body = await req.json();
 
     // Whitelist fields — prevent injecting status or other admin-controlled fields.
