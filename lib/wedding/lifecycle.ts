@@ -1,5 +1,5 @@
 import type { Prisma } from '@/generated/prisma/client';
-import type { WeddingStatus } from '@/generated/prisma/enums';
+import type { WeddingStatus, VendorBookingStatus } from '@/generated/prisma/enums';
 import { weddingRepository } from '@/repositories/wedding.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 
@@ -44,4 +44,29 @@ export async function maybeActivateWedding(weddingId: string, tx: Tx): Promise<v
     },
     tx
   );
+}
+
+// Production-integrity fix — only the 3 transitions currently exercised by
+// the real product workflow (components/wedding/workspace/WeddingEvents.tsx's
+// Confirm/Decline/Mark Completed buttons; verified against every actual
+// VendorBooking status write in the codebase before adding this) are
+// authorized here. DECLINED/CANCELLED/COMPLETED/CUSTOMER_APPROVAL_PENDING are
+// deliberately terminal in this matrix — not because the business will never
+// need e.g. a decline-retry or cancel flow, but because those are
+// undesigned future product decisions: CANCELLED has no UI trigger anywhere
+// today, and CUSTOMER_APPROVAL_PENDING's entire feature is an explicitly
+// undecided founder question (docs/wedding-os/05-customer-portal.md §3,
+// "flag for the founder rather than assume"). Widen this matrix only once
+// that workflow is deliberately designed, not preemptively.
+export const VENDOR_BOOKING_STATUS_TRANSITIONS: Record<VendorBookingStatus, VendorBookingStatus[]> = {
+  PENDING_VENDOR_CONFIRMATION: ['CONFIRMED', 'DECLINED'],
+  CONFIRMED: ['COMPLETED'],
+  DECLINED: [],
+  CUSTOMER_APPROVAL_PENDING: [],
+  CANCELLED: [],
+  COMPLETED: [],
+};
+
+export function canTransitionVendorBooking(from: VendorBookingStatus, to: VendorBookingStatus): boolean {
+  return VENDOR_BOOKING_STATUS_TRANSITIONS[from].includes(to);
 }

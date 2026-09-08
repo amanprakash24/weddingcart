@@ -12,7 +12,7 @@ import { documentRepository } from '@/repositories/document.repository';
 import { invoiceRepository } from '@/repositories/invoice.repository';
 import { payoutRepository } from '@/repositories/payout.repository';
 import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
-import { canTransitionWedding, maybeActivateWedding } from '@/lib/wedding/lifecycle';
+import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
 import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
 import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus, type PayoutStatus } from '@/generated/prisma/enums';
 import type { Wedding, Task, ActivityLog, Document, TimelineMilestone, Prisma } from '@/generated/prisma/client';
@@ -426,6 +426,10 @@ export const weddingWorkspaceService = {
     if (!vendorBooking) throw new NotFoundError('VendorBooking', vendorBookingId);
     const event = await weddingEventRepository.findById(vendorBooking.weddingEventId);
     if (!event || event.weddingId !== weddingId) throw new NotFoundError('VendorBooking', vendorBookingId);
+
+    if (!canTransitionVendorBooking(vendorBooking.status, status)) {
+      throw new InvalidTransitionError(`Cannot move a vendor booking from ${vendorBooking.status} to ${status}`);
+    }
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const updated = await vendorBookingRepository.update(
