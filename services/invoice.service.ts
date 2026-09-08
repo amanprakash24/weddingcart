@@ -119,6 +119,22 @@ export const invoiceService = {
       }
     }
 
+    // status: 'PAID' is read directly into company-wide revenue figures
+    // (founderDashboard/commandCenter services treat PAID invoices as fully
+    // collected and exclude them from outstanding balances) — so it must
+    // never be settable independent of whether amountPaid actually reflects
+    // full payment. Uses the same "resulting value, new or existing" pattern
+    // as the amountPaid bounds check above.
+    if (data.status === 'PAID') {
+      const resultingAmountPaid = amountPaid !== undefined ? amountPaid : existing.amountPaid;
+      const resultingTotal = typeof data.total === 'number' ? data.total : existing.total;
+      if (resultingAmountPaid < resultingTotal) {
+        throw new InvalidTransitionError(
+          `Cannot mark invoice PAID: amountPaid (${resultingAmountPaid}) is less than the invoice total (${resultingTotal})`
+        );
+      }
+    }
+
     return prisma.$transaction(async (tx) => {
       if (items) {
         await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
