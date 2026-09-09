@@ -1,5 +1,5 @@
 import type { Prisma } from '@/generated/prisma/client';
-import type { WeddingStatus, VendorBookingStatus } from '@/generated/prisma/enums';
+import type { WeddingStatus, VendorBookingStatus, VenueBookingStatus } from '@/generated/prisma/enums';
 import { weddingRepository } from '@/repositories/wedding.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 
@@ -69,4 +69,30 @@ export const VENDOR_BOOKING_STATUS_TRANSITIONS: Record<VendorBookingStatus, Vend
 
 export function canTransitionVendorBooking(from: VendorBookingStatus, to: VendorBookingStatus): boolean {
   return VENDOR_BOOKING_STATUS_TRANSITIONS[from].includes(to);
+}
+
+// venueStatus is a separate field from VendorBooking.status above — a
+// vendor-portal-only physical-setup checklist (services/venuePortal.service
+// .ts, components/VenuePortalClient.tsx) with no other reader or writer
+// anywhere in the codebase (no payout gating, no coordinator/admin/customer
+// visibility). Unlike VENDOR_BOOKING_STATUS_TRANSITIONS above, there's no
+// per-action UI (no distinct Confirm/Decline/Mark Completed-style buttons)
+// and no design doc to verify specific transitions against — the only
+// concrete product evidence is the dropdown's own fixed, consistently-used
+// ordering (VenuePortalClient.tsx's `statuses` array), which encodes a
+// linear physical-setup progression. So this matrix enforces exactly that
+// ordering — one step forward at a time, no skipping, no backward moves —
+// and nothing more speculative (e.g. gating on VendorBooking.status, or
+// allowing corrective backward moves) since neither is evidenced by any
+// current product behavior.
+export const VENUE_BOOKING_STATUS_TRANSITIONS: Record<VenueBookingStatus, VenueBookingStatus[]> = {
+  PENDING: ['READY_FOR_SETUP'],
+  READY_FOR_SETUP: ['SETUP_IN_PROGRESS'],
+  SETUP_IN_PROGRESS: ['READY'],
+  READY: ['COMPLETED'],
+  COMPLETED: [],
+};
+
+export function canTransitionVenueBooking(from: VenueBookingStatus, to: VenueBookingStatus): boolean {
+  return VENUE_BOOKING_STATUS_TRANSITIONS[from].includes(to);
 }

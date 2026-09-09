@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
-import { NotFoundError } from '@/lib/errors';
+import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
 import { VenueBookingStatus } from '@/generated/prisma/enums';
+import { canTransitionVenueBooking } from '@/lib/wedding/lifecycle';
 
 async function vendorForUser(userId: string) {
   const profile = await prisma.vendorProfile.findUnique({
@@ -84,6 +85,11 @@ export const venuePortalService = {
     const profile = await vendorForUser(userId);
     const booking = await prisma.vendorBooking.findFirst({ where: { id: bookingId, vendorId: profile.vendorId } });
     if (!booking) throw new NotFoundError('Venue booking', bookingId);
+
+    if (!canTransitionVenueBooking(booking.venueStatus, venueStatus)) {
+      throw new InvalidTransitionError(`Cannot move venue status from ${booking.venueStatus} to ${venueStatus}`);
+    }
+
     return prisma.vendorBooking.update({ where: { id: bookingId }, data: { venueStatus } });
   },
 };
