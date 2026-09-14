@@ -1,9 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { vendorApplicationService } from '@/services/vendorApplication.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
+import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import type { VendorApplicationWithCategory } from '@/repositories/vendorApplication.repository';
 import type { ApplicationStatus } from '@/generated/prisma/client';
+
+// Public, unauthenticated POST with previously zero rate limiting or
+// validation (audit finding) — reuses the exact throttle mechanism and
+// namespacing convention already shipped for /api/consultations and
+// /api/events/[id]/orders rather than inventing a new one.
+const RATE_LIMIT_PREFIX = 'vendor-application:';
+
+function clientIp(req: NextRequest): string {
+  // Vercel sets x-forwarded-for; first entry is the original client.
+  const forwarded = req.headers.get('x-forwarded-for');
+  return forwarded?.split(',')[0]?.trim() || 'unknown';
+}
+
+// ownerPhone reuses the /^\d{10}$/ convention already established at
+// app/api/otp/send/route.ts. `category` is the exact field name the live
+// frontend (components/VendorOnboardingClient.tsx) submits — it holds a
+// Category id (the underlying DB column is named categoryId; see
+// prisma/schema.prisma's VendorApplication model), validated here for
+// non-emptiness only — the existing category-existence check
+// (NotFoundError, vendorApplicationService.create()) is untouched.
+// ownerEmail is optional/blank-tolerant, matching the guests-route and
+// event-order conventions, even though the live form currently marks it
+// required client-side — this only widens what a direct API caller may
+// send, it doesn't change the form's behavior. portfolioImages/
+// foodMenuImages are capped well above the live form's own usage (3 and 2
+// respectively) as a bound on unbounded input, not a hard-coded exact
+// count — nothing here asks for that as a business rule.
+const schema = z.object({
+  businessName: z.string().trim().min(1),
+  ownerName: z.string().trim().min(1),
+  ownerPhone: z.string().regex(/^\d{10}$/, 'Invalid phone number'),
+  ownerEmail: z.string().trim().email().optional().or(z.literal('')),
+  category: z.string().trim().min(1),
+  city: z.string().trim().min(1),
+  priceMin: z.coerce.number().int().min(0).optional(),
+  priceMax: z.coerce.number().int().min(0).optional(),
+  experience: z.string().trim().optional(),
+  description: z.string().trim().optional(),
+  instagram: z.string().trim().optional(),
+  website: z.string().trim().optional(),
+  coverImage: z.string().trim().url().optional().or(z.literal('')),
+  portfolioImages: z.array(z.string().trim().url()).max(10).optional(),
+  foodMenuImages: z.array(z.string().trim().url()).max(5).optional(),
+});
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
 // ('new'/'approved'/'rejected', Prisma's ApplicationStatus enum is
@@ -43,21 +89,37 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
+    if (await isRequestRateLimited(rateLimitId)) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
+    }
+    await recordRequest(rateLimitId);
 
-    // Whitelist fields — prevent injecting status or vendorId
-    const {
-      businessName, ownerName, ownerPhone, ownerEmail,
-      category, city, priceMin, priceMax,
-      experience, description, instagram, website,
-      coverImage, portfolioImages, foodMenuImages,
-    } = body;
+    const body = await req.json();
+    // Whitelist + shape-validate fields — prevents injecting status or
+    // vendorId (same whitelist intent as before) and now also rejects a
+    // malformed payload before it ever reaches the service/database.
+    const parsed = schema.parse(body);
 
     const application = await vendorApplicationService.create({
-      businessName, ownerName, ownerPhone, ownerEmail,
-      category, city, priceMin, priceMax,
-      experience, description, instagram, website,
-      coverImage, portfolioImages, foodMenuImages,
+      businessName: parsed.businessName,
+      ownerName: parsed.ownerName,
+      ownerPhone: parsed.ownerPhone,
+      ownerEmail: parsed.ownerEmail ?? '',
+      category: parsed.category,
+      city: parsed.city,
+      priceMin: parsed.priceMin,
+      priceMax: parsed.priceMax,
+      experience: parsed.experience,
+      description: parsed.description,
+      instagram: parsed.instagram,
+      website: parsed.website,
+      coverImage: parsed.coverImage,
+      portfolioImages: parsed.portfolioImages,
+      foodMenuImages: parsed.foodMenuImages,
     });
 
     return NextResponse.json({ success: true, data: toResponseShape(application) }, { status: 201 });
