@@ -1866,6 +1866,14 @@ export default function AdminClient() {
                         ))}
                       </div>
                     </div>
+                    {b.wedding?.id && (
+                      <a
+                        href={`/admin/weddings/${b.wedding.id}`}
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:underline"
+                      >
+                        Open Wedding Workspace →
+                      </a>
+                    )}
                   </div>
                 );
               })}
