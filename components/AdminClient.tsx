@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText, Link2, Receipt, Printer, Mail, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -85,6 +85,19 @@ function ImageUploadField({
 type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings' | 'outside-vendors' | 'leads' | 'invoices';
 
 interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number; }
+
+// A "—" placeholder (never a bare 0) only when the dashboard's stats fetch
+// has failed AND never succeeded at all this session — a failed refresh must
+// never be indistinguishable from a real, verified-empty count. If stats
+// loaded successfully before and only a later refresh failed, the last real
+// number is shown instead of blanking it — real (if slightly stale) data,
+// not a fake 0. Extracted as a pure function so the decision itself is
+// covered by a plain unit test, without pulling in component-test tooling
+// this codebase doesn't otherwise use.
+export function dashboardStatValue(hasError: boolean, hasStats: boolean, value: number | undefined): number | string {
+  if (hasError && !hasStats) return '—';
+  return value ?? 0;
+}
 interface InvoiceItemForm {
   description: string;
   customDescription: string;
@@ -144,6 +157,15 @@ export default function AdminClient() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
+  // Tracks a failed GET /api/stats specifically (separate from the other 8
+  // fetchAll() requests) — without this, a failed stats fetch silently
+  // leaves `stats` unset and every dashboard card falls back to `0`,
+  // indistinguishable from a real, verified-empty count (production
+  // integrity finding: intermittent Postgres connection-pool contention
+  // under fetchAll()'s 9-way simultaneous request burst, see stats.service
+  // .ts's 12-query Promise.all). This only changes what's displayed when a
+  // fetch fails — it does not touch the connection pool or query pattern.
+  const [statsError, setStatsError] = useState(false);
   const [vendors, setVendors] = useState<AnyRecord[]>([]);
   const [categories, setCategories] = useState<AnyRecord[]>([]);
   const [enquiries, setEnquiries] = useState<AnyRecord[]>([]);
@@ -222,7 +244,12 @@ export default function AdminClient() {
         fetch('/api/invoices'),
       ]);
       const [s, v, c, e, con, b, app, l, inv] = await Promise.all([sRes.json(), vRes.json(), cRes.json(), eRes.json(), conRes.json(), bRes.json(), appRes.json(), lRes.json(), invRes.json()]);
-      if (s.success) setStats(s.data);
+      // Stats gets its own explicit success/failure branch (the other 8
+      // requests already only update their own state on success, leaving
+      // prior data in place on failure — stats needs the same, plus a
+      // visible signal, since its 6 summary cards silently read `|| 0` when
+      // `stats` is unset).
+      if (s.success) { setStats(s.data); setStatsError(false); } else { setStatsError(true); }
       if (v.success) setVendors(v.data);
       if (c.success) setCategories(c.data);
       if (e.success) setEnquiries(e.data);
@@ -739,6 +766,25 @@ export default function AdminClient() {
           {/* DASHBOARD */}
           {tab === 'dashboard' && (
             <div>
+              {/* Stats failed to load this refresh — the summary cards below
+                  fall back to a "—" placeholder, never a bare 0, so a failed
+                  fetch can never be misread as a verified-empty count. */}
+              {statsError && (
+                <div className="w-full mb-5 flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
+                  <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-red-800 text-sm">Dashboard stats failed to load</p>
+                    <p className="text-red-600 text-xs mt-0.5">The counts below are not real data — this is a failed refresh, not a verified 0.</p>
+                  </div>
+                  <button
+                    onClick={fetchAll}
+                    className="text-xs font-semibold text-red-700 border border-red-300 rounded-lg px-3 py-1.5 hover:bg-red-100 flex-shrink-0"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
               {/* Notification banner for pending vendor applications */}
               {(stats?.newOutsideVendors ?? 0) > 0 && (
                 <button
@@ -772,13 +818,13 @@ export default function AdminClient() {
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
-                  { label: 'Total Vendors',  value: stats?.vendors || 0,       icon: Briefcase,    color: 'bg-blue-500',   tab: 'vendors' as Tab },
-                  { label: 'Categories',     value: stats?.categories || 0,    icon: Tag,          color: 'bg-purple-500', tab: 'categories' as Tab },
-                  { label: 'Enquiries',      value: stats?.enquiries || 0,     icon: MessageSquare,color: 'bg-amber-500',  tab: 'enquiries' as Tab,     sub: stats?.newEnquiries ? `${stats.newEnquiries} new` : undefined },
-                  { label: 'Consultations',  value: stats?.consultations || 0, icon: Phone,        color: 'bg-rose-500',   tab: 'consultations' as Tab, sub: stats?.newConsultations ? `${stats.newConsultations} new` : undefined },
-                  { label: 'Bookings',       value: stats?.bookings || 0,      icon: BookOpen,     color: 'bg-teal-500',   tab: 'bookings' as Tab,      sub: stats?.newBookings ? `${stats.newBookings} new` : undefined },
-                  { label: 'Outside Vendors', value: stats?.outsideVendors || 0, icon: Users,      color: 'bg-indigo-500', tab: 'outside-vendors' as Tab, sub: stats?.newOutsideVendors ? `${stats.newOutsideVendors} new` : undefined },
-                  { label: 'Leads Captured', value: stats?.leads || 0,         icon: Phone,        color: 'bg-green-500',  tab: 'leads' as Tab },
+                  { label: 'Total Vendors',  value: dashboardStatValue(statsError, !!stats, stats?.vendors),       icon: Briefcase,    color: 'bg-blue-500',   tab: 'vendors' as Tab },
+                  { label: 'Categories',     value: dashboardStatValue(statsError, !!stats, stats?.categories),    icon: Tag,          color: 'bg-purple-500', tab: 'categories' as Tab },
+                  { label: 'Enquiries',      value: dashboardStatValue(statsError, !!stats, stats?.enquiries),     icon: MessageSquare,color: 'bg-amber-500',  tab: 'enquiries' as Tab,     sub: stats?.newEnquiries ? `${stats.newEnquiries} new` : undefined },
+                  { label: 'Consultations',  value: dashboardStatValue(statsError, !!stats, stats?.consultations), icon: Phone,        color: 'bg-rose-500',   tab: 'consultations' as Tab, sub: stats?.newConsultations ? `${stats.newConsultations} new` : undefined },
+                  { label: 'Bookings',       value: dashboardStatValue(statsError, !!stats, stats?.bookings),      icon: BookOpen,     color: 'bg-teal-500',   tab: 'bookings' as Tab,      sub: stats?.newBookings ? `${stats.newBookings} new` : undefined },
+                  { label: 'Outside Vendors', value: dashboardStatValue(statsError, !!stats, stats?.outsideVendors), icon: Users,      color: 'bg-indigo-500', tab: 'outside-vendors' as Tab, sub: stats?.newOutsideVendors ? `${stats.newOutsideVendors} new` : undefined },
+                  { label: 'Leads Captured', value: dashboardStatValue(statsError, !!stats, stats?.leads),         icon: Phone,        color: 'bg-green-500',  tab: 'leads' as Tab },
                   { label: 'Invoices',       value: invoices.length,           icon: Receipt,      color: 'bg-orange-500', tab: 'invoices' as Tab },
                 ].map(({ label, value, icon: Icon, color, tab: targetTab, sub }) => (
                   <button
