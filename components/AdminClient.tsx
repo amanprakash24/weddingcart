@@ -86,17 +86,34 @@ type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'specia
 
 interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number; }
 
-// A "—" placeholder (never a bare 0) only when the dashboard's stats fetch
-// has failed AND never succeeded at all this session — a failed refresh must
-// never be indistinguishable from a real, verified-empty count. If stats
-// loaded successfully before and only a later refresh failed, the last real
-// number is shown instead of blanking it — real (if slightly stale) data,
-// not a fake 0. Extracted as a pure function so the decision itself is
-// covered by a plain unit test, without pulling in component-test tooling
-// this codebase doesn't otherwise use.
-export function dashboardStatValue(hasError: boolean, hasStats: boolean, value: number | undefined): number | string {
-  if (hasError && !hasStats) return '—';
-  return value ?? 0;
+// Explicit discriminated union for GET /api/stats — replaces the earlier
+// two-variable (stats + statsError) representation, which let "loading",
+// "failed with no prior data", and "failed but we have stale data" all be
+// inferred from combinations of a nullable value and a boolean rather than
+// stated directly. `error`'s `lastGood` carries forward whatever the most
+// recent successful load was (or stays null if there's never been one),
+// independent of how many times a subsequent refresh has failed in a row.
+export type StatsState =
+  | { status: 'loading' }
+  | { status: 'error'; lastGood: Stats | null }
+  | { status: 'success'; data: Stats };
+
+// The dashboard's six /api/stats-derived summary cards resolve to exactly
+// one of three renderable outcomes: a loading skeleton, a "—" placeholder
+// (only when the fetch has failed AND there is no prior successful load to
+// fall back on — never indistinguishable from a real, verified-empty
+// count), or a real number (from a fresh success OR from the last
+// known-good data if only a *later* refresh failed — real, if slightly
+// stale, data rather than a fake 0). Extracted as a pure function so this
+// decision has direct unit coverage without component-test tooling this
+// codebase doesn't otherwise use.
+export type DashboardStatDisplay = { kind: 'loading' } | { kind: 'unavailable' } | { kind: 'value'; value: number };
+
+export function dashboardStatValue(statsState: StatsState, field: keyof Stats): DashboardStatDisplay {
+  if (statsState.status === 'loading') return { kind: 'loading' };
+  if (statsState.status === 'success') return { kind: 'value', value: statsState.data[field] };
+  if (statsState.lastGood) return { kind: 'value', value: statsState.lastGood[field] };
+  return { kind: 'unavailable' };
 }
 interface InvoiceItemForm {
   description: string;
@@ -156,16 +173,19 @@ const EMPTY_CATEGORY = { id: '', name: '', icon: '🏛️', description: '', ima
 export default function AdminClient() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('dashboard');
-  const [stats, setStats] = useState<Stats | null>(null);
-  // Tracks a failed GET /api/stats specifically (separate from the other 8
-  // fetchAll() requests) — without this, a failed stats fetch silently
-  // leaves `stats` unset and every dashboard card falls back to `0`,
-  // indistinguishable from a real, verified-empty count (production
-  // integrity finding: intermittent Postgres connection-pool contention
-  // under fetchAll()'s 9-way simultaneous request burst, see stats.service
-  // .ts's 12-query Promise.all). This only changes what's displayed when a
-  // fetch fails — it does not touch the connection pool or query pattern.
-  const [statsError, setStatsError] = useState(false);
+  // GET /api/stats's state (production integrity finding: intermittent
+  // Postgres connection-pool contention under fetchAll()'s 9-way
+  // simultaneous request burst, see stats.service.ts's 12-query Promise.all)
+  // — see the StatsState/dashboardStatValue definitions above. This only
+  // changes what's displayed when a fetch fails or is in flight — it does
+  // not touch the connection pool or query pattern.
+  const [statsState, setStatsState] = useState<StatsState>({ status: 'loading' });
+  // Convenience accessor for every other use of stats data on this page
+  // (sidebar nav badges, the pending-applications banner, the revenue
+  // banner) — none of those need to distinguish loading from error, they
+  // just want the best data currently available, if any. Preserves the
+  // exact prior `stats: Stats | null` behavior for those call sites.
+  const stats = statsState.status === 'success' ? statsState.data : statsState.status === 'error' ? statsState.lastGood : null;
   const [vendors, setVendors] = useState<AnyRecord[]>([]);
   const [categories, setCategories] = useState<AnyRecord[]>([]);
   const [enquiries, setEnquiries] = useState<AnyRecord[]>([]);
@@ -247,9 +267,18 @@ export default function AdminClient() {
       // Stats gets its own explicit success/failure branch (the other 8
       // requests already only update their own state on success, leaving
       // prior data in place on failure — stats needs the same, plus a
-      // visible signal, since its 6 summary cards silently read `|| 0` when
-      // `stats` is unset).
-      if (s.success) { setStats(s.data); setStatsError(false); } else { setStatsError(true); }
+      // visible signal). On failure, carries forward whatever the most
+      // recent successful load was (from either a prior 'success' or a
+      // prior 'error's own lastGood) rather than losing it on a second
+      // consecutive failure.
+      if (s.success) {
+        setStatsState({ status: 'success', data: s.data });
+      } else {
+        setStatsState((prev) => ({
+          status: 'error',
+          lastGood: prev.status === 'success' ? prev.data : prev.status === 'error' ? prev.lastGood : null,
+        }));
+      }
       if (v.success) setVendors(v.data);
       if (c.success) setCategories(c.data);
       if (e.success) setEnquiries(e.data);
@@ -745,7 +774,14 @@ export default function AdminClient() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] capitalize">{tab}</h1>
-              <p className="text-gray-500 text-sm mt-0.5">ShaadiShopping Admin Panel</p>
+              {tab === 'dashboard' ? (
+                <div className="mt-0.5">
+                  <p className="text-gray-700 text-sm font-semibold">Vivah OS</p>
+                  <p className="text-gray-400 text-xs">Powered by ShaadiShopping</p>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm mt-0.5">ShaadiShopping Admin Panel</p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button onClick={fetchAll} disabled={loading} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm border border-gray-200 px-3 py-2 rounded-xl hover:bg-white transition-all">
@@ -766,15 +802,22 @@ export default function AdminClient() {
           {/* DASHBOARD */}
           {tab === 'dashboard' && (
             <div>
-              {/* Stats failed to load this refresh — the summary cards below
-                  fall back to a "—" placeholder, never a bare 0, so a failed
-                  fetch can never be misread as a verified-empty count. */}
-              {statsError && (
+              {/* Stats failed to load this refresh. With no prior successful
+                  load, the summary cards below show a "—" placeholder —
+                  never a bare 0, so a failed fetch can never be misread as a
+                  verified-empty count. With a prior successful load, they
+                  keep showing those last real numbers instead of blanking
+                  them — real, if possibly stale, data rather than a fake 0. */}
+              {statsState.status === 'error' && (
                 <div className="w-full mb-5 flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
                   <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-red-800 text-sm">Dashboard stats failed to load</p>
-                    <p className="text-red-600 text-xs mt-0.5">The counts below are not real data — this is a failed refresh, not a verified 0.</p>
+                    <p className="text-red-600 text-xs mt-0.5">
+                      {statsState.lastGood
+                        ? 'Showing the last successfully loaded numbers — they may be out of date.'
+                        : 'The counts below are not real data — this is a failed refresh, not a verified 0.'}
+                    </p>
                   </div>
                   <button
                     onClick={fetchAll}
@@ -818,15 +861,20 @@ export default function AdminClient() {
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 {[
-                  { label: 'Total Vendors',  value: dashboardStatValue(statsError, !!stats, stats?.vendors),       icon: Briefcase,    color: 'bg-blue-500',   tab: 'vendors' as Tab },
-                  { label: 'Categories',     value: dashboardStatValue(statsError, !!stats, stats?.categories),    icon: Tag,          color: 'bg-purple-500', tab: 'categories' as Tab },
-                  { label: 'Enquiries',      value: dashboardStatValue(statsError, !!stats, stats?.enquiries),     icon: MessageSquare,color: 'bg-amber-500',  tab: 'enquiries' as Tab,     sub: stats?.newEnquiries ? `${stats.newEnquiries} new` : undefined },
-                  { label: 'Consultations',  value: dashboardStatValue(statsError, !!stats, stats?.consultations), icon: Phone,        color: 'bg-rose-500',   tab: 'consultations' as Tab, sub: stats?.newConsultations ? `${stats.newConsultations} new` : undefined },
-                  { label: 'Bookings',       value: dashboardStatValue(statsError, !!stats, stats?.bookings),      icon: BookOpen,     color: 'bg-teal-500',   tab: 'bookings' as Tab,      sub: stats?.newBookings ? `${stats.newBookings} new` : undefined },
-                  { label: 'Outside Vendors', value: dashboardStatValue(statsError, !!stats, stats?.outsideVendors), icon: Users,      color: 'bg-indigo-500', tab: 'outside-vendors' as Tab, sub: stats?.newOutsideVendors ? `${stats.newOutsideVendors} new` : undefined },
-                  { label: 'Leads Captured', value: dashboardStatValue(statsError, !!stats, stats?.leads),         icon: Phone,        color: 'bg-green-500',  tab: 'leads' as Tab },
-                  { label: 'Invoices',       value: invoices.length,           icon: Receipt,      color: 'bg-orange-500', tab: 'invoices' as Tab },
-                ].map(({ label, value, icon: Icon, color, tab: targetTab, sub }) => (
+                  { label: 'Total Vendors',  display: dashboardStatValue(statsState, 'vendors'),       icon: Briefcase,    color: 'bg-blue-500',   tab: 'vendors' as Tab },
+                  { label: 'Categories',     display: dashboardStatValue(statsState, 'categories'),    icon: Tag,          color: 'bg-purple-500', tab: 'categories' as Tab },
+                  { label: 'Enquiries',      display: dashboardStatValue(statsState, 'enquiries'),     icon: MessageSquare,color: 'bg-amber-500',  tab: 'enquiries' as Tab,     sub: stats?.newEnquiries ? `${stats.newEnquiries} new` : undefined },
+                  { label: 'Consultations',  display: dashboardStatValue(statsState, 'consultations'), icon: Phone,        color: 'bg-rose-500',   tab: 'consultations' as Tab, sub: stats?.newConsultations ? `${stats.newConsultations} new` : undefined },
+                  { label: 'Bookings',       display: dashboardStatValue(statsState, 'bookings'),      icon: BookOpen,     color: 'bg-teal-500',   tab: 'bookings' as Tab,      sub: stats?.newBookings ? `${stats.newBookings} new` : undefined },
+                  { label: 'Outside Vendors', display: dashboardStatValue(statsState, 'outsideVendors'), icon: Users,      color: 'bg-indigo-500', tab: 'outside-vendors' as Tab, sub: stats?.newOutsideVendors ? `${stats.newOutsideVendors} new` : undefined },
+                  { label: 'Leads Captured', display: dashboardStatValue(statsState, 'leads'),         icon: Phone,        color: 'bg-green-500',  tab: 'leads' as Tab },
+                  // Invoices is intentionally left out of the stats loading/error
+                  // treatment — different data source (its own fetchAll() request,
+                  // not /api/stats), out of scope for this change. Wrapped in the
+                  // same { kind: 'value' } shape purely so this one array/.map()
+                  // stays uniformly typed; renders byte-identical to before.
+                  { label: 'Invoices',       display: { kind: 'value', value: invoices.length } as DashboardStatDisplay, icon: Receipt, color: 'bg-orange-500', tab: 'invoices' as Tab },
+                ].map(({ label, display, icon: Icon, color, tab: targetTab, sub }) => (
                   <button
                     key={label}
                     onClick={() => setTab(targetTab)}
@@ -838,7 +886,13 @@ export default function AdminClient() {
                       </div>
                       <span className="text-gray-600 text-sm font-medium">{label}</span>
                     </div>
-                    <p className="text-3xl font-bold text-gray-900">{value}</p>
+                    {display.kind === 'loading' ? (
+                      <div className="h-9 w-16 rounded bg-gray-200 animate-pulse" aria-label={`${label} loading`} />
+                    ) : display.kind === 'unavailable' ? (
+                      <p className="text-3xl font-bold text-gray-400" aria-label={`${label} unavailable`}>—</p>
+                    ) : (
+                      <p className="text-3xl font-bold text-gray-900">{display.value}</p>
+                    )}
                     {sub && <p className="text-xs text-amber-600 font-medium mt-1">{sub}</p>}
                   </button>
                 ))}
