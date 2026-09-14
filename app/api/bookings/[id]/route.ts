@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingService } from '@/services/booking.service';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { convertBookingToWedding, InvalidBookingStateError } from '@/services/weddingConversion.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { Booking, BookingStatus } from '@/generated/prisma/client';
@@ -63,6 +64,43 @@ We look forward to making your special day truly memorable! ✨
       const phone = existing.phone.replace(/\D/g, '');
       const e164 = phone.startsWith('91') ? phone : `91${phone}`;
       await sendWhatsAppMessage(e164, message);
+    }
+
+    // Deliberately NOT gated on "existing.status !== 'CONFIRMED'" (unlike
+    // the CONTACTED/WhatsApp block above) — that guard would make a failed
+    // conversion permanently unrecoverable: once the first attempt sets
+    // status to CONFIRMED, a retry would never see a fresh transition and
+    // conversion would never be re-attempted. Instead, every PUT that
+    // targets CONFIRMED attempts conversion; convertBookingToWedding
+    // (services/weddingConversion.service.ts) is itself idempotent (checks
+    // Wedding.sourceBookingId first) and cheap to re-run once a Wedding
+    // already exists, so this is safe on every confirm click, including
+    // retries — the admin's existing "confirmed" button doubles as the
+    // retry action, no separate UI/endpoint needed.
+    //
+    // The booking's own status update above is NOT rolled back if this
+    // fails (separate, already-committed write — no shared transaction with
+    // convertBookingToWedding's own internal one; see the investigation
+    // this is fixing). That's intentional: the booking really is confirmed,
+    // only the downstream Wedding creation is incomplete. Surface that
+    // explicitly rather than hiding it behind a generic 500 or a silently
+    // swallowed error, so the admin UI can tell the two cases apart and the
+    // admin knows to retry.
+    if (status === 'CONFIRMED') {
+      try {
+        await convertBookingToWedding(id);
+      } catch (err) {
+        if (err instanceof InvalidBookingStateError) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Booking marked confirmed, but Wedding creation failed: ${err.message}. Fix the issue and click "confirmed" again to retry.`,
+            },
+            { status: 409 }
+          );
+        }
+        throw err;
+      }
     }
 
     return NextResponse.json({ success: true, data: toResponseShape(booking) });
