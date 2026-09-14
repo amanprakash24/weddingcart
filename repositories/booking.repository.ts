@@ -9,7 +9,11 @@ type Tx = Prisma.TransactionClient;
 // the live /api/bookings route owned full CRUD via Mongoose. findMany/create
 // added here to migrate that route onto Prisma; the conversion pipeline
 // itself remains untouched.
-const withItems = { items: true } satisfies Prisma.BookingInclude;
+// `wedding` (just the id) lets callers show a "this booking already has a
+// Wedding" link/action without a second query — read-only, doesn't affect
+// weddingConversion.service.ts's own separate sourceBookingId lookup used
+// for its idempotency check.
+const withItems = { items: true, wedding: { select: { id: true } } } satisfies Prisma.BookingInclude;
 export type BookingWithItems = Prisma.BookingGetPayload<{ include: typeof withItems }>;
 
 export interface FindManyParams {
