@@ -1838,11 +1838,21 @@ export default function AdminClient() {
                           <button
                             key={s}
                             onClick={async () => {
-                              await fetch(`/api/bookings/${b._id}`, {
+                              const res = await fetch(`/api/bookings/${b._id}`, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ status: s }),
                               });
+                              const data = await res.json();
+                              // A CONFIRMED that fails Wedding conversion still updates the
+                              // booking's own status (see app/api/bookings/[id]/route.ts) —
+                              // fetchAll() below stays unconditional so the list reflects that
+                              // real status either way, but the admin must be told explicitly
+                              // when conversion itself didn't complete, not left to assume the
+                              // button click fully succeeded.
+                              if (!res.ok || !data.success) {
+                                alert(data.error || 'Failed to update booking status.');
+                              }
                               fetchAll();
                             }}
                             className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize flex items-center gap-1 ${
