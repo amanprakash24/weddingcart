@@ -17,6 +17,9 @@ export interface BookingCreateData {
   phone: string;
   city: string;
   total: number;
+  weddingDate?: Date;
+  weddingType?: string;
+  guestCount?: number;
   items: BookingItemInput[];
 }
 
@@ -65,6 +68,9 @@ export const bookingService = {
       phone: data.phone,
       city: data.city,
       total,
+      weddingDate: data.weddingDate,
+      weddingType: data.weddingType,
+      guestCount: data.guestCount,
       items: { create: items },
     });
   },
