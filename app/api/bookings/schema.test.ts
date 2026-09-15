@@ -81,4 +81,45 @@ describe('bookingCreateSchema', () => {
   test('rejects a city over 200 characters', () => {
     expect(() => bookingCreateSchema.parse(validBody({ city: 'a'.repeat(201) }))).toThrow();
   });
+
+  describe('weddingDate / weddingType / guestCount — optional, additive (production-integrity fix)', () => {
+    test('accepts a booking with none of the three fields, leaving them undefined — preserves existing /cart behavior', () => {
+      const parsed = bookingCreateSchema.parse(validBody());
+      expect(parsed.weddingDate).toBeUndefined();
+      expect(parsed.weddingType).toBeUndefined();
+      expect(parsed.guestCount).toBeUndefined();
+    });
+
+    test('accepts and coerces a valid weddingDate string into a Date instance', () => {
+      const parsed = bookingCreateSchema.parse(validBody({ weddingDate: '2027-02-14' }));
+      expect(parsed.weddingDate).toBeInstanceOf(Date);
+      expect(parsed.weddingDate?.getUTCFullYear()).toBe(2027);
+    });
+
+    test('rejects an invalid weddingDate', () => {
+      expect(() => bookingCreateSchema.parse(validBody({ weddingDate: 'not-a-date' }))).toThrow();
+    });
+
+    test('accepts a weddingType string', () => {
+      const parsed = bookingCreateSchema.parse(validBody({ weddingType: 'Traditional Hindu' }));
+      expect(parsed.weddingType).toBe('Traditional Hindu');
+    });
+
+    test('accepts and coerces a numeric-string guestCount (matching Enquiry.guestCount, which is a string)', () => {
+      const parsed = bookingCreateSchema.parse(validBody({ guestCount: '250' }));
+      expect(parsed.guestCount).toBe(250);
+    });
+
+    test('rejects a zero guestCount', () => {
+      expect(() => bookingCreateSchema.parse(validBody({ guestCount: 0 }))).toThrow();
+    });
+
+    test('rejects a negative guestCount', () => {
+      expect(() => bookingCreateSchema.parse(validBody({ guestCount: -10 }))).toThrow();
+    });
+
+    test('rejects a non-integer guestCount', () => {
+      expect(() => bookingCreateSchema.parse(validBody({ guestCount: 12.5 }))).toThrow();
+    });
+  });
 });

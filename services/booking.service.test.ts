@@ -87,6 +87,72 @@ describe('bookingService.create', () => {
     ).rejects.toThrow(NotFoundError);
   });
 
+  test('passes weddingDate/weddingType/guestCount through to the repository create call when provided', async () => {
+    const findBySlug = mock(async () => fakeVendor());
+    const create = mock(async (data: unknown) => ({ id: 'booking-1', ...(data as Record<string, unknown>) }));
+
+    mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findBySlug } }));
+    mock.module('@/repositories/booking.repository', () => ({ bookingRepository: { create } }));
+    const { bookingService } = await import('./booking.service');
+
+    const weddingDate = new Date('2027-02-14');
+    await bookingService.create({
+      name: 'Priya Sharma',
+      phone: '9876543210',
+      city: 'Patna',
+      total: 5000,
+      weddingDate,
+      weddingType: 'Traditional Hindu',
+      guestCount: 250,
+      items: [
+        {
+          vendorId: 'some-vendor',
+          vendorName: 'Some Vendor',
+          vendorCategory: 'Venues',
+          packageName: 'Basic Package',
+          price: 5000,
+          quantity: 1,
+        },
+      ],
+    });
+
+    const persisted = create.mock.calls[0][0] as { weddingDate?: Date; weddingType?: string; guestCount?: number };
+    expect(persisted.weddingDate).toBe(weddingDate);
+    expect(persisted.weddingType).toBe('Traditional Hindu');
+    expect(persisted.guestCount).toBe(250);
+  });
+
+  test('leaves weddingDate/weddingType/guestCount undefined when not provided — preserves existing /cart behavior', async () => {
+    const findBySlug = mock(async () => fakeVendor());
+    const create = mock(async (data: unknown) => ({ id: 'booking-1', ...(data as Record<string, unknown>) }));
+
+    mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findBySlug } }));
+    mock.module('@/repositories/booking.repository', () => ({ bookingRepository: { create } }));
+    const { bookingService } = await import('./booking.service');
+
+    await bookingService.create({
+      name: 'Priya Sharma',
+      phone: '9876543210',
+      city: 'Patna',
+      total: 5000,
+      items: [
+        {
+          vendorId: 'some-vendor',
+          vendorName: 'Some Vendor',
+          vendorCategory: 'Venues',
+          packageName: 'Basic Package',
+          price: 5000,
+          quantity: 1,
+        },
+      ],
+    });
+
+    const persisted = create.mock.calls[0][0] as { weddingDate?: Date; weddingType?: string; guestCount?: number };
+    expect(persisted.weddingDate).toBeUndefined();
+    expect(persisted.weddingType).toBeUndefined();
+    expect(persisted.guestCount).toBeUndefined();
+  });
+
   test("rejects a booking whose packageName does not match any of the vendor's real packages", async () => {
     const findBySlug = mock(async () => fakeVendor());
     mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findBySlug } }));
