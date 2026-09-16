@@ -631,6 +631,11 @@ model Invoice {
   payments     Payment[]
   paymentLinks PaymentLink[]
 
+  // Production-hardening audit (2026-09-17) — every Wedding Workspace page
+  // load queries this by weddingId, ordered by createdAt; Postgres doesn't
+  // auto-index FK columns. Found during this pass — not in the original
+  // audit's enumerated list, but the identical gap on the same query path.
+  @@index([weddingId, createdAt])
   @@map("invoices")
 }
 
@@ -1017,6 +1022,10 @@ model WeddingEvent {
   approvals      ApprovalRequest[]
   guestResponses GuestFunctionResponse[]
 
+  // Production-hardening audit (2026-09-17) — every Wedding Workspace page
+  // load queries this by weddingId, ordered by date; Postgres doesn't
+  // auto-index FK columns. Same class already fixed for Guest/ActivityLog.
+  @@index([weddingId, date])
   @@map("wedding_events")
 }
 
@@ -1133,6 +1142,10 @@ model TimelineMilestone {
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
+  // Production-hardening audit (2026-09-17) — every Wedding Workspace page
+  // load queries this by weddingId, ordered by sortOrder; Postgres doesn't
+  // auto-index FK columns.
+  @@index([weddingId, sortOrder])
   @@map("timeline_milestones")
 }
 
@@ -1170,6 +1183,10 @@ model Document {
   uploadedBy      User?              @relation(fields: [uploadedById], references: [id])
   createdAt       DateTime           @default(now())
 
+  // Production-hardening audit (2026-09-17) — every Wedding Workspace page
+  // load queries this by weddingId, ordered by createdAt; Postgres doesn't
+  // auto-index FK columns.
+  @@index([weddingId, createdAt])
   @@map("documents")
 }
 
@@ -1236,6 +1253,12 @@ model Task {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Production-hardening audit (2026-09-17) — every Wedding Workspace page
+  // load queries this by weddingId, ordered by createdAt; Postgres doesn't
+  // auto-index FK columns. Task's other subject FKs (leadId/enquiryId/
+  // consultationId/weddingEventId/vendorBookingId) are a separate, lower-
+  // traffic finding from the same audit — not addressed here.
+  @@index([weddingId, createdAt])
   @@map("tasks")
 }
 
