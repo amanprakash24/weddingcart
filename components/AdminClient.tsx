@@ -245,6 +245,43 @@ export function buildBookingCreateItems(
   return { items, total };
 }
 
+export interface BookingCreateFormFields {
+  name: string;
+  phone: string;
+  city: string;
+  weddingDate: string;
+  weddingType: string;
+  guestCount: string;
+}
+
+// Production-integrity fix: this form's whole purpose is letting
+// services/weddingConversion.service.ts's duplicate-Wedding cross-path
+// guard see the Booking's originating Enquiry — a prior version of this
+// form built the POST /api/bookings body inline and never included
+// enquiryId at all, so the guard had nothing to check against for any
+// Booking created here (found in a production-readiness audit, after the
+// guard itself had already shipped). Extracted so that omission is a
+// directly testable regression, not just a visual read of the submit
+// handler.
+export function buildBookingCreateRequestBody(
+  form: BookingCreateFormFields,
+  enquiryId: string | null,
+  items: BookingCreateItem[],
+  total: number
+) {
+  return {
+    name: form.name,
+    phone: form.phone,
+    city: form.city,
+    weddingDate: form.weddingDate || undefined,
+    weddingType: form.weddingType || undefined,
+    guestCount: form.guestCount || undefined,
+    enquiryId: enquiryId || undefined,
+    items,
+    total,
+  };
+}
+
 export default function AdminClient() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('dashboard');
@@ -300,6 +337,11 @@ export default function AdminClient() {
   // fetch). `slug` is the field bookingService.create() actually resolves
   // by (vendorRepository.findBySlug) — never the vendor's UUID `id`.
   const [bookingCreateVendor, setBookingCreateVendor] = useState<BookingCreateVendorContext | null>(null);
+  // Production-integrity fix: captured so handleBookingCreateSubmit can send
+  // it as Booking.enquiryId — without this, the duplicate-Wedding cross-path
+  // guard (services/weddingConversion.service.ts) has no real link to check
+  // against, and is a silent no-op for every Booking this form creates.
+  const [bookingCreateEnquiryId, setBookingCreateEnquiryId] = useState<string | null>(null);
   const [bookingCreatePackages, setBookingCreatePackages] = useState<{ packageId: string; quantity: number }[]>([]);
   const [bookingCreateDateWarning, setBookingCreateDateWarning] = useState('');
   const [bookingCreateError, setBookingCreateError] = useState('');
@@ -815,6 +857,7 @@ export default function AdminClient() {
       weddingType: enquiry.eventType || '',
       guestCount: enquiry.guestCount ? String(enquiry.guestCount) : '',
     });
+    setBookingCreateEnquiryId(enquiry._id);
     setBookingCreateDateWarning(warning);
     // vendor comes from vendors[] (AnyRecord, loosely typed) — its packages
     // are real VendorPackage rows (id/name/price always present), narrowed
@@ -865,16 +908,7 @@ export default function AdminClient() {
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: bookingCreateForm.name,
-          phone: bookingCreateForm.phone,
-          city: bookingCreateForm.city,
-          weddingDate: bookingCreateForm.weddingDate || undefined,
-          weddingType: bookingCreateForm.weddingType || undefined,
-          guestCount: bookingCreateForm.guestCount || undefined,
-          items,
-          total,
-        }),
+        body: JSON.stringify(buildBookingCreateRequestBody(bookingCreateForm, bookingCreateEnquiryId, items, total)),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -885,6 +919,7 @@ export default function AdminClient() {
       setShowBookingCreateForm(false);
       setBookingCreateForm(EMPTY_BOOKING_CREATE_FORM);
       setBookingCreateVendor(null);
+      setBookingCreateEnquiryId(null);
       setBookingCreatePackages([]);
       setBookingCreateDateWarning('');
       setBookingCreateError('');
@@ -2114,7 +2149,7 @@ export default function AdminClient() {
                         className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
                         {bookingCreateSubmitting ? 'Creating…' : 'Create Booking'}
                       </button>
-                      <button type="button" onClick={() => { setShowBookingCreateForm(false); setBookingCreateVendor(null); setBookingCreateForm(EMPTY_BOOKING_CREATE_FORM); setBookingCreatePackages([]); setBookingCreateError(''); setBookingCreateDateWarning(''); }}
+                      <button type="button" onClick={() => { setShowBookingCreateForm(false); setBookingCreateVendor(null); setBookingCreateEnquiryId(null); setBookingCreateForm(EMPTY_BOOKING_CREATE_FORM); setBookingCreatePackages([]); setBookingCreateError(''); setBookingCreateDateWarning(''); }}
                         className="text-gray-500 hover:text-gray-700 text-sm font-semibold px-4 py-2.5">
                         Cancel
                       </button>
