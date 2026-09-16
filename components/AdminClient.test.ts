@@ -4,8 +4,10 @@ import {
   dashboardStatValue,
   resolveEnquiryWeddingDate,
   buildBookingCreateItems,
+  buildBookingCreateRequestBody,
   type StatsState,
   type BookingCreateVendorContext,
+  type BookingCreateFormFields,
 } from './AdminClient';
 
 // Production-integrity fix: the admin Dashboard tab's 6 summary cards
@@ -136,5 +138,44 @@ describe('buildBookingCreateItems', () => {
   test('floors quantity at 1, never producing a zero or negative quantity', () => {
     const result = buildBookingCreateItems(vendor, [{ packageId: 'pkg-1', quantity: 0 }]);
     expect('items' in result && result.items[0].quantity).toBe(1);
+  });
+});
+
+describe('buildBookingCreateRequestBody — duplicate-Wedding guard wiring (production-integrity fix)', () => {
+  const form: BookingCreateFormFields = {
+    name: 'Priya Sharma',
+    phone: '9876543210',
+    city: 'Patna',
+    weddingDate: '2027-02-14',
+    weddingType: 'Traditional Hindu',
+    guestCount: '250',
+  };
+  const items = [
+    { vendorId: 'royal-caterers-patna', vendorName: 'Royal Caterers', vendorCategory: 'catering', packageName: 'Gold Package', price: 50000, quantity: 1 },
+  ];
+
+  test('includes enquiryId in the request body when the form was opened from an Enquiry — the exact wiring a production audit found missing', () => {
+    const body = buildBookingCreateRequestBody(form, 'enquiry-1', items, 50000);
+    expect(body.enquiryId).toBe('enquiry-1');
+  });
+
+  test('omits enquiryId (undefined, not null) when there is none — matches bookingCreateSchema treating it as optional', () => {
+    const body = buildBookingCreateRequestBody(form, null, items, 50000);
+    expect(body.enquiryId).toBeUndefined();
+  });
+
+  test('still sends every other field unchanged alongside enquiryId', () => {
+    const body = buildBookingCreateRequestBody(form, 'enquiry-1', items, 50000);
+    expect(body).toEqual({
+      name: 'Priya Sharma',
+      phone: '9876543210',
+      city: 'Patna',
+      weddingDate: '2027-02-14',
+      weddingType: 'Traditional Hindu',
+      guestCount: '250',
+      enquiryId: 'enquiry-1',
+      items,
+      total: 50000,
+    });
   });
 });
