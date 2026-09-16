@@ -169,6 +169,81 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 const EMPTY_VENDOR = { name: '', ownerName: '', ownerPhone: '', ownerEmail: '', category: 'venue', city: 'Patna', priceMin: '', priceMax: '', rating: '4.5', reviewCount: '', description: '', features: '', isFeatured: false, mapEmbedUrl: '' };
 const EMPTY_CATEGORY = { id: '', name: '', icon: '🏛️', description: '', image: '' };
+// weddingDate is a plain 'YYYY-MM-DD' string — matches bookingCreateSchema's
+// strict format exactly, and is what an <input type="date"> both displays
+// and produces, so no client-side date parsing is needed anywhere in this form.
+const EMPTY_BOOKING_CREATE_FORM = { name: '', phone: '', city: '', weddingDate: '', weddingType: '', guestCount: '' };
+const ENQUIRY_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Pure decision logic behind the Enquiry -> Booking "Create Booking" form,
+// extracted (same reasoning as dashboardStatValue above) so it has direct
+// unit coverage without component-test tooling this codebase doesn't
+// otherwise use.
+//
+// Real Enquiry.eventDate data includes free-text-shaped, typo'd values like
+// "20 October 20202" — JS's Date constructor parses that into a *valid*
+// Date 18000 years in the future rather than failing, so it's rejected here
+// by strict shape (not by trying to parse-and-check) before it ever reaches
+// the form as a pre-filled value. bookingCreateSchema enforces the same
+// strict shape server-side independently — this is a UX/flagging layer on
+// top of that, not the only guard.
+export function resolveEnquiryWeddingDate(eventDate: unknown): { weddingDate: string; warning: string } {
+  const raw = typeof eventDate === 'string' ? eventDate : '';
+  const valid = ENQUIRY_DATE_RE.test(raw);
+  return {
+    weddingDate: valid ? raw : '',
+    warning: raw && !valid ? `This enquiry's event date ("${raw}") isn't valid — pick a date below.` : '',
+  };
+}
+
+export interface BookingCreatePackageRow {
+  packageId: string;
+  quantity: number;
+}
+export interface BookingCreateVendorContext {
+  slug: string;
+  name: string;
+  category: string;
+  packages: { id: string; name: string; price: number; description?: string }[];
+}
+export interface BookingCreateItem {
+  vendorId: string;
+  vendorName: string;
+  vendorCategory: string;
+  packageName: string;
+  price: number;
+  quantity: number;
+}
+
+// Requires at least one selected package; builds the exact items[]/total
+// shape bookingCreateSchema expects. Uses vendor.slug (never a vendor UUID)
+// for every item's vendorId, matching bookingService.create()'s
+// vendorRepository.findBySlug() resolution. price here is only used to
+// construct a plausible payload/total estimate for the request body — the
+// server independently re-resolves the authoritative price from the real
+// VendorPackage regardless of what's sent (the existing price-trust
+// protection, unchanged by this form).
+export function buildBookingCreateItems(
+  vendor: BookingCreateVendorContext,
+  rows: BookingCreatePackageRow[]
+): { items: BookingCreateItem[]; total: number } | { error: string } {
+  const validRows = rows.filter((row) => row.packageId);
+  if (validRows.length === 0) return { error: 'Select at least one package.' };
+
+  const items = validRows.map((row) => {
+    const pkg = vendor.packages.find((p) => p.id === row.packageId);
+    return {
+      vendorId: vendor.slug,
+      vendorName: vendor.name,
+      vendorCategory: vendor.category,
+      packageName: pkg?.name || '',
+      price: pkg?.price || 0,
+      quantity: Math.max(1, row.quantity || 1),
+    };
+  });
+  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  return { items, total };
+}
 
 export default function AdminClient() {
   const router = useRouter();
@@ -211,6 +286,24 @@ export default function AdminClient() {
   const [previewInvoice, setPreviewInvoice] = useState<AnyRecord | null>(null);
   const [invoiceForm, setInvoiceForm] = useState(EMPTY_INVOICE_FORM);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItemForm[]>([{ ...EMPTY_INVOICE_ITEM }]);
+
+  // "Create Booking" (from an Enquiry) state — reuses the existing public
+  // POST /api/bookings, bookingCreateSchema, and bookingService.create()
+  // unchanged (see security note on handleBookingCreateSubmit below).
+  // Booking starts at its schema default (NEW); confirming it into a
+  // Wedding is the existing, separate confirm action on the Bookings tab —
+  // this form only ever creates the booking, never confirms it.
+  const [showBookingCreateForm, setShowBookingCreateForm] = useState(false);
+  const [bookingCreateForm, setBookingCreateForm] = useState(EMPTY_BOOKING_CREATE_FORM);
+  // Captured once, at the moment the form opens, from data already loaded
+  // by fetchAll() (vendors[], which already includes packages — no new
+  // fetch). `slug` is the field bookingService.create() actually resolves
+  // by (vendorRepository.findBySlug) — never the vendor's UUID `id`.
+  const [bookingCreateVendor, setBookingCreateVendor] = useState<BookingCreateVendorContext | null>(null);
+  const [bookingCreatePackages, setBookingCreatePackages] = useState<{ packageId: string; quantity: number }[]>([]);
+  const [bookingCreateDateWarning, setBookingCreateDateWarning] = useState('');
+  const [bookingCreateError, setBookingCreateError] = useState('');
+  const [bookingCreateSubmitting, setBookingCreateSubmitting] = useState(false);
 
   const copyPortfolioLink = (vendorId: string) => {
     const url = `${window.location.origin}/portfolio/${vendorId}`;
@@ -703,6 +796,104 @@ export default function AdminClient() {
     setInvoiceForm(EMPTY_INVOICE_FORM);
     setInvoiceItems([{ ...EMPTY_INVOICE_ITEM }]);
     fetchAll();
+  };
+
+  // Opens the "Create Booking" form from an Enquiry card, pre-filled from
+  // the enquiry and its already-loaded vendor (vendors[] already includes
+  // packages via fetchAll() — no new fetch). eventDate is only carried
+  // forward when it's a real YYYY-MM-DD value; real Enquiry data has
+  // included free-text-shaped, typo'd dates (e.g. "20 October 20202") that
+  // JS's Date constructor would otherwise silently parse into a valid but
+  // nonsensical date — those are flagged instead of carried forward.
+  const openBookingCreateForm = (enquiry: AnyRecord, vendor: AnyRecord) => {
+    const { weddingDate, warning } = resolveEnquiryWeddingDate(enquiry.eventDate);
+    setBookingCreateForm({
+      name: enquiry.name || '',
+      phone: enquiry.phone || '',
+      city: enquiry.city || '',
+      weddingDate,
+      weddingType: enquiry.eventType || '',
+      guestCount: enquiry.guestCount ? String(enquiry.guestCount) : '',
+    });
+    setBookingCreateDateWarning(warning);
+    // vendor comes from vendors[] (AnyRecord, loosely typed) — its packages
+    // are real VendorPackage rows (id/name/price always present), narrowed
+    // here to BookingCreateVendorContext's stricter shape.
+    setBookingCreateVendor({
+      slug: vendor.slug,
+      name: vendor.name,
+      category: enquiry.vendorCategory,
+      packages: (vendor.packages || []) as BookingCreateVendorContext['packages'],
+    });
+    setBookingCreatePackages([]);
+    setBookingCreateError('');
+    setTab('bookings');
+    setShowBookingCreateForm(true);
+  };
+
+  // Reuses POST /api/bookings, bookingCreateSchema, and bookingService
+  // .create() completely unchanged — the same public, unauthenticated
+  // endpoint the /cart checkout already uses. Reviewed before building this:
+  // calling it from an authenticated admin session doesn't grant the public
+  // anything new (the route's own exposure is identical either way), price
+  // stays server-resolved from the real VendorPackage regardless of who
+  // calls it (the existing price-trust protection), and an admin already
+  // holds far broader capabilities than "create one NEW-status Booking" —
+  // so this isn't a new privilege-escalation path. The endpoint's known,
+  // already-triaged gap (no rate limiting, same class as /api/enquiries and
+  // /api/leads) is unaffected by this new caller and isn't a concrete
+  // blocker for this change; it stays exactly as already assessed
+  // (post-launch hardening), not something this PR takes on.
+  //
+  // Booking is created at its schema default status (NEW) — this form never
+  // confirms it. The existing confirm action on the Bookings tab (PR #84)
+  // is what drives NEW -> CONFIRMED -> Wedding -> Workspace.
+  const handleBookingCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bookingCreateVendor) return;
+
+    const result = buildBookingCreateItems(bookingCreateVendor, bookingCreatePackages);
+    if ('error' in result) {
+      setBookingCreateError(result.error);
+      return;
+    }
+    const { items, total } = result;
+
+    setBookingCreateSubmitting(true);
+    setBookingCreateError('');
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: bookingCreateForm.name,
+          phone: bookingCreateForm.phone,
+          city: bookingCreateForm.city,
+          weddingDate: bookingCreateForm.weddingDate || undefined,
+          weddingType: bookingCreateForm.weddingType || undefined,
+          guestCount: bookingCreateForm.guestCount || undefined,
+          items,
+          total,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setBookingCreateError(data.error || 'Failed to create booking.');
+        return;
+      }
+      // Only close/reset on a confirmed successful response.
+      setShowBookingCreateForm(false);
+      setBookingCreateForm(EMPTY_BOOKING_CREATE_FORM);
+      setBookingCreateVendor(null);
+      setBookingCreatePackages([]);
+      setBookingCreateDateWarning('');
+      setBookingCreateError('');
+      fetchAll();
+    } catch {
+      setBookingCreateError('Network error. Please try again.');
+    } finally {
+      setBookingCreateSubmitting(false);
+    }
   };
 
   const TABS = [
@@ -1763,6 +1954,12 @@ export default function AdminClient() {
                               className="flex items-center gap-1 text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-lg hover:bg-orange-100 transition-colors">
                               <Receipt className="w-3 h-3" /> Create Invoice
                             </button>
+                            {vendorData?.slug && (
+                              <button onClick={() => openBookingCreateForm(e, vendorData)}
+                                className="flex items-center gap-1 text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-lg hover:bg-teal-100 transition-colors">
+                                <BookOpen className="w-3 h-3" /> Create Booking
+                              </button>
+                            )}
                           </>
                         );
                       })()}
@@ -1820,6 +2017,112 @@ export default function AdminClient() {
                   );
                 })}
               </div>
+
+              {/* "Create Booking" form — opened from an Enquiry card via openBookingCreateForm() */}
+              {showBookingCreateForm && bookingCreateVendor && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 animate-fade-in">
+                  <h3 className="font-bold text-gray-900 mb-1 text-lg flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-teal-500" /> Create Booking
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-5">
+                    For <span className="font-semibold text-gray-700">{bookingCreateVendor.name}</span> — created as a new booking; confirming it (below, once created) is what starts the Wedding Workspace.
+                  </p>
+                  <form onSubmit={handleBookingCreateSubmit} className="space-y-5">
+                    {bookingCreateError && (
+                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {bookingCreateError}
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Client Details</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Name *</label>
+                          <input required value={bookingCreateForm.name} onChange={(ev) => setBookingCreateForm({ ...bookingCreateForm, name: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Phone *</label>
+                          <input required type="tel" value={bookingCreateForm.phone} onChange={(ev) => setBookingCreateForm({ ...bookingCreateForm, phone: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">City *</label>
+                          <input required value={bookingCreateForm.city} onChange={(ev) => setBookingCreateForm({ ...bookingCreateForm, city: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Wedding Date <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <input type="date" value={bookingCreateForm.weddingDate} onChange={(ev) => { setBookingCreateForm({ ...bookingCreateForm, weddingDate: ev.target.value }); setBookingCreateDateWarning(''); }} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                          {bookingCreateDateWarning && (
+                            <p className="text-amber-600 text-xs mt-1">{bookingCreateDateWarning}</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Wedding Type <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <input value={bookingCreateForm.weddingType} onChange={(ev) => setBookingCreateForm({ ...bookingCreateForm, weddingType: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" placeholder="Wedding, Engagement, Reception..." />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Guest Count <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <input type="number" min={1} value={bookingCreateForm.guestCount} onChange={(ev) => setBookingCreateForm({ ...bookingCreateForm, guestCount: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Packages ({bookingCreateVendor.name}) *</p>
+                        <button type="button" onClick={() => setBookingCreatePackages((prev) => [...prev, { packageId: '', quantity: 1 }])}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-teal-600 border border-teal-300 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-all">
+                          <Plus className="w-3.5 h-3.5" /> Add Package
+                        </button>
+                      </div>
+                      {bookingCreateVendor.packages.length === 0 && (
+                        <p className="text-sm text-gray-400">This vendor has no packages configured.</p>
+                      )}
+                      <div className="space-y-3">
+                        {bookingCreatePackages.map((row, i) => {
+                          const updateRow = (patch: Partial<{ packageId: string; quantity: number }>) =>
+                            setBookingCreatePackages((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+                          const pkg = bookingCreateVendor.packages.find((p) => p.id === row.packageId);
+                          return (
+                            <div key={i} className="bg-gray-50 border border-gray-200 rounded-xl p-4 grid grid-cols-12 gap-2 items-end">
+                              <div className="col-span-12 sm:col-span-7">
+                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Package *</label>
+                                <select required value={row.packageId} onChange={(ev) => updateRow({ packageId: ev.target.value })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                                  <option value="">Select package...</option>
+                                  {bookingCreateVendor.packages.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name} — ₹{p.price?.toLocaleString('en-IN')}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="col-span-6 sm:col-span-3">
+                                <label className="block text-[10px] font-semibold text-gray-400 mb-1">Quantity</label>
+                                <input type="number" min={1} value={row.quantity} onChange={(ev) => updateRow({ quantity: Math.max(1, parseInt(ev.target.value) || 1) })} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white" />
+                              </div>
+                              <div className="col-span-6 sm:col-span-2 flex justify-end">
+                                <button type="button" onClick={() => setBookingCreatePackages((prev) => prev.filter((_, idx) => idx !== i))}
+                                  className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-2">✕ Remove</button>
+                              </div>
+                              {pkg && <p className="col-span-12 text-xs text-gray-500">{pkg.description}</p>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <button type="submit" disabled={bookingCreateSubmitting}
+                        className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
+                        {bookingCreateSubmitting ? 'Creating…' : 'Create Booking'}
+                      </button>
+                      <button type="button" onClick={() => { setShowBookingCreateForm(false); setBookingCreateVendor(null); setBookingCreateForm(EMPTY_BOOKING_CREATE_FORM); setBookingCreatePackages([]); setBookingCreateError(''); setBookingCreateDateWarning(''); }}
+                        className="text-gray-500 hover:text-gray-700 text-sm font-semibold px-4 py-2.5">
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {(bookingFilter === 'all' ? bookings : bookings.filter((b) => b.status === bookingFilter)).length === 0 && (
                 <div className="text-center py-12 text-gray-400"><p>No {bookingFilter === 'all' ? '' : bookingFilter} bookings.</p></div>
               )}
