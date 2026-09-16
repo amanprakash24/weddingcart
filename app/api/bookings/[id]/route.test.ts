@@ -1,6 +1,7 @@
 /// <reference types="bun-types" />
 import { describe, test, expect, mock } from 'bun:test';
 import { NextRequest } from 'next/server';
+import { ConversionLockedError } from '@/lib/errors';
 
 // Mocks `@/lib/adminAuth`, `@/services/booking.service`,
 // `@/services/weddingConversion.service`, and `@/lib/whatsapp` — isolates the
@@ -110,6 +111,31 @@ describe('PUT /api/bookings/[id] — Booking CONFIRMED -> Wedding conversion wir
     const res = await PUT(putRequest({ status: 'confirmed' }), { params: params() });
 
     expect(res.status).toBe(500);
+  });
+
+  // Duplicate-Wedding cross-path guard (production-integrity fix) —
+  // convertBookingToWedding now throws the real ConversionLockedError (not
+  // InvalidBookingStateError) when this booking's linked Enquiry/
+  // Consultation already converted via the separate CRM pipeline. The route
+  // doesn't special-case it (only InvalidBookingStateError gets the 409
+  // treatment inline) — it falls through to the outer catch's
+  // handleApiError(), which already maps ConversionLockedError to 409. No
+  // route code changes were needed for this to work correctly.
+  test('a ConversionLockedError from the cross-path duplicate-Wedding guard surfaces as a clear 409 via the existing handleApiError mapping, unmodified', async () => {
+    const convertBookingToWedding = mock(async () => {
+      throw new ConversionLockedError("This booking's enquiry already converted to Wedding WED-2027-0001");
+    });
+    const { PUT, updateMock } = await loadRouteWith({ existingStatus: 'CONTACTED', convertBookingToWedding });
+
+    const res = await PUT(putRequest({ status: 'confirmed' }), { params: params() });
+    const body = await res.json();
+
+    // Same distinct-signal property as the InvalidBookingStateError case —
+    // the booking's own status write still happened.
+    expect(updateMock).toHaveBeenCalledWith('booking-1', { status: 'CONFIRMED' });
+    expect(res.status).toBe(409);
+    expect(body.success).toBe(false);
+    expect(body.error).toBe("This booking's enquiry already converted to Wedding WED-2027-0001");
   });
 
   test('retrying the same confirmation (existing status already CONFIRMED) re-attempts conversion — no CONTACTED workaround needed', async () => {

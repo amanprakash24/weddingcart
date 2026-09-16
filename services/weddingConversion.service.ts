@@ -10,7 +10,7 @@ import { leadRepository } from '@/repositories/lead.repository';
 import { enquiryRepository } from '@/repositories/enquiry.repository';
 import { consultationRepository } from '@/repositories/consultation.repository';
 import { DEFAULT_MILESTONE_SEQUENCE } from '@/lib/wedding/timeline';
-import { InvalidTransitionError, NotFoundError } from '@/lib/errors';
+import { InvalidTransitionError, NotFoundError, ConversionLockedError } from '@/lib/errors';
 import type { SourceType } from '@/services/leadInbox.service';
 import { Prisma, type Wedding, type Lead, type Enquiry, type Consultation } from '@/generated/prisma/client';
 
@@ -61,6 +61,43 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
   const existing = await weddingRepository.findBySourceBookingId(bookingId);
   if (existing) {
     return existing;
+  }
+
+  // Cross-path duplicate-Wedding guard (production-integrity fix) — if this
+  // booking is linked to an Enquiry/Consultation (e.g. created via the
+  // admin "Create Booking" action) that already produced a Wedding through
+  // the separate CRM pipeline (or through a different Booking under the
+  // same source), refuse rather than silently creating a second Wedding for
+  // the same underlying customer request. findWeddingForSource() checks
+  // both the direct CRM-path FK and any other linked Booking's own
+  // conversion, so this one call covers both duplicate directions.
+  //
+  // Thrown, not returned — unlike convertLeadToWedding's "return the
+  // existing Wedding" idempotency below. If this returned someone else's
+  // Wedding here, *this* booking would never get its own sourceBookingId
+  // link, leaving Booking.wedding permanently null even though the confirm
+  // action "succeeded" (and silently breaking the "Open Wedding Workspace"
+  // link on the Bookings tab, PR #85, for this booking). Surfacing this
+  // explicitly — via the error-alert handling already built for this route
+  // in PR #84 — is clearer than a silent redirect to a Wedding this
+  // specific booking isn't actually linked to. Ordered after the
+  // same-booking idempotency check above so a genuine retry of an
+  // already-converted booking is never affected by this guard.
+  if (booking.enquiryId) {
+    const viaEnquiry = await findWeddingForSource('ENQUIRY', booking.enquiryId);
+    if (viaEnquiry) {
+      throw new ConversionLockedError(
+        `This booking's enquiry already converted to Wedding ${viaEnquiry.weddingNumber}`
+      );
+    }
+  }
+  if (booking.consultationId) {
+    const viaConsultation = await findWeddingForSource('CONSULTATION', booking.consultationId);
+    if (viaConsultation) {
+      throw new ConversionLockedError(
+        `This booking's consultation already converted to Wedding ${viaConsultation.weddingNumber}`
+      );
+    }
   }
 
   return prisma.$transaction(async (tx) => {
@@ -197,14 +234,27 @@ async function findConvertibleSubject(sourceType: SourceType, id: string): Promi
 // source FKs (schema comment: "Exactly one of these four is set, matching
 // WeddingSource") — reused by both the eligibility/idempotency check here and
 // services/leadWorkspace.service.ts's post-conversion lock guard.
+//
+// For ENQUIRY/CONSULTATION, also checks the cross-path case (production-
+// integrity fix): a Wedding created via the *Booking* path (source=BOOKING)
+// never sets sourceEnquiryId/sourceConsultationId directly, so the direct
+// lookup alone can't see it. Checking through any linked Booking closes
+// that gap in this one shared function — every existing caller
+// (convertLeadToWedding's idempotency check, leadWorkspaceService's
+// assertNotConverted and Workspace display) gets the fix automatically,
+// with no changes needed at those call sites. LEAD has no Booking link
+// (Booking only links to Enquiry/Consultation), so its behavior is
+// unchanged.
 export async function findWeddingForSource(
   sourceType: SourceType,
   id: string,
   tx: Tx | typeof prisma = prisma
 ): Promise<Wedding | null> {
   if (sourceType === 'LEAD') return weddingRepository.findBySourceLeadId(id, tx);
-  if (sourceType === 'ENQUIRY') return weddingRepository.findBySourceEnquiryId(id, tx);
-  return weddingRepository.findBySourceConsultationId(id, tx);
+  if (sourceType === 'ENQUIRY') {
+    return (await weddingRepository.findBySourceEnquiryId(id, tx)) ?? weddingRepository.findByLinkedBookingEnquiryId(id, tx);
+  }
+  return (await weddingRepository.findBySourceConsultationId(id, tx)) ?? weddingRepository.findByLinkedBookingConsultationId(id, tx);
 }
 
 function subjectName(sourceType: SourceType, subject: ConvertibleSubject): string {

@@ -4,12 +4,12 @@ import { describe, test, expect, mock } from 'bun:test';
 // Mocks `@/lib/prisma` wholesale (no DATABASE_URL/DB connection needed, same
 // technique used in weddingWorkspace.service.test.ts) — convertBookingToWedding
 // pulls in ~7 repositories, all of which transitively import @/lib/prisma at
-// module-load time. This is the first coverage this function has ever had
-// (confirmed zero prior test files reference weddingConversion.service.ts) —
-// added to close the specific failure mode found while wiring it into
-// app/api/bookings/[id]/route.ts: an admin confirming a booking with no
-// weddingDate previously left it permanently CONFIRMED with no Wedding and no
-// visible error. This file does not modify weddingConversion.service.ts.
+// module-load time. Covers two things: convertBookingToWedding's own
+// original failure mode (missing weddingDate), and the duplicate-Wedding
+// cross-path guard added afterward — a Booking created from an
+// Enquiry/Consultation (enquiryId/consultationId set) that already
+// converted via the separate CRM pipeline must not spawn a second Wedding.
+// This file does not modify weddingConversion.service.ts.
 function fakeBooking(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: 'booking-1',
@@ -19,6 +19,8 @@ function fakeBooking(overrides: Partial<Record<string, unknown>> = {}) {
     guestCount: 200,
     weddingType: 'Wedding',
     total: 500000,
+    enquiryId: null,
+    consultationId: null,
     items: [
       { id: 'item-1', vendorId: 'vendor-1', vendorName: 'Royal Caterers', vendorCategory: 'catering', packageName: 'Gold Package', price: 500000 },
     ],
@@ -26,12 +28,22 @@ function fakeBooking(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+// `weddings` maps each of the four lookup shapes findWeddingForSource() and
+// convertBookingToWedding()'s guard can perform to what should come back —
+// omitted/undefined entries behave as "nothing found" (null), matching real
+// Prisma findUnique/findFirst semantics for no match.
 function makePrismaMock({
   booking,
-  existingWedding = null,
+  weddings = {},
 }: {
   booking: ReturnType<typeof fakeBooking>;
-  existingWedding?: Record<string, unknown> | null;
+  weddings?: {
+    sourceBookingId?: Record<string, unknown> | null;
+    sourceEnquiryId?: Record<string, unknown> | null;
+    sourceConsultationId?: Record<string, unknown> | null;
+    linkedBookingEnquiryId?: Record<string, unknown> | null;
+    linkedBookingConsultationId?: Record<string, unknown> | null;
+  };
 }) {
   const weddingCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({
     id: 'wedding-1',
@@ -45,12 +57,27 @@ function makePrismaMock({
   const taskCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'task-1', ...args.data }));
   const activityLogCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'log-1', ...args.data }));
 
+  const findUniqueMock = mock(async ({ where }: { where: Record<string, unknown> }) => {
+    if ('sourceBookingId' in where) return weddings.sourceBookingId ?? null;
+    if ('sourceEnquiryId' in where) return weddings.sourceEnquiryId ?? null;
+    if ('sourceConsultationId' in where) return weddings.sourceConsultationId ?? null;
+    return null;
+  });
+  // Mirrors weddingRepository.findByLinkedBookingEnquiryId/ConsultationId's
+  // `tx.wedding.findFirst({ where: { sourceBooking: { enquiryId | consultationId } } })`.
+  const findFirstMock = mock(
+    async ({ where }: { where: { sourceBooking?: { enquiryId?: string; consultationId?: string } } }) => {
+      if (where.sourceBooking?.enquiryId) return weddings.linkedBookingEnquiryId ?? null;
+      if (where.sourceBooking?.consultationId) return weddings.linkedBookingConsultationId ?? null;
+      return null;
+    }
+  );
+
   const base = {
     booking: { findUnique: mock(async () => booking) },
     wedding: {
-      findUnique: mock(async ({ where }: { where: Record<string, unknown> }) =>
-        'sourceBookingId' in where ? existingWedding : null
-      ),
+      findUnique: findUniqueMock,
+      findFirst: findFirstMock,
       create: weddingCreateMock,
       count: mock(async () => 0),
     },
@@ -117,7 +144,7 @@ describe('convertBookingToWedding — the failure mode found in production-integ
   test('calling it again on an already-converted booking returns the existing Wedding, without creating a duplicate', async () => {
     const booking = fakeBooking();
     const existingWedding = { id: 'wedding-existing', sourceBookingId: 'booking-1', weddingNumber: 'WED-2027-0001' };
-    const { prismaMock, weddingCreateMock } = makePrismaMock({ booking, existingWedding });
+    const { prismaMock, weddingCreateMock } = makePrismaMock({ booking, weddings: { sourceBookingId: existingWedding } });
     const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
 
     const result = await convertBookingToWedding('booking-1');
@@ -141,5 +168,151 @@ describe('convertBookingToWedding — the failure mode found in production-integ
 
     expect((wedding as { sourceBookingId: string }).sourceBookingId).toBe('booking-1');
     expect(weddingCreateMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('convertBookingToWedding — duplicate-Wedding cross-path guard (production-integrity fix)', () => {
+  test('a standalone booking (no enquiryId/consultationId) converts exactly as before — the guard is a no-op for the ordinary /cart checkout path', async () => {
+    const booking = fakeBooking({ enquiryId: null, consultationId: null });
+    const { prismaMock, weddingCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    const wedding = await convertBookingToWedding('booking-1');
+
+    expect((wedding as { sourceBookingId: string }).sourceBookingId).toBe('booking-1');
+    expect(weddingCreateMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('a booking linked to an Enquiry with no existing Wedding anywhere converts successfully', async () => {
+    const booking = fakeBooking({ enquiryId: 'enquiry-1' });
+    const { prismaMock, weddingCreateMock } = makePrismaMock({ booking, weddings: {} });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    const wedding = await convertBookingToWedding('booking-1');
+
+    expect((wedding as { sourceBookingId: string }).sourceBookingId).toBe('booking-1');
+    expect(weddingCreateMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('a booking linked to an Enquiry that already converted via the CRM pipeline throws ConversionLockedError, not creating a second Wedding', async () => {
+    const booking = fakeBooking({ enquiryId: 'enquiry-1' });
+    const crmWedding = { id: 'wedding-crm', sourceEnquiryId: 'enquiry-1', weddingNumber: 'WED-2027-0002' };
+    const { prismaMock, weddingCreateMock } = makePrismaMock({
+      booking,
+      weddings: { sourceEnquiryId: crmWedding },
+    });
+    const { convertBookingToWedding, InvalidBookingStateError } = await loadServiceWith(prismaMock, booking);
+    const { ConversionLockedError } = await import('@/lib/errors');
+
+    const promise = convertBookingToWedding('booking-1');
+    await expect(promise).rejects.toThrow(ConversionLockedError);
+    await expect(promise).rejects.not.toBeInstanceOf(InvalidBookingStateError);
+    expect(weddingCreateMock).not.toHaveBeenCalled();
+  });
+
+  test('a booking linked to a Consultation that already converted via the CRM pipeline throws ConversionLockedError, not creating a second Wedding', async () => {
+    const booking = fakeBooking({ consultationId: 'consultation-1' });
+    const crmWedding = { id: 'wedding-crm', sourceConsultationId: 'consultation-1', weddingNumber: 'WED-2027-0003' };
+    const { prismaMock, weddingCreateMock } = makePrismaMock({
+      booking,
+      weddings: { sourceConsultationId: crmWedding },
+    });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+    const { ConversionLockedError } = await import('@/lib/errors');
+
+    await expect(convertBookingToWedding('booking-1')).rejects.toThrow(ConversionLockedError);
+    expect(weddingCreateMock).not.toHaveBeenCalled();
+  });
+
+  test('a booking linked to an Enquiry where a *different* Booking under the same Enquiry already converted also throws, not just a direct CRM Wedding', async () => {
+    const booking = fakeBooking({ id: 'booking-2', enquiryId: 'enquiry-1' });
+    const otherBookingsWedding = { id: 'wedding-other', sourceBookingId: 'booking-1', weddingNumber: 'WED-2027-0004' };
+    const { prismaMock, weddingCreateMock } = makePrismaMock({
+      booking,
+      weddings: { linkedBookingEnquiryId: otherBookingsWedding },
+    });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+    const { ConversionLockedError } = await import('@/lib/errors');
+
+    await expect(convertBookingToWedding('booking-2')).rejects.toThrow(ConversionLockedError);
+    expect(weddingCreateMock).not.toHaveBeenCalled();
+  });
+
+  test("the same-booking idempotency check still takes priority — retrying a booking that already has its own Wedding never hits the cross-path guard", async () => {
+    const booking = fakeBooking({ enquiryId: 'enquiry-1' });
+    const ownWedding = { id: 'wedding-own', sourceBookingId: 'booking-1', weddingNumber: 'WED-2027-0005' };
+    // Even though a CRM Wedding also technically exists for this enquiry,
+    // this booking's own prior conversion must win — no error, no duplicate.
+    const crmWedding = { id: 'wedding-crm', sourceEnquiryId: 'enquiry-1', weddingNumber: 'WED-2027-0006' };
+    const { prismaMock, weddingCreateMock } = makePrismaMock({
+      booking,
+      weddings: { sourceBookingId: ownWedding, sourceEnquiryId: crmWedding },
+    });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    const result = await convertBookingToWedding('booking-1');
+
+    expect(result as unknown as Record<string, unknown>).toEqual(ownWedding);
+    expect(weddingCreateMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('findWeddingForSource — cross-path duplicate detection (production-integrity fix)', () => {
+  test('still returns a direct CRM-path Wedding when one exists — existing single-path behavior unchanged', async () => {
+    const booking = fakeBooking();
+    const crmWedding = { id: 'wedding-crm', sourceEnquiryId: 'enquiry-1', weddingNumber: 'WED-2027-0007' };
+    const { prismaMock } = makePrismaMock({ booking, weddings: { sourceEnquiryId: crmWedding } });
+    const { findWeddingForSource } = await loadServiceWith(prismaMock, booking);
+
+    const result = await findWeddingForSource('ENQUIRY', 'enquiry-1');
+
+    expect(result as unknown as Record<string, unknown>).toEqual(crmWedding);
+  });
+
+  test('now also finds a Wedding created through a linked Booking, when there is no direct CRM-path FK — the core CRM-side fix', async () => {
+    const booking = fakeBooking();
+    const bookingWedding = { id: 'wedding-booking', sourceBookingId: 'booking-9', weddingNumber: 'WED-2027-0008' };
+    const { prismaMock } = makePrismaMock({ booking, weddings: { linkedBookingEnquiryId: bookingWedding } });
+    const { findWeddingForSource } = await loadServiceWith(prismaMock, booking);
+
+    const result = await findWeddingForSource('ENQUIRY', 'enquiry-1');
+
+    expect(result as unknown as Record<string, unknown>).toEqual(bookingWedding);
+  });
+
+  test('same cross-path detection for CONSULTATION', async () => {
+    const booking = fakeBooking();
+    const bookingWedding = { id: 'wedding-booking', sourceBookingId: 'booking-9', weddingNumber: 'WED-2027-0009' };
+    const { prismaMock } = makePrismaMock({ booking, weddings: { linkedBookingConsultationId: bookingWedding } });
+    const { findWeddingForSource } = await loadServiceWith(prismaMock, booking);
+
+    const result = await findWeddingForSource('CONSULTATION', 'consultation-1');
+
+    expect(result as unknown as Record<string, unknown>).toEqual(bookingWedding);
+  });
+
+  test('returns null when no Wedding exists via either path — unaffected regression', async () => {
+    const booking = fakeBooking();
+    const { prismaMock } = makePrismaMock({ booking, weddings: {} });
+    const { findWeddingForSource } = await loadServiceWith(prismaMock, booking);
+
+    expect(await findWeddingForSource('ENQUIRY', 'enquiry-1')).toBeNull();
+    expect(await findWeddingForSource('CONSULTATION', 'consultation-1')).toBeNull();
+  });
+
+  test('LEAD is unaffected — no Booking link exists for Lead, so only the direct sourceLeadId check runs', async () => {
+    const booking = fakeBooking();
+    const leadWedding = { id: 'wedding-lead', sourceLeadId: 'lead-1', weddingNumber: 'WED-2027-0010' };
+    const { prismaMock } = makePrismaMock({ booking, weddings: {} });
+    // sourceLeadId isn't one of the branches findUniqueMock handles above —
+    // extend it directly for this one case.
+    (prismaMock.wedding.findUnique as ReturnType<typeof mock>).mockImplementation(
+      async ({ where }: { where: Record<string, unknown> }) => ('sourceLeadId' in where ? leadWedding : null)
+    );
+    const { findWeddingForSource } = await loadServiceWith(prismaMock, booking);
+
+    const result = await findWeddingForSource('LEAD', 'lead-1');
+
+    expect(result as unknown as Record<string, unknown>).toEqual(leadWedding);
   });
 });

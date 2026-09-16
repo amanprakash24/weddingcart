@@ -153,6 +153,68 @@ describe('bookingService.create', () => {
     expect(persisted.guestCount).toBeUndefined();
   });
 
+  test('connects enquiryId/consultationId via the relation field (never a raw scalar) when provided — duplicate-Wedding guard plumbing', async () => {
+    const findBySlug = mock(async () => fakeVendor());
+    const create = mock(async (data: unknown) => ({ id: 'booking-1', ...(data as Record<string, unknown>) }));
+
+    mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findBySlug } }));
+    mock.module('@/repositories/booking.repository', () => ({ bookingRepository: { create } }));
+    const { bookingService } = await import('./booking.service');
+
+    await bookingService.create({
+      name: 'Priya Sharma',
+      phone: '9876543210',
+      city: 'Patna',
+      total: 5000,
+      enquiryId: 'enquiry-1',
+      consultationId: 'consultation-1',
+      items: [
+        {
+          vendorId: 'some-vendor',
+          vendorName: 'Some Vendor',
+          vendorCategory: 'Venues',
+          packageName: 'Basic Package',
+          price: 5000,
+          quantity: 1,
+        },
+      ],
+    });
+
+    const persisted = create.mock.calls[0][0] as { enquiry?: unknown; consultation?: unknown };
+    expect(persisted.enquiry).toEqual({ connect: { id: 'enquiry-1' } });
+    expect(persisted.consultation).toEqual({ connect: { id: 'consultation-1' } });
+  });
+
+  test('leaves enquiry/consultation unset when neither id is provided — preserves existing /cart and Enquiry-form behavior', async () => {
+    const findBySlug = mock(async () => fakeVendor());
+    const create = mock(async (data: unknown) => ({ id: 'booking-1', ...(data as Record<string, unknown>) }));
+
+    mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findBySlug } }));
+    mock.module('@/repositories/booking.repository', () => ({ bookingRepository: { create } }));
+    const { bookingService } = await import('./booking.service');
+
+    await bookingService.create({
+      name: 'Priya Sharma',
+      phone: '9876543210',
+      city: 'Patna',
+      total: 5000,
+      items: [
+        {
+          vendorId: 'some-vendor',
+          vendorName: 'Some Vendor',
+          vendorCategory: 'Venues',
+          packageName: 'Basic Package',
+          price: 5000,
+          quantity: 1,
+        },
+      ],
+    });
+
+    const persisted = create.mock.calls[0][0] as { enquiry?: unknown; consultation?: unknown };
+    expect(persisted.enquiry).toBeUndefined();
+    expect(persisted.consultation).toBeUndefined();
+  });
+
   test("rejects a booking whose packageName does not match any of the vendor's real packages", async () => {
     const findBySlug = mock(async () => fakeVendor());
     mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findBySlug } }));

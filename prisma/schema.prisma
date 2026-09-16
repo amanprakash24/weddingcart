@@ -458,6 +458,12 @@ model Enquiry {
   quotations       Quotation[]
   insights         LeadInsight[]
   wedding          Wedding?
+  // Duplicate-Wedding guard (production-integrity fix) — lets a Booking
+  // created from this Enquiry (e.g. the admin "Create Booking" action) be
+  // traced back for the cross-path check in services/weddingConversion
+  // .service.ts's findWeddingForSource(). Not unique — an Enquiry may
+  // reasonably have more than one Booking attempt before one is confirmed.
+  bookings         Booking[]
 
   // Production-hardening audit (2026-09-01) — see Lead's identical indexes
   // for the reasoning.
@@ -509,6 +515,9 @@ model Consultation {
   quotations       Quotation[]
   insights         LeadInsight[]
   wedding          Wedding?
+  // Duplicate-Wedding guard (production-integrity fix) — see Enquiry's
+  // identical addition for the reasoning. Not unique for the same reason.
+  bookings         Booking[]
 
   // Production-hardening audit (2026-09-01) — see Lead's identical indexes
   // for the reasoning.
@@ -541,6 +550,23 @@ model Booking {
   weddingDate DateTime?
   weddingType String?
   guestCount  Int?
+
+  // Duplicate-Wedding guard (production-integrity fix, docs: prior
+  // investigation found that a Booking created from an Enquiry/Consultation
+  // had no way to be traced back to it, so the CRM conversion path and this
+  // Booking's own confirm-to-Wedding path could independently produce two
+  // separate Weddings for the same underlying customer request). Nullable
+  // and not unique — set only when a Booking is created from an existing
+  // Enquiry/Consultation (e.g. the admin "Create Booking" action); ordinary
+  // public /cart checkout bookings leave both null, unaffected. Not unique
+  // because more than one Booking attempt may exist before one is
+  // confirmed — see services/weddingConversion.service.ts's
+  // findWeddingForSource() for how this is used to detect an existing
+  // Wedding across both conversion paths.
+  enquiryId      String?
+  enquiry        Enquiry?      @relation(fields: [enquiryId], references: [id])
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
 
   items   BookingItem[]
   wedding Wedding? // set once status reaches CONFIRMED and this converts

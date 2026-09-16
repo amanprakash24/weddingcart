@@ -20,6 +20,8 @@ export interface BookingCreateData {
   weddingDate?: Date;
   weddingType?: string;
   guestCount?: number;
+  enquiryId?: string;
+  consultationId?: string;
   items: BookingItemInput[];
 }
 
@@ -71,6 +73,8 @@ export const bookingService = {
       weddingDate: data.weddingDate,
       weddingType: data.weddingType,
       guestCount: data.guestCount,
+      enquiry: data.enquiryId ? { connect: { id: data.enquiryId } } : undefined,
+      consultation: data.consultationId ? { connect: { id: data.consultationId } } : undefined,
       items: { create: items },
     });
   },
