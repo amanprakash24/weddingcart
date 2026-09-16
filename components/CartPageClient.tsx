@@ -15,6 +15,22 @@ function isPerPlateItem(pkg: { isPerPlate?: boolean; features?: string[] }) {
   return pkg.isPerPlate === true || (pkg.features?.some((f) => f.toLowerCase().includes('per plate')) ?? false);
 }
 
+// Production-integrity fix: `fetch()` only rejects on a network-level
+// failure — a non-2xx JSON error response from POST /api/bookings (a
+// rejected weddingDate, a removed vendor package, a 500) still resolves
+// successfully, so the old code's unconditional `setBooked(true);
+// clearCart()` right after the fetch call showed "Booked!" and destroyed a
+// real customer's cart on every server-side rejection, with no error and no
+// record the attempt happened. This is the single decision point behind
+// that fix, extracted so it's directly testable without a fetch mock.
+export function interpretBookingResponse(
+  res: { ok: boolean },
+  data: { success?: boolean; error?: string } | undefined
+): { ok: true } | { ok: false; error: string } {
+  if (res.ok && data?.success) return { ok: true };
+  return { ok: false, error: data?.error || 'Something went wrong on our end — please try again.' };
+}
+
 export default function CartPageClient() {
   const { items, total, removeItem, updateQty, clearCart } = useCart();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -22,6 +38,7 @@ export default function CartPageClient() {
   const [bookingForm, setBookingForm] = useState({ name: '', phone: '', city: 'Patna' });
   const [submitting, setSubmitting] = useState(false);
   const [booked, setBooked] = useState(false);
+  const [bookError, setBookError] = useState<string | null>(null);
   const [guestCounts, setGuestCounts] = useState<Record<string, number>>({});
 
   const itemKey = (item: { vendor: { id: string }; package: { id: string } }) =>
@@ -60,8 +77,9 @@ export default function CartPageClient() {
     e.preventDefault();
     if (!isValidPhone(bookingForm.phone)) return;
     setSubmitting(true);
+    setBookError(null);
     try {
-      await fetch('/api/bookings', {
+      const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -77,8 +95,16 @@ export default function CartPageClient() {
           total: Math.round(calculatedTotal),
         }),
       });
+      const data = await res.json().catch(() => undefined);
+      const result = interpretBookingResponse(res, data);
+      if (!result.ok) {
+        setBookError(result.error);
+        return;
+      }
       setBooked(true);
       clearCart();
+    } catch {
+      setBookError('Network error — please check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -289,7 +315,7 @@ export default function CartPageClient() {
                 </div>
 
                 <button
-                  onClick={() => setShowBooking(true)}
+                  onClick={() => { setBookError(null); setShowBooking(true); }}
                   className="mt-4 flex items-center justify-center gap-2 w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-all hover:shadow-lg text-sm"
                 >
                   Consult Wedding Expert <ArrowRight className="w-4 h-4" />
@@ -357,7 +383,7 @@ export default function CartPageClient() {
             {/* Premium header strip */}
             <div className="bg-gradient-to-r from-amber-500 to-rose-500 px-7 pt-7 pb-5 rounded-t-3xl">
               <button
-                onClick={() => setShowBooking(false)}
+                onClick={() => { setBookError(null); setShowBooking(false); }}
                 className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 rounded-full transition-all"
               >
                 <X className="w-4 h-4" />
@@ -427,6 +453,11 @@ export default function CartPageClient() {
                     </select>
                   </div>
                 </div>
+                {bookError && (
+                  <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-600">
+                    {bookError}
+                  </div>
+                )}
                 <button
                   type="submit"
                   disabled={submitting || !isValidPhone(bookingForm.phone)}
