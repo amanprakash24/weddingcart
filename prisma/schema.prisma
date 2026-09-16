@@ -571,6 +571,13 @@ model Booking {
   items   BookingItem[]
   wedding Wedding? // set once status reaches CONFIRMED and this converts
 
+  // Lookups by these two (findByLinkedBookingEnquiryId/
+  // findByLinkedBookingConsultationId, the cross-path duplicate-Wedding
+  // guard) run on every CRM conversion/idempotency check, not just this
+  // Booking's own confirm — same "hot lookup column" reasoning as the
+  // pipelineStage indexes above.
+  @@index([enquiryId])
+  @@index([consultationId])
   @@map("bookings")
 }
 

@@ -24,6 +24,38 @@ export class InvalidBookingStateError extends Error {
   }
 }
 
+// Concurrency fix (production-integrity fix, round 2): the duplicate-Wedding
+// guard used to run its "does a Wedding already exist for this
+// Booking/Enquiry/Consultation?" check *before* opening the write
+// transaction. Two concurrent conversions for the same source (e.g. two
+// Bookings created from the same Enquiry, both confirmed within the same
+// second) could both observe "no Wedding yet" and both proceed to create
+// one — the DB's per-column @unique constraints on Wedding.sourceBookingId/
+// sourceLeadId/sourceEnquiryId/sourceConsultationId only catch a race on the
+// *exact same* source column; they don't see the cross-path case (a
+// Booking-path Wedding and a CRM-path Wedding for the same underlying
+// Enquiry/Consultation use different unique columns, so nothing at the DB
+// level stops both inserts).
+//
+// Fixed with a Postgres transaction-scoped advisory lock
+// (pg_advisory_xact_lock), taken as the first statement inside the write
+// transaction, keyed on every source identity this conversion touches. A
+// second, concurrent conversion for the same key blocks until the first
+// transaction commits or rolls back (the lock auto-releases either way —
+// no separate unlock/cleanup needed), then re-runs its own "does a Wedding
+// already exist" check against data that is now guaranteed committed. This
+// makes the check-then-create atomic without needing SERIALIZABLE isolation
+// or client-side retry logic.
+async function acquireConversionLock(tx: Tx, keys: string[]): Promise<void> {
+  // Sorted for a deterministic global lock-acquisition order — not
+  // currently reachable by any real deadlock (see call sites), but cheap
+  // insurance against one being introduced later by a caller that acquires
+  // more than one key.
+  for (const key of [...new Set(keys)].sort()) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`;
+  }
+}
+
 // Track B (2026-07-19): prepares the Booking -> Wedding conversion pipeline
 // ahead of Milestone 3/4 landing — NOT wired to any live route yet, and does
 // not change current (Mongo-backed) production behavior. This is the exact
@@ -55,52 +87,69 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
     );
   }
 
-  // Idempotent — a Booking should never spawn two Weddings. Re-running this
-  // (e.g. a retried request) against an already-converted booking returns the
-  // existing Wedding rather than erroring or duplicating.
-  const existing = await weddingRepository.findBySourceBookingId(bookingId);
-  if (existing) {
-    return existing;
-  }
-
-  // Cross-path duplicate-Wedding guard (production-integrity fix) — if this
-  // booking is linked to an Enquiry/Consultation (e.g. created via the
-  // admin "Create Booking" action) that already produced a Wedding through
-  // the separate CRM pipeline (or through a different Booking under the
-  // same source), refuse rather than silently creating a second Wedding for
-  // the same underlying customer request. findWeddingForSource() checks
-  // both the direct CRM-path FK and any other linked Booking's own
-  // conversion, so this one call covers both duplicate directions.
-  //
-  // Thrown, not returned — unlike convertLeadToWedding's "return the
-  // existing Wedding" idempotency below. If this returned someone else's
-  // Wedding here, *this* booking would never get its own sourceBookingId
-  // link, leaving Booking.wedding permanently null even though the confirm
-  // action "succeeded" (and silently breaking the "Open Wedding Workspace"
-  // link on the Bookings tab, PR #85, for this booking). Surfacing this
-  // explicitly — via the error-alert handling already built for this route
-  // in PR #84 — is clearer than a silent redirect to a Wedding this
-  // specific booking isn't actually linked to. Ordered after the
-  // same-booking idempotency check above so a genuine retry of an
-  // already-converted booking is never affected by this guard.
-  if (booking.enquiryId) {
-    const viaEnquiry = await findWeddingForSource('ENQUIRY', booking.enquiryId);
-    if (viaEnquiry) {
-      throw new ConversionLockedError(
-        `This booking's enquiry already converted to Wedding ${viaEnquiry.weddingNumber}`
-      );
-    }
-  }
-  if (booking.consultationId) {
-    const viaConsultation = await findWeddingForSource('CONSULTATION', booking.consultationId);
-    if (viaConsultation) {
-      throw new ConversionLockedError(
-        `This booking's consultation already converted to Wedding ${viaConsultation.weddingNumber}`
-      );
-    }
-  }
+  // Concurrency fix: everything that decides "does a Wedding already exist
+  // for this source?" now runs *inside* the transaction, after the advisory
+  // lock below, instead of before it — see acquireConversionLock's comment.
+  // Locked on every source identity this booking touches: its own id (so a
+  // double-submit of the same confirm action is safe) plus its linked
+  // Enquiry/Consultation, if any (so this can't race a concurrent CRM-path
+  // or different-Booking-path conversion for the same underlying source).
+  const lockKeys = [`BOOKING:${booking.id}`];
+  if (booking.enquiryId) lockKeys.push(`ENQUIRY:${booking.enquiryId}`);
+  if (booking.consultationId) lockKeys.push(`CONSULTATION:${booking.consultationId}`);
 
   return prisma.$transaction(async (tx) => {
+    await acquireConversionLock(tx, lockKeys);
+
+    // Idempotent — a Booking should never spawn two Weddings. Re-running
+    // this (e.g. a retried request) against an already-converted booking
+    // returns the existing Wedding rather than erroring or duplicating.
+    const existing = await weddingRepository.findBySourceBookingId(bookingId, tx);
+    if (existing) {
+      return existing;
+    }
+
+    // Cross-path duplicate-Wedding guard (production-integrity fix) — if
+    // this booking is linked to an Enquiry/Consultation (e.g. created via
+    // the admin "Create Booking" action) that already produced a Wedding
+    // through the separate CRM pipeline (or through a different Booking
+    // under the same source), refuse rather than silently creating a
+    // second Wedding for the same underlying customer request.
+    // findWeddingForSource() checks both the direct CRM-path FK and any
+    // other linked Booking's own conversion, so this one call covers both
+    // duplicate directions. Now safe to trust: the advisory lock above
+    // guarantees no concurrent transaction for the same Enquiry/
+    // Consultation can be interleaved between this read and this
+    // transaction's own writes below.
+    //
+    // Thrown, not returned — unlike convertLeadToWedding's "return the
+    // existing Wedding" idempotency below. If this returned someone else's
+    // Wedding here, *this* booking would never get its own sourceBookingId
+    // link, leaving Booking.wedding permanently null even though the confirm
+    // action "succeeded" (and silently breaking the "Open Wedding Workspace"
+    // link on the Bookings tab, PR #85, for this booking). Surfacing this
+    // explicitly — via the error-alert handling already built for this route
+    // in PR #84 — is clearer than a silent redirect to a Wedding this
+    // specific booking isn't actually linked to. Ordered after the
+    // same-booking idempotency check above so a genuine retry of an
+    // already-converted booking is never affected by this guard.
+    if (booking.enquiryId) {
+      const viaEnquiry = await findWeddingForSource('ENQUIRY', booking.enquiryId, tx);
+      if (viaEnquiry) {
+        throw new ConversionLockedError(
+          `This booking's enquiry already converted to Wedding ${viaEnquiry.weddingNumber}`
+        );
+      }
+    }
+    if (booking.consultationId) {
+      const viaConsultation = await findWeddingForSource('CONSULTATION', booking.consultationId, tx);
+      if (viaConsultation) {
+        throw new ConversionLockedError(
+          `This booking's consultation already converted to Wedding ${viaConsultation.weddingNumber}`
+        );
+      }
+    }
+
     const weddingNumber = await generateWeddingNumber(tx);
 
     const wedding = await weddingRepository.create(
@@ -308,14 +357,6 @@ export async function convertLeadToWedding(
     );
   }
 
-  // Idempotent, same discipline as convertBookingToWedding — a retried
-  // request against an already-converted subject returns the existing
-  // Wedding rather than erroring or duplicating.
-  const existing = await findWeddingForSource(sourceType, id);
-  if (existing) {
-    return existing;
-  }
-
   const carryOver = carryOverWeddingFields(sourceType, subject);
   const sourceLink =
     sourceType === 'LEAD'
@@ -325,6 +366,28 @@ export async function convertLeadToWedding(
         : { sourceConsultation: { connect: { id } } };
 
   return prisma.$transaction(async (tx) => {
+    // Concurrency fix — same discipline as convertBookingToWedding: the
+    // advisory lock is acquired first, then the idempotency check runs
+    // against committed data only. Keyed on {sourceType, id} so this
+    // correctly serializes against a concurrent convertBookingToWedding
+    // call for a Booking linked to the same Enquiry/Consultation (that
+    // function locks the identical `${sourceType}:${id}` key for its own
+    // linked source) as well as against a second concurrent call to this
+    // same function for the same subject.
+    await acquireConversionLock(tx, [`${sourceType}:${id}`]);
+
+    // Idempotent, same discipline as convertBookingToWedding — a retried
+    // request against an already-converted subject returns the existing
+    // Wedding rather than erroring or duplicating. Also the case that
+    // absorbs the cross-path race: if a Booking-path conversion for a
+    // linked Booking committed first, findWeddingForSource sees it here
+    // (via the linked-booking lookup) and this returns it rather than
+    // creating a second Wedding.
+    const existing = await findWeddingForSource(sourceType, id, tx);
+    if (existing) {
+      return existing;
+    }
+
     const weddingNumber = await generateWeddingNumber(tx);
 
     const wedding = await weddingRepository.create(

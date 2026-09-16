@@ -32,9 +32,14 @@ function fakeBooking(overrides: Partial<Record<string, unknown>> = {}) {
 // convertBookingToWedding()'s guard can perform to what should come back —
 // omitted/undefined entries behave as "nothing found" (null), matching real
 // Prisma findUnique/findFirst semantics for no match.
+// Shared by every makePrismaMock() call in this file — records cross-mock
+// call order (lock acquisitions interleaved with reads) so tests can assert
+// "the lock was taken before the existence check ran", not just that both
+// happened.
 function makePrismaMock({
   booking,
   weddings = {},
+  callLog = [],
 }: {
   booking: ReturnType<typeof fakeBooking>;
   weddings?: {
@@ -44,6 +49,7 @@ function makePrismaMock({
     linkedBookingEnquiryId?: Record<string, unknown> | null;
     linkedBookingConsultationId?: Record<string, unknown> | null;
   };
+  callLog?: string[];
 }) {
   const weddingCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({
     id: 'wedding-1',
@@ -58,6 +64,7 @@ function makePrismaMock({
   const activityLogCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'log-1', ...args.data }));
 
   const findUniqueMock = mock(async ({ where }: { where: Record<string, unknown> }) => {
+    callLog.push('read:findUnique');
     if ('sourceBookingId' in where) return weddings.sourceBookingId ?? null;
     if ('sourceEnquiryId' in where) return weddings.sourceEnquiryId ?? null;
     if ('sourceConsultationId' in where) return weddings.sourceConsultationId ?? null;
@@ -67,11 +74,22 @@ function makePrismaMock({
   // `tx.wedding.findFirst({ where: { sourceBooking: { enquiryId | consultationId } } })`.
   const findFirstMock = mock(
     async ({ where }: { where: { sourceBooking?: { enquiryId?: string; consultationId?: string } } }) => {
+      callLog.push('read:findFirst');
       if (where.sourceBooking?.enquiryId) return weddings.linkedBookingEnquiryId ?? null;
       if (where.sourceBooking?.consultationId) return weddings.linkedBookingConsultationId ?? null;
       return null;
     }
   );
+  // Stands in for the real pg_advisory_xact_lock call (see
+  // weddingConversion.service.ts's acquireConversionLock) — a real Postgres
+  // lock's blocking behavior can't be exercised against a mock, but its
+  // *call shape* (which key, and that it runs before any existence check)
+  // is exactly what makes the guard concurrency-safe, so that's what these
+  // tests assert instead.
+  const executeRawMock = mock(async (_strings: TemplateStringsArray, ...values: unknown[]) => {
+    callLog.push(`lock:${values[0]}`);
+    return 1;
+  });
 
   const base = {
     booking: { findUnique: mock(async () => booking) },
@@ -85,12 +103,22 @@ function makePrismaMock({
     vendorBooking: { create: vendorBookingCreateMock },
     task: { create: taskCreateMock },
     activityLog: { create: activityLogCreateMock },
+    $executeRaw: executeRawMock,
   };
   const prismaMock = {
     ...base,
     $transaction: mock(async (fn: (tx: typeof base) => unknown) => fn(base)),
   };
-  return { prismaMock, weddingCreateMock, weddingEventCreateMock, vendorBookingCreateMock, taskCreateMock, activityLogCreateMock };
+  return {
+    prismaMock,
+    weddingCreateMock,
+    weddingEventCreateMock,
+    vendorBookingCreateMock,
+    taskCreateMock,
+    activityLogCreateMock,
+    executeRawMock,
+    callLog,
+  };
 }
 
 // Also re-mocks `@/repositories/booking.repository` explicitly (not just
@@ -314,5 +342,129 @@ describe('findWeddingForSource — cross-path duplicate detection (production-in
     const result = await findWeddingForSource('LEAD', 'lead-1');
 
     expect(result as unknown as Record<string, unknown>).toEqual(leadWedding);
+  });
+});
+
+// Concurrency fix (production-integrity review, round 2): a mock can't
+// exercise Postgres's actual blocking behavior for pg_advisory_xact_lock,
+// but it can prove the two things that behavior depends on — (1) the lock
+// is always acquired before any "does a Wedding already exist" read runs,
+// so a concurrent transaction can never interleave between the check and
+// the create, and (2) convertBookingToWedding and convertLeadToWedding lock
+// on the *same* key for the same underlying Enquiry/Consultation, so they
+// actually serialize against each other rather than each locking a
+// different, non-conflicting key.
+describe('convertBookingToWedding — advisory lock acquisition (concurrency fix)', () => {
+  test('acquires the lock before running the same-booking or cross-path existence checks, not after', async () => {
+    const booking = fakeBooking({ enquiryId: 'enquiry-1' });
+    const { prismaMock, callLog } = makePrismaMock({ booking, weddings: {} });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    const firstReadIndex = callLog.findIndex((entry) => entry.startsWith('read:'));
+    const lockIndexes = callLog.reduce<number[]>((acc, entry, i) => (entry.startsWith('lock:') ? [...acc, i] : acc), []);
+    expect(lockIndexes.length).toBeGreaterThan(0);
+    expect(Math.max(...lockIndexes)).toBeLessThan(firstReadIndex);
+  });
+
+  test('locks on every source identity the booking touches — its own id plus a linked Enquiry and Consultation — sorted for a deterministic order', async () => {
+    const booking = fakeBooking({ id: 'booking-1', enquiryId: 'enquiry-1', consultationId: 'consultation-1' });
+    const { prismaMock, executeRawMock } = makePrismaMock({ booking, weddings: {} });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]);
+    expect(lockedKeys).toEqual(['BOOKING:booking-1', 'CONSULTATION:consultation-1', 'ENQUIRY:enquiry-1']);
+  });
+
+  test('a standalone booking (no enquiryId/consultationId) only locks its own id — no unnecessary cross-path lock', async () => {
+    const booking = fakeBooking({ enquiryId: null, consultationId: null });
+    const { prismaMock, executeRawMock } = makePrismaMock({ booking, weddings: {} });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]);
+    expect(lockedKeys).toEqual(['BOOKING:booking-1']);
+  });
+});
+
+describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)', () => {
+  function fakeEnquiry(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: 'enquiry-1',
+      name: 'Priya Sharma',
+      pipelineStage: 'WON',
+      guestCount: '250',
+      eventType: 'Traditional Hindu',
+      ...overrides,
+    };
+  }
+
+  function makeCrmPrismaMock({ weddingFound }: { weddingFound: Record<string, unknown> | null }) {
+    const callLog: string[] = [];
+    const findUniqueMock = mock(async () => {
+      callLog.push('read:findUnique');
+      return weddingFound;
+    });
+    const findFirstMock = mock(async () => {
+      callLog.push('read:findFirst');
+      return null;
+    });
+    const executeRawMock = mock(async (_strings: TemplateStringsArray, ...values: unknown[]) => {
+      callLog.push(`lock:${values[0]}`);
+      return 1;
+    });
+    const weddingCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'wedding-new', ...args.data }));
+    const base = {
+      wedding: { findUnique: findUniqueMock, findFirst: findFirstMock, create: weddingCreateMock, count: mock(async () => 0) },
+      weddingEvent: { create: mock(async () => ({ id: 'we-1' })) },
+      activityLog: { create: mock(async () => ({ id: 'log-1' })) },
+      timelineMilestone: { createMany: mock(async () => ({ count: 0 })) },
+      task: { create: mock(async () => ({ id: 'task-1' })) },
+      $executeRaw: executeRawMock,
+    };
+    const prismaMock = { ...base, $transaction: mock(async (fn: (tx: typeof base) => unknown) => fn(base)) };
+    return { prismaMock, executeRawMock, weddingCreateMock, callLog };
+  }
+
+  async function loadConvertLeadServiceWith(prismaMock: unknown, enquiry: ReturnType<typeof fakeEnquiry>) {
+    mock.module('@/lib/prisma', () => ({ prisma: prismaMock }));
+    mock.module('@/repositories/enquiry.repository', () => ({ enquiryRepository: { findById: mock(async () => enquiry) } }));
+    mock.module('@/repositories/lead.repository', () => ({ leadRepository: { findById: mock(async () => null) } }));
+    mock.module('@/repositories/consultation.repository', () => ({
+      consultationRepository: { findById: mock(async () => null) },
+    }));
+    return import('./weddingConversion.service');
+  }
+
+  const convertInput = { weddingDate: new Date('2027-02-14'), city: 'Patna', tokenAdvanceReceived: true };
+
+  test('locks the same `ENQUIRY:<id>` key convertBookingToWedding uses for a Booking linked to the same Enquiry — the two paths actually serialize against each other', async () => {
+    const enquiry = fakeEnquiry();
+    const { prismaMock, executeRawMock } = makeCrmPrismaMock({ weddingFound: null });
+    const { convertLeadToWedding } = await loadConvertLeadServiceWith(prismaMock, enquiry);
+
+    await convertLeadToWedding('ENQUIRY', 'enquiry-1', convertInput, null);
+
+    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]);
+    expect(lockedKeys).toEqual(['ENQUIRY:enquiry-1']);
+  });
+
+  test('acquires the lock before checking for an existing Wedding, and returns it (no duplicate) when a concurrent Booking-path conversion already committed one', async () => {
+    const enquiry = fakeEnquiry();
+    const existingWedding = { id: 'wedding-from-booking-path', sourceBookingId: 'booking-9', weddingNumber: 'WED-2027-0099' };
+    const { prismaMock, weddingCreateMock, callLog } = makeCrmPrismaMock({ weddingFound: existingWedding });
+    const { convertLeadToWedding } = await loadConvertLeadServiceWith(prismaMock, enquiry);
+
+    const result = await convertLeadToWedding('ENQUIRY', 'enquiry-1', convertInput, null);
+
+    expect(result as unknown as Record<string, unknown>).toEqual(existingWedding);
+    expect(weddingCreateMock).not.toHaveBeenCalled();
+    const firstReadIndex = callLog.findIndex((entry) => entry.startsWith('read:'));
+    const lockIndex = callLog.findIndex((entry) => entry.startsWith('lock:'));
+    expect(lockIndex).toBeLessThan(firstReadIndex);
   });
 });

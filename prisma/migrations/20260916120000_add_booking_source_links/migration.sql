@@ -7,3 +7,9 @@ ALTER TABLE "bookings" ADD CONSTRAINT "bookings_enquiryId_fkey" FOREIGN KEY ("en
 
 -- AddForeignKey
 ALTER TABLE "bookings" ADD CONSTRAINT "bookings_consultationId_fkey" FOREIGN KEY ("consultationId") REFERENCES "consultations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- CreateIndex
+CREATE INDEX "bookings_enquiryId_idx" ON "bookings"("enquiryId");
+
+-- CreateIndex
+CREATE INDEX "bookings_consultationId_idx" ON "bookings"("consultationId");
