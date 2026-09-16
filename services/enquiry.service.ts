@@ -1,6 +1,8 @@
 import { enquiryRepository } from '@/repositories/enquiry.repository';
 import { vendorRepository } from '@/repositories/vendor.repository';
-import { NotFoundError } from '@/lib/errors';
+import { bookingRepository } from '@/repositories/booking.repository';
+import { findWeddingForSource } from '@/services/weddingConversion.service';
+import { NotFoundError, ConversionLockedError, InvalidTransitionError } from '@/lib/errors';
 import type { Prisma, EnquiryStatus } from '@/generated/prisma/client';
 
 export interface EnquiryCreateData {
@@ -58,5 +60,44 @@ export const enquiryService = {
   // controlled state machine — never touched here.
   update: (id: string, data: Prisma.EnquiryUpdateInput) => enquiryRepository.update(id, data),
 
-  delete: (id: string) => enquiryRepository.delete(id),
+  // Production-integrity fix: Wedding.sourceEnquiryId and Booking.enquiryId
+  // are both optional, unguarded relations — Prisma's default onDelete for
+  // those is SetNull (confirmed against the actual migration SQL), so
+  // without this check a delete would silently sever either link instead of
+  // being refused. That's the exact hole services/lead.service.ts's delete()
+  // already closes for Lead; this applies the same pattern here, plus the
+  // linked-Booking check Lead doesn't need (Lead has no bookings relation).
+  //
+  // Order matters: an already-converted Enquiry is checked first (the surer,
+  // already-happened case) before the merely-linked-Booking case (a Booking
+  // that hasn't converted yet, but would silently lose its cross-path check
+  // on a later confirm if this Enquiry disappeared first) — evaluateEnquiryDeleteGuard
+  // encodes that priority; short-circuiting the count() query here (only run
+  // when no Wedding was found) is just an efficiency detail on top of it.
+  async delete(id: string) {
+    const wedding = await findWeddingForSource('ENQUIRY', id);
+    const linkedBookings = wedding ? 0 : await bookingRepository.count({ enquiryId: id });
+    const blocked = evaluateEnquiryDeleteGuard(wedding, linkedBookings);
+    if (blocked) throw blocked;
+    return enquiryRepository.delete(id);
+  },
 };
+
+// Pure decision behind delete()'s guard, extracted so the exact rule — block
+// on an existing Wedding first, then on any linked Booking, otherwise allow —
+// is directly testable without mocking prisma/repositories/weddingConversion
+// .service (mock.module() intercepts by resolved file path, so mocking any
+// of those here would also hijack other test files' own real usage of the
+// same modules; see services/enquiry.service.test.ts).
+export function evaluateEnquiryDeleteGuard(
+  wedding: { weddingNumber: string } | null,
+  linkedBookingCount: number
+): Error | null {
+  if (wedding) {
+    return new ConversionLockedError(`Cannot delete: this enquiry converted to Wedding ${wedding.weddingNumber}`);
+  }
+  if (linkedBookingCount > 0) {
+    return new InvalidTransitionError(`Cannot delete: this enquiry has ${linkedBookingCount} linked booking(s)`);
+  }
+  return null;
+}
