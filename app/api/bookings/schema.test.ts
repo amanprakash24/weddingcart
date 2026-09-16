@@ -100,6 +100,21 @@ describe('bookingCreateSchema', () => {
       expect(() => bookingCreateSchema.parse(validBody({ weddingDate: 'not-a-date' }))).toThrow();
     });
 
+    // Real Enquiry.eventDate data includes free-text-shaped, typo'd values
+    // like this one — JS's Date constructor parses it into a *valid* Date
+    // 18000 years in the future rather than failing, so bare
+    // z.coerce.date() would have silently accepted it. weddingDate's strict
+    // YYYY-MM-DD regex rejects it outright.
+    test('rejects a malformed free-text date ("20 October 20202") that JS Date would otherwise silently accept', () => {
+      const asDate = new Date('20 October 20202');
+      expect(isNaN(asDate.getTime())).toBe(false); // confirms this is the exact silent-accept trap, not a no-op case
+      expect(() => bookingCreateSchema.parse(validBody({ weddingDate: '20 October 20202' }))).toThrow();
+    });
+
+    test('rejects a YYYY-MM-DD-shaped but semantically invalid date (month 13)', () => {
+      expect(() => bookingCreateSchema.parse(validBody({ weddingDate: '2027-13-45' }))).toThrow();
+    });
+
     test('accepts a weddingType string', () => {
       const parsed = bookingCreateSchema.parse(validBody({ weddingType: 'Traditional Hindu' }));
       expect(parsed.weddingType).toBe('Traditional Hindu');
