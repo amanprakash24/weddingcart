@@ -39,6 +39,22 @@ export const weddingRepository = {
     return tx.wedding.findUnique({ where: { sourceConsultationId: consultationId } });
   },
 
+  // Cross-path duplicate-Wedding guard (production-integrity fix) — a
+  // Wedding created via the Booking path (source=BOOKING, sourceBookingId
+  // set) has no sourceEnquiryId/sourceConsultationId of its own, so
+  // findBySourceEnquiryId/findBySourceConsultationId alone can't see it.
+  // These close that gap by looking through a linked Booking instead — used
+  // by services/weddingConversion.service.ts's findWeddingForSource(), the
+  // one shared function every conversion entry point and lock-check already
+  // goes through.
+  async findByLinkedBookingEnquiryId(enquiryId: string, tx: Tx | typeof prisma = prisma): Promise<Wedding | null> {
+    return tx.wedding.findFirst({ where: { sourceBooking: { enquiryId } } });
+  },
+
+  async findByLinkedBookingConsultationId(consultationId: string, tx: Tx | typeof prisma = prisma): Promise<Wedding | null> {
+    return tx.wedding.findFirst({ where: { sourceBooking: { consultationId } } });
+  },
+
   async findMany(
     { where, skip, take, orderBy }: FindManyParams,
     tx: Tx | typeof prisma = prisma

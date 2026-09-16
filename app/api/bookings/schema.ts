@@ -39,6 +39,14 @@ export const bookingCreateSchema = z.object({
     .transform((s) => (s === undefined ? undefined : new Date(s))),
   weddingType: z.string().trim().max(200).optional(),
   guestCount: z.coerce.number().int().positive().optional(),
+  // Optional links back to the Enquiry/Consultation this booking was
+  // created from (e.g. the admin "Create Booking" action) — additive, no
+  // caller sends these yet (the public /cart checkout never will; the
+  // existing PR #91 Enquiry form doesn't yet either, by design, to keep
+  // this change purely structural). Used by the duplicate-Wedding guard in
+  // services/weddingConversion.service.ts.
+  enquiryId: z.string().trim().min(1).optional(),
+  consultationId: z.string().trim().min(1).optional(),
   items: z
     .array(
       z.object({

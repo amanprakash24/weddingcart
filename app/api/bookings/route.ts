@@ -28,10 +28,20 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, phone, city, items, total, weddingDate, weddingType, guestCount } = bookingCreateSchema.parse(
-      await req.json()
-    );
-    const booking = await bookingService.create({ name, phone, city, items, total, weddingDate, weddingType, guestCount });
+    const { name, phone, city, items, total, weddingDate, weddingType, guestCount, enquiryId, consultationId } =
+      bookingCreateSchema.parse(await req.json());
+    const booking = await bookingService.create({
+      name,
+      phone,
+      city,
+      items,
+      total,
+      weddingDate,
+      weddingType,
+      guestCount,
+      enquiryId,
+      consultationId,
+    });
     return NextResponse.json({ success: true, data: toResponseShape(booking) }, { status: 201 });
   } catch (err) {
     return handleApiError(err);

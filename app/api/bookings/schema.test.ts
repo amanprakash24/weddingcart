@@ -137,4 +137,26 @@ describe('bookingCreateSchema', () => {
       expect(() => bookingCreateSchema.parse(validBody({ guestCount: 12.5 }))).toThrow();
     });
   });
+
+  describe('enquiryId / consultationId — optional links for the duplicate-Wedding guard (production-integrity fix)', () => {
+    test('leaves both undefined when omitted — preserves existing /cart behavior', () => {
+      const parsed = bookingCreateSchema.parse(validBody());
+      expect(parsed.enquiryId).toBeUndefined();
+      expect(parsed.consultationId).toBeUndefined();
+    });
+
+    test('accepts an enquiryId when provided', () => {
+      const parsed = bookingCreateSchema.parse(validBody({ enquiryId: 'enquiry-1' }));
+      expect(parsed.enquiryId).toBe('enquiry-1');
+    });
+
+    test('accepts a consultationId when provided', () => {
+      const parsed = bookingCreateSchema.parse(validBody({ consultationId: 'consultation-1' }));
+      expect(parsed.consultationId).toBe('consultation-1');
+    });
+
+    test('rejects an empty-string enquiryId', () => {
+      expect(() => bookingCreateSchema.parse(validBody({ enquiryId: '' }))).toThrow();
+    });
+  });
 });
