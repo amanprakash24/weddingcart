@@ -39,18 +39,37 @@ export async function recordLoginAttempt(identifier: string, success: boolean): 
 const MAX_REQUESTS_PER_WINDOW = 5;
 const REQUEST_WINDOW_MINUTES = 15;
 
+// Fails open (treats the caller as not rate-limited) on a DB error rather
+// than throwing — this throttle protects public lead-gen forms from spam,
+// it isn't a security boundary like isRateLimited()'s credential lockout
+// above, so a transient DB blip here should never take down the whole
+// submission (production incident 2026-09-17: a rate-limiter DB error
+// crashed /api/consultations with an opaque 500 before the real work — the
+// consultation write itself — ever ran).
 export async function isRequestRateLimited(identifier: string): Promise<boolean> {
-  const since = new Date(Date.now() - REQUEST_WINDOW_MINUTES * 60 * 1000);
-  const recentRequests = await prisma.loginAttempt.count({
-    where: { identifier, createdAt: { gt: since } },
-  });
-  return recentRequests >= MAX_REQUESTS_PER_WINDOW;
+  try {
+    const since = new Date(Date.now() - REQUEST_WINDOW_MINUTES * 60 * 1000);
+    const recentRequests = await prisma.loginAttempt.count({
+      where: { identifier, createdAt: { gt: since } },
+    });
+    return recentRequests >= MAX_REQUESTS_PER_WINDOW;
+  } catch (err) {
+    console.error('isRequestRateLimited: DB error, failing open:', err);
+    return false;
+  }
 }
 
 // Call once a request has passed the isRequestRateLimited() check, before
 // doing any real work — this throttles by request volume, not by success, so
 // a caller retrying a malformed payload can't dodge the limiter by never
-// reaching a "success" recording point.
+// reaching a "success" recording point. Best-effort: a failure here just
+// means this request goes uncounted, which errs toward not blocking real
+// submissions over strict throttling accuracy — see isRequestRateLimited()'s
+// fail-open reasoning above.
 export async function recordRequest(identifier: string): Promise<void> {
-  await prisma.loginAttempt.create({ data: { identifier, success: true } });
+  try {
+    await prisma.loginAttempt.create({ data: { identifier, success: true } });
+  } catch (err) {
+    console.error('recordRequest: DB error, request left uncounted:', err);
+  }
 }
