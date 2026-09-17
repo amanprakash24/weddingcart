@@ -2,7 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { enquiryService } from '@/services/enquiry.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
+import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
+import { enquiryCreateSchema } from './schema';
 import type { Enquiry, EnquiryStatus } from '@/generated/prisma/client';
+
+// Public, unauthenticated POST — previously had neither validation nor rate
+// limiting (production-readiness audit finding), unlike its sibling routes
+// (consultations/vendor-applications/events-orders). Same
+// isRequestRateLimited/recordRequest pair, same reasoning: a public form
+// with no "wrong guess" concept, where the abuse signal is request volume.
+const RATE_LIMIT_PREFIX = 'enquiry:';
+
+function clientIp(req: NextRequest): string {
+  // Vercel sets x-forwarded-for; first entry is the original client.
+  const forwarded = req.headers.get('x-forwarded-for');
+  return forwarded?.split(',')[0]?.trim() || 'unknown';
+}
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
 // ('new'/'contacted'/'closed', Prisma's EnquiryStatus enum is uppercase) and
@@ -42,22 +57,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { vendorId, vendorName, vendorCategory, name, phone, email, city, eventDate, guestCount, eventType, message } = body;
+    const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
+    if (await isRequestRateLimited(rateLimitId)) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
+    }
+    await recordRequest(rateLimitId);
 
-    const enquiry = await enquiryService.create({
-      vendorId,
-      vendorName,
-      vendorCategory,
-      name,
-      phone,
-      email,
-      city,
-      eventDate,
-      guestCount,
-      eventType,
-      message,
-    });
+    const data = enquiryCreateSchema.parse(await req.json());
+    const enquiry = await enquiryService.create(data);
 
     return NextResponse.json({ success: true, data: toResponseShape(enquiry) }, { status: 201 });
   } catch (err) {
