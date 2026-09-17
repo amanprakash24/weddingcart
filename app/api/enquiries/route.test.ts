@@ -107,3 +107,25 @@ describe('POST /api/enquiries — validation (production-integrity fix)', () => 
     expect(res.status).toBe(400);
   });
 });
+
+describe('POST /api/enquiries — Consultation -> Enquiry bridge', () => {
+  test('a consultationId in the body reaches enquiryService.create() and comes back on the created enquiry', async () => {
+    const store = makeLoginAttemptStore();
+    const { POST } = await loadRouteWith(store);
+
+    const res = await POST(postRequest({ ...VALID_BODY, consultationId: 'consultation-1' }, '8.8.8.8'));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.data.consultationId).toBe('consultation-1');
+  });
+
+  test('omitting consultationId still creates the enquiry normally — unaffected existing /vendors/[id] path', async () => {
+    const store = makeLoginAttemptStore();
+    const { POST } = await loadRouteWith(store);
+
+    const res = await POST(postRequest(VALID_BODY, '8.8.8.9'));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.data.consultationId).toBeUndefined();
+  });
+});

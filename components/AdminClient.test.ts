@@ -5,9 +5,12 @@ import {
   resolveEnquiryWeddingDate,
   buildBookingCreateItems,
   buildBookingCreateRequestBody,
+  prefillEnquiryFromConsultation,
+  buildEnquiryCreateRequestBody,
   type StatsState,
   type BookingCreateVendorContext,
   type BookingCreateFormFields,
+  type EnquiryCreateVendorContext,
 } from './AdminClient';
 
 // Production-integrity fix: the admin Dashboard tab's 6 summary cards
@@ -177,5 +180,90 @@ describe('buildBookingCreateRequestBody — duplicate-Wedding guard wiring (prod
       items,
       total: 50000,
     });
+  });
+});
+
+describe('prefillEnquiryFromConsultation — Consultation -> Enquiry bridge', () => {
+  test('maps every Consultation field the Enquiry form has an equivalent for', () => {
+    const consultation = {
+      _id: 'consultation-1',
+      name: 'Priya Sharma',
+      phone: '9876543210',
+      email: 'priya@example.com',
+      city: 'Patna',
+      weddingDate: '2027-02-14',
+      guestCount: 250,
+      eventType: 'wedding',
+      services: ['venue', 'catering'],
+      message: 'Looking for a beachside venue.',
+    };
+
+    const form = prefillEnquiryFromConsultation(consultation);
+    expect(form.name).toBe('Priya Sharma');
+    expect(form.phone).toBe('9876543210');
+    expect(form.email).toBe('priya@example.com');
+    expect(form.city).toBe('Patna');
+    expect(form.eventDate).toBe('2027-02-14');
+    expect(form.guestCount).toBe('250'); // Consultation.guestCount is Int, Enquiry.guestCount is String?
+    expect(form.eventType).toBe('wedding');
+    expect(form.message).toBe('Services requested: venue, catering\n\nLooking for a beachside venue.');
+  });
+
+  test('does not invent a city when the Consultation never captured one — left blank for the coordinator to fill', () => {
+    const form = prefillEnquiryFromConsultation({ name: 'Priya Sharma', phone: '9876543210' });
+    expect(form.city).toBe('');
+  });
+
+  test('folds services into the message even with no Consultation message of its own', () => {
+    const form = prefillEnquiryFromConsultation({ name: 'Priya Sharma', phone: '9876543210', services: ['makeup'] });
+    expect(form.message).toBe('Services requested: makeup');
+  });
+
+  test('leaves message empty (not a stray separator) when there are neither services nor a message', () => {
+    const form = prefillEnquiryFromConsultation({ name: 'Priya Sharma', phone: '9876543210' });
+    expect(form.message).toBe('');
+  });
+
+  test('defaults eventType to "wedding" when the Consultation has none, matching the Enquiry form default', () => {
+    const form = prefillEnquiryFromConsultation({ name: 'Priya Sharma', phone: '9876543210', eventType: '' });
+    expect(form.eventType).toBe('wedding');
+  });
+});
+
+describe('buildEnquiryCreateRequestBody — Consultation -> Enquiry bridge', () => {
+  const form = {
+    name: 'Priya Sharma',
+    phone: '9876543210',
+    email: '',
+    city: 'Patna',
+    eventDate: '2027-02-14',
+    guestCount: '250',
+    eventType: 'wedding',
+    message: '',
+  };
+  const vendor: EnquiryCreateVendorContext = { slug: 'royal-caterers-patna', name: 'Royal Caterers', category: 'cat-catering' };
+
+  test('sends vendor.slug (never a vendor UUID) as vendorId — matches enquiryService.create()\'s findBySlug() resolution', () => {
+    const body = buildEnquiryCreateRequestBody(form, vendor, null);
+    expect(body.vendorId).toBe('royal-caterers-patna');
+    expect(body.vendorName).toBe('Royal Caterers');
+    expect(body.vendorCategory).toBe('cat-catering');
+  });
+
+  test('includes consultationId when the form was opened from a Consultation', () => {
+    const body = buildEnquiryCreateRequestBody(form, vendor, 'consultation-1');
+    expect(body.consultationId).toBe('consultation-1');
+  });
+
+  test('omits consultationId (undefined, not null) when there is none — matches enquiryCreateSchema treating it as optional', () => {
+    const body = buildEnquiryCreateRequestBody(form, vendor, null);
+    expect(body.consultationId).toBeUndefined();
+  });
+
+  test('omits empty optional fields (email/guestCount/message) as undefined rather than empty strings', () => {
+    const body = buildEnquiryCreateRequestBody({ ...form, guestCount: '' }, vendor, null);
+    expect(body.email).toBeUndefined();
+    expect(body.guestCount).toBeUndefined();
+    expect(body.message).toBeUndefined();
   });
 });

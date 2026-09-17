@@ -17,6 +17,7 @@ export interface EnquiryCreateData {
   guestCount?: string;
   eventType: string;
   message?: string;
+  consultationId?: string;
 }
 
 export const enquiryService = {
@@ -51,6 +52,10 @@ export const enquiryService = {
       guestCount: data.guestCount,
       eventType: data.eventType,
       message: data.message,
+      // Consultation -> Enquiry bridge — relation connect (never a raw
+      // scalar), same pattern as bookingService.create()'s enquiryId/
+      // consultationId handling.
+      consultation: data.consultationId ? { connect: { id: data.consultationId } } : undefined,
     });
   },
 
