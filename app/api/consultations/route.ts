@@ -3,6 +3,8 @@ import { consultationService } from '@/services/consultation.service';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { requireAdmin } from '@/lib/adminAuth';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
+import { handleApiError } from '@/lib/errors';
+import { consultationCreateSchema } from './schema';
 import type { Consultation, ConsultationStatus } from '@/generated/prisma/client';
 
 // Public, unauthenticated POST that sends a WhatsApp message to the admin's
@@ -188,23 +190,15 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // Whitelist fields — prevent injecting status or other admin-controlled fields.
     // weddingStyle/budgetRange/consultationDate are intentionally read from
-    // `body` only for the WhatsApp messages below — they were never persisted
-    // even under the old Mongoose schema (silently dropped, confirmed 0%
-    // populated in the live-data audit — see prisma/schema.prisma's
-    // Consultation model comment), so they're not part of the Prisma create.
-    const {
-      name, phone, email, city, eventType, weddingDate, days, guestCount,
-      foodPreference, services, venueType, preferredTime, message,
-      cartItems, totalBudget,
-    } = body;
+    // the raw `body` only for the WhatsApp messages below, never validated
+    // or persisted — they were never persisted even under the old Mongoose
+    // schema (silently dropped, confirmed 0% populated in the live-data
+    // audit — see prisma/schema.prisma's Consultation model comment), so
+    // they're not part of consultationCreateSchema.
+    const data = consultationCreateSchema.parse(body);
 
-    const consultation = await consultationService.create({
-      name, phone, email, city, eventType, weddingDate, days, guestCount,
-      foodPreference, services, venueType, preferredTime, message,
-      cartItems, totalBudget,
-    });
+    const consultation = await consultationService.create(data);
 
     const ADMIN_PHONE = process.env.WHATSAPP_ADMIN_PHONE || '917646028228';
     const expertName = process.env.EXPERT_NAME || 'Priya Mishra';
@@ -214,12 +208,11 @@ export async function POST(req: NextRequest) {
 
     await Promise.allSettled([
       sendWhatsAppMessage(ADMIN_PHONE, adminMsg),
-      sendWhatsAppMessage(`91${phone}`, userMsg),
+      sendWhatsAppMessage(`91${data.phone}`, userMsg),
     ]);
 
     return NextResponse.json({ success: true, data: toResponseShape(consultation) }, { status: 201 });
   } catch (err) {
-    console.error('POST /api/consultations failed:', err);
-    return NextResponse.json({ success: false, error: 'Failed to submit consultation' }, { status: 500 });
+    return handleApiError(err);
   }
 }
