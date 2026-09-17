@@ -116,7 +116,7 @@ export default function PlanPageClient() {
 
 
   const canNext = () => {
-    if (step === 0) return form.name && isValidPhone(form.phone) && form.weddingDate && form.city;
+    if (step === 0) return form.name && isValidPhone(form.phone) && form.weddingDate && form.city && form.guestCount > 0;
     if (step === 1) return form.services.length > 0;
     if (step === 4) return true;
     return true;
@@ -297,6 +297,9 @@ export default function PlanPageClient() {
                         onChange={(e) => {
                           const digits = e.target.value.replace(/\D/g, '');
                           updateField('guestCount', digits === '' ? 0 : parseInt(digits, 10));
+                        }}
+                        onBlur={() => {
+                          if (form.guestCount === 0) updateField('guestCount', 100);
                         }}
                         className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 transition-colors"
                         placeholder="200"
