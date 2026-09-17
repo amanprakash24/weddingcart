@@ -50,6 +50,18 @@ describe('consultationCreateSchema', () => {
     expect(() => consultationCreateSchema.parse(validBody({ guestCount: -5 }))).toThrow();
   });
 
+  // Production incident (2026-09-17): the /plan wizard's guest-count input
+  // set state to 0 whenever a user cleared the field to retype a number, and
+  // the wizard's step gate didn't check guestCount before letting them reach
+  // submit — so this exact value reached the API and was rejected with no
+  // Consultation row created. Fixed in PlanPageClient.tsx (canNext() now
+  // requires guestCount > 0, plus an onBlur fallback); this test guards the
+  // schema side of that contract so a UI regression fails loud as a 400
+  // instead of silently dropping submissions again.
+  test('rejects guestCount: 0 exactly (the value the /plan wizard could produce)', () => {
+    expect(() => consultationCreateSchema.parse(validBody({ guestCount: 0 }))).toThrow();
+  });
+
   test('accepts a services array and rejects a non-string entry', () => {
     const parsed = consultationCreateSchema.parse(validBody({ services: ['venue', 'catering'] }));
     expect(parsed.services).toEqual(['venue', 'catering']);
