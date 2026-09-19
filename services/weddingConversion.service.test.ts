@@ -22,7 +22,7 @@ function fakeBooking(overrides: Partial<Record<string, unknown>> = {}) {
     enquiryId: null,
     consultationId: null,
     items: [
-      { id: 'item-1', vendorId: 'vendor-1', vendorName: 'Royal Caterers', vendorCategory: 'catering', packageName: 'Gold Package', price: 500000 },
+      { id: 'item-1', vendorId: 'vendor-1', vendorName: 'Royal Caterers', vendorCategory: 'catering', packageName: 'Gold Package', price: 500000, quantity: 1 },
     ],
     ...overrides,
   };
@@ -466,5 +466,89 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
     const firstReadIndex = callLog.findIndex((entry) => entry.startsWith('read:'));
     const lockIndex = callLog.findIndex((entry) => entry.startsWith('lock:'));
     expect(lockIndex).toBeLessThan(firstReadIndex);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quotation build (docs/wedding-os/08-quotation.md §7): agreedPrice must respect quantity, and a quoted
+// custom line without a vendor must not be reported as "vendor no longer exists".
+// ---------------------------------------------------------------------------
+describe('convertBookingToWedding — vendor booking agreed price respects quantity', () => {
+  test('"500 plates × ₹800" becomes a ₹4,00,000 vendor booking, not ₹800', async () => {
+    const booking = fakeBooking({
+      items: [
+        { id: 'i1', vendorId: 'vendor-1', vendorName: 'Royal Feast Catering', vendorCategory: 'Catering', packageName: 'Per plate', price: 800, quantity: 500 },
+      ],
+    });
+    const { prismaMock, vendorBookingCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    const data = (vendorBookingCreateMock.mock.calls[0][0] as { data: { agreedPrice: number } }).data;
+    expect(data.agreedPrice).toBe(400000);
+  });
+
+  test('a single-quantity line keeps its price, so existing marketplace bookings are unchanged', async () => {
+    const booking = fakeBooking();
+    const { prismaMock, vendorBookingCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    expect((vendorBookingCreateMock.mock.calls[0][0] as { data: { agreedPrice: number } }).data.agreedPrice).toBe(500000);
+  });
+
+  test('each item gets its own quantity-aware price', async () => {
+    const booking = fakeBooking({
+      items: [
+        { id: 'i1', vendorId: 'v1', vendorName: 'A', vendorCategory: 'Catering', packageName: 'Plates', price: 800, quantity: 500 },
+        { id: 'i2', vendorId: 'v2', vendorName: 'B', vendorCategory: 'Venues', packageName: 'Hall', price: 300000, quantity: 1 },
+        { id: 'i3', vendorId: 'v3', vendorName: 'C', vendorCategory: 'Cabs', packageName: 'Cars', price: 5000, quantity: 4 },
+      ],
+    });
+    const { prismaMock, vendorBookingCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    const prices = vendorBookingCreateMock.mock.calls.map((c) => (c[0] as { data: { agreedPrice: number } }).data.agreedPrice);
+    expect(prices).toEqual([400000, 300000, 20000]);
+  });
+});
+
+describe('convertBookingToWedding — vendor-less lines', () => {
+  test('a quoted custom line (no vendor yet) creates an "assign a vendor" task, no vendor booking, and honest wording', async () => {
+    const booking = fakeBooking({
+      items: [
+        { id: 'i1', vendorId: null, vendorName: 'To be assigned', vendorCategory: 'Decorators', packageName: 'Custom stage', price: 40000, quantity: 1 },
+      ],
+    });
+    const { prismaMock, vendorBookingCreateMock, taskCreateMock, activityLogCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    expect(vendorBookingCreateMock).not.toHaveBeenCalled();
+    const taskTitles = taskCreateMock.mock.calls.map((c) => (c[0] as { data: { title: string } }).data.title);
+    expect(taskTitles).toContain('Assign a vendor for "Custom stage"');
+    const logs = activityLogCreateMock.mock.calls.map((c) => (c[0] as { data: { summary: string } }).data.summary);
+    expect(logs.some((l) => l.includes('No vendor assigned yet for "Custom stage"'))).toBe(true);
+    expect(logs.some((l) => l.includes('no longer exists'))).toBe(false);
+  });
+
+  test('a real vendor that was removed keeps the original "no longer exists" wording', async () => {
+    const booking = fakeBooking({
+      items: [{ id: 'i1', vendorId: null, vendorName: 'Touch Of Cozy', vendorCategory: 'Venues', packageName: 'Hall', price: 300000, quantity: 1 }],
+    });
+    const { prismaMock, taskCreateMock, activityLogCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    const taskTitles = taskCreateMock.mock.calls.map((c) => (c[0] as { data: { title: string } }).data.title);
+    expect(taskTitles).toContain('Assign replacement vendor for "Hall"');
+    const logs = activityLogCreateMock.mock.calls.map((c) => (c[0] as { data: { summary: string } }).data.summary);
+    expect(logs.some((l) => l.includes('vendor no longer exists'))).toBe(true);
   });
 });

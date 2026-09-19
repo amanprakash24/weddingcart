@@ -6,6 +6,7 @@ import type { WorkspaceQuotation } from './types';
 
 // Quotation panel (docs/wedding-os/08-quotation.md). S1: create / edit / delete a draft.
 // S2: send, revise, record the customer's answer, and a prepared message to send them.
+// S3: create a Booking from an accepted quote, then confirm it to create the wedding.
 // Totals shown while typing are only a preview — the server recomputes and stores the real ones.
 // V1 has no customer login or link: staff record the customer's answer on their behalf.
 
@@ -116,6 +117,19 @@ function errorMessage(payload: { error?: string; issues?: { message?: string }[]
 
 type RowAction = { type: 'accept' | 'reject'; id: string } | null;
 
+const BOOKING_LABEL: Record<string, string> = { NEW: 'new', CONTACTED: 'contacted', CONFIRMED: 'confirmed', CLOSED: 'closed' };
+
+// What the enquiry/consultation already knows, offered as defaults so staff only fix what is missing.
+export interface BookingDefaults {
+  weddingDate: string; // YYYY-MM-DD, or '' when the source has no clear date
+  guestCount: string;
+  city: string;
+}
+
+interface BookingForm extends BookingDefaults {
+  id: string;
+}
+
 export default function QuotationPanel({
   sourceType,
   sourceId,
@@ -123,6 +137,7 @@ export default function QuotationPanel({
   prefill,
   customerName,
   customerPhone,
+  bookingDefaults,
   onChanged,
 }: {
   sourceType: string;
@@ -131,6 +146,7 @@ export default function QuotationPanel({
   prefill: QuotationPrefillLine[];
   customerName: string | null;
   customerPhone: string | null;
+  bookingDefaults: BookingDefaults;
   // Called after send / accept / decline so the workspace (stage, timeline) reloads.
   onChanged: () => void;
 }) {
@@ -145,6 +161,7 @@ export default function QuotationPanel({
   const [reason, setReason] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [bookingForm, setBookingForm] = useState<BookingForm | null>(null);
 
   const load = useCallback(() => {
     fetch(`/api/quotations?sourceType=${sourceType}&sourceId=${sourceId}`)
@@ -238,6 +255,42 @@ export default function QuotationPanel({
     await act(id, '');
   };
 
+  const createBooking = async (q: WorkspaceQuotation) => {
+    if (!bookingForm) return;
+    const body = {
+      weddingDate: bookingForm.weddingDate || null,
+      guestCount: bookingForm.guestCount ? toNumber(bookingForm.guestCount) : null,
+      city: bookingForm.city || null,
+    };
+    const payload = await act(q.id, '/create-booking', body, 'Booking created. Confirm it to create the wedding.');
+    if (payload) setBookingForm(null);
+  };
+
+  // Uses the existing booking confirm route, which creates the wedding (idempotent, retry-safe).
+  const confirmBooking = async (q: WorkspaceQuotation) => {
+    if (!q.booking) return;
+    if (!window.confirm('Confirm this booking and create the wedding? The wedding workspace replaces this record.')) return;
+    setBusyId(q.id);
+    setLoadError(null);
+    try {
+      const res = await fetch(`/api/bookings/${q.booking.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'confirmed' }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload.success) throw new Error(errorMessage(payload));
+      setNotice('Booking confirmed — the wedding has been created.');
+      load();
+      onChanged();
+    } catch (e) {
+      setLoadError((e as Error).message);
+      load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const messageFor = (q: WorkspaceQuotation) => buildQuotationMessage(q, customerName);
   const copyMessage = async (q: WorkspaceQuotation) => {
     try {
@@ -315,6 +368,75 @@ export default function QuotationPanel({
                     {q.acceptedAt ? ` on ${formatQuoteDate(q.acceptedAt)}` : ''}
                     {q.acceptedNote ? ` — ${q.acceptedNote}` : ''}
                   </p>
+                )}
+                {q.status === 'ACCEPTED' && q.booking && (
+                  <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-800 space-y-2">
+                    <div>
+                      Booking created ({BOOKING_LABEL[q.booking.status] ?? q.booking.status}).{' '}
+                      {q.booking.status === 'CONFIRMED' ? 'The wedding has been set up.' : 'Confirm it to create the wedding.'}
+                    </div>
+                    {!readOnly && q.booking.status !== 'CONFIRMED' && (
+                      <button
+                        disabled={busy}
+                        onClick={() => confirmBooking(q)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white disabled:opacity-40"
+                      >
+                        {busy ? 'Working…' : 'Confirm booking & create wedding'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {q.status === 'ACCEPTED' && !q.booking && !readOnly && (
+                  <div className="mt-2">
+                    {bookingForm?.id === q.id ? (
+                      <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 space-y-2">
+                        <div className="text-xs font-medium text-emerald-800">Booking details (only fill what is missing)</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <label className="text-xs text-gray-600">
+                            Wedding date
+                            <input
+                              className={inputClass}
+                              type="date"
+                              value={bookingForm.weddingDate}
+                              onChange={(e) => setBookingForm({ ...bookingForm, weddingDate: e.target.value })}
+                            />
+                          </label>
+                          <label className="text-xs text-gray-600">
+                            Guests
+                            <input
+                              className={inputClass}
+                              inputMode="numeric"
+                              value={bookingForm.guestCount}
+                              onChange={(e) => setBookingForm({ ...bookingForm, guestCount: e.target.value })}
+                            />
+                          </label>
+                          <label className="text-xs text-gray-600">
+                            City
+                            <input className={inputClass} value={bookingForm.city} onChange={(e) => setBookingForm({ ...bookingForm, city: e.target.value })} />
+                          </label>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={busy}
+                            onClick={() => createBooking(q)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white disabled:opacity-40"
+                          >
+                            {busy ? 'Creating…' : 'Create booking'}
+                          </button>
+                          <button onClick={() => setBookingForm(null)} className="px-3 py-1.5 text-xs text-gray-600">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setBookingForm({ id: q.id, ...bookingDefaults })}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700"
+                      >
+                        Create booking
+                      </button>
+                    )}
+                  </div>
                 )}
                 {q.status === 'REJECTED' && (
                   <p className="mt-1.5 text-xs text-red-600">Declined{q.rejectionReason ? `: ${q.rejectionReason}` : ''}</p>

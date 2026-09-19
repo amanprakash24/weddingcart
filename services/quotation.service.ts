@@ -8,8 +8,10 @@ import { canTransition } from '@/lib/crm/pipeline';
 import { lockNumberBucket, monthBucket, nextSequenceNumber } from '@/lib/numbering';
 import { calculateQuotationTotals } from '@/lib/quotation/totals';
 import { formatQuoteDate } from '@/lib/quotation/message';
+import { planBookingFromQuotation, type BookingOverrides, type BookingSource } from '@/lib/quotation/booking';
 import {
   evaluateAcceptable,
+  evaluateBookable,
   evaluateDeletable,
   evaluateEditable,
   evaluateQuotable,
@@ -21,6 +23,7 @@ import {
 } from '@/lib/quotation/rules';
 import { quotationRepository, type QuotationWithItems } from '@/repositories/quotation.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
+import { bookingRepository } from '@/repositories/booking.repository';
 import { enquiryRepository } from '@/repositories/enquiry.repository';
 import { consultationRepository } from '@/repositories/consultation.repository';
 import { leadRepository } from '@/repositories/lead.repository';
@@ -31,7 +34,8 @@ import type { SourceType } from '@/services/leadInbox.service';
 // Quotation workflow (docs/wedding-os/08-quotation.md).
 //   S1: create / edit / list / delete a DRAFT.
 //   S2: send / revise / accept / reject / expire, activity trail, pipeline coupling.
-// The Booking link and the automatic advance invoice are S3–S4.
+//   S3: create a Booking from an accepted quotation.
+// The automatic advance invoice is S4.
 //
 // Every mutation runs in one transaction behind advisory locks on the source and the quotation, so
 // concurrent requests are serialized; the database's partial unique indexes (one open and one accepted
@@ -185,6 +189,27 @@ function itemRows(items: QuotationItemInput[]) {
     unitPrice: item.unitPrice,
     quantity: item.quantity,
   }));
+}
+
+// What a Booking needs from an Enquiry or Consultation. Both keep their date as free text, so the date
+// is handed over as text and only trusted by planBookingFromQuotation if it is a clear YYYY-MM-DD.
+async function bookingSourceFacts(sourceType: SourceType, sourceId: string, tx: Tx): Promise<BookingSource> {
+  if (sourceType === 'ENQUIRY') {
+    const e = await enquiryRepository.findById(sourceId, tx);
+    if (!e) throw new NotFoundError('Enquiry', sourceId);
+    const guests = Number(e.guestCount);
+    return {
+      name: e.name,
+      phone: e.phone,
+      city: e.city,
+      dateText: e.eventDate,
+      guestCount: Number.isInteger(guests) && guests > 0 ? guests : null,
+      eventType: e.eventType,
+    };
+  }
+  const c = await consultationRepository.findById(sourceId, tx);
+  if (!c) throw new NotFoundError('Consultation', sourceId);
+  return { name: c.name, phone: c.phone, city: c.city, dateText: c.weddingDate, guestCount: c.guestCount > 0 ? c.guestCount : null, eventType: c.eventType };
 }
 
 async function nextQuotationNumber(tx: Tx): Promise<string> {
@@ -417,6 +442,63 @@ export const quotationService = {
       const updated = await quotationRepository.update(id, { status: 'REJECTED', rejectedAt: new Date(), rejectionReason: reason }, tx);
       await logEvent(tx, sourceType, sourceId, ActivityType.QUOTATION_REJECTED, `Quotation ${q.quotationNumber} rejected`, reason, actorId);
       return toQuotationView(updated);
+    });
+  },
+
+  // ACCEPTED → a Booking (status NEW) whose lines and prices come from the quotation (S3). Confirming the
+  // booking afterwards uses the existing PUT /api/bookings/[id] → convertBookingToWedding. The wedding date
+  // must be known here so the booking can never get stuck at conversion; staff supply it when the source
+  // has no clear one. One Booking per quotation: Booking.quotationId is unique, so a racing second request
+  // fails cleanly at the database as well as at the check below.
+  async createBooking(id: string, overrides: BookingOverrides, actorId: string | null) {
+    return prisma.$transaction(async (tx) => {
+      const { q, sourceType, sourceId } = await loadLocked(tx, id);
+      const blocked = evaluateBookable({
+        status: q.status,
+        sourceType,
+        sourceLabel: SOURCE_LABEL[sourceType],
+        hasBooking: (await tx.booking.findFirst({ where: { quotationId: id }, select: { id: true } })) !== null,
+        wedding: sourceType === 'LEAD' ? null : await findWeddingForSource(sourceType, sourceId, tx),
+      });
+      if (blocked) throw blocked;
+
+      const vendorIds = [...new Set(q.items.map((i) => i.vendorId).filter((v): v is string => !!v))];
+      const vendorRows = vendorIds.length
+        ? await tx.vendor.findMany({ where: { id: { in: vendorIds } }, select: { id: true, name: true, category: { select: { name: true } } } })
+        : [];
+      const plan = planBookingFromQuotation({
+        quotation: q,
+        source: await bookingSourceFacts(sourceType, sourceId, tx),
+        vendors: new Map(vendorRows.map((v) => [v.id, { name: v.name, categoryName: v.category.name }])),
+        overrides,
+      });
+
+      const booking = await bookingRepository.create(
+        {
+          name: plan.name,
+          phone: plan.phone,
+          city: plan.city,
+          total: plan.total,
+          status: 'NEW',
+          weddingDate: plan.weddingDate,
+          weddingType: plan.weddingType,
+          guestCount: plan.guestCount,
+          quotation: { connect: { id } },
+          ...(sourceType === 'ENQUIRY' ? { enquiry: { connect: { id: sourceId } } } : { consultation: { connect: { id: sourceId } } }),
+          items: { create: plan.items },
+        },
+        tx
+      );
+      await logEvent(
+        tx,
+        sourceType,
+        sourceId,
+        ActivityType.STATUS_CHANGED,
+        `Booking created from quotation ${q.quotationNumber} — ${rupees(plan.total)}. Confirm it to create the wedding`,
+        null,
+        actorId
+      );
+      return booking;
     });
   },
 

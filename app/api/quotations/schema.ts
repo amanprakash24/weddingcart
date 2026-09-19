@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { MAX_LINE_ITEMS } from '@/lib/quotation/totals';
 import { ACCEPTANCE_CHANNELS } from '@/lib/quotation/rules';
+import { resolveSourceDate } from '@/lib/quotation/booking';
 
 // Deliberately has NO subtotal / total / balance field: the API accepts inputs only, and
 // the server recomputes every total (lib/quotation/totals.ts). An unknown extra key is
@@ -70,4 +71,27 @@ export const acceptQuotationSchema = z.object({
 // POST /api/quotations/[id]/reject — a reason is required.
 export const rejectQuotationSchema = z.object({
   reason: z.string().trim().min(1, 'Say why the customer declined').max(1000),
+});
+
+// POST /api/quotations/[id]/create-booking — everything is optional: the booking takes its client, city, date
+// and guest count from the enquiry/consultation, and staff fill in only what it lacks. The date must be an exact,
+// plausible YYYY-MM-DD (free text such as "20 October 20202" is never accepted — see lib/quotation/booking.ts).
+export const createBookingSchema = z.object({
+  weddingDate: z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) return undefined;
+      const date = resolveSourceDate(value);
+      if (!date) {
+        ctx.addIssue({ code: 'custom', message: 'Enter the wedding date as a valid date' });
+        return z.NEVER;
+      }
+      return date;
+    }),
+  guestCount: z.union([z.null(), z.coerce.number().int('Guest count must be a whole number').positive('Guest count must be 1 or more')]).optional(),
+  weddingType: optionalText(100),
+  city: optionalText(100),
 });

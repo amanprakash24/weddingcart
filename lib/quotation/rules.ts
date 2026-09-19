@@ -119,3 +119,39 @@ export function evaluateRevisable(status: QuotationStatus): Error | null {
 export function statusAfterRevisionDiscarded(predecessorValidUntil: Date | null, now: Date): 'SENT' | 'EXPIRED' {
   return isPastValidity(predecessorValidUntil, now) || predecessorValidUntil === null ? 'EXPIRED' : 'SENT';
 }
+
+// ---------------------------------------------------------------------------
+// S3 — Booking from an accepted quotation (08-quotation.md §6.4)
+// ---------------------------------------------------------------------------
+
+export interface BookableState {
+  status: QuotationStatus;
+  sourceType: string; // LEAD | ENQUIRY | CONSULTATION
+  sourceLabel: string;
+  hasBooking: boolean;
+  wedding: { weddingNumber: string } | null;
+}
+
+// Only an ACCEPTED quotation becomes a Booking, once. (Booking.quotationId is @unique — the database
+// rejects a second Booking for the same quotation even if two requests race past this check.)
+export function evaluateBookable(state: BookableState): Error | null {
+  if (state.status !== 'ACCEPTED') {
+    return new ConflictError(
+      state.status === 'DRAFT' || state.status === 'SENT'
+        ? "Record the customer's acceptance before creating a booking"
+        : `Only an accepted quotation can become a booking (this one is ${state.status.toLowerCase()})`
+    );
+  }
+  if (state.sourceType === 'LEAD') {
+    return new ConflictError(
+      'A booking cannot be created from a lead quotation — a lead is converted to a wedding through the CRM'
+    );
+  }
+  if (state.wedding) {
+    return new ConversionLockedError(
+      `Cannot create a booking: this ${state.sourceLabel} already converted to Wedding ${state.wedding.weddingNumber}`
+    );
+  }
+  if (state.hasBooking) return new ConflictError('A booking was already created from this quotation');
+  return null;
+}

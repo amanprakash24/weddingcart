@@ -1,6 +1,12 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { acceptQuotationSchema, createQuotationSchema, rejectQuotationSchema, updateQuotationSchema } from './schema';
+import {
+  acceptQuotationSchema,
+  createBookingSchema,
+  createQuotationSchema,
+  rejectQuotationSchema,
+  updateQuotationSchema,
+} from './schema';
 
 const item = { description: 'Grand Ballroom — 500 guests', unitPrice: 400000, quantity: 1 };
 const valid = { sourceType: 'ENQUIRY', sourceId: 'e1', items: [item] };
@@ -89,5 +95,41 @@ describe('rejectQuotationSchema', () => {
     expect(rejectQuotationSchema.parse({ reason: '  too expensive ' }).reason).toBe('too expensive');
     expect(rejectQuotationSchema.safeParse({ reason: '   ' }).success).toBe(false);
     expect(rejectQuotationSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('createBookingSchema — every field optional; only clear dates are accepted', () => {
+  test('an empty body is valid (the booking takes everything from the enquiry/consultation)', () => {
+    expect(createBookingSchema.safeParse({}).success).toBe(true);
+  });
+
+  test('a clear YYYY-MM-DD becomes a Date; blank or null means "not supplied"', () => {
+    expect(createBookingSchema.parse({ weddingDate: '2026-11-20' }).weddingDate?.toISOString()).toBe('2026-11-20T00:00:00.000Z');
+    expect(createBookingSchema.parse({ weddingDate: '' }).weddingDate).toBeUndefined();
+    expect(createBookingSchema.parse({ weddingDate: null }).weddingDate).toBeUndefined();
+  });
+
+  test.each([['20 October 2026'], ['20 October 20202'], ['2026-02-31'], ['2026-11-20T00:00:00Z'], ['1999-01-01']])(
+    'rejects the date %p on the weddingDate field',
+    (weddingDate) => {
+      const result = createBookingSchema.safeParse({ weddingDate });
+      expect(result.success).toBe(false);
+      if (!result.success) expect(result.error.issues[0].path).toEqual(['weddingDate']);
+    }
+  );
+
+  test('guest count coerces from a string and must be a positive whole number; null is allowed', () => {
+    expect(createBookingSchema.parse({ guestCount: '500' }).guestCount).toBe(500);
+    expect(createBookingSchema.parse({ guestCount: null }).guestCount).toBeNull();
+    expect(createBookingSchema.safeParse({ guestCount: 0 }).success).toBe(false);
+    expect(createBookingSchema.safeParse({ guestCount: 2.5 }).success).toBe(false);
+    expect(createBookingSchema.safeParse({ guestCount: -3 }).success).toBe(false);
+  });
+
+  test('never accepts a total or items — prices come from the quotation only', () => {
+    const parsed = createBookingSchema.parse({ total: 1, items: [{ price: 1 }], quotationId: 'other' }) as Record<string, unknown>;
+    expect(parsed).not.toHaveProperty('total');
+    expect(parsed).not.toHaveProperty('items');
+    expect(parsed).not.toHaveProperty('quotationId');
   });
 });
