@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect, mock } from 'bun:test';
-import { ConversionLockedError, InvalidTransitionError } from '@/lib/errors';
+import { ConversionLockedError, InvalidTransitionError, ConflictError } from '@/lib/errors';
 
 // evaluateEnquiryDeleteGuard doesn't touch prisma itself, but importing
 // enquiry.service.ts (to reach it) pulls in its full static import chain,
@@ -46,6 +46,27 @@ describe('evaluateEnquiryDeleteGuard', () => {
   });
 
   test('allows deletion (returns null) when there is no Wedding and no linked Booking — normal, unaffected case', () => {
+    expect(evaluateEnquiryDeleteGuard(null, 0)).toBeNull();
+  });
+});
+
+describe('evaluateEnquiryDeleteGuard — quotations (08-quotation.md)', () => {
+  test('refuses when the enquiry has quotations, with a clear 409 message', () => {
+    const result = evaluateEnquiryDeleteGuard(null, 0, 2);
+    expect(result).toBeInstanceOf(ConflictError);
+    expect(result?.message).toContain('has 2 quotation(s)');
+  });
+
+  test('an existing Wedding still wins over quotations (surest already-happened case first)', () => {
+    expect(evaluateEnquiryDeleteGuard({ weddingNumber: 'WED-2027-0001' }, 0, 3)).toBeInstanceOf(ConversionLockedError);
+  });
+
+  test('a linked Booking still wins over quotations', () => {
+    expect(evaluateEnquiryDeleteGuard(null, 1, 3)).toBeInstanceOf(InvalidTransitionError);
+  });
+
+  test('no quotations and nothing else linked allows the delete; the count defaults to 0 for existing callers', () => {
+    expect(evaluateEnquiryDeleteGuard(null, 0, 0)).toBeNull();
     expect(evaluateEnquiryDeleteGuard(null, 0)).toBeNull();
   });
 });

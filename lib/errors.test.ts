@@ -7,6 +7,8 @@ import {
   DuplicateError,
   InvalidTransitionError,
   ConversionLockedError,
+  ValidationError,
+  ConflictError,
 } from './errors';
 
 async function bodyOf(res: Response) {
@@ -23,6 +25,18 @@ describe('handleApiError — shared error-to-HTTP-response mapping', () => {
   test('DuplicateError maps to 409', async () => {
     const res = handleApiError(new DuplicateError('Event', 'slug'));
     expect(res.status).toBe(409);
+  });
+
+  test('ValidationError maps to 400 with its own message', async () => {
+    const res = handleApiError(new ValidationError('Discount cannot exceed the subtotal'));
+    expect(res.status).toBe(400);
+    expect((await bodyOf(res)).error).toBe('Discount cannot exceed the subtotal');
+  });
+
+  test('ConflictError maps to 409 with its own message', async () => {
+    const res = handleApiError(new ConflictError('Only a draft quotation can be edited'));
+    expect(res.status).toBe(409);
+    expect((await bodyOf(res)).error).toBe('Only a draft quotation can be edited');
   });
 
   test('InvalidTransitionError maps to 400 with its own message', async () => {

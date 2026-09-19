@@ -43,6 +43,24 @@ export class ConversionLockedError extends Error {
   }
 }
 
+// A request that is well-formed but breaks a business rule the schema can't express
+// (e.g. a discount larger than the subtotal). Maps to 400 with its own message.
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+// The request is valid but conflicts with the current state of the record
+// (e.g. editing a quotation that has already been sent). Maps to 409.
+export class ConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ConflictError';
+  }
+}
+
 // Wraps a repository call, translating known Prisma error codes into the
 // typed domain errors above. Unrecognized errors are rethrown as-is.
 export async function withPrismaErrors<T>(entity: string, fn: () => Promise<T>): Promise<T> {
@@ -82,6 +100,12 @@ export function handleApiError(err: unknown): NextResponse {
   }
   if (err instanceof InvalidTransitionError) {
     return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+  }
+  if (err instanceof ValidationError) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 400 });
+  }
+  if (err instanceof ConflictError) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 409 });
   }
   if (err instanceof ConversionLockedError) {
     return NextResponse.json({ success: false, error: err.message }, { status: 409 });

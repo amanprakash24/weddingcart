@@ -1,3 +1,5 @@
+import { quotationRepository } from '@/repositories/quotation.repository';
+import { quotationDeleteBlock } from '@/lib/quotation/rules';
 import { enquiryRepository } from '@/repositories/enquiry.repository';
 import { vendorRepository } from '@/repositories/vendor.repository';
 import { bookingRepository } from '@/repositories/booking.repository';
@@ -82,7 +84,8 @@ export const enquiryService = {
   async delete(id: string) {
     const wedding = await findWeddingForSource('ENQUIRY', id);
     const linkedBookings = wedding ? 0 : await bookingRepository.count({ enquiryId: id });
-    const blocked = evaluateEnquiryDeleteGuard(wedding, linkedBookings);
+    const quotations = wedding ? 0 : await quotationRepository.count({ enquiryId: id });
+    const blocked = evaluateEnquiryDeleteGuard(wedding, linkedBookings, quotations);
     if (blocked) throw blocked;
     return enquiryRepository.delete(id);
   },
@@ -96,7 +99,8 @@ export const enquiryService = {
 // same modules; see services/enquiry.service.test.ts).
 export function evaluateEnquiryDeleteGuard(
   wedding: { weddingNumber: string } | null,
-  linkedBookingCount: number
+  linkedBookingCount: number,
+  quotationCount = 0
 ): Error | null {
   if (wedding) {
     return new ConversionLockedError(`Cannot delete: this enquiry converted to Wedding ${wedding.weddingNumber}`);
@@ -104,5 +108,7 @@ export function evaluateEnquiryDeleteGuard(
   if (linkedBookingCount > 0) {
     return new InvalidTransitionError(`Cannot delete: this enquiry has ${linkedBookingCount} linked booking(s)`);
   }
-  return null;
+  // Quotations are a commercial record (and the FK is ON DELETE RESTRICT) — refuse with a clear
+  // message rather than surfacing a database error.
+  return quotationDeleteBlock('enquiry', quotationCount);
 }

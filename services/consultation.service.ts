@@ -1,3 +1,5 @@
+import { quotationRepository } from '@/repositories/quotation.repository';
+import { quotationDeleteBlock } from '@/lib/quotation/rules';
 import { consultationRepository } from '@/repositories/consultation.repository';
 import { bookingRepository } from '@/repositories/booking.repository';
 import { findWeddingForSource } from '@/services/weddingConversion.service';
@@ -28,7 +30,8 @@ export const consultationService = {
   async delete(id: string) {
     const wedding = await findWeddingForSource('CONSULTATION', id);
     const linkedBookings = wedding ? 0 : await bookingRepository.count({ consultationId: id });
-    const blocked = evaluateConsultationDeleteGuard(wedding, linkedBookings);
+    const quotations = wedding ? 0 : await quotationRepository.count({ consultationId: id });
+    const blocked = evaluateConsultationDeleteGuard(wedding, linkedBookings, quotations);
     if (blocked) throw blocked;
     return consultationRepository.delete(id);
   },
@@ -40,7 +43,8 @@ export const consultationService = {
 // weddingConversion.service directly.
 export function evaluateConsultationDeleteGuard(
   wedding: { weddingNumber: string } | null,
-  linkedBookingCount: number
+  linkedBookingCount: number,
+  quotationCount = 0
 ): Error | null {
   if (wedding) {
     return new ConversionLockedError(`Cannot delete: this consultation converted to Wedding ${wedding.weddingNumber}`);
@@ -48,5 +52,5 @@ export function evaluateConsultationDeleteGuard(
   if (linkedBookingCount > 0) {
     return new InvalidTransitionError(`Cannot delete: this consultation has ${linkedBookingCount} linked booking(s)`);
   }
-  return null;
+  return quotationDeleteBlock('consultation', quotationCount);
 }
