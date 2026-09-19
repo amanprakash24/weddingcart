@@ -5,6 +5,25 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowLeft, Sparkles, Phone, Mail, MapPin, Briefcase, IndianRupee, Star, AtSign, Globe, ChevronDown, ImagePlus, X } from 'lucide-react';
 import { Category } from '@/types';
+import { INDIAN_MOBILE_ERROR, normalizeIndianMobile } from '@/lib/indianPhone';
+import { extractFieldErrors, summarizeFieldErrors, type FieldErrors } from '@/lib/apiFieldErrors';
+
+// Prospective venues have no account yet, so the form uploads through the
+// dedicated public onboarding endpoint — NOT the admin-only /api/upload.
+const UPLOAD_ENDPOINT = '/api/vendor-applications/upload';
+
+const FIELD_LABELS: Record<string, string> = {
+  businessName: 'Business name',
+  ownerName: 'Owner name',
+  ownerPhone: 'Phone number',
+  ownerEmail: 'Email address',
+  category: 'Category',
+  city: 'City',
+  priceMin: 'Minimum price',
+  priceMax: 'Maximum price',
+  portfolioImages: 'Our Work images',
+  foodMenuImages: 'Menu images',
+};
 
 const CITIES = [
   'Patna', 'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad',
@@ -46,6 +65,7 @@ export default function VendorOnboardingClient() {
   const [loading, setLoading]       = useState(false);
   const [submitted, setSubmitted]   = useState(false);
   const [error, setError]           = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [images, setImages]         = useState<[string, string, string]>(['', '', '']);
   const [imgUploading, setImgUploading] = useState<[boolean, boolean, boolean]>([false, false, false]);
   const [menuImages, setMenuImages]         = useState<[string, string]>(['', '']);
@@ -59,19 +79,25 @@ export default function VendorOnboardingClient() {
       .then((d) => { if (d.success) setCategories(d.data); });
   }, []);
 
-  const set = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: string, value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    // Editing a field clears its own error so the message doesn't linger.
+    setFieldErrors((prev) => (prev[key] ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key)) : prev));
+  };
 
   const handleImageUpload = async (index: 0 | 1 | 2, file: File) => {
     setImgUploading((prev) => { const n = [...prev] as [boolean,boolean,boolean]; n[index] = true; return n; });
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const res = await fetch(UPLOAD_ENDPOINT, { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
         setImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = data.url; return n; });
       } else {
-        setError('Image upload failed. Please try again.');
+        // Surface the server's specific reason (too large, wrong type, rate
+        // limited) instead of a generic message.
+        setError(data.error || 'Image upload failed. Please try again.');
       }
     } catch {
       setError('Image upload failed. Please try again.');
@@ -89,12 +115,14 @@ export default function VendorOnboardingClient() {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const res = await fetch(UPLOAD_ENDPOINT, { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
         setMenuImages((prev) => { const n = [...prev] as [string,string]; n[index] = data.url; return n; });
       } else {
-        setError('Image upload failed. Please try again.');
+        // Surface the server's specific reason (too large, wrong type, rate
+        // limited) instead of a generic message.
+        setError(data.error || 'Image upload failed. Please try again.');
       }
     } catch {
       setError('Image upload failed. Please try again.');
@@ -110,6 +138,15 @@ export default function VendorOnboardingClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
+    // Normalize before sending ("+91 98765 43210" → "9876543210") and stop here
+    // with a specific message rather than round-tripping to a generic 400.
+    const ownerPhone = normalizeIndianMobile(form.ownerPhone);
+    if (!ownerPhone) {
+      setFieldErrors({ ownerPhone: INDIAN_MOBILE_ERROR });
+      setError(`Please fix: ${FIELD_LABELS.ownerPhone}.`);
+      return;
+    }
     if (images.some((url) => !url)) {
       setError('Please upload all 3 "Our Work" images before submitting.');
       return;
@@ -125,6 +162,7 @@ export default function VendorOnboardingClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          ownerPhone,
           priceMin: Number(form.priceMin) || 0,
           priceMax: Number(form.priceMax) || 0,
           portfolioImages: images,
@@ -135,7 +173,15 @@ export default function VendorOnboardingClient() {
       if (data.success) {
         setSubmitted(true);
       } else {
-        setError(data.error || 'Something went wrong. Please try again.');
+        // A 400 carries `issues` naming the failing field(s); show them per
+        // field instead of only the generic "Invalid request".
+        const fields = extractFieldErrors(data, FIELD_LABELS);
+        if (Object.keys(fields).length > 0) {
+          setFieldErrors(fields);
+          setError(summarizeFieldErrors(fields, FIELD_LABELS));
+        } else {
+          setError(data.error || 'Something went wrong. Please try again.');
+        }
       }
     } catch {
       setError('Network error. Please try again.');
@@ -346,12 +392,16 @@ export default function VendorOnboardingClient() {
                   <input
                     required
                     type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    aria-invalid={Boolean(fieldErrors.ownerPhone)}
                     value={form.ownerPhone}
                     onChange={(e) => set('ownerPhone', e.target.value)}
                     placeholder="+91 98765 43210"
                     className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
                   />
                 </div>
+                {fieldErrors.ownerPhone && <p className="mt-1.5 text-xs text-rose-600">{fieldErrors.ownerPhone}</p>}
               </div>
 
               <div>
@@ -361,12 +411,14 @@ export default function VendorOnboardingClient() {
                   <input
                     required
                     type="email"
+                    aria-invalid={Boolean(fieldErrors.ownerEmail)}
                     value={form.ownerEmail}
                     onChange={(e) => set('ownerEmail', e.target.value)}
                     placeholder="you@example.com"
                     className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
                   />
                 </div>
+                {fieldErrors.ownerEmail && <p className="mt-1.5 text-xs text-rose-600">{fieldErrors.ownerEmail}</p>}
               </div>
 
               <div>
@@ -510,9 +562,15 @@ export default function VendorOnboardingClient() {
           )}
 
           {error && (
-            <motion.p variants={fadeUp} className="text-rose-500 text-sm bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">
-              {error}
-            </motion.p>
+            <motion.div variants={fadeUp} role="alert" className="text-rose-500 text-sm bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">
+              <p>{error}</p>
+              {/* Phone and email show their message inline; list the rest here. */}
+              {Object.entries(fieldErrors)
+                .filter(([field]) => field !== 'ownerPhone' && field !== 'ownerEmail')
+                .map(([field, message]) => (
+                  <p key={field} className="mt-1 text-xs">{message}</p>
+                ))}
+            </motion.div>
           )}
 
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3 pt-2">

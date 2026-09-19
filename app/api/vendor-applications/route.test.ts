@@ -152,6 +152,40 @@ describe('POST /api/vendor-applications — request validation', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  test.each([
+    ['+91 98765 43210', 'the form placeholder — the exact input that produced "Invalid request" in production'],
+    ['98765 43210', 'a space in the middle'],
+    ['98765-43210', 'a dash'],
+    ['+919876543210', 'international, no spaces'],
+    ['09876543210', 'leading zero'],
+  ])('ownerPhone %p (%s) is accepted and normalized to the bare 10 digits', async (phone) => {
+    const store = makeLoginAttemptStore();
+    const { POST, create } = await loadRouteWith(store);
+
+    const res = await POST(postRequest({ ...VALID_BODY, ownerPhone: phone }));
+
+    expect(res.status).toBe(201);
+    const [input] = create.mock.calls[0] as [Record<string, unknown>];
+    expect(input.ownerPhone).toBe('9876543210');
+  });
+
+  test.each([['12345'], ['+1 415 555 2671'], ['5876543210'], ['abcdefghij'], ['']])(
+    'ownerPhone %p is rejected with a field-level issue naming ownerPhone, not just a generic error',
+    async (phone) => {
+      const store = makeLoginAttemptStore();
+      const { POST, create } = await loadRouteWith(store);
+
+      const res = await POST(postRequest({ ...VALID_BODY, ownerPhone: phone }));
+
+      expect(res.status).toBe(400);
+      expect(create).not.toHaveBeenCalled();
+      const body = await res.json();
+      expect(body.error).toBe('Invalid request');
+      const phoneIssue = (body.issues as { path: string[]; message: string }[]).find((i) => i.path[0] === 'ownerPhone');
+      expect(phoneIssue?.message).toContain('10-digit Indian mobile number');
+    }
+  );
+
   test('an invalid ownerEmail is rejected before the service is invoked', async () => {
     const store = makeLoginAttemptStore();
     const { POST, create } = await loadRouteWith(store);
