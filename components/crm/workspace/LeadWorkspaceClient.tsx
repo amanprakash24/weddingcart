@@ -123,6 +123,9 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
         sourceType={sourceType}
         sourceId={id}
         readOnly={!!workspace.subject.wedding}
+        customerName={workspace.customer.name}
+        customerPhone={workspace.customer.phone}
+        onChanged={load}
         prefill={
           workspace.vendorInterest.length > 0
             ? workspace.vendorInterest.map((v) => ({

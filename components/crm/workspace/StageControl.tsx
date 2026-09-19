@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { STAGE_LABELS, type PipelineStage } from '@/components/crm/types';
-import { PIPELINE_TRANSITIONS, LOST_REASONS, LOST_REASON_LABELS, type LostReason } from '@/lib/crm/pipeline';
+import { allowedNextStages, LOST_REASONS, LOST_REASON_LABELS, type LostReason } from '@/lib/crm/pipeline';
 
 export interface StageTransitionInput {
   toStage: PipelineStage;
@@ -16,12 +16,15 @@ export interface StageTransitionInput {
 // here the API would reject except a missing required reason.
 export default function StageControl({
   currentStage,
+  hasAcceptedQuotation = false,
   onTransition,
 }: {
   currentStage: PipelineStage;
+  // From the server: an ACCEPTED quotation lets Quotation Sent go straight to Won (display only).
+  hasAcceptedQuotation?: boolean;
   onTransition: (input: StageTransitionInput) => Promise<void>;
 }) {
-  const validTargets = PIPELINE_TRANSITIONS[currentStage];
+  const validTargets = allowedNextStages(currentStage, { hasAcceptedQuotation });
   const [toStage, setToStage] = useState<PipelineStage | ''>('');
   const [lostReason, setLostReason] = useState<LostReason | ''>('');
   const [lostReasonDetail, setLostReasonDetail] = useState('');

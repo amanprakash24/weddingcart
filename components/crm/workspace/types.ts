@@ -50,6 +50,7 @@ export interface LeadWorkspace {
     holdReason: string | null;
     createdAt: string;
     wedding: { id: string; weddingNumber: string } | null;
+    hasAcceptedQuotation: boolean;
   };
   customer: { name: string | null; phone: string; email: string | null; city: string | null };
   weddingDetails: {
@@ -82,6 +83,12 @@ export interface WorkspaceQuotation {
   validUntil: string | null;
   terms: string | null;
   notes: string | null;
+  sentAt: string | null;
+  acceptedAt: string | null;
+  acceptedChannel: string | null;
+  acceptedNote: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
   createdAt: string;
   items: {
     id: string;

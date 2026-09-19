@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { createQuotationSchema, updateQuotationSchema } from './schema';
+import { acceptQuotationSchema, createQuotationSchema, rejectQuotationSchema, updateQuotationSchema } from './schema';
 
 const item = { description: 'Grand Ballroom — 500 guests', unitPrice: 400000, quantity: 1 };
 const valid = { sourceType: 'ENQUIRY', sourceId: 'e1', items: [item] };
@@ -66,5 +66,28 @@ describe('updateQuotationSchema', () => {
 
   test('applies the same tax rule', () => {
     expect(updateQuotationSchema.safeParse({ items: [item], gstAmount: 5 }).success).toBe(false);
+  });
+});
+
+describe('acceptQuotationSchema — staff record the customer yes (no customer login in V1)', () => {
+  test.each(['WHATSAPP', 'PHONE', 'IN_PERSON', 'OTHER'])('accepts channel %s', (channel) => {
+    expect(acceptQuotationSchema.safeParse({ channel }).success).toBe(true);
+  });
+
+  test('the note is optional and trimmed', () => {
+    expect(acceptQuotationSchema.parse({ channel: 'PHONE', note: '  said yes on the call  ' }).note).toBe('said yes on the call');
+    expect(acceptQuotationSchema.parse({ channel: 'PHONE' }).note).toBeUndefined();
+  });
+
+  test.each([[{}], [{ channel: 'EMAIL' }], [{ channel: 'whatsapp' }], [{ channel: '' }]])('rejects %p', (body) => {
+    expect(acceptQuotationSchema.safeParse(body).success).toBe(false);
+  });
+});
+
+describe('rejectQuotationSchema', () => {
+  test('requires a non-blank reason and trims it', () => {
+    expect(rejectQuotationSchema.parse({ reason: '  too expensive ' }).reason).toBe('too expensive');
+    expect(rejectQuotationSchema.safeParse({ reason: '   ' }).success).toBe(false);
+    expect(rejectQuotationSchema.safeParse({}).success).toBe(false);
   });
 });

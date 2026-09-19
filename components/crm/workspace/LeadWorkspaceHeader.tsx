@@ -63,7 +63,7 @@ export default function LeadWorkspaceHeader({
             <span className="text-sm text-gray-500">Assigned to</span>
             <AssignControl assignedTo={subject.assignedTo} onAssign={onAssign} />
           </div>
-          <StageControl currentStage={subject.pipelineStage} onTransition={onTransition} />
+          <StageControl currentStage={subject.pipelineStage} hasAcceptedQuotation={subject.hasAcceptedQuotation} onTransition={onTransition} />
           {subject.pipelineStage === 'WON' && (
             <button
               onClick={() => setShowConvertDialog(true)}

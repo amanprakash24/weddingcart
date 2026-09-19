@@ -1,17 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { buildQuotationMessage, formatQuoteDate } from '@/lib/quotation/message';
 import type { WorkspaceQuotation } from './types';
 
-// Quotation panel (docs/wedding-os/08-quotation.md, slice S1): create, edit and delete a DRAFT.
-// Sending, revising and recording acceptance arrive in the next slice. Totals shown while typing
-// are only a preview — the server recomputes and stores the real ones on every save.
+// Quotation panel (docs/wedding-os/08-quotation.md). S1: create / edit / delete a draft.
+// S2: send, revise, record the customer's answer, and a prepared message to send them.
+// Totals shown while typing are only a preview — the server recomputes and stores the real ones.
+// V1 has no customer login or link: staff record the customer's answer on their behalf.
 
 const STATUS_LABEL: Record<WorkspaceQuotation['status'], string> = {
   DRAFT: 'Draft',
   SENT: 'Sent',
   ACCEPTED: 'Accepted',
-  REJECTED: 'Rejected',
+  REJECTED: 'Declined',
   EXPIRED: 'Expired',
   SUPERSEDED: 'Replaced',
 };
@@ -23,6 +25,13 @@ const STATUS_COLOR: Record<WorkspaceQuotation['status'], string> = {
   EXPIRED: 'bg-amber-100 text-amber-700',
   SUPERSEDED: 'bg-gray-100 text-gray-500',
 };
+const CHANNELS = [
+  { value: 'WHATSAPP', label: 'WhatsApp' },
+  { value: 'PHONE', label: 'Phone call' },
+  { value: 'IN_PERSON', label: 'In person' },
+  { value: 'OTHER', label: 'Other' },
+] as const;
+const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel' };
 
 export interface QuotationPrefillLine {
   description: string;
@@ -105,22 +114,37 @@ function errorMessage(payload: { error?: string; issues?: { message?: string }[]
   return first ?? payload.error ?? 'Request failed';
 }
 
+type RowAction = { type: 'accept' | 'reject'; id: string } | null;
+
 export default function QuotationPanel({
   sourceType,
   sourceId,
   readOnly,
   prefill,
+  customerName,
+  customerPhone,
+  onChanged,
 }: {
   sourceType: string;
   sourceId: string;
   readOnly: boolean; // the source already converted to a Wedding
   prefill: QuotationPrefillLine[];
+  customerName: string | null;
+  customerPhone: string | null;
+  // Called after send / accept / decline so the workspace (stage, timeline) reloads.
+  onChanged: () => void;
 }) {
   const [quotations, setQuotations] = useState<WorkspaceQuotation[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string | null; draft: Draft } | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [rowAction, setRowAction] = useState<RowAction>(null);
+  const [channel, setChannel] = useState<string>('WHATSAPP');
+  const [note, setNote] = useState('');
+  const [reason, setReason] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetch(`/api/quotations?sourceType=${sourceType}&sourceId=${sourceId}`)
@@ -180,15 +204,52 @@ export default function QuotationPanel({
     }
   };
 
+  // One helper for every lifecycle call: shows the server's message on failure, reloads on success.
+  const act = async (id: string, path: string, body?: unknown, okNotice?: string) => {
+    setBusyId(id);
+    setLoadError(null);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/quotations/${id}${path}`, {
+        method: path ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload.success) throw new Error(errorMessage(payload));
+      setRowAction(null);
+      setNote('');
+      setReason('');
+      if (okNotice) setNotice(okNotice);
+      load();
+      onChanged();
+      return payload;
+    } catch (e) {
+      setLoadError((e as Error).message);
+      load(); // the state may have moved under us (e.g. it just expired) — show the truth
+      return null;
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const remove = async (id: string) => {
     if (!window.confirm('Delete this draft quote?')) return;
-    const res = await fetch(`/api/quotations/${id}`, { method: 'DELETE' });
-    const payload = await res.json();
-    if (!res.ok || !payload.success) {
-      setLoadError(errorMessage(payload));
-      return;
+    await act(id, '');
+  };
+
+  const messageFor = (q: WorkspaceQuotation) => buildQuotationMessage(q, customerName);
+  const copyMessage = async (q: WorkspaceQuotation) => {
+    try {
+      await navigator.clipboard.writeText(messageFor(q));
+      setNotice('Message copied — paste it into WhatsApp or SMS.');
+    } catch {
+      setNotice('Could not copy automatically — use "Open WhatsApp" instead.');
     }
-    load();
+  };
+  const whatsappLink = (q: WorkspaceQuotation) => {
+    const digits = (customerPhone ?? '').replace(/\D/g, '').slice(-10);
+    return digits.length === 10 ? `https://wa.me/91${digits}?text=${encodeURIComponent(messageFor(q))}` : null;
   };
 
   const setLine = (index: number, patch: Partial<DraftLine>) =>
@@ -197,12 +258,13 @@ export default function QuotationPanel({
 
   const inputClass =
     'w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-colors';
+  const linkBtn = 'text-xs hover:underline disabled:opacity-40';
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-900">Quote</h2>
-        {!readOnly && !editing && !openQuotation && quotations !== null && (
+        {!readOnly && !editing && !openQuotation && quotations !== null && !quotations.some((q) => q.status === 'ACCEPTED') && (
           <button
             onClick={() => setEditing({ id: null, draft: draftFromPrefill(prefill) })}
             className="px-3 py-1.5 rounded-xl text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition-colors"
@@ -213,6 +275,7 @@ export default function QuotationPanel({
       </div>
 
       {loadError && <p className="text-sm text-red-500 mb-2">{loadError}</p>}
+      {notice && <p className="text-sm text-emerald-600 mb-2">{notice}</p>}
       {quotations === null && !loadError && <p className="text-sm text-gray-400">Loading…</p>}
       {quotations !== null && quotations.length === 0 && !editing && (
         <p className="text-sm text-gray-400">{readOnly ? 'No quote was made before this converted.' : 'No quote yet.'}</p>
@@ -220,40 +283,138 @@ export default function QuotationPanel({
 
       {!editing && quotations && quotations.length > 0 && (
         <ul className="space-y-2">
-          {quotations.map((q) => (
-            <li key={q.id} className="border border-gray-100 rounded-xl px-3 py-2.5 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-medium text-gray-900">
-                  {q.quotationNumber}
-                  {q.revision > 1 && <span className="text-gray-400 font-normal"> · revision {q.revision}</span>}
+          {quotations.map((q) => {
+            const busy = busyId === q.id;
+            const wa = q.status === 'SENT' ? whatsappLink(q) : null;
+            return (
+              <li key={q.id} className="border border-gray-100 rounded-xl px-3 py-2.5 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-medium text-gray-900">
+                    {q.quotationNumber}
+                    {q.revision > 1 && <span className="text-gray-400 font-normal"> · revision {q.revision}</span>}
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[q.status]}`}>{STATUS_LABEL[q.status]}</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[q.status]}`}>{STATUS_LABEL[q.status]}</span>
-              </div>
-              <div className="mt-1 text-gray-600 flex flex-wrap gap-x-4 gap-y-0.5">
-                <span>Total {rupees(q.total)}</span>
-                <span>Advance {rupees(q.advanceAmount)}</span>
-                <span>Balance {rupees(q.balance)}</span>
-                {q.validUntil && <span>Valid until {new Date(q.validUntil).toLocaleDateString('en-IN')}</span>}
-              </div>
-              <ul className="mt-1.5 text-xs text-gray-500 space-y-0.5">
-                {q.items.map((i) => (
-                  <li key={i.id}>
-                    {i.description} — {i.quantity} × {rupees(i.unitPrice)} = {rupees(i.lineTotal)}
-                  </li>
-                ))}
-              </ul>
-              {q.status === 'DRAFT' && !readOnly && (
-                <div className="mt-2 flex gap-3 text-xs">
-                  <button onClick={() => setEditing({ id: q.id, draft: draftFromQuotation(q) })} className="text-amber-600 hover:underline">
-                    Edit
-                  </button>
-                  <button onClick={() => remove(q.id)} className="text-red-500 hover:underline">
-                    Delete draft
-                  </button>
+                <div className="mt-1 text-gray-600 flex flex-wrap gap-x-4 gap-y-0.5">
+                  <span>Total {rupees(q.total)}</span>
+                  <span>Advance {rupees(q.advanceAmount)}</span>
+                  <span>Balance {rupees(q.balance)}</span>
+                  {q.validUntil && <span>Valid until {formatQuoteDate(q.validUntil)}</span>}
                 </div>
-              )}
-            </li>
-          ))}
+                <ul className="mt-1.5 text-xs text-gray-500 space-y-0.5">
+                  {q.items.map((i) => (
+                    <li key={i.id}>
+                      {i.description} — {i.quantity} × {rupees(i.unitPrice)} = {rupees(i.lineTotal)}
+                    </li>
+                  ))}
+                </ul>
+
+                {q.status === 'ACCEPTED' && (
+                  <p className="mt-1.5 text-xs text-emerald-700">
+                    Accepted via {CHANNEL_LABEL[q.acceptedChannel ?? 'OTHER'] ?? q.acceptedChannel}
+                    {q.acceptedAt ? ` on ${formatQuoteDate(q.acceptedAt)}` : ''}
+                    {q.acceptedNote ? ` — ${q.acceptedNote}` : ''}
+                  </p>
+                )}
+                {q.status === 'REJECTED' && (
+                  <p className="mt-1.5 text-xs text-red-600">Declined{q.rejectionReason ? `: ${q.rejectionReason}` : ''}</p>
+                )}
+                {q.status === 'EXPIRED' && <p className="mt-1.5 text-xs text-amber-700">This quote passed its valid-until date.</p>}
+
+                {!readOnly && (
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    {q.status === 'DRAFT' && (
+                      <>
+                        <button
+                          disabled={busy}
+                          onClick={() => act(q.id, '/send', undefined, 'Quote sent. Copy the message below to send it to the customer.')}
+                          className="px-3 py-1 rounded-lg text-xs font-medium bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40"
+                        >
+                          {busy ? 'Sending…' : 'Send quote'}
+                        </button>
+                        <button onClick={() => setEditing({ id: q.id, draft: draftFromQuotation(q) })} className={`${linkBtn} text-amber-600`}>
+                          Edit
+                        </button>
+                        <button disabled={busy} onClick={() => remove(q.id)} className={`${linkBtn} text-red-500`}>
+                          {q.revision > 1 ? 'Discard revision' : 'Delete draft'}
+                        </button>
+                      </>
+                    )}
+                    {q.status === 'SENT' && (
+                      <>
+                        <button onClick={() => copyMessage(q)} className={`${linkBtn} text-amber-600`}>
+                          Copy message
+                        </button>
+                        {wa && (
+                          <a href={wa} target="_blank" rel="noreferrer" className={`${linkBtn} text-amber-600`}>
+                            Open WhatsApp
+                          </a>
+                        )}
+                        <button disabled={busy} onClick={() => setRowAction({ type: 'accept', id: q.id })} className={`${linkBtn} text-emerald-700 font-medium`}>
+                          Customer accepted
+                        </button>
+                        <button disabled={busy} onClick={() => setRowAction({ type: 'reject', id: q.id })} className={`${linkBtn} text-red-600`}>
+                          Customer declined
+                        </button>
+                        <button disabled={busy} onClick={() => act(q.id, '/revise', undefined, 'A new draft was created from this quote.')} className={`${linkBtn} text-gray-600`}>
+                          Revise
+                        </button>
+                      </>
+                    )}
+                    {(q.status === 'REJECTED' || q.status === 'EXPIRED') && (
+                      <button disabled={busy} onClick={() => act(q.id, '/revise', undefined, 'A new draft was created from this quote.')} className={`${linkBtn} text-amber-600`}>
+                        Revise
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {rowAction?.id === q.id && rowAction.type === 'accept' && (
+                  <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-100 p-3 space-y-2">
+                    <div className="text-xs font-medium text-emerald-800">How did the customer accept?</div>
+                    <select className={inputClass} value={channel} onChange={(e) => setChannel(e.target.value)}>
+                      {CHANNELS.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <input className={inputClass} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+                    <div className="flex gap-2">
+                      <button
+                        disabled={busy}
+                        onClick={() => act(q.id, '/accept', { channel, note: note || null }, 'Accepted. You can now move this deal to Booked.')}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white disabled:opacity-40"
+                      >
+                        {busy ? 'Saving…' : 'Record acceptance'}
+                      </button>
+                      <button onClick={() => setRowAction(null)} className="px-3 py-1.5 text-xs text-gray-600">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {rowAction?.id === q.id && rowAction.type === 'reject' && (
+                  <div className="mt-2 rounded-xl bg-red-50 border border-red-100 p-3 space-y-2">
+                    <div className="text-xs font-medium text-red-800">Why did the customer decline?</div>
+                    <input className={inputClass} placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+                    <div className="flex gap-2">
+                      <button
+                        disabled={busy || !reason.trim()}
+                        onClick={() => act(q.id, '/reject', { reason })}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white disabled:opacity-40"
+                      >
+                        {busy ? 'Saving…' : 'Record decline'}
+                      </button>
+                      <button onClick={() => setRowAction(null)} className="px-3 py-1.5 text-xs text-gray-600">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -310,7 +471,7 @@ export default function QuotationPanel({
               <input className={inputClass} inputMode="numeric" value={editing.draft.discount} onChange={(e) => setDraft({ discount: e.target.value })} />
             </label>
             <label className="text-xs text-gray-500">
-              Valid until
+              Valid until (needed to send)
               <input className={inputClass} type="date" value={editing.draft.validUntil} onChange={(e) => setDraft({ validUntil: e.target.value })} />
             </label>
             <label className="text-xs text-gray-500">
