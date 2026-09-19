@@ -25,4 +25,8 @@ export const enquiryCreateSchema = z.object({
   guestCount: z.string().trim().max(50).optional(),
   eventType: z.string().trim().min(1, 'eventType is required').max(200),
   message: z.string().trim().max(2000).optional(),
+  // Consultation -> Enquiry bridge (admin "Start Enquiry" action) — see
+  // Enquiry.consultationId's comment in prisma/schema.prisma. Optional: the
+  // public /vendors/[id] enquiry form never sends this.
+  consultationId: z.string().trim().min(1).optional(),
 });

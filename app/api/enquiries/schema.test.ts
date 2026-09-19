@@ -68,4 +68,14 @@ describe('enquiryCreateSchema', () => {
     expect(parsed.guestCount).toBeUndefined();
     expect(parsed.message).toBeUndefined();
   });
+
+  // Consultation -> Enquiry bridge (admin "Start Enquiry" action).
+  test('accepts an optional consultationId, and leaves it undefined when omitted', () => {
+    expect(enquiryCreateSchema.parse(validBody({ consultationId: 'consultation-1' })).consultationId).toBe('consultation-1');
+    expect(enquiryCreateSchema.parse(validBody()).consultationId).toBeUndefined();
+  });
+
+  test('rejects an empty-string consultationId', () => {
+    expect(() => enquiryCreateSchema.parse(validBody({ consultationId: '' }))).toThrow();
+  });
 });

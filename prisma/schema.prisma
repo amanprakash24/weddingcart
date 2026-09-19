@@ -465,11 +465,21 @@ model Enquiry {
   // reasonably have more than one Booking attempt before one is confirmed.
   bookings         Booking[]
 
+  // Consultation -> Enquiry bridge — the admin "Start Enquiry" action on a
+  // Consultation card (components/AdminClient.tsx) creates a normal Enquiry
+  // (vendor picked by the coordinator, since a Consultation has no vendor of
+  // its own) and links it back here. Deliberately not unique: one
+  // Consultation can reasonably produce more than one Enquiry (different
+  // vendors/categories), same relationship shape as Enquiry.bookings above.
+  consultationId   String?
+  consultation     Consultation? @relation(fields: [consultationId], references: [id])
+
   // Production-hardening audit (2026-09-01) — see Lead's identical indexes
   // for the reasoning.
   @@index([pipelineStage])
   @@index([assignedToId, pipelineStage])
   @@index([createdAt])
+  @@index([consultationId])
   @@map("enquiries")
 }
 
@@ -518,6 +528,9 @@ model Consultation {
   // Duplicate-Wedding guard (production-integrity fix) — see Enquiry's
   // identical addition for the reasoning. Not unique for the same reason.
   bookings         Booking[]
+  // Consultation -> Enquiry bridge — inverse side of Enquiry.consultationId
+  // above. One Consultation can produce multiple Enquiries.
+  enquiries        Enquiry[]
 
   // Production-hardening audit (2026-09-01) — see Lead's identical indexes
   // for the reasoning.

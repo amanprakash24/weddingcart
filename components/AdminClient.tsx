@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle, Send } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -282,6 +282,83 @@ export function buildBookingCreateRequestBody(
   };
 }
 
+export interface EnquiryCreateFormFields {
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  eventDate: string;
+  guestCount: string;
+  eventType: string;
+  message: string;
+}
+
+const EMPTY_ENQUIRY_CREATE_FORM: EnquiryCreateFormFields = {
+  name: '', phone: '', email: '', city: '', eventDate: '', guestCount: '', eventType: 'wedding', message: '',
+};
+
+export interface EnquiryCreateVendorContext {
+  slug: string;
+  name: string;
+  category: string;
+}
+
+// Consultation -> Enquiry bridge — maps whatever fields a Consultation
+// happens to have onto the existing Enquiry form shape. Deliberately doesn't
+// invent values for fields Consultation has no equivalent of: vendorId/
+// vendorName/vendorCategory (Consultation has no vendor of its own — the
+// coordinator picks one, see EnquiryCreateVendorContext) and city (optional
+// on Consultation, required on Enquiry) are left for the coordinator to
+// fill in the reused form. Consultation has no `services` field on the
+// Enquiry side to carry them into, so they're folded into the free-text
+// message instead, alongside Consultation's own message, rather than
+// dropped silently.
+export function prefillEnquiryFromConsultation(consultation: AnyRecord): EnquiryCreateFormFields {
+  const services: string[] = Array.isArray(consultation.services) ? consultation.services : [];
+  const messageParts = [
+    services.length > 0 ? `Services requested: ${services.join(', ')}` : '',
+    consultation.message || '',
+  ].filter(Boolean);
+
+  return {
+    name: consultation.name || '',
+    phone: consultation.phone || '',
+    email: consultation.email || '',
+    city: consultation.city || '',
+    eventDate: consultation.weddingDate || '',
+    guestCount: consultation.guestCount != null ? String(consultation.guestCount) : '',
+    eventType: consultation.eventType || 'wedding',
+    message: messageParts.join('\n\n'),
+  };
+}
+
+// Mirrors buildBookingCreateRequestBody's shape/reasoning: builds the exact
+// POST /api/enquiries body so the consultationId wiring is directly
+// testable rather than only visible inline in the submit handler. vendor
+// comes from EnquiryCreateVendorContext — .slug (never a vendor UUID),
+// matching enquiryService.create()'s vendorRepository.findBySlug()
+// resolution, same as buildBookingCreateItems above.
+export function buildEnquiryCreateRequestBody(
+  form: EnquiryCreateFormFields,
+  vendor: EnquiryCreateVendorContext,
+  consultationId: string | null
+) {
+  return {
+    vendorId: vendor.slug,
+    vendorName: vendor.name,
+    vendorCategory: vendor.category,
+    name: form.name,
+    phone: form.phone,
+    email: form.email || undefined,
+    city: form.city,
+    eventDate: form.eventDate,
+    guestCount: form.guestCount || undefined,
+    eventType: form.eventType,
+    message: form.message || undefined,
+    consultationId: consultationId || undefined,
+  };
+}
+
 export default function AdminClient() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('dashboard');
@@ -346,6 +423,20 @@ export default function AdminClient() {
   const [bookingCreateDateWarning, setBookingCreateDateWarning] = useState('');
   const [bookingCreateError, setBookingCreateError] = useState('');
   const [bookingCreateSubmitting, setBookingCreateSubmitting] = useState(false);
+
+  // "Start Enquiry" (from a Consultation) state — reuses the existing public
+  // POST /api/enquiries, enquiryCreateSchema, and enquiryService.create()
+  // unchanged. Unlike "Create Booking" above (which reads its vendor off
+  // the source Enquiry's own vendorId), a Consultation has no vendor of its
+  // own, so the coordinator picks one here via enquiryCreateVendorSearch —
+  // see prefillEnquiryFromConsultation's comment for why.
+  const [showEnquiryCreateForm, setShowEnquiryCreateForm] = useState(false);
+  const [enquiryCreateForm, setEnquiryCreateForm] = useState<EnquiryCreateFormFields>(EMPTY_ENQUIRY_CREATE_FORM);
+  const [enquiryCreateConsultationId, setEnquiryCreateConsultationId] = useState<string | null>(null);
+  const [enquiryCreateVendor, setEnquiryCreateVendor] = useState<EnquiryCreateVendorContext | null>(null);
+  const [enquiryCreateVendorSearch, setEnquiryCreateVendorSearch] = useState('');
+  const [enquiryCreateError, setEnquiryCreateError] = useState('');
+  const [enquiryCreateSubmitting, setEnquiryCreateSubmitting] = useState(false);
 
   const copyPortfolioLink = (vendorId: string) => {
     const url = `${window.location.origin}/portfolio/${vendorId}`;
@@ -928,6 +1019,59 @@ export default function AdminClient() {
       setBookingCreateError('Network error. Please try again.');
     } finally {
       setBookingCreateSubmitting(false);
+    }
+  };
+
+  // Opens the "Start Enquiry" form from a Consultation card, prefilled with
+  // whatever fields prefillEnquiryFromConsultation can map — no new fetch,
+  // vendors[] is already loaded by fetchAll() for the vendor picker below.
+  const openEnquiryCreateForm = (consultation: AnyRecord) => {
+    setEnquiryCreateForm(prefillEnquiryFromConsultation(consultation));
+    setEnquiryCreateConsultationId(consultation._id);
+    setEnquiryCreateVendor(null);
+    setEnquiryCreateVendorSearch('');
+    setEnquiryCreateError('');
+    setTab('enquiries');
+    setShowEnquiryCreateForm(true);
+  };
+
+  // Reuses POST /api/enquiries, enquiryCreateSchema, and enquiryService
+  // .create() completely unchanged — the same public, unauthenticated
+  // endpoint the /vendors/[id] enquiry widget already uses. Same reasoning
+  // as handleBookingCreateSubmit above for why calling it from an
+  // authenticated admin session isn't a new privilege-escalation path.
+  const handleEnquiryCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!enquiryCreateVendor) {
+      setEnquiryCreateError('Select a vendor for this enquiry.');
+      return;
+    }
+
+    setEnquiryCreateSubmitting(true);
+    setEnquiryCreateError('');
+    try {
+      const res = await fetch('/api/enquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildEnquiryCreateRequestBody(enquiryCreateForm, enquiryCreateVendor, enquiryCreateConsultationId)),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setEnquiryCreateError(data.error || 'Failed to create enquiry.');
+        return;
+      }
+      // Only close/reset on a confirmed successful response.
+      setShowEnquiryCreateForm(false);
+      setEnquiryCreateForm(EMPTY_ENQUIRY_CREATE_FORM);
+      setEnquiryCreateConsultationId(null);
+      setEnquiryCreateVendor(null);
+      setEnquiryCreateVendorSearch('');
+      setEnquiryCreateError('');
+      fetchAll();
+    } catch {
+      setEnquiryCreateError('Network error. Please try again.');
+    } finally {
+      setEnquiryCreateSubmitting(false);
     }
   };
 
@@ -1939,6 +2083,125 @@ export default function AdminClient() {
                   );
                 })}
               </div>
+
+              {/* "Start Enquiry" form — opened from a Consultation card via openEnquiryCreateForm() */}
+              {showEnquiryCreateForm && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 animate-fade-in">
+                  <h3 className="font-bold text-gray-900 mb-1 text-lg flex items-center gap-2">
+                    <Send className="w-5 h-5 text-indigo-500" /> Start Enquiry
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-5">
+                    Prefilled from the Consultation — pick a vendor and fill in anything it didn&apos;t have.
+                  </p>
+                  <form onSubmit={handleEnquiryCreateSubmit} className="space-y-5">
+                    {enquiryCreateError && (
+                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+                        <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {enquiryCreateError}
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Vendor *</p>
+                      {enquiryCreateVendor ? (
+                        <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">
+                          <span className="text-sm font-semibold text-gray-800">{enquiryCreateVendor.name}</span>
+                          <button type="button" onClick={() => setEnquiryCreateVendor(null)} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800">Change</button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="relative mb-2">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            <input
+                              value={enquiryCreateVendorSearch}
+                              onChange={(ev) => setEnquiryCreateVendorSearch(ev.target.value)}
+                              placeholder="Search vendors by name or city..."
+                              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                            />
+                          </div>
+                          <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100">
+                            {vendors
+                              .filter((v) => {
+                                const q = enquiryCreateVendorSearch.trim().toLowerCase();
+                                if (!q) return true;
+                                return v.name?.toLowerCase().includes(q) || v.city?.toLowerCase().includes(q);
+                              })
+                              .slice(0, 20)
+                              .map((v) => (
+                                <button
+                                  key={v.id}
+                                  type="button"
+                                  onClick={() => setEnquiryCreateVendor({ slug: v.slug, name: v.name, category: v.categoryId })}
+                                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 transition-colors flex items-center justify-between gap-2"
+                                >
+                                  <span className="font-medium text-gray-800">{v.name}</span>
+                                  <span className="text-xs text-gray-400">
+                                    {categories.find((c) => c.id === v.categoryId)?.name || ''}{v.city ? ` · ${v.city}` : ''}
+                                  </span>
+                                </button>
+                              ))}
+                            {vendors.filter((v) => {
+                              const q = enquiryCreateVendorSearch.trim().toLowerCase();
+                              return !q || v.name?.toLowerCase().includes(q) || v.city?.toLowerCase().includes(q);
+                            }).length === 0 && (
+                              <p className="text-sm text-gray-400 px-4 py-3">No vendors match.</p>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Enquiry Details</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Name *</label>
+                          <input required value={enquiryCreateForm.name} onChange={(ev) => setEnquiryCreateForm({ ...enquiryCreateForm, name: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Phone *</label>
+                          <input required type="tel" value={enquiryCreateForm.phone} onChange={(ev) => setEnquiryCreateForm({ ...enquiryCreateForm, phone: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Email <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <input type="email" value={enquiryCreateForm.email} onChange={(ev) => setEnquiryCreateForm({ ...enquiryCreateForm, email: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">City *</label>
+                          <input required value={enquiryCreateForm.city} onChange={(ev) => setEnquiryCreateForm({ ...enquiryCreateForm, city: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Event Date *</label>
+                          <input required type="date" value={enquiryCreateForm.eventDate} onChange={(ev) => setEnquiryCreateForm({ ...enquiryCreateForm, eventDate: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Guest Count <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <input type="text" inputMode="numeric" value={enquiryCreateForm.guestCount} onChange={(ev) => setEnquiryCreateForm({ ...enquiryCreateForm, guestCount: ev.target.value.replace(/\D/g, '') })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Event Type *</label>
+                          <input required value={enquiryCreateForm.eventType} onChange={(ev) => setEnquiryCreateForm({ ...enquiryCreateForm, eventType: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-semibold text-gray-500 mb-1">Message <span className="text-gray-400 font-normal">(optional)</span></label>
+                          <textarea rows={3} value={enquiryCreateForm.message} onChange={(ev) => setEnquiryCreateForm({ ...enquiryCreateForm, message: ev.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <button type="submit" disabled={enquiryCreateSubmitting}
+                        className="bg-gradient-to-r from-amber-500 to-rose-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-60">
+                        {enquiryCreateSubmitting ? 'Creating…' : 'Create Enquiry'}
+                      </button>
+                      <button type="button" onClick={() => { setShowEnquiryCreateForm(false); setEnquiryCreateForm(EMPTY_ENQUIRY_CREATE_FORM); setEnquiryCreateConsultationId(null); setEnquiryCreateVendor(null); setEnquiryCreateVendorSearch(''); setEnquiryCreateError(''); }}
+                        className="text-gray-500 hover:text-gray-700 text-sm font-semibold px-4 py-2.5">
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {(enquiryFilter === 'all' ? enquiries : enquiries.filter((e) => e.status === enquiryFilter)).length === 0 && (
                 <div className="text-center py-12 text-gray-400"><p>No {enquiryFilter === 'all' ? '' : enquiryFilter} enquiries.</p></div>
               )}
@@ -2365,7 +2628,11 @@ export default function AdminClient() {
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      <button onClick={() => openEnquiryCreateForm(c)}
+                        className="flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">
+                        <Send className="w-3 h-3" /> Start Enquiry
+                      </button>
                       {['new', 'contacted', 'closed'].map((s) => (
                         <button key={s} onClick={() => handleStatusChange('consultations', c._id, s)}
                           className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize ${
