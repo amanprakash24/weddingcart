@@ -10,6 +10,8 @@ const withItems = {
   items: { orderBy: { sortOrder: 'asc' } },
   // The Booking created from this quotation, if any (Booking.quotationId is unique).
   booking: { select: { id: true, status: true } },
+  // The advance invoice created automatically when the booking/lead converted to a wedding, if any.
+  advanceInvoice: { select: { id: true, invoiceNumber: true, status: true } },
 } satisfies Prisma.QuotationInclude;
 export type QuotationWithItems = Prisma.QuotationGetPayload<{ include: typeof withItems }>;
 

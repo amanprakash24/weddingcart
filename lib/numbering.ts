@@ -12,6 +12,11 @@ import type { Prisma } from '@/generated/prisma/client';
 
 type Tx = Prisma.TransactionClient;
 
+// e.g. yearBucket('WED') -> "WED-2026-"
+export function yearBucket(prefix: string, now: Date = new Date()): string {
+  return `${prefix}-${now.getFullYear()}-`;
+}
+
 // e.g. monthBucket('QTN') -> "QTN-202609-"
 export function monthBucket(prefix: string, now: Date = new Date()): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');

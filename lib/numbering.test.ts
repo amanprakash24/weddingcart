@@ -1,12 +1,19 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { monthBucket, nextSequenceNumber } from './numbering';
+import { monthBucket, nextSequenceNumber, yearBucket } from './numbering';
 
 describe('monthBucket', () => {
   test('formats PREFIX-YYYYMM- with a zero-padded month', () => {
     expect(monthBucket('QTN', new Date(2026, 8, 20))).toBe('QTN-202609-');
     expect(monthBucket('INV', new Date(2027, 0, 1))).toBe('INV-202701-');
     expect(monthBucket('QTN', new Date(2026, 11, 31))).toBe('QTN-202612-');
+  });
+});
+
+describe('yearBucket', () => {
+  test('formats PREFIX-YYYY- (the wedding number bucket)', () => {
+    expect(yearBucket('WED', new Date(2026, 8, 20))).toBe('WED-2026-');
+    expect(yearBucket('WED', new Date(2027, 0, 1))).toBe('WED-2027-');
   });
 });
 

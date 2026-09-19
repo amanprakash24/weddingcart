@@ -40,7 +40,11 @@ function makePrismaMock({
   booking,
   weddings = {},
   callLog = [],
+  quotation = null,
+  invoiceCreateFails = false,
 }: {
+  quotation?: Record<string, unknown> | null;
+  invoiceCreateFails?: boolean;
   booking: ReturnType<typeof fakeBooking>;
   weddings?: {
     sourceBookingId?: Record<string, unknown> | null;
@@ -62,6 +66,13 @@ function makePrismaMock({
   const vendorBookingCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'vb-1', ...args.data }));
   const taskCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'task-1', ...args.data }));
   const activityLogCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'log-1', ...args.data }));
+
+  const invoiceCreateMock = mock(async (args: { data: Record<string, unknown> }) => {
+    if (invoiceCreateFails) throw new Error('invoice insert failed');
+    return { id: 'inv-1', ...args.data };
+  });
+  const quotationUpdateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'q-1', ...args.data }));
+  const quotationFindUniqueMock = mock(async () => quotation);
 
   const findUniqueMock = mock(async ({ where }: { where: Record<string, unknown> }) => {
     callLog.push('read:findUnique');
@@ -98,6 +109,15 @@ function makePrismaMock({
       findFirst: findFirstMock,
       create: weddingCreateMock,
       count: mock(async () => 0),
+      findMany: mock(async () => []), // number generation: no earlier wedding in the bucket
+    },
+    invoice: {
+      create: invoiceCreateMock,
+      findMany: mock(async () => []), // number generation: no earlier invoice in the bucket
+    },
+    quotation: {
+      findUnique: quotationFindUniqueMock,
+      update: quotationUpdateMock,
     },
     weddingEvent: { create: weddingEventCreateMock },
     vendorBooking: { create: vendorBookingCreateMock },
@@ -118,6 +138,9 @@ function makePrismaMock({
     activityLogCreateMock,
     executeRawMock,
     callLog,
+    invoiceCreateMock,
+    quotationUpdateMock,
+    quotationFindUniqueMock,
   };
 }
 
@@ -363,7 +386,12 @@ describe('convertBookingToWedding — advisory lock acquisition (concurrency fix
     await convertBookingToWedding('booking-1');
 
     const firstReadIndex = callLog.findIndex((entry) => entry.startsWith('read:'));
-    const lockIndexes = callLog.reduce<number[]>((acc, entry, i) => (entry.startsWith('lock:') ? [...acc, i] : acc), []);
+    // only the CONVERSION locks must precede every read; the number-bucket lock (lock:number:…) is taken later,
+    // right before the number is generated, and is asserted separately below
+    const lockIndexes = callLog.reduce<number[]>(
+      (acc, entry, i) => (entry.startsWith('lock:') && !entry.startsWith('lock:number:') ? [...acc, i] : acc),
+      []
+    );
     expect(lockIndexes.length).toBeGreaterThan(0);
     expect(Math.max(...lockIndexes)).toBeLessThan(firstReadIndex);
   });
@@ -375,7 +403,7 @@ describe('convertBookingToWedding — advisory lock acquisition (concurrency fix
 
     await convertBookingToWedding('booking-1');
 
-    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]);
+    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]).filter((key) => !String(key).startsWith('number:'));
     expect(lockedKeys).toEqual(['BOOKING:booking-1', 'CONSULTATION:consultation-1', 'ENQUIRY:enquiry-1']);
   });
 
@@ -386,7 +414,7 @@ describe('convertBookingToWedding — advisory lock acquisition (concurrency fix
 
     await convertBookingToWedding('booking-1');
 
-    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]);
+    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]).filter((key) => !String(key).startsWith('number:'));
     expect(lockedKeys).toEqual(['BOOKING:booking-1']);
   });
 });
@@ -403,7 +431,13 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
     };
   }
 
-  function makeCrmPrismaMock({ weddingFound }: { weddingFound: Record<string, unknown> | null }) {
+  function makeCrmPrismaMock({
+    weddingFound,
+    acceptedQuotation = null,
+  }: {
+    weddingFound: Record<string, unknown> | null;
+    acceptedQuotation?: Record<string, unknown> | null;
+  }) {
     const callLog: string[] = [];
     const findUniqueMock = mock(async () => {
       callLog.push('read:findUnique');
@@ -418,8 +452,18 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
       return 1;
     });
     const weddingCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'wedding-new', ...args.data }));
+    const invoiceCreateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'inv-crm', ...args.data }));
+    const quotationUpdateMock = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'q-crm', ...args.data }));
     const base = {
-      wedding: { findUnique: findUniqueMock, findFirst: findFirstMock, create: weddingCreateMock, count: mock(async () => 0) },
+      wedding: {
+        findUnique: findUniqueMock,
+        findFirst: findFirstMock,
+        create: weddingCreateMock,
+        count: mock(async () => 0),
+        findMany: mock(async () => []),
+      },
+      invoice: { create: invoiceCreateMock, findMany: mock(async () => []) },
+      quotation: { findFirst: mock(async () => acceptedQuotation), update: quotationUpdateMock },
       weddingEvent: { create: mock(async () => ({ id: 'we-1' })) },
       activityLog: { create: mock(async () => ({ id: 'log-1' })) },
       timelineMilestone: { createMany: mock(async () => ({ count: 0 })) },
@@ -427,7 +471,7 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
       $executeRaw: executeRawMock,
     };
     const prismaMock = { ...base, $transaction: mock(async (fn: (tx: typeof base) => unknown) => fn(base)) };
-    return { prismaMock, executeRawMock, weddingCreateMock, callLog };
+    return { prismaMock, executeRawMock, weddingCreateMock, callLog, invoiceCreateMock, quotationUpdateMock };
   }
 
   async function loadConvertLeadServiceWith(prismaMock: unknown, enquiry: ReturnType<typeof fakeEnquiry>) {
@@ -449,7 +493,7 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
 
     await convertLeadToWedding('ENQUIRY', 'enquiry-1', convertInput, null);
 
-    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]);
+    const lockedKeys = executeRawMock.mock.calls.map((call) => call[1]).filter((key) => !String(key).startsWith('number:'));
     expect(lockedKeys).toEqual(['ENQUIRY:enquiry-1']);
   });
 
@@ -466,6 +510,83 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
     const firstReadIndex = callLog.findIndex((entry) => entry.startsWith('read:'));
     const lockIndex = callLog.findIndex((entry) => entry.startsWith('lock:'));
     expect(lockIndex).toBeLessThan(firstReadIndex);
+  });
+
+  describe('convertLeadToWedding — automatic advance invoice (CRM path)', () => {
+    const crmEnquiry = () => ({
+      id: 'enquiry-1',
+      name: 'Priya Sharma',
+      phone: '9812345678',
+      email: 'priya@example.com',
+      city: 'Patna',
+      pipelineStage: 'WON',
+      guestCount: '250',
+      eventType: 'Traditional Hindu',
+    });
+    const crmInput = { weddingDate: new Date('2027-02-14'), city: 'Patna', tokenAdvanceReceived: false };
+
+    async function loadCrm(prismaMock: unknown) {
+      mock.module('@/lib/prisma', () => ({ prisma: prismaMock }));
+      mock.module('@/repositories/enquiry.repository', () => ({ enquiryRepository: { findById: mock(async () => crmEnquiry()) } }));
+      mock.module('@/repositories/lead.repository', () => ({ leadRepository: { findById: mock(async () => null) } }));
+      mock.module('@/repositories/consultation.repository', () => ({ consultationRepository: { findById: mock(async () => null) } }));
+      return import('./weddingConversion.service');
+    }
+
+    test('the source\'s ACCEPTED quotation becomes a draft advance invoice addressed to the enquiry, with no tax', async () => {
+      const { prismaMock, invoiceCreateMock, quotationUpdateMock } = makeCrmPrismaMock({ weddingFound: null, acceptedQuotation: acceptedQuotation() });
+      const { convertLeadToWedding } = await loadCrm(prismaMock);
+
+      await convertLeadToWedding('ENQUIRY', 'enquiry-1', crmInput, 'staff-1');
+
+      expect(invoiceCreateMock).toHaveBeenCalledTimes(1);
+      const data = (invoiceCreateMock.mock.calls[0][0] as { data: Record<string, unknown> }).data;
+      expect(data).toMatchObject({
+        status: 'DRAFT',
+        total: 200000,
+        gstEnabled: false,
+        gstAmount: 0,
+        clientName: 'Priya Sharma',
+        clientPhone: '9812345678',
+        clientEmail: 'priya@example.com',
+        clientCity: 'Patna',
+        eventDate: '2027-02-14',
+      });
+      expect((quotationUpdateMock.mock.calls[0][0] as { data: unknown }).data).toEqual({ advanceInvoice: { connect: { id: 'inv-crm' } } });
+    });
+
+    test('a source with no accepted quotation converts exactly as before — no invoice', async () => {
+      const { prismaMock, invoiceCreateMock } = makeCrmPrismaMock({ weddingFound: null, acceptedQuotation: null });
+      const { convertLeadToWedding } = await loadCrm(prismaMock);
+
+      await convertLeadToWedding('ENQUIRY', 'enquiry-1', crmInput, null);
+
+      expect(invoiceCreateMock).not.toHaveBeenCalled();
+    });
+
+    test('an advance invoice that already exists is not created again', async () => {
+      const { prismaMock, invoiceCreateMock } = makeCrmPrismaMock({
+        weddingFound: null,
+        acceptedQuotation: acceptedQuotation({ advanceInvoiceId: 'inv-existing' }),
+      });
+      const { convertLeadToWedding } = await loadCrm(prismaMock);
+
+      await convertLeadToWedding('ENQUIRY', 'enquiry-1', crmInput, null);
+
+      expect(invoiceCreateMock).not.toHaveBeenCalled();
+    });
+
+    test('an already-converted source returns the existing wedding and creates no invoice', async () => {
+      const { prismaMock, invoiceCreateMock } = makeCrmPrismaMock({
+        weddingFound: { id: 'wedding-existing', weddingNumber: 'WED-2027-0009' },
+        acceptedQuotation: acceptedQuotation(),
+      });
+      const { convertLeadToWedding } = await loadCrm(prismaMock);
+
+      await convertLeadToWedding('ENQUIRY', 'enquiry-1', crmInput, null);
+
+      expect(invoiceCreateMock).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -550,5 +671,169 @@ describe('convertBookingToWedding — vendor-less lines', () => {
     expect(taskTitles).toContain('Assign replacement vendor for "Hall"');
     const logs = activityLogCreateMock.mock.calls.map((c) => (c[0] as { data: { summary: string } }).data.summary);
     expect(logs.some((l) => l.includes('vendor no longer exists'))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Race-safe numbering inside the conversion (docs/wedding-os/08-quotation.md §7 #2)
+// ---------------------------------------------------------------------------
+describe('convertBookingToWedding — wedding number generation is serialized', () => {
+  test('takes the WED-YYYY- bucket lock AFTER the conversion locks and BEFORE the wedding is created', async () => {
+    const booking = fakeBooking({ enquiryId: 'enquiry-1' });
+    const { prismaMock, callLog, weddingCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    const year = new Date().getFullYear();
+    const numberLockIndex = callLog.findIndex((entry) => entry === `lock:number:WED-${year}-`);
+    const conversionLocks = callLog.map((e, i) => (e.startsWith('lock:') && !e.startsWith('lock:number:') ? i : -1)).filter((i) => i >= 0);
+    expect(numberLockIndex).toBeGreaterThan(-1);
+    expect(numberLockIndex).toBeGreaterThan(Math.max(...conversionLocks));
+    expect(weddingCreateMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('the first wedding of the year is WED-YYYY-0001 (highest existing + 1, not a row count)', async () => {
+    const booking = fakeBooking();
+    const { prismaMock, weddingCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    const data = (weddingCreateMock.mock.calls[0][0] as { data: { weddingNumber: string } }).data;
+    expect(data.weddingNumber).toBe(`WED-${new Date().getFullYear()}-0001`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Automatic advance invoice (docs/wedding-os/08-quotation.md §6.6)
+// ---------------------------------------------------------------------------
+const acceptedQuotation = (overrides: Partial<Record<string, unknown>> = {}) => ({
+  id: 'q-1',
+  quotationNumber: 'QTN-202609-0007',
+  status: 'ACCEPTED',
+  total: 730000,
+  advanceAmount: 200000,
+  advanceInvoiceId: null,
+  items: [],
+  ...overrides,
+});
+
+describe('convertBookingToWedding — automatic advance invoice', () => {
+  test('a booking from an accepted quotation creates ONE draft invoice for the advance, with no tax', async () => {
+    const booking = fakeBooking({ quotationId: 'q-1', name: 'Rahul Sharma', phone: '9876543210' });
+    const { prismaMock, invoiceCreateMock } = makePrismaMock({ booking, quotation: acceptedQuotation() });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    expect(invoiceCreateMock).toHaveBeenCalledTimes(1);
+    const data = (invoiceCreateMock.mock.calls[0][0] as { data: Record<string, unknown> }).data;
+    expect(data).toMatchObject({
+      status: 'DRAFT',
+      subtotal: 200000,
+      discount: 0,
+      total: 200000,
+      gstEnabled: false,
+      gstAmount: 0,
+      clientName: 'Rahul Sharma',
+      clientPhone: '9876543210',
+      clientCity: 'Patna',
+      eventDate: '2027-02-01',
+      wedding: { connect: { id: 'wedding-1' } },
+    });
+    expect(String(data.invoiceNumber)).toMatch(/^INV-\d{6}-0001$/);
+    expect((data.items as { create: unknown[] }).create).toEqual([{ description: 'Advance — QTN-202609-0007', amount: 200000, quantity: 1 }]);
+    expect(String(data.notes)).toContain('No tax applied');
+  });
+
+  test('the invoice is linked back to the quotation (the idempotency anchor) and the event is logged on the wedding', async () => {
+    const booking = fakeBooking({ quotationId: 'q-1', name: 'Rahul', phone: '9876543210' });
+    const { prismaMock, quotationUpdateMock, activityLogCreateMock } = makePrismaMock({ booking, quotation: acceptedQuotation() });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    expect((quotationUpdateMock.mock.calls[0][0] as { data: unknown }).data).toEqual({ advanceInvoice: { connect: { id: 'inv-1' } } });
+    const logs = activityLogCreateMock.mock.calls.map((c) => (c[0] as { data: { type: string; summary: string } }).data);
+    const invoiceLog = logs.find((l) => l.type === 'INVOICE_CREATED');
+    expect(invoiceLog?.summary).toContain('QTN-202609-0007');
+    expect(invoiceLog?.summary).toContain('₹2,00,000');
+  });
+
+  test('the invoice is created AFTER the wedding exists, inside the same transaction', async () => {
+    const booking = fakeBooking({ quotationId: 'q-1', name: 'Rahul', phone: '9876543210' });
+    const { prismaMock, weddingCreateMock, invoiceCreateMock } = makePrismaMock({ booking, quotation: acceptedQuotation() });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(weddingCreateMock.mock.invocationCallOrder[0]).toBeLessThan(invoiceCreateMock.mock.invocationCallOrder[0]);
+  });
+
+  test('NO payment link is created: nothing calls out over the network during conversion', async () => {
+    const booking = fakeBooking({ quotationId: 'q-1', name: 'Rahul', phone: '9876543210' });
+    const { prismaMock } = makePrismaMock({ booking, quotation: acceptedQuotation() });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+    const realFetch = globalThis.fetch;
+    const fetchSpy = mock(async () => new Response('{}'));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    try {
+      await convertBookingToWedding('booking-1');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['no quotation on the booking', {}, null],
+    ['a booking whose quotation is not accepted', { quotationId: 'q-1' }, acceptedQuotation({ status: 'SENT' })],
+    ['a zero advance', { quotationId: 'q-1' }, acceptedQuotation({ advanceAmount: 0 })],
+    ['an advance invoice that already exists (retry / race)', { quotationId: 'q-1' }, acceptedQuotation({ advanceInvoiceId: 'inv-existing' })],
+  ])('creates NO invoice for %s', async (_name, bookingOverrides, quotation) => {
+    const booking = fakeBooking({ name: 'Rahul', phone: '9876543210', ...bookingOverrides });
+    const { prismaMock, invoiceCreateMock, quotationUpdateMock } = makePrismaMock({ booking, quotation });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    expect(invoiceCreateMock).not.toHaveBeenCalled();
+    expect(quotationUpdateMock).not.toHaveBeenCalled();
+  });
+
+  test('a booking with no quotation never even looks one up — existing marketplace bookings are untouched', async () => {
+    const booking = fakeBooking();
+    const { prismaMock, quotationFindUniqueMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    expect(quotationFindUniqueMock).not.toHaveBeenCalled();
+  });
+
+  test('if the invoice cannot be created the WHOLE conversion fails — no wedding without its invoice', async () => {
+    const booking = fakeBooking({ quotationId: 'q-1', name: 'Rahul', phone: '9876543210' });
+    const { prismaMock } = makePrismaMock({ booking, quotation: acceptedQuotation(), invoiceCreateFails: true });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await expect(convertBookingToWedding('booking-1')).rejects.toThrow('invoice insert failed');
+  });
+
+  test('retrying an already-converted booking returns the wedding and creates no second invoice', async () => {
+    const booking = fakeBooking({ quotationId: 'q-1', name: 'Rahul', phone: '9876543210' });
+    const existing = { id: 'wedding-existing', sourceBookingId: 'booking-1', weddingNumber: 'WED-2027-0001' };
+    const { prismaMock, invoiceCreateMock } = makePrismaMock({
+      booking,
+      quotation: acceptedQuotation(),
+      weddings: { sourceBookingId: existing },
+    });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    const result = await convertBookingToWedding('booking-1');
+
+    expect((result as unknown as { id: string }).id).toBe('wedding-existing');
+    expect(invoiceCreateMock).not.toHaveBeenCalled();
   });
 });
