@@ -11,10 +11,12 @@ dbDescribe('quotation duplicate rules speak plainly (real database)', () => {
   let fx: Fixtures;
   let withPrismaErrors: typeof import('@/lib/errors').withPrismaErrors;
   let counter = 0;
+  let explainSourceConflict: typeof import('@/services/quotation.service').explainSourceConflict;
 
   beforeAll(async () => {
     app = await loadApp();
     ({ withPrismaErrors } = await import('@/lib/errors'));
+    ({ explainSourceConflict } = await import('@/services/quotation.service'));
     fx = createFixtures(app);
     await fx.purge();
   });
@@ -84,5 +86,21 @@ dbDescribe('quotation duplicate rules speak plainly (real database)', () => {
     await make(c.id, { status: 'DRAFT' });
     const error = await failure(make(c.id, { status: 'DRAFT' }));
     expect(error?.message).not.toContain('this field');
+  });
+
+  test('the service turns that violation into a sentence naming the quotations really on the lead', async () => {
+    const c = await fx.consultation();
+    await make(c.id, { status: 'SENT', quotationNumber: `QTN-DBERR-open-${Date.now()}` });
+    const clash = await failure(make(c.id, { status: 'DRAFT' }));
+    const explained = (await explainSourceConflict(clash, { sourceType: 'CONSULTATION', sourceId: c.id })) as Error;
+    expect(explained.name).toBe('ConflictError');
+    expect(explained.message).toContain('already has an open quotation: QTN-DBERR-open-');
+    expect(explained.message).toContain('(sent)');
+    expect(explained.message).not.toMatch(/COALESCE|_key/);
+  });
+
+  test('any other error passes through the explainer untouched', async () => {
+    const boom = new Error('boom');
+    expect(await explainSourceConflict(boom, { sourceType: 'CONSULTATION', sourceId: 'x' })).toBe(boom);
   });
 });

@@ -42,8 +42,15 @@ const FRIENDLY: Record<string, string> = {
   bookings_quotationId_key: 'A booking was already created from this quotation.',
 };
 
+// Both "one open" and "one accepted" quotation rules are expression indexes on COALESCE(leadId, enquiryId, consultationId); the driver
+// reports them by that expression rather than by name.
+export function isSourceKeyRule(info: ConstraintInfo): boolean {
+  return info.index === 'quotations_one_open_per_source_key' || info.index === 'quotations_one_accepted_per_source_key' || info.fields.some((f) => /^COALESCE\(/i.test(f));
+}
+
 export function friendlyDuplicateMessage(entity: string, info: ConstraintInfo): string {
   if (info.index && FRIENDLY[info.index]) return FRIENDLY[info.index];
+  if (isSourceKeyRule(info)) return `This ${entity === 'Quotation' ? 'lead' : entity.toLowerCase()} already has an open or accepted quotation.`;
   const field = info.fields[0] ?? columnFromIndex(info.index);
   if (field) return `${entity} already exists with this ${field}`;
   return info.index ? `${entity} already exists (rule: ${info.index})` : `${entity} already exists with this field`;
