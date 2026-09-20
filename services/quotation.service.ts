@@ -216,12 +216,17 @@ async function bookingSourceFacts(sourceType: SourceType, sourceId: string, tx: 
 
 // A unique-rule violation on a lead's quotations (one open / one accepted) is turned into a sentence naming the quotations that
 // are really there, read FRESH (outside the failed transaction). Any other error passes through unchanged.
-export async function explainSourceConflict(err: unknown, source: { sourceType: SourceType; sourceId: string } | null): Promise<unknown> {
+export async function explainSourceConflict(
+  err: unknown,
+  source: { sourceType: SourceType; sourceId: string } | null,
+  trace: string[] = []
+): Promise<unknown> {
   if (!(err instanceof DuplicateError) || !source) return err;
   const info = { index: err.constraint, fields: [err.field] };
   if (!isSourceKeyRule(info)) return err;
   const quotes = await quotationRepository.findMany(subjectWhere(source.sourceType, source.sourceId));
-  return new ConflictError(describeSourceConflict(SOURCE_LABEL[source.sourceType], quotes));
+  const detail = trace.length > 0 ? ` (steps: ${trace.join(', ')})` : '';
+  return new ConflictError(describeSourceConflict(SOURCE_LABEL[source.sourceType], quotes) + detail);
 }
 
 async function nextQuotationNumber(tx: Tx): Promise<string> {
@@ -521,10 +526,17 @@ export const quotationService = {
   // SENT / REJECTED / EXPIRED → a new DRAFT (revision + 1) copied from it. A SENT original is marked
   // SUPERSEDED at once (a source can have only one open quotation); discarding the draft restores it.
   async revise(id: string, actorId: string | null) {
+    // A short trace of how far the transaction got and how long each stage took. It only surfaces if the database refuses the
+    // new draft, so an unexpected refusal can be traced to the exact step instead of guessed at.
+    const started = Date.now();
+    const trace: string[] = [];
+    const mark = (step: string) => trace.push(`${step} @${Date.now() - started}ms`);
     try {
       await expireOverdue({ id });
+      mark('expiry checked');
       return await prisma.$transaction(async (tx) => {
         const { q, sourceType, sourceId } = await loadLocked(tx, id);
+        mark(`locked, was ${q.status}`);
         const blocked = evaluateRevisable(q.status);
         if (blocked) throw blocked;
 
@@ -543,10 +555,13 @@ export const quotationService = {
         }
 
         const quotationNumber = await nextQuotationNumber(tx);
+        mark(`numbered ${quotationNumber}`);
         // Status first: the old SENT quotation must stop being "open" before the new draft is inserted.
         if (q.status === 'SENT') {
-          await quotationRepository.update(id, { status: 'SUPERSEDED' }, tx);
+          const replaced = await quotationRepository.update(id, { status: 'SUPERSEDED' }, tx);
+          mark(`original now ${replaced.status}`);
         }
+        mark('saving the draft');
         const revision = await quotationRepository.create(
           {
             ...subjectCreateData(sourceType, sourceId),
@@ -591,7 +606,7 @@ export const quotationService = {
       });
     } catch (err) {
       const first = err instanceof DuplicateError ? await quotationRepository.findById(id) : null;
-      throw await explainSourceConflict(err, first ? sourceOf(first) : null);
+      throw await explainSourceConflict(err, first ? sourceOf(first) : null, trace);
     }
   },
 };
