@@ -19,14 +19,6 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        // The admin's front door is Today (the Command Center). /admin?tab=<id> still opens the older screens.
-        // Done here rather than in the page so it is a real 307 before anything renders.
-        source: '/admin',
-        missing: [{ type: 'query', key: 'tab' }],
-        destination: '/admin/dashboard',
-        permanent: false,
-      },
-      {
         source: '/venues/patna',
         destination: '/cities/patna/venue',
         permanent: true,

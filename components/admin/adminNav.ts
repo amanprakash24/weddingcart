@@ -9,10 +9,12 @@ import { Briefcase, CalendarDays, Database, FileText, Heart, LayoutDashboard, Re
 // experience never asks anyone to know how the workflow is stored.
 
 export type NavItem = { key: string; label: string; href: string; icon: typeof Heart; isActive: (ctx: ActiveContext) => boolean };
-export type ActiveContext = { pathname: string; tab: string | null; hash: string };
+export type ActiveContext = { pathname: string; tab: string | null; section: string | null };
 
 const onTab = (id: string) => ({ pathname, tab }: ActiveContext) => pathname === '/admin' && tab === id;
-export const UPCOMING_HASH = '#upcoming';
+// Weddings = the Command Center scrolled to its "Upcoming weddings" list (a query param, not a #fragment: Next's router
+// mishandles repeated hash-only navigation).
+export const UPCOMING_SECTION = 'upcoming';
 
 export const PRIMARY: NavItem[] = [
   {
@@ -20,7 +22,7 @@ export const PRIMARY: NavItem[] = [
     label: 'Today',
     href: '/admin/dashboard',
     icon: LayoutDashboard,
-    isActive: ({ pathname, hash }) => pathname === '/admin/dashboard' && hash !== UPCOMING_HASH,
+    isActive: ({ pathname, section }) => pathname === '/admin/dashboard' && section !== UPCOMING_SECTION,
   },
   {
     key: 'leads',
@@ -33,9 +35,9 @@ export const PRIMARY: NavItem[] = [
     // V1: the Command Center's "Upcoming weddings" list. A dedicated list comes later, once real usage says what it needs.
     key: 'weddings',
     label: 'Weddings',
-    href: `/admin/dashboard${UPCOMING_HASH}`,
+    href: `/admin/dashboard?section=${UPCOMING_SECTION}`,
     icon: Heart,
-    isActive: ({ pathname, hash }) => pathname.startsWith('/admin/weddings') || (pathname === '/admin/dashboard' && hash === UPCOMING_HASH),
+    isActive: ({ pathname, section }) => pathname.startsWith('/admin/weddings') || (pathname === '/admin/dashboard' && section === UPCOMING_SECTION),
   },
   {
     key: 'vendors',

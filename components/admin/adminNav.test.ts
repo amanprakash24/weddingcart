@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MORE, OLD_SCREENS, PHONE_BAR, PRIMARY, SETUP, UPCOMING_HASH, type ActiveContext } from './adminNav';
+import { MORE, OLD_SCREENS, PHONE_BAR, PRIMARY, SETUP, UPCOMING_SECTION, type ActiveContext } from './adminNav';
 
 // The admin navigation is the product structure: Today / Leads & Quotes / Weddings / Vendors / Invoices, everything else
 // under More. These tests pin that structure and guard against dead links.
 
 const root = join(import.meta.dir, '..', '..');
 const activePrimary = (ctx: ActiveContext) => PRIMARY.filter((item) => item.isActive(ctx)).map((item) => item.key);
-const ctx = (pathname: string, tab: string | null = null, hash = ''): ActiveContext => ({ pathname, tab, hash });
+const ctx = (pathname: string, tab: string | null = null, section: string | null = null): ActiveContext => ({ pathname, tab, section });
 
 describe('primary navigation', () => {
   test('is exactly Today, Leads & Quotes, Weddings, Vendors, Invoices — in that order', () => {
@@ -29,7 +29,7 @@ describe('primary navigation', () => {
 
   test.each([
     ['Today', ctx('/admin/dashboard'), ['today']],
-    ['Weddings (the Upcoming weddings list on Today)', ctx('/admin/dashboard', null, UPCOMING_HASH), ['weddings']],
+    ['Weddings (the Upcoming weddings list on Today)', ctx('/admin/dashboard', null, UPCOMING_SECTION), ['weddings']],
     ['a wedding\'s Control Room', ctx('/admin/weddings/abc'), ['weddings']],
     ['the lead list', ctx('/admin/crm'), ['leads']],
     ['a lead workspace (where the quote lives)', ctx('/admin/crm/leads/CONSULTATION/abc'), ['leads']],
@@ -78,6 +78,6 @@ describe('no dead links', () => {
 
   test('the Today page has the section the Weddings link scrolls to', () => {
     const source = readFileSync(join(root, 'components', 'crm', 'dashboard', 'CommandCenter.tsx'), 'utf8');
-    expect(source).toContain(`id="${UPCOMING_HASH.slice(1)}"`);
+    expect(source).toContain(`id="${UPCOMING_SECTION}"`);
   });
 });

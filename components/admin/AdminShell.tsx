@@ -12,20 +12,13 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
+  const section = searchParams.get('section');
 
-  const [hash, setHash] = useState('');
   const [role, setRole] = useState<'admin' | 'super_admin' | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   // The phone sheet remembers which screen it was opened on, so it closes by itself when you navigate.
   const [sheetFor, setSheetFor] = useState<string | null>(null);
   const isLogin = pathname.startsWith('/admin/login');
-
-  useEffect(() => {
-    const read = () => setHash(window.location.hash);
-    read();
-    window.addEventListener('hashchange', read);
-    return () => window.removeEventListener('hashchange', read);
-  }, [pathname]);
 
   useEffect(() => {
     if (isLogin) return;
@@ -39,7 +32,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const sheetOpen = sheetFor === routeKey;
   const setSheetOpen = (open: boolean) => setSheetFor(open ? routeKey : null);
 
-  const ctx: ActiveContext = { pathname, tab, hash };
+  const ctx: ActiveContext = { pathname, tab, section };
   const moreItems = role === 'super_admin' ? [...MORE, SETUP] : MORE;
   const inMore = [...moreItems, ...OLD_SCREENS].some((item) => item.isActive(ctx));
 
@@ -50,6 +43,17 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   if (isLogin) return <>{children}</>;
 
+  // Weddings is the Today page scrolled to its "Upcoming weddings" list. Next will not scroll when that list is already
+  // partly on screen (or when the URL is already ?section=upcoming), so when we are already on the page, scroll it ourselves.
+  // Going back to plain Today returns to the top.
+  const navigated = (item: NavItem) => {
+    const [path, query = ''] = item.href.split('?');
+    if (pathname !== path) return;
+    const wanted = new URLSearchParams(query).get('section');
+    if (wanted) document.getElementById(wanted)?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    else if (section) window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
   const link = (item: NavItem, opts: { compact?: boolean } = {}) => {
     const active = item.isActive(ctx);
     const Icon = item.icon;
@@ -57,9 +61,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <Link
         key={item.key}
         href={item.href}
-        onClick={() => setHash(item.href.includes('#') ? `#${item.href.split('#')[1]}` : '')}
+        onClick={() => navigated(item)}
         aria-current={active ? 'page' : undefined}
-        className={`flex items-center gap-3 rounded-lg px-3 ${opts.compact ? 'py-2 text-[13px]' : 'py-2.5 text-sm'} font-medium transition-colors ${
+        className={`flex items-center gap-3 rounded-lg px-3 ${opts.compact ? 'py-2 text-[13px]' : 'py-3 text-sm'} font-medium transition-colors ${
           active ? 'bg-amber-500/20 text-amber-300' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
         }`}
       >
@@ -131,7 +135,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.key}
                 href={item.href}
-                onClick={() => setHash(item.href.includes('#') ? `#${item.href.split('#')[1]}` : '')}
+                onClick={() => navigated(item)}
                 aria-current={active ? 'page' : undefined}
                 className={`flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium ${active ? 'text-amber-300' : 'text-gray-400'}`}
               >
