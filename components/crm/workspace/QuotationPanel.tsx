@@ -1,15 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { buildQuotationMessage, formatQuoteDate } from '@/lib/quotation/message';
+import { forwardRef, useImperativeHandle, useState } from 'react';
+import { formatQuoteDate } from '@/lib/quotation/message';
+import { bookingChip, quotationChip, type JourneyState } from '@/lib/crm/leadJourney';
+import { StatusChip } from './JourneyParts';
+import { errorMessage, type QuotationsApi } from './useQuotations';
 import type { WorkspaceQuotation } from './types';
 
-// Quotation panel (docs/wedding-os/08-quotation.md). S1: create / edit / delete a draft.
-// S2: send, revise, record the customer's answer, and a prepared message to send them.
-// S3: create a Booking from an accepted quote, then confirm it to create the wedding.
-// S4: confirming creates the advance invoice automatically (a draft — the payment link is created from Finance).
-// Totals shown while typing are only a preview — the server recomputes and stores the real ones.
-// V1 has no customer login or link: staff record the customer's answer on their behalf.
+// The quotation card (docs/wedding-os/08-quotation.md). It shows the CURRENT quotation like a document you could hand to
+// a customer — services, quantity × price, total, advance, balance, validity — with the quotation's status and the
+// booking's status as two separate chips, so "Accepted" is never mistaken for "Booked". Earlier versions sit below it.
+//
+// What to DO next (send, follow up, record acceptance, create/confirm the booking, not proceeding) lives in the Next-action
+// card and its dialogs (LeadWorkspaceClient); this card keeps only the actions that belong to the document itself: edit or
+// discard a draft, revise a sent quote. Totals shown while typing are only a preview — the server recomputes and stores the
+// real ones. V1 has no customer login or link: staff record the customer's answer on their behalf.
 
 const STATUS_LABEL: Record<WorkspaceQuotation['status'], string> = {
   DRAFT: 'Draft',
@@ -19,20 +24,6 @@ const STATUS_LABEL: Record<WorkspaceQuotation['status'], string> = {
   EXPIRED: 'Expired',
   SUPERSEDED: 'Replaced',
 };
-const STATUS_COLOR: Record<WorkspaceQuotation['status'], string> = {
-  DRAFT: 'bg-gray-100 text-gray-600',
-  SENT: 'bg-blue-100 text-blue-700',
-  ACCEPTED: 'bg-emerald-100 text-emerald-700',
-  REJECTED: 'bg-red-100 text-red-700',
-  EXPIRED: 'bg-amber-100 text-amber-700',
-  SUPERSEDED: 'bg-gray-100 text-gray-500',
-};
-const CHANNELS = [
-  { value: 'WHATSAPP', label: 'WhatsApp' },
-  { value: 'PHONE', label: 'Phone call' },
-  { value: 'IN_PERSON', label: 'In person' },
-  { value: 'OTHER', label: 'Other' },
-] as const;
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel' };
 
 export interface QuotationPrefillLine {
@@ -111,77 +102,50 @@ function previewTotals(d: Draft) {
   return { subtotal, total, advance, balance: total - advance };
 }
 
-function errorMessage(payload: { error?: string; issues?: { message?: string }[] }): string {
-  const first = payload.issues?.find((i) => i.message)?.message;
-  return first ?? payload.error ?? 'Request failed';
+export interface QuotationPanelHandle {
+  startCreate: () => void;
+  startEdit: () => void;
 }
 
-type RowAction = { type: 'accept' | 'reject'; id: string } | null;
+const BOX_CLASS = {
+  amber: 'border border-amber-200 bg-amber-100 text-amber-900',
+  green: 'bg-emerald-100 text-emerald-900',
+  slate: 'bg-slate-200 text-slate-800',
+  red: 'bg-red-50 text-red-800',
+} as const;
 
-const BOOKING_LABEL: Record<string, string> = { NEW: 'new', CONTACTED: 'contacted', CONFIRMED: 'confirmed', CLOSED: 'closed' };
-
-// What the enquiry/consultation already knows, offered as defaults so staff only fix what is missing.
-export interface BookingDefaults {
-  weddingDate: string; // YYYY-MM-DD, or '' when the source has no clear date
-  guestCount: string;
-  city: string;
-}
-
-interface BookingForm extends BookingDefaults {
-  id: string;
-}
-
-export default function QuotationPanel({
-  sourceType,
-  sourceId,
-  readOnly,
-  prefill,
-  customerName,
-  customerPhone,
-  bookingDefaults,
-  onChanged,
-}: {
-  sourceType: string;
-  sourceId: string;
-  readOnly: boolean; // the source already converted to a Wedding
-  prefill: QuotationPrefillLine[];
-  customerName: string | null;
-  customerPhone: string | null;
-  bookingDefaults: BookingDefaults;
-  // Called after send / accept / decline so the workspace (stage, timeline) reloads.
-  onChanged: () => void;
-}) {
-  const [quotations, setQuotations] = useState<WorkspaceQuotation[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+const QuotationPanel = forwardRef<
+  QuotationPanelHandle,
+  {
+    api: QuotationsApi;
+    current: WorkspaceQuotation | null;
+    state: JourneyState;
+    sourceType: string;
+    sourceId: string;
+    readOnly: boolean; // the source already converted to a Wedding
+    prefill: QuotationPrefillLine[];
+    customerName: string;
+    eventDate: string | null; // shown under the number, only when it is a real date
+    guestCount: number | null;
+    weddingNumber: string | null;
+    closedReason: string | null;
+    onChanged: () => void;
+  }
+>(function QuotationPanel(
+  { api, current, state, sourceType, sourceId, readOnly, prefill, customerName, eventDate, guestCount, weddingNumber, closedReason, onChanged },
+  ref
+) {
+  const { quotations, loadError, notice, busyId, load, act } = api;
   const [editing, setEditing] = useState<{ id: string | null; draft: Draft } | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [rowAction, setRowAction] = useState<RowAction>(null);
-  const [channel, setChannel] = useState<string>('WHATSAPP');
-  const [note, setNote] = useState('');
-  const [reason, setReason] = useState('');
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [bookingForm, setBookingForm] = useState<BookingForm | null>(null);
 
-  const load = useCallback(() => {
-    fetch(`/api/quotations?sourceType=${sourceType}&sourceId=${sourceId}`)
-      .then(async (r) => {
-        const body = await r.json();
-        if (!r.ok || !body.success) throw new Error(errorMessage(body));
-        setQuotations(body.data);
-        setLoadError(null);
-      })
-      .catch((e: Error) => setLoadError(e.message));
-  }, [sourceType, sourceId]);
-
-  // Deferred like the other workspace panels (react-hooks/set-state-in-effect).
-  useEffect(() => {
-    const timeout = setTimeout(load, 0);
-    return () => clearTimeout(timeout);
-  }, [load]);
-
-  const openQuotation = quotations?.find((q) => q.status === 'DRAFT' || q.status === 'SENT') ?? null;
+  useImperativeHandle(ref, () => ({
+    startCreate: () => setEditing({ id: null, draft: draftFromPrefill(prefill) }),
+    startEdit: () => {
+      if (current?.status === 'DRAFT') setEditing({ id: current.id, draft: draftFromQuotation(current) });
+    },
+  }));
 
   const save = async () => {
     if (!editing || saving) return;
@@ -215,39 +179,11 @@ export default function QuotationPanel({
       if (!res.ok || !payload.success) throw new Error(errorMessage(payload));
       setEditing(null);
       load();
+      onChanged();
     } catch (e) {
       setFormError((e as Error).message);
     } finally {
       setSaving(false);
-    }
-  };
-
-  // One helper for every lifecycle call: shows the server's message on failure, reloads on success.
-  const act = async (id: string, path: string, body?: unknown, okNotice?: string) => {
-    setBusyId(id);
-    setLoadError(null);
-    setNotice(null);
-    try {
-      const res = await fetch(`/api/quotations/${id}${path}`, {
-        method: path ? 'POST' : 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-      const payload = await res.json();
-      if (!res.ok || !payload.success) throw new Error(errorMessage(payload));
-      setRowAction(null);
-      setNote('');
-      setReason('');
-      if (okNotice) setNotice(okNotice);
-      load();
-      onChanged();
-      return payload;
-    } catch (e) {
-      setLoadError((e as Error).message);
-      load(); // the state may have moved under us (e.g. it just expired) — show the truth
-      return null;
-    } finally {
-      setBusyId(null);
     }
   };
 
@@ -256,299 +192,172 @@ export default function QuotationPanel({
     await act(id, '');
   };
 
-  const createBooking = async (q: WorkspaceQuotation) => {
-    if (!bookingForm) return;
-    const body = {
-      weddingDate: bookingForm.weddingDate || null,
-      guestCount: bookingForm.guestCount ? toNumber(bookingForm.guestCount) : null,
-      city: bookingForm.city || null,
-    };
-    const payload = await act(q.id, '/create-booking', body, 'Booking created. Confirm it to create the wedding.');
-    if (payload) setBookingForm(null);
-  };
-
-  // Uses the existing booking confirm route, which creates the wedding (idempotent, retry-safe).
-  const confirmBooking = async (q: WorkspaceQuotation) => {
-    if (!q.booking) return;
-    if (!window.confirm('Confirm this booking and create the wedding? The wedding workspace replaces this record.')) return;
-    setBusyId(q.id);
-    setLoadError(null);
-    try {
-      const res = await fetch(`/api/bookings/${q.booking.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'confirmed' }),
-      });
-      const payload = await res.json();
-      if (!res.ok || !payload.success) throw new Error(errorMessage(payload));
-      setNotice('Booking confirmed — the wedding has been created.');
-      load();
-      onChanged();
-    } catch (e) {
-      setLoadError((e as Error).message);
-      load();
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const messageFor = (q: WorkspaceQuotation) => buildQuotationMessage(q, customerName);
-  const copyMessage = async (q: WorkspaceQuotation) => {
-    try {
-      await navigator.clipboard.writeText(messageFor(q));
-      setNotice('Message copied — paste it into WhatsApp or SMS.');
-    } catch {
-      setNotice('Could not copy automatically — use "Open WhatsApp" instead.');
-    }
-  };
-  const whatsappLink = (q: WorkspaceQuotation) => {
-    const digits = (customerPhone ?? '').replace(/\D/g, '').slice(-10);
-    return digits.length === 10 ? `https://wa.me/91${digits}?text=${encodeURIComponent(messageFor(q))}` : null;
-  };
-
   const setLine = (index: number, patch: Partial<DraftLine>) =>
     setEditing((e) => (e ? { ...e, draft: { ...e.draft, items: e.draft.items.map((l, i) => (i === index ? { ...l, ...patch } : l)) } } : e));
   const setDraft = (patch: Partial<Draft>) => setEditing((e) => (e ? { ...e, draft: { ...e.draft, ...patch } } : e));
 
   const inputClass =
     'w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-colors';
-  const linkBtn = 'text-xs hover:underline disabled:opacity-40';
+  const busy = current ? busyId === current.id : false;
+  const earlier = (quotations ?? []).filter((q) => q.id !== current?.id);
+  const acceptedWhen = current?.acceptedAt ? formatQuoteDate(current.acceptedAt) : null;
+  const acceptedVia = current?.acceptedChannel ? CHANNEL_LABEL[current.acceptedChannel] ?? current.acceptedChannel : null;
+
+  // The one coloured note under the totals. Its words come from the stored data (dates, channel, invoice) — never fixed text.
+  const note = (() => {
+    if (!current) return null;
+    const accepted = current.status === 'ACCEPTED';
+    const acceptedLine = accepted ? `Accepted by ${customerName}${acceptedWhen ? ` on ${acceptedWhen}` : ''}${acceptedVia ? ` via ${acceptedVia}` : ''}` : '';
+    if (state === 'BOOKING_CONFIRMED' && accepted) {
+      return {
+        tone: 'green' as const,
+        title: `Booking confirmed${weddingNumber ? ` · ${weddingNumber}` : ''}`,
+        lines: current.advanceInvoice ? [`Advance invoice ${current.advanceInvoice.invoiceNumber} — ${rupees(current.advanceAmount)} (${current.advanceInvoice.status.toLowerCase()})`] : [],
+      };
+    }
+    if (state === 'NOT_PROCEEDING' && accepted) {
+      return { tone: 'slate' as const, title: `${acceptedLine} — did not proceed`, lines: [`${closedReason ?? 'Marked as not proceeding'}. The quotation is kept as a record.`] };
+    }
+    if (state === 'BOOKING_PENDING' && accepted) {
+      return { tone: 'amber' as const, title: `${acceptedLine} · booking created, waiting for confirmation`, lines: current.acceptedNote ? [current.acceptedNote] : [] };
+    }
+    if (state === 'ACCEPTED' && accepted) {
+      return { tone: 'amber' as const, title: acceptedLine, lines: [...(current.acceptedNote ? [current.acceptedNote] : []), 'This is not a confirmed booking yet — create the booking, then confirm it.'] };
+    }
+    if (current.status === 'REJECTED') return { tone: 'red' as const, title: 'Declined by the customer', lines: current.rejectionReason ? [current.rejectionReason] : [] };
+    if (current.status === 'EXPIRED') return { tone: 'amber' as const, title: 'This quote passed its valid-until date', lines: [] };
+    return null;
+  })();
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-900">Quote</h2>
-        {!readOnly && !editing && !openQuotation && quotations !== null && !quotations.some((q) => q.status === 'ACCEPTED') && (
-          <button
-            onClick={() => setEditing({ id: null, draft: draftFromPrefill(prefill) })}
-            className="px-3 py-1.5 rounded-xl text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition-colors"
-          >
-            Create quote
-          </button>
-        )}
-      </div>
+    <section className="rounded-2xl border border-gray-100 bg-white" aria-label="Quotation">
+      {(loadError || notice) && (
+        <div className="px-5 pt-4">
+          {loadError && <p role="alert" className="text-sm text-red-600">{loadError}</p>}
+          {notice && <p className="text-sm text-emerald-700">{notice}</p>}
+        </div>
+      )}
+      {quotations === null && !loadError && <p className="p-5 text-sm text-gray-400">Loading…</p>}
 
-      {loadError && <p className="text-sm text-red-500 mb-2">{loadError}</p>}
-      {notice && <p className="text-sm text-emerald-600 mb-2">{notice}</p>}
-      {quotations === null && !loadError && <p className="text-sm text-gray-400">Loading…</p>}
-      {quotations !== null && quotations.length === 0 && !editing && (
-        <p className="text-sm text-gray-400">{readOnly ? 'No quote was made before this converted.' : 'No quote yet.'}</p>
+      {!editing && quotations !== null && !current && (
+        <div className="p-5">
+          <h2 className="font-sans text-[11px] font-bold uppercase tracking-widest text-gray-400">Quotation</h2>
+          <p className="mt-2 text-sm text-gray-500">{readOnly ? 'No quote was made before this converted.' : 'No quote yet.'}</p>
+        </div>
       )}
 
-      {!editing && quotations && quotations.length > 0 && (
-        <ul className="space-y-2">
-          {quotations.map((q) => {
-            const busy = busyId === q.id;
-            const wa = q.status === 'SENT' ? whatsappLink(q) : null;
-            return (
-              <li key={q.id} className="border border-gray-100 rounded-xl px-3 py-2.5 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-medium text-gray-900">
-                    {q.quotationNumber}
-                    {q.revision > 1 && <span className="text-gray-400 font-normal"> · revision {q.revision}</span>}
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[q.status]}`}>{STATUS_LABEL[q.status]}</span>
-                </div>
-                <div className="mt-1 text-gray-600 flex flex-wrap gap-x-4 gap-y-0.5">
-                  <span>Total {rupees(q.total)}</span>
-                  <span>Advance {rupees(q.advanceAmount)}</span>
-                  <span>Balance {rupees(q.balance)}</span>
-                  {q.validUntil && <span>Valid until {formatQuoteDate(q.validUntil)}</span>}
-                </div>
-                <ul className="mt-1.5 text-xs text-gray-500 space-y-0.5">
-                  {q.items.map((i) => (
-                    <li key={i.id}>
-                      {i.description} — {i.quantity} × {rupees(i.unitPrice)} = {rupees(i.lineTotal)}
-                    </li>
-                  ))}
-                </ul>
+      {!editing && current && (
+        <>
+          <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-3 pt-5">
+            <div className="min-w-0">
+              <div className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Quotation {current.quotationNumber}
+                {current.revision > 1 && <span className="font-medium normal-case tracking-normal text-gray-400"> · revision {current.revision}</span>}
+              </div>
+              <h2 className="mt-1 text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">{customerName}{eventDate ? ` · ${eventDate}` : ''}</h2>
+              {guestCount != null && <div className="mt-0.5 text-sm text-gray-600">{guestCount} guests</div>}
+            </div>
+            <div className="grid gap-1.5 sm:justify-items-end">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                Quotation <StatusChip chip={quotationChip(current, state)} />
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                Booking <StatusChip chip={bookingChip(current, state)} />
+              </div>
+            </div>
+          </div>
 
-                {q.status === 'ACCEPTED' && (
-                  <p className="mt-1.5 text-xs text-emerald-700">
-                    Accepted via {CHANNEL_LABEL[q.acceptedChannel ?? 'OTHER'] ?? q.acceptedChannel}
-                    {q.acceptedAt ? ` on ${formatQuoteDate(q.acceptedAt)}` : ''}
-                    {q.acceptedNote ? ` — ${q.acceptedNote}` : ''}
-                  </p>
-                )}
-                {q.status === 'ACCEPTED' && q.advanceInvoice && (
-                  <p className="mt-1.5 text-xs text-emerald-700">
-                    Advance invoice {q.advanceInvoice.invoiceNumber} ({q.advanceInvoice.status.toLowerCase()}) was created for {rupees(q.advanceAmount)}, no tax applied.
-                    Create its payment link from the wedding&apos;s Finance section.
-                  </p>
-                )}
-                {q.status === 'ACCEPTED' && q.booking && (
-                  <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-800 space-y-2">
-                    <div>
-                      Booking created ({BOOKING_LABEL[q.booking.status] ?? q.booking.status}).{' '}
-                      {q.booking.status === 'CONFIRMED' ? 'The wedding has been set up.' : 'Confirm it to create the wedding.'}
-                    </div>
-                    {!readOnly && q.booking.status !== 'CONFIRMED' && (
-                      <button
-                        disabled={busy}
-                        onClick={() => confirmBooking(q)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white disabled:opacity-40"
-                      >
-                        {busy ? 'Working…' : 'Confirm booking & create wedding'}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {q.status === 'ACCEPTED' && !q.booking && !readOnly && (
-                  <div className="mt-2">
-                    {bookingForm?.id === q.id ? (
-                      <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 space-y-2">
-                        <div className="text-xs font-medium text-emerald-800">Booking details (only fill what is missing)</div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <label className="text-xs text-gray-600">
-                            Wedding date
-                            <input
-                              className={inputClass}
-                              type="date"
-                              value={bookingForm.weddingDate}
-                              onChange={(e) => setBookingForm({ ...bookingForm, weddingDate: e.target.value })}
-                            />
-                          </label>
-                          <label className="text-xs text-gray-600">
-                            Guests
-                            <input
-                              className={inputClass}
-                              inputMode="numeric"
-                              value={bookingForm.guestCount}
-                              onChange={(e) => setBookingForm({ ...bookingForm, guestCount: e.target.value })}
-                            />
-                          </label>
-                          <label className="text-xs text-gray-600">
-                            City
-                            <input className={inputClass} value={bookingForm.city} onChange={(e) => setBookingForm({ ...bookingForm, city: e.target.value })} />
-                          </label>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            disabled={busy}
-                            onClick={() => createBooking(q)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white disabled:opacity-40"
-                          >
-                            {busy ? 'Creating…' : 'Create booking'}
-                          </button>
-                          <button onClick={() => setBookingForm(null)} className="px-3 py-1.5 text-xs text-gray-600">
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setBookingForm({ id: q.id, ...bookingDefaults })}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700"
-                      >
-                        Create booking
-                      </button>
-                    )}
-                  </div>
-                )}
-                {q.status === 'REJECTED' && (
-                  <p className="mt-1.5 text-xs text-red-600">Declined{q.rejectionReason ? `: ${q.rejectionReason}` : ''}</p>
-                )}
-                {q.status === 'EXPIRED' && <p className="mt-1.5 text-xs text-amber-700">This quote passed its valid-until date.</p>}
+          <div role="table" aria-label="Services quoted">
+            <div role="row" className="hidden grid-cols-[1fr_150px_120px] border-y border-gray-100 bg-gray-50 px-5 py-2 text-[11px] font-bold uppercase tracking-wider text-gray-400 md:grid">
+              <span role="columnheader">Service</span>
+              <span role="columnheader" className="text-right">Qty × price</span>
+              <span role="columnheader" className="text-right">Amount</span>
+            </div>
+            {current.items.map((i) => (
+              <div key={i.id} role="row" className="grid grid-cols-[1fr_auto] gap-x-3 border-b border-gray-100 px-5 py-3 text-sm first:border-t md:grid-cols-[1fr_150px_120px] md:first:border-t-0">
+                <span role="cell" className="font-medium text-gray-900">
+                  {i.description}
+                  {i.quantity > 1 && <span className="block text-xs font-normal text-gray-500 md:hidden">{i.quantity} × {rupees(i.unitPrice)}</span>}
+                </span>
+                <span role="cell" className="hidden text-right text-gray-500 md:block">{i.quantity} × {rupees(i.unitPrice)}</span>
+                <span role="cell" className="text-right tabular-nums text-gray-900">{rupees(i.lineTotal)}</span>
+              </div>
+            ))}
+          </div>
 
-                {!readOnly && (
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-                    {q.status === 'DRAFT' && (
-                      <>
-                        <button
-                          disabled={busy}
-                          onClick={() => act(q.id, '/send', undefined, 'Quote sent. Copy the message below to send it to the customer.')}
-                          className="px-3 py-1 rounded-lg text-xs font-medium bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40"
-                        >
-                          {busy ? 'Sending…' : 'Send quote'}
-                        </button>
-                        <button onClick={() => setEditing({ id: q.id, draft: draftFromQuotation(q) })} className={`${linkBtn} text-amber-600`}>
-                          Edit
-                        </button>
-                        <button disabled={busy} onClick={() => remove(q.id)} className={`${linkBtn} text-red-500`}>
-                          {q.revision > 1 ? 'Discard revision' : 'Delete draft'}
-                        </button>
-                      </>
-                    )}
-                    {q.status === 'SENT' && (
-                      <>
-                        <button onClick={() => copyMessage(q)} className={`${linkBtn} text-amber-600`}>
-                          Copy message
-                        </button>
-                        {wa && (
-                          <a href={wa} target="_blank" rel="noreferrer" className={`${linkBtn} text-amber-600`}>
-                            Open WhatsApp
-                          </a>
-                        )}
-                        <button disabled={busy} onClick={() => setRowAction({ type: 'accept', id: q.id })} className={`${linkBtn} text-emerald-700 font-medium`}>
-                          Customer accepted
-                        </button>
-                        <button disabled={busy} onClick={() => setRowAction({ type: 'reject', id: q.id })} className={`${linkBtn} text-red-600`}>
-                          Customer declined
-                        </button>
-                        <button disabled={busy} onClick={() => act(q.id, '/revise', undefined, 'A new draft was created from this quote.')} className={`${linkBtn} text-gray-600`}>
-                          Revise
-                        </button>
-                      </>
-                    )}
-                    {(q.status === 'REJECTED' || q.status === 'EXPIRED') && (
-                      <button disabled={busy} onClick={() => act(q.id, '/revise', undefined, 'A new draft was created from this quote.')} className={`${linkBtn} text-amber-600`}>
-                        Revise
-                      </button>
-                    )}
-                  </div>
-                )}
+          <div className="grid justify-items-end gap-1.5 px-5 pb-1 pt-4 text-sm tabular-nums text-gray-700">
+            {(current.discount > 0 || (current.gstEnabled && current.gstAmount > 0)) && (
+              <div className="flex w-full max-w-[320px] justify-between"><span>Subtotal</span><span>{rupees(current.subtotal)}</span></div>
+            )}
+            {current.discount > 0 && (
+              <div className="flex w-full max-w-[320px] justify-between"><span>Discount</span><span>−{rupees(current.discount)}</span></div>
+            )}
+            {current.gstEnabled && current.gstAmount > 0 && (
+              <div className="flex w-full max-w-[320px] justify-between"><span>Tax</span><span>{rupees(current.gstAmount)}</span></div>
+            )}
+            <div className="mt-1 flex w-full max-w-[320px] justify-between border-t border-gray-200 pt-2 text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+              <span>Total</span><span>{rupees(current.total)}</span>
+            </div>
+            {current.advanceAmount > 0 && (
+              <>
+                <div className="flex w-full max-w-[320px] justify-between font-semibold text-gray-900"><span>Advance to confirm</span><span>{rupees(current.advanceAmount)}</span></div>
+                <div className="flex w-full max-w-[320px] justify-between"><span>Balance</span><span>{rupees(current.balance)}</span></div>
+              </>
+            )}
+          </div>
 
-                {rowAction?.id === q.id && rowAction.type === 'accept' && (
-                  <div className="mt-2 rounded-xl bg-emerald-50 border border-emerald-100 p-3 space-y-2">
-                    <div className="text-xs font-medium text-emerald-800">How did the customer accept?</div>
-                    <select className={inputClass} value={channel} onChange={(e) => setChannel(e.target.value)}>
-                      {CHANNELS.map((c) => (
-                        <option key={c.value} value={c.value}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input className={inputClass} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
-                    <div className="flex gap-2">
-                      <button
-                        disabled={busy}
-                        onClick={() => act(q.id, '/accept', { channel, note: note || null }, 'Accepted. You can now move this deal to Booked.')}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white disabled:opacity-40"
-                      >
-                        {busy ? 'Saving…' : 'Record acceptance'}
-                      </button>
-                      <button onClick={() => setRowAction(null)} className="px-3 py-1.5 text-xs text-gray-600">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {rowAction?.id === q.id && rowAction.type === 'reject' && (
-                  <div className="mt-2 rounded-xl bg-red-50 border border-red-100 p-3 space-y-2">
-                    <div className="text-xs font-medium text-red-800">Why did the customer decline?</div>
-                    <input className={inputClass} placeholder="Reason" value={reason} onChange={(e) => setReason(e.target.value)} />
-                    <div className="flex gap-2">
-                      <button
-                        disabled={busy || !reason.trim()}
-                        onClick={() => act(q.id, '/reject', { reason })}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white disabled:opacity-40"
-                      >
-                        {busy ? 'Saving…' : 'Record decline'}
-                      </button>
-                      <button onClick={() => setRowAction(null)} className="px-3 py-1.5 text-xs text-gray-600">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+          <div className="grid gap-3 px-5 pb-5 pt-3">
+            {current.validUntil && <div className="text-xs text-gray-500">Valid until {formatQuoteDate(current.validUntil)}</div>}
+            {note && (
+              <div className={`grid gap-0.5 rounded-xl px-3.5 py-3 text-sm ${BOX_CLASS[note.tone]}`}>
+                <b className="font-bold">{note.title}</b>
+                {note.lines.map((l) => (
+                  <span key={l}>{l}</span>
+                ))}
+              </div>
+            )}
+            {!readOnly && current.status === 'DRAFT' && (
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={busy} onClick={() => setEditing({ id: current.id, draft: draftFromQuotation(current) })} className="min-h-[40px] rounded-xl border border-gray-200 px-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                  Edit quote
+                </button>
+                <button type="button" disabled={busy} onClick={() => remove(current.id)} className="min-h-[40px] rounded-xl px-3 text-sm font-medium text-red-700 underline underline-offset-4 disabled:opacity-40">
+                  {current.revision > 1 ? 'Discard revision' : 'Delete draft'}
+                </button>
+              </div>
+            )}
+            {!readOnly && current.status === 'SENT' && (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => act(current.id, '/revise', undefined, 'A new draft was created from this quote.')}
+                  className="min-h-[40px] rounded-xl border border-gray-200 px-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                >
+                  Revise quote
+                </button>
+              </div>
+            )}
+          </div>
+
+          {earlier.length > 0 && (
+            <details className="border-t border-gray-100 px-5 py-3 text-sm">
+              <summary className="cursor-pointer font-medium text-gray-600">Earlier versions ({earlier.length})</summary>
+              <ul className="mt-2 grid gap-1.5 text-xs text-gray-600">
+                {earlier.map((q) => (
+                  <li key={q.id} className="flex flex-wrap justify-between gap-2">
+                    <span>{q.quotationNumber}{q.revision > 1 ? ` · revision ${q.revision}` : ''} — {STATUS_LABEL[q.status]}</span>
+                    <span className="tabular-nums">{rupees(q.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </>
       )}
 
       {editing && (
-        <div className="space-y-3">
+        <div className="space-y-3 p-5">
           <div className="space-y-2">
             {editing.draft.items.map((line, index) => (
               <div key={index} className="grid grid-cols-12 gap-2 items-start">
@@ -688,6 +497,8 @@ export default function QuotationPanel({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
-}
+});
+
+export default QuotationPanel;

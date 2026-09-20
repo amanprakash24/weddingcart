@@ -1,7 +1,7 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
 import { SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
-import { buildQuotationMessage, formatQuoteDate } from './message';
+import { buildAcceptanceThanks, buildBookingConfirmedMessage, buildFollowUpMessage, buildQuotationMessage, formatQuoteDate } from './message';
 
 const base = {
   quotationNumber: 'QTN-202609-0001',
@@ -33,14 +33,14 @@ describe('formatQuoteDate', () => {
 describe('buildQuotationMessage', () => {
   test('greets by name, names the quote, lists each line with quantity × price, and shows total / advance / balance', () => {
     const text = buildQuotationMessage(base, 'Rahul Sharma');
-    expect(text).toContain('Namaste Rahul Sharma,');
-    expect(text).toContain('Shaadi Shopping (QTN-202609-0001)');
-    expect(text).toContain('1. Grand Ballroom — 500 guests: ₹3,00,000');
-    expect(text).toContain('2. Catering per plate: 500 × ₹800 = ₹4,00,000');
+    expect(text).toContain('Namaste Rahul Sharma');
+    expect(text).toContain('your quotation (QTN-202609-0001)');
+    expect(text).toContain('• Grand Ballroom — 500 guests: ₹3,00,000');
+    expect(text).toContain('• Catering per plate: 500 × ₹800 = ₹4,00,000');
     expect(text).toContain('Total: ₹7,00,000');
     expect(text).toContain('Advance to confirm: ₹2,00,000');
     expect(text).toContain('Balance: ₹5,00,000');
-    expect(text).toContain('Valid until: 1 Oct 2026');
+    expect(text).toContain('valid until 1 Oct 2026');
   });
 
   test('always points the customer at Shaadi Shopping\'s own number', () => {
@@ -52,8 +52,8 @@ describe('buildQuotationMessage', () => {
   });
 
   test('a missing name still reads naturally', () => {
-    expect(buildQuotationMessage(base, null)).toContain('Namaste,');
-    expect(buildQuotationMessage(base, '   ')).toContain('Namaste,');
+    expect(buildQuotationMessage(base, null)).toMatch(/^Namaste 🙏/);
+    expect(buildQuotationMessage(base, '   ')).toMatch(/^Namaste 🙏/);
   });
 
   test('shows subtotal, discount and tax only when they exist', () => {
@@ -83,5 +83,50 @@ describe('buildQuotationMessage', () => {
       '50% advance, balance a week before the event.'
     );
     expect(Object.keys(base)).not.toContain('notes');
+  });
+});
+
+describe('message wording for customers', () => {
+  const everything = () => [
+    buildQuotationMessage(base, 'Rahul & Priya', { eventDate: '5 Dec 2026' }),
+    buildFollowUpMessage(base, 'Rahul & Priya', '18 Sep 2026'),
+    buildAcceptanceThanks(base, 'Rahul & Priya'),
+    buildBookingConfirmedMessage('Rahul & Priya', 'WED-2026-0003', '5 Dec 2026'),
+  ];
+
+  test('no message exposes internal or system wording', () => {
+    for (const text of everything()) {
+      expect(text).not.toMatch(/QUOTATION_|STATUS_|ACCEPTED|SENT|DRAFT|PENDING|booking status|lead stage|enquiry|consultation|marketplace/i);
+    }
+  });
+
+  test('every message is signed by the team', () => {
+    for (const text of everything()) expect(text.trim().endsWith('— Team Shaadi Shopping')).toBe(true);
+  });
+
+  test('the quotation message mentions the wedding date only when one is given', () => {
+    expect(buildQuotationMessage(base, 'A', { eventDate: '5 Dec 2026' })).toContain('for your wedding on 5 Dec 2026');
+    expect(buildQuotationMessage(base, 'A')).toContain('for your wedding. Here is');
+  });
+
+  test('the follow-up refers to the quote, its total and its validity, and asks for a call', () => {
+    const text = buildFollowUpMessage(base, 'Rahul', '18 Sep 2026');
+    expect(text).toContain('shared on 18 Sep 2026 (QTN-202609-0001)');
+    expect(text).toContain('total ₹7,00,000, valid until 1 Oct 2026');
+    expect(text).toContain('quick call');
+  });
+
+  test('the thank-you quotes the quote\x27s own advance — never a fixed figure — and skips it when there is none', () => {
+    expect(buildAcceptanceThanks({ quotationNumber: 'Q1', advanceAmount: 125000 }, 'A')).toContain('₹1,25,000');
+    const none = buildAcceptanceThanks({ quotationNumber: 'Q1', advanceAmount: 0 }, 'A');
+    expect(none).not.toContain('₹');
+    expect(none).toContain('confirm your booking');
+  });
+
+  test('the confirmation carries the wedding reference and date when known', () => {
+    const text = buildBookingConfirmedMessage('A', 'WED-2026-0003', '5 Dec 2026');
+    expect(text).toContain('WED-2026-0003');
+    expect(text).toContain('for 5 Dec 2026');
+    expect(buildBookingConfirmedMessage(null, null)).toContain('Congratulations!');
   });
 });
