@@ -20,3 +20,11 @@
 export function buildPoolConfig(connectionString: string): { connectionString: string; max: number } {
   return { connectionString, max: 3 };
 }
+
+// Prisma cancels an interactive transaction after 5 s by default. Every step of a transaction is a round trip to the database,
+// and on the live site each round trip takes roughly 1-2 s (a serverless function talking to a distant pooler), so a transaction
+// of ~15 steps such as Revise takes about 6 s. At the 5 s mark Prisma rolls the transaction back, but a statement already on its
+// way still runs outside it. That is how Revise's "mark the original replaced" step was undone while its "save the new draft"
+// step still ran and was refused for clashing with the original (traced live on 21 Sep 2026: steps at 0.6, 2.6, 4.7, 5.6 s).
+// Give transactions realistic headroom by default; individual calls can still pass their own options.
+export const TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 30_000 } as const;

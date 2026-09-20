@@ -1,6 +1,6 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@/generated/prisma/client';
-import { buildPoolConfig } from '@/lib/prismaPoolConfig';
+import { buildPoolConfig, TRANSACTION_OPTIONS } from '@/lib/prismaPoolConfig';
 
 // Prisma 7 requires a driver adapter — the connection string is read here, not
 // in prisma.config.ts (that file is CLI-only: generate/migrate/studio).
@@ -20,7 +20,8 @@ declare global {
 
 // Same global-cache pattern as lib/mongodb.ts — avoids exhausting Postgres
 // connections across Next.js dev hot-reloads.
-export const prisma = global.prisma ?? new PrismaClient({ adapter });
+// transactionOptions: see TRANSACTION_OPTIONS — the 5 s default expires mid-transaction on the live site's slow round trips.
+export const prisma = global.prisma ?? new PrismaClient({ adapter, transactionOptions: TRANSACTION_OPTIONS });
 
 if (process.env.NODE_ENV !== 'production') {
   global.prisma = prisma;
