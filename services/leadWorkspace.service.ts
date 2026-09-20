@@ -7,7 +7,8 @@ import { taskRepository } from '@/repositories/task.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { leadInsightRepository } from '@/repositories/leadInsight.repository';
 import { subjectWhere, subjectCreateData } from '@/lib/crm/subject';
-import { canTransition } from '@/lib/crm/pipeline';
+import { canTransitionWithContext } from '@/lib/crm/pipeline';
+import { quotationRepository } from '@/repositories/quotation.repository';
 import { STAGE_LABELS } from '@/components/crm/types';
 import { NotFoundError, InvalidTransitionError, ConversionLockedError } from '@/lib/errors';
 import { findWeddingForSource } from '@/services/weddingConversion.service';
@@ -44,6 +45,8 @@ export interface LeadWorkspace {
     // alone is what the UI uses to render the read-only banner + link
     // forward; absence means the mutation controls (stage/assign/task) stay live.
     wedding: { id: string; weddingNumber: string } | null;
+    // Display hint for the stage control (offers Won from Quotation Sent); the server re-checks on every move.
+    hasAcceptedQuotation: boolean;
   };
   customer: { name: string | null; phone: string; email: string | null; city: string | null };
   weddingDetails: {
@@ -165,11 +168,12 @@ export const leadWorkspaceService = {
     const subject = await findSubject(sourceType, id);
     const where = subjectWhere(sourceType, id);
 
-    const [{ data: tasks }, { data: timeline }, { data: insights }, wedding] = await Promise.all([
+    const [{ data: tasks }, { data: timeline }, { data: insights }, wedding, acceptedQuotations] = await Promise.all([
       taskRepository.findMany({ where, orderBy: { createdAt: 'desc' } }),
       activityLogRepository.findMany({ where }),
       leadInsightRepository.findMany({ where }),
       findWeddingForSource(sourceType, id) as Promise<Wedding | null>,
+      quotationRepository.count({ ...where, status: 'ACCEPTED' }),
     ]);
 
     const nameById = await resolveUserNames([
@@ -194,6 +198,7 @@ export const leadWorkspaceService = {
         holdReason: subject.holdReason,
         createdAt: subject.createdAt,
         wedding: wedding ? { id: wedding.id, weddingNumber: wedding.weddingNumber } : null,
+        hasAcceptedQuotation: acceptedQuotations > 0,
       },
       customer: toCustomer(sourceType, subject),
       weddingDetails: toWeddingDetails(sourceType, subject),
@@ -276,9 +281,18 @@ export const leadWorkspaceService = {
     await assertNotConverted(sourceType, id);
     const fromStage = subject.pipelineStage;
 
-    if (!canTransition(fromStage, input.toStage)) {
+    // QUOTATION_SENT → WON is legal only when the SERVER finds an ACCEPTED quotation for this source
+    // (decision Q2, 08-quotation.md). Looked up only for that one move; the client's view of the
+    // stage options is display-only and never trusted.
+    const needsQuoteCheck = fromStage === 'QUOTATION_SENT' && input.toStage === 'WON';
+    const hasAcceptedQuotation = needsQuoteCheck
+      ? (await quotationRepository.count({ ...subjectWhere(sourceType, id), status: 'ACCEPTED' })) > 0
+      : false;
+    if (!canTransitionWithContext(fromStage, input.toStage, { hasAcceptedQuotation })) {
       throw new InvalidTransitionError(
-        `Cannot move from ${STAGE_LABELS[fromStage]} to ${STAGE_LABELS[input.toStage]}`
+        needsQuoteCheck
+          ? `Cannot move from ${STAGE_LABELS[fromStage]} to ${STAGE_LABELS[input.toStage]} until the customer's acceptance of a quotation is recorded — or move to Negotiation first`
+          : `Cannot move from ${STAGE_LABELS[fromStage]} to ${STAGE_LABELS[input.toStage]}`
       );
     }
     if (input.toStage === 'LOST' && !input.reason) {

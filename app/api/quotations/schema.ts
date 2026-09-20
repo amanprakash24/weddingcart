@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_LINE_ITEMS } from '@/lib/quotation/totals';
+import { ACCEPTANCE_CHANNELS } from '@/lib/quotation/rules';
 
 // Deliberately has NO subtotal / total / balance field: the API accepts inputs only, and
 // the server recomputes every total (lib/quotation/totals.ts). An unknown extra key is
@@ -59,3 +60,14 @@ export const createQuotationSchema = z
   .refine(taxNeedsToggle, taxNeedsToggleIssue);
 
 export type CreateQuotationBody = z.infer<typeof createQuotationSchema>;
+
+// POST /api/quotations/[id]/accept — staff record that the customer said yes (V1: no customer login/link).
+export const acceptQuotationSchema = z.object({
+  channel: z.enum(ACCEPTANCE_CHANNELS),
+  note: optionalText(1000),
+});
+
+// POST /api/quotations/[id]/reject — a reason is required.
+export const rejectQuotationSchema = z.object({
+  reason: z.string().trim().min(1, 'Say why the customer declined').max(1000),
+});
