@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, expect, test } from 'bun:test';
-import { columnFromIndex, constraintFromMeta, friendlyDuplicateMessage } from './duplicateConstraint';
+import { columnFromIndex, constraintFromMeta, friendlyDuplicateMessage, isSourceKeyRule } from './duplicateConstraint';
 
 // The exact shape Prisma 7 + the pg adapter produced for a real unique violation (captured from staging).
 const adapterMeta = (index: string) => ({
@@ -60,5 +60,23 @@ describe('friendlyDuplicateMessage — each quotation rule in plain words', () =
 
   test('with nothing known at all it falls back to the old sentence', () => {
     expect(friendlyDuplicateMessage('Thing', { index: null, fields: [] })).toBe('Thing already exists with this field');
+  });
+});
+
+describe('the expression rules on a lead\x27s quotations (reported by their COALESCE key, not by name)', () => {
+  const live = { index: null, fields: ['COALESCE("leadId"'] }; // exactly what the live server reported
+
+  test('are recognised whether reported by name or by the COALESCE key', () => {
+    expect(isSourceKeyRule(live)).toBe(true);
+    expect(isSourceKeyRule({ index: 'quotations_one_open_per_source_key', fields: [] })).toBe(true);
+    expect(isSourceKeyRule({ index: 'quotations_one_accepted_per_source_key', fields: [] })).toBe(true);
+    expect(isSourceKeyRule({ index: 'quotations_supersedesId_key', fields: [] })).toBe(false);
+    expect(isSourceKeyRule({ index: null, fields: ['slug'] })).toBe(false);
+  });
+
+  test('read as a sentence, never as "COALESCE"', () => {
+    const text = friendlyDuplicateMessage('Quotation', live);
+    expect(text).toBe('This lead already has an open or accepted quotation.');
+    expect(text).not.toContain('COALESCE');
   });
 });

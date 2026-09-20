@@ -2,7 +2,9 @@ import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
 import type { PipelineStage } from '@/generated/prisma/enums';
-import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
+import { ConflictError, DuplicateError, NotFoundError, ValidationError } from '@/lib/errors';
+import { describeSourceConflict } from '@/lib/quotation/conflict';
+import { isSourceKeyRule } from '@/lib/duplicateConstraint';
 import { subjectCreateData, subjectWhere } from '@/lib/crm/subject';
 import { canTransition } from '@/lib/crm/pipeline';
 import { lockNumberBucket, monthBucket, nextSequenceNumber } from '@/lib/numbering';
@@ -212,6 +214,16 @@ async function bookingSourceFacts(sourceType: SourceType, sourceId: string, tx: 
   return { name: c.name, phone: c.phone, city: c.city, dateText: c.weddingDate, guestCount: c.guestCount > 0 ? c.guestCount : null, eventType: c.eventType };
 }
 
+// A unique-rule violation on a lead's quotations (one open / one accepted) is turned into a sentence naming the quotations that
+// are really there, read FRESH (outside the failed transaction). Any other error passes through unchanged.
+export async function explainSourceConflict(err: unknown, source: { sourceType: SourceType; sourceId: string } | null): Promise<unknown> {
+  if (!(err instanceof DuplicateError) || !source) return err;
+  const info = { index: err.constraint, fields: [err.field] };
+  if (!isSourceKeyRule(info)) return err;
+  const quotes = await quotationRepository.findMany(subjectWhere(source.sourceType, source.sourceId));
+  return new ConflictError(describeSourceConflict(SOURCE_LABEL[source.sourceType], quotes));
+}
+
 async function nextQuotationNumber(tx: Tx): Promise<string> {
   const bucket = monthBucket('QTN');
   await lockNumberBucket(tx, bucket);
@@ -251,49 +263,53 @@ export const quotationService = {
   async create(sourceType: SourceType, sourceId: string, input: QuotationInput, actorId: string | null) {
     const { totals, gstEnabled } = prepare(input);
 
-    return prisma.$transaction(async (tx) => {
-      await assertVendorsExist(input.items, tx);
+    try {
+      return await prisma.$transaction(async (tx) => {
+        await assertVendorsExist(input.items, tx);
 
-      // Serialize concurrent creates for the same source; the partial unique index
-      // (one open quotation per source) is the database backstop.
-      await lockMany(tx, [sourceKey(sourceType, sourceId)]);
-      await expireOverdue(subjectWhere(sourceType, sourceId), tx);
+        // Serialize concurrent creates for the same source; the partial unique index
+        // (one open quotation per source) is the database backstop.
+        await lockMany(tx, [sourceKey(sourceType, sourceId)]);
+        await expireOverdue(subjectWhere(sourceType, sourceId), tx);
 
-      const blocked = evaluateQuotable({
-        sourceLabel: SOURCE_LABEL[sourceType],
-        sourceType,
-        sourceId,
-        sourceExists: (await loadSource(sourceType, sourceId, tx)) !== null,
-        wedding: await findWeddingForSource(sourceType, sourceId, tx),
-        accepted: await quotationRepository.findFirst({ ...subjectWhere(sourceType, sourceId), status: 'ACCEPTED' }, tx),
-        open: await quotationRepository.findFirst(
-          { ...subjectWhere(sourceType, sourceId), status: { in: ['DRAFT', 'SENT'] } },
+        const blocked = evaluateQuotable({
+          sourceLabel: SOURCE_LABEL[sourceType],
+          sourceType,
+          sourceId,
+          sourceExists: (await loadSource(sourceType, sourceId, tx)) !== null,
+          wedding: await findWeddingForSource(sourceType, sourceId, tx),
+          accepted: await quotationRepository.findFirst({ ...subjectWhere(sourceType, sourceId), status: 'ACCEPTED' }, tx),
+          open: await quotationRepository.findFirst(
+            { ...subjectWhere(sourceType, sourceId), status: { in: ['DRAFT', 'SENT'] } },
+            tx
+          ),
+        });
+        if (blocked) throw blocked;
+
+        const created = await quotationRepository.create(
+          {
+            ...subjectCreateData(sourceType, sourceId),
+            quotationNumber: await nextQuotationNumber(tx),
+            status: 'DRAFT',
+            subtotal: totals.subtotal,
+            discount: totals.discount,
+            gstEnabled,
+            gstAmount: totals.gstAmount,
+            total: totals.total,
+            advanceAmount: totals.advanceAmount,
+            validUntil: input.validUntil ?? null,
+            terms: input.terms?.trim() || null,
+            notes: input.notes?.trim() || null,
+            createdBy: actorId ? { connect: { id: actorId } } : undefined,
+            items: { create: itemRows(input.items) },
+          },
           tx
-        ),
+        );
+        return toQuotationView(created);
       });
-      if (blocked) throw blocked;
-
-      const created = await quotationRepository.create(
-        {
-          ...subjectCreateData(sourceType, sourceId),
-          quotationNumber: await nextQuotationNumber(tx),
-          status: 'DRAFT',
-          subtotal: totals.subtotal,
-          discount: totals.discount,
-          gstEnabled,
-          gstAmount: totals.gstAmount,
-          total: totals.total,
-          advanceAmount: totals.advanceAmount,
-          validUntil: input.validUntil ?? null,
-          terms: input.terms?.trim() || null,
-          notes: input.notes?.trim() || null,
-          createdBy: actorId ? { connect: { id: actorId } } : undefined,
-          items: { create: itemRows(input.items) },
-        },
-        tx
-      );
-      return toQuotationView(created);
-    });
+    } catch (err) {
+      throw await explainSourceConflict(err, { sourceType, sourceId });
+    }
   },
 
   async update(id: string, input: QuotationInput) {
@@ -505,72 +521,77 @@ export const quotationService = {
   // SENT / REJECTED / EXPIRED → a new DRAFT (revision + 1) copied from it. A SENT original is marked
   // SUPERSEDED at once (a source can have only one open quotation); discarding the draft restores it.
   async revise(id: string, actorId: string | null) {
-    await expireOverdue({ id });
-    return prisma.$transaction(async (tx) => {
-      const { q, sourceType, sourceId } = await loadLocked(tx, id);
-      const blocked = evaluateRevisable(q.status);
-      if (blocked) throw blocked;
+    try {
+      await expireOverdue({ id });
+      return await prisma.$transaction(async (tx) => {
+        const { q, sourceType, sourceId } = await loadLocked(tx, id);
+        const blocked = evaluateRevisable(q.status);
+        if (blocked) throw blocked;
 
-      const label = SOURCE_LABEL[sourceType];
-      if (await tx.quotation.findFirst({ where: { supersedesId: id }, select: { id: true } })) {
-        throw new ConflictError('This quotation was already revised');
-      }
-      const where = subjectWhere(sourceType, sourceId);
-      const accepted = await quotationRepository.findFirst({ ...where, status: 'ACCEPTED' }, tx);
-      if (accepted) {
-        throw new ConflictError(`This ${label} already has an accepted quotation (${accepted.quotationNumber})`);
-      }
-      const open = await quotationRepository.findFirst({ ...where, status: { in: ['DRAFT', 'SENT'] }, id: { not: id } }, tx);
-      if (open) {
-        throw new ConflictError(`This ${label} already has an open quotation (${open.quotationNumber}) — finish it first`);
-      }
+        const label = SOURCE_LABEL[sourceType];
+        if (await tx.quotation.findFirst({ where: { supersedesId: id }, select: { id: true } })) {
+          throw new ConflictError('This quotation was already revised');
+        }
+        const where = subjectWhere(sourceType, sourceId);
+        const accepted = await quotationRepository.findFirst({ ...where, status: 'ACCEPTED' }, tx);
+        if (accepted) {
+          throw new ConflictError(`This ${label} already has an accepted quotation (${accepted.quotationNumber})`);
+        }
+        const open = await quotationRepository.findFirst({ ...where, status: { in: ['DRAFT', 'SENT'] }, id: { not: id } }, tx);
+        if (open) {
+          throw new ConflictError(`This ${label} already has an open quotation (${open.quotationNumber}) — finish it first`);
+        }
 
-      const quotationNumber = await nextQuotationNumber(tx);
-      // Status first: the old SENT quotation must stop being "open" before the new draft is inserted.
-      if (q.status === 'SENT') {
-        await quotationRepository.update(id, { status: 'SUPERSEDED' }, tx);
-      }
-      const revision = await quotationRepository.create(
-        {
-          ...subjectCreateData(sourceType, sourceId),
-          quotationNumber,
-          revision: q.revision + 1,
-          supersedes: { connect: { id } },
-          status: 'DRAFT',
-          subtotal: q.subtotal,
-          discount: q.discount,
-          gstEnabled: q.gstEnabled,
-          gstAmount: q.gstAmount,
-          total: q.total,
-          advanceAmount: q.advanceAmount,
-          validUntil: null, // a revision must be given a fresh valid-until date before it is sent
-          terms: q.terms,
-          notes: q.notes,
-          createdBy: actorId ? { connect: { id: actorId } } : undefined,
-          items: {
-            create: q.items.map((item) => ({
-              sortOrder: item.sortOrder,
-              description: item.description,
-              category: item.category,
-              functionLabel: item.functionLabel,
-              vendorId: item.vendorId,
-              unitPrice: item.unitPrice,
-              quantity: item.quantity,
-            })),
+        const quotationNumber = await nextQuotationNumber(tx);
+        // Status first: the old SENT quotation must stop being "open" before the new draft is inserted.
+        if (q.status === 'SENT') {
+          await quotationRepository.update(id, { status: 'SUPERSEDED' }, tx);
+        }
+        const revision = await quotationRepository.create(
+          {
+            ...subjectCreateData(sourceType, sourceId),
+            quotationNumber,
+            revision: q.revision + 1,
+            supersedes: { connect: { id } },
+            status: 'DRAFT',
+            subtotal: q.subtotal,
+            discount: q.discount,
+            gstEnabled: q.gstEnabled,
+            gstAmount: q.gstAmount,
+            total: q.total,
+            advanceAmount: q.advanceAmount,
+            validUntil: null, // a revision must be given a fresh valid-until date before it is sent
+            terms: q.terms,
+            notes: q.notes,
+            createdBy: actorId ? { connect: { id: actorId } } : undefined,
+            items: {
+              create: q.items.map((item) => ({
+                sortOrder: item.sortOrder,
+                description: item.description,
+                category: item.category,
+                functionLabel: item.functionLabel,
+                vendorId: item.vendorId,
+                unitPrice: item.unitPrice,
+                quantity: item.quantity,
+              })),
+            },
           },
-        },
-        tx
-      );
-      await logEvent(
-        tx,
-        sourceType,
-        sourceId,
-        ActivityType.QUOTATION_REVISED,
-        `Quotation ${q.quotationNumber} revised — new draft ${quotationNumber} (revision ${revision.revision})`,
-        null,
-        actorId
-      );
-      return toQuotationView(revision);
-    });
+          tx
+        );
+        await logEvent(
+          tx,
+          sourceType,
+          sourceId,
+          ActivityType.QUOTATION_REVISED,
+          `Quotation ${q.quotationNumber} revised — new draft ${quotationNumber} (revision ${revision.revision})`,
+          null,
+          actorId
+        );
+        return toQuotationView(revision);
+      });
+    } catch (err) {
+      const first = err instanceof DuplicateError ? await quotationRepository.findById(id) : null;
+      throw await explainSourceConflict(err, first ? sourceOf(first) : null);
+    }
   },
 };
