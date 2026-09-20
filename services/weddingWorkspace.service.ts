@@ -1,3 +1,4 @@
+import { generateInvoiceNumber } from '@/services/documentNumber.service';
 import { prisma } from '@/lib/prisma';
 import { resolveUserNames } from '@/lib/users';
 import { weddingRepository } from '@/repositories/wedding.repository';
@@ -131,19 +132,10 @@ async function findWeddingOrThrow(id: string): Promise<Wedding> {
   return wedding;
 }
 
-// INV-YYYYMM-NNNN, sequential within the month — same format already live in
-// the legacy Mongo-era route (app/api/invoices/route.ts), for consistency
-// rather than inventing a new numbering scheme. That route stays Mongo-backed
-// (Invoices is last in the module cutover order); these wedding-linked
-// invoices are Postgres-only and coexist with it, same pattern Wedding/CRM
-// already established. Counts against `tx.invoice` (not a new-rows-only
-// counter) since migrated legacy invoices land in this same table too.
-export async function generateInvoiceNumber(tx: Prisma.TransactionClient): Promise<string> {
-  const now = new Date();
-  const bucket = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`;
-  const count = await tx.invoice.count({ where: { invoiceNumber: { startsWith: bucket } } });
-  return `${bucket}${String(count + 1).padStart(4, '0')}`;
-}
+// INV-YYYYMM-NNNN, sequential within the month — the same format already live in the database. The
+// generator is race-safe (highest existing + 1 under an advisory lock, not a row count) and lives in
+// services/documentNumber.service.ts; re-exported here so existing importers (invoice.service.ts) are unchanged.
+export { generateInvoiceNumber };
 
 export const weddingWorkspaceService = {
   async getWorkspace(id: string): Promise<WeddingWorkspace> {

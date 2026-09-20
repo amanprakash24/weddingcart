@@ -1,3 +1,7 @@
+import { ensureAdvanceInvoice } from '@/services/advanceInvoice.service';
+import { quotationRepository } from '@/repositories/quotation.repository';
+import { subjectWhere } from '@/lib/crm/subject';
+import { generateWeddingNumber } from '@/services/documentNumber.service';
 import { agreedPriceFor, planVendorlessItem } from '@/lib/booking/unassigned';
 import { prisma } from '@/lib/prisma';
 import { bookingRepository } from '@/repositories/booking.repository';
@@ -24,6 +28,13 @@ export class InvalidBookingStateError extends Error {
     this.name = 'InvalidBookingStateError';
   }
 }
+
+// A conversion is a long, multi-step transaction (wedding, event, milestones, one vendor booking and task per item,
+// and now the advance invoice). Prisma's default interactive-transaction limit is 5 seconds, which a conversion
+// can exceed once the database is a network hop away or when it waits on a lock held by another conversion — the
+// failure showed up as "Transaction API error: A query cannot be executed on an expired transaction" when two
+// conversions ran at once. Give it room; a genuinely stuck transaction still fails.
+const CONVERSION_TX_OPTIONS = { maxWait: 10_000, timeout: 30_000 };
 
 // Concurrency fix (production-integrity fix, round 2): the duplicate-Wedding
 // guard used to run its "does a Wedding already exist for this
@@ -253,21 +264,22 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
       );
     }
 
+    // Automatic advance invoice (docs/wedding-os/08-quotation.md §6.6): a booking created from an accepted
+    // quotation carries its advance forward as a DRAFT invoice, inside THIS transaction — if it fails, the
+    // whole conversion rolls back. No payment link here (external call; staff create it from Finance).
+    if (booking.quotationId) {
+      await ensureAdvanceInvoice(tx, {
+        wedding,
+        quotation: await quotationRepository.findById(booking.quotationId, tx),
+        client: { name: booking.name, phone: booking.phone, city: booking.city },
+        actorId: null,
+      });
+    }
+
     return wedding;
-  });
+  }, CONVERSION_TX_OPTIONS);
 }
 
-// WED-YYYY-NNNN, sequential within year — same pattern already established
-// for Invoice.invoiceNumber (INV-YYYYMM-NNNN) in the live Mongo-era API route,
-// for consistency rather than inventing a new numbering scheme.
-async function generateWeddingNumber(tx: Tx): Promise<string> {
-  const year = new Date().getFullYear();
-  const count = await tx.wedding.count({
-    where: { weddingNumber: { startsWith: `WED-${year}-` } },
-  });
-  const sequence = String(count + 1).padStart(4, '0');
-  return `WED-${year}-${sequence}`;
-}
 
 // ---------------------------------------------------------------------------
 // CRM-path conversion (domain-model.md §5.1): WON only makes a Lead/Enquiry/
@@ -309,6 +321,13 @@ export async function findWeddingForSource(
     return (await weddingRepository.findBySourceEnquiryId(id, tx)) ?? weddingRepository.findByLinkedBookingEnquiryId(id, tx);
   }
   return (await weddingRepository.findBySourceConsultationId(id, tx)) ?? weddingRepository.findByLinkedBookingConsultationId(id, tx);
+}
+
+// Who the advance invoice is addressed to, from the converting Lead/Enquiry/Consultation.
+function clientFromSubject(sourceType: SourceType, subject: ConvertibleSubject, fallbackCity: string) {
+  if (sourceType === 'LEAD') return { name: (subject as Lead).phone, phone: (subject as Lead).phone, city: fallbackCity };
+  const s = subject as Enquiry | Consultation;
+  return { name: s.name, phone: s.phone, email: s.email, city: s.city ?? fallbackCity };
 }
 
 function subjectName(sourceType: SourceType, subject: ConvertibleSubject): string {
@@ -457,8 +476,17 @@ export async function convertLeadToWedding(
 
     await seedDefaultWeddingContent(wedding, weddingEvent.id, input.coordinatorId, tx);
 
+    // The source's ACCEPTED quotation, if it has one, becomes the advance invoice (same rules and same
+    // transaction as the booking path; idempotent through Quotation.advanceInvoiceId).
+    await ensureAdvanceInvoice(tx, {
+      wedding,
+      quotation: await quotationRepository.findFirst({ ...subjectWhere(sourceType, id), status: 'ACCEPTED' }, tx),
+      client: clientFromSubject(sourceType, subject, input.city),
+      actorId,
+    });
+
     return wedding;
-  });
+  }, CONVERSION_TX_OPTIONS);
 }
 
 // Phase 6.4 — a coordinator should never land on an empty Workspace. Seeds

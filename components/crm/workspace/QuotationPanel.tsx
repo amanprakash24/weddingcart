@@ -7,6 +7,7 @@ import type { WorkspaceQuotation } from './types';
 // Quotation panel (docs/wedding-os/08-quotation.md). S1: create / edit / delete a draft.
 // S2: send, revise, record the customer's answer, and a prepared message to send them.
 // S3: create a Booking from an accepted quote, then confirm it to create the wedding.
+// S4: confirming creates the advance invoice automatically (a draft — the payment link is created from Finance).
 // Totals shown while typing are only a preview — the server recomputes and stores the real ones.
 // V1 has no customer login or link: staff record the customer's answer on their behalf.
 
@@ -367,6 +368,12 @@ export default function QuotationPanel({
                     Accepted via {CHANNEL_LABEL[q.acceptedChannel ?? 'OTHER'] ?? q.acceptedChannel}
                     {q.acceptedAt ? ` on ${formatQuoteDate(q.acceptedAt)}` : ''}
                     {q.acceptedNote ? ` — ${q.acceptedNote}` : ''}
+                  </p>
+                )}
+                {q.status === 'ACCEPTED' && q.advanceInvoice && (
+                  <p className="mt-1.5 text-xs text-emerald-700">
+                    Advance invoice {q.advanceInvoice.invoiceNumber} ({q.advanceInvoice.status.toLowerCase()}) was created for {rupees(q.advanceAmount)}, no tax applied.
+                    Create its payment link from the wedding&apos;s Finance section.
                   </p>
                 )}
                 {q.status === 'ACCEPTED' && q.booking && (
