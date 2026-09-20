@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { LayoutDashboard, Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, ArrowLeft, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, LogOut, Users, AtSign, Globe, FileText, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle, Send } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, Users, AtSign, Globe, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle, Send } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
 function ImageUploadField({
@@ -82,7 +82,11 @@ function ImageUploadField({
   );
 }
 
-type Tab = 'dashboard' | 'vendors' | 'categories' | 'special-services' | 'special-vendors' | 'enquiries' | 'consultations' | 'bookings' | 'outside-vendors' | 'leads' | 'invoices';
+// The sidebar now lives in components/admin/AdminShell.tsx (app/admin/layout.tsx); it links here with /admin?tab=<id>.
+// These screens are the pre-Vivah-OS admin views — reachable from the shell's "More" menu until they are retired.
+const TAB_IDS = ['dashboard', 'vendors', 'categories', 'special-services', 'special-vendors', 'enquiries', 'consultations', 'bookings', 'outside-vendors', 'leads', 'invoices'] as const;
+type Tab = (typeof TAB_IDS)[number];
+const isTab = (value: string | null): value is Tab => TAB_IDS.some((id) => id === value);
 
 interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number; }
 
@@ -361,7 +365,12 @@ export function buildEnquiryCreateRequestBody(
 
 export default function AdminClient() {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const searchParams = useSearchParams();
+  // The URL is the source of truth for which screen shows, so the shell's sidebar highlights the right entry and links
+  // are shareable. (/admin?tab=<id>; the sidebar lives in components/admin/AdminShell.tsx.)
+  const requestedTab = searchParams.get('tab');
+  const tab: Tab = isTab(requestedTab) ? requestedTab : 'dashboard';
+  const setTab = useCallback((next: Tab) => router.replace(`/admin?tab=${next}`, { scroll: false }), [router]);
   // GET /api/stats's state (production integrity finding: intermittent
   // Postgres connection-pool contention under fetchAll()'s 9-way
   // simultaneous request burst, see stats.service.ts's 12-query Promise.all)
@@ -1075,71 +1084,10 @@ export default function AdminClient() {
     }
   };
 
-  const TABS = [
-    { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Dashboard' },
-    { id: 'vendors' as Tab, icon: Briefcase, label: 'Vendors', badge: regularVendors.length },
-    { id: 'categories' as Tab, icon: Tag, label: 'Categories', badge: regularCategories.length },
-    { id: 'special-services' as Tab, icon: Sparkles, label: 'Special Services', badge: specialCategories.length },
-    { id: 'special-vendors' as Tab, icon: Briefcase, label: 'Special Vendors', badge: specialVendors.length, badgeColor: 'bg-violet-500' },
-    { id: 'enquiries' as Tab, icon: MessageSquare, label: 'Enquiries', badge: stats?.newEnquiries, badgeColor: 'bg-rose-500' },
-    { id: 'consultations' as Tab, icon: Phone, label: 'Consultations', badge: stats?.newConsultations, badgeColor: 'bg-rose-500' },
-    { id: 'bookings' as Tab, icon: BookOpen, label: 'Bookings', badge: stats?.newBookings, badgeColor: 'bg-emerald-500' },
-    { id: 'outside-vendors' as Tab, icon: Users, label: 'Outside Vendors', badge: stats?.newOutsideVendors, badgeColor: 'bg-indigo-500' },
-    { id: 'leads' as Tab, icon: Phone, label: 'Leads', badge: leads.length || undefined, badgeColor: 'bg-green-500' },
-    { id: 'invoices' as Tab, icon: Receipt, label: 'Invoices', badge: invoices.length || undefined, badgeColor: 'bg-teal-500' },
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className="w-16 sm:w-56 bg-gray-950 flex-shrink-0 flex flex-col">
-        <div className="p-4 border-b border-gray-800">
-          <Link href="/" className="hidden sm:flex items-center gap-2 text-white font-bold text-sm">
-            <ArrowLeft className="w-4 h-4 text-gray-400" /> ShaadiShopping
-          </Link>
-          <div className="sm:hidden flex justify-center"><ArrowLeft className="w-5 h-5 text-gray-400" /></div>
-        </div>
-        <p className="hidden sm:block px-4 py-3 text-gray-500 text-[10px] uppercase tracking-widest font-semibold">Admin Panel</p>
-        <nav className="flex-1 py-2">
-          {TABS.map(({ id, icon: Icon, label, badge, badgeColor = 'bg-amber-500' }) => (
-            <button key={id} onClick={() => setTab(id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${
-                tab === id ? 'bg-amber-500/20 text-amber-400 border-r-2 border-amber-400' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
-            >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden sm:block text-sm font-medium">{label}</span>
-              {badge !== undefined && badge > 0 && (
-                <span className={`hidden sm:flex ml-auto ${badgeColor} text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] items-center justify-center`}>
-                  {badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-        <div className="px-2 pb-1 border-t border-gray-800 pt-2">
-          <Link href="/admin/blogs" className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all">
-            <FileText className="w-5 h-5 flex-shrink-0" />
-            <span className="hidden sm:block text-sm font-medium">Blog Posts</span>
-          </Link>
-        </div>
-        <div className="p-3 border-t border-gray-800">
-          {role === 'super_admin' && (
-            <>
-              <button onClick={handleSeed} disabled={seeding}
-                className="w-full flex items-center gap-2 justify-center bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs font-medium px-3 py-2.5 rounded-xl transition-all"
-              >
-                <Database className="w-4 h-4" />
-                <span className="hidden sm:block">{seeding ? 'Seeding...' : 'Seed DB'}</span>
-              </button>
-              {seedMsg && <p className="text-emerald-400 text-[10px] mt-1 text-center hidden sm:block">{seedMsg}</p>}
-            </>
-          )}
-        </div>
-      </aside>
-
+    <div>
       {/* Main */}
-      <main className="flex-1 overflow-auto">
+      <main>
         <div className="p-6 max-w-6xl">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -1156,15 +1104,6 @@ export default function AdminClient() {
             <div className="flex items-center gap-2">
               <button onClick={fetchAll} disabled={loading} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm border border-gray-200 px-3 py-2 rounded-xl hover:bg-white transition-all">
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
-              </button>
-              <button
-                onClick={async () => {
-                  await fetch('/api/admin/logout', { method: 'POST' });
-                  router.replace('/admin/login');
-                }}
-                className="flex items-center gap-2 text-rose-500 hover:text-rose-700 text-sm border border-rose-200 px-3 py-2 rounded-xl hover:bg-rose-50 transition-all"
-              >
-                <LogOut className="w-4 h-4" /> Logout
               </button>
             </div>
           </div>
@@ -1297,6 +1236,7 @@ export default function AdminClient() {
                     </button>
                   )}
                 </div>
+                {seedMsg && <p className="mt-3 text-xs font-medium text-emerald-600">{seedMsg}</p>}
               </div>
             </div>
           )}

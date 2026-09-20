@@ -20,7 +20,7 @@ export default function AdminLoginClient() {
 
       if (res?.ok) {
         // Hard redirect so the new httpOnly session cookie is sent with the next request
-        window.location.href = '/admin';
+        window.location.href = '/admin/dashboard';
       } else {
         setError('Invalid email or password.');
       }

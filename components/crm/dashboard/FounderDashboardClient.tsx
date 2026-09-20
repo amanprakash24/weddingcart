@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import BusinessPerformanceCard from './BusinessPerformanceCard';
 import CommissionCard from './CommissionCard';
 import RevenueByMonthCard from './RevenueByMonthCard';
@@ -17,6 +18,7 @@ import CommandCenter from './CommandCenter';
 export default function FounderDashboardClient() {
   const [dashboard, setDashboard] = useState<FounderDashboard | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  const section = useSearchParams().get('section');
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -29,6 +31,13 @@ export default function FounderDashboardClient() {
     }, 0);
     return () => clearTimeout(timeout);
   }, []);
+
+  // The sidebar's "Weddings" opens /admin/dashboard?section=upcoming. The sections only exist once this data has loaded, so
+  // the browser cannot scroll there by itself when you arrive from another page — do it once they are on screen.
+  const loaded = Boolean(dashboard);
+  useEffect(() => {
+    if (loaded && section) document.getElementById(section)?.scrollIntoView({ behavior: 'instant', block: 'start' });
+  }, [loaded, section]);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">

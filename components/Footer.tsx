@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Heart, Phone, Mail, MapPin, CheckCircle } from 'lucide-react';
 
 const services = [
@@ -85,12 +86,16 @@ const socials = [
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const pathname = usePathname();
 
   const handleSubscribe = () => {
     if (!email.trim() || !email.includes('@')) return;
     setSubscribed(true);
     setEmail('');
   };
+
+  // The admin has its own navigation shell (like Navbar, CartFAB and ContactBanner, the public footer stays out of it).
+  if (pathname.startsWith('/admin')) return null;
 
   return (
     <footer style={{ background: '#2A1F1B' }} className="text-gray-400">
