@@ -210,6 +210,16 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
     }
   };
 
+  // Revise = make an editable copy of the quote, then open it so the prices can be changed straight away.
+  const reviseQuote = async () => {
+    if (!current) return;
+    const done = await quotesApi.act(current.id, '/revise', undefined, 'Revision created. Change the prices below, add a valid-until date, then send it.');
+    if (done?.data) {
+      panelRef.current?.editRevision(done.data);
+      scrollToQuote();
+    }
+  };
+
   const sendJourneyMessage = () => {
     if (!message) return;
     if (message.kind === 'follow-up') return void followUp();
@@ -244,7 +254,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
         await followUp();
         break;
       case 'revise-quote':
-        if (current) await quotesApi.act(current.id, '/revise', undefined, 'A new draft was created from this quote.');
+        await reviseQuote();
         break;
       case 'create-booking':
         setDialog('booking');
@@ -270,8 +280,10 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
         break;
     }
   };
-  const onSecondary = (secondary: SecondaryActionId) =>
+  const onSecondary = (secondary: SecondaryActionId) => {
+    if (secondary === 'revise-quote') return void reviseQuote();
     setDialog(secondary === 'customer-accepted' ? 'accept' : secondary === 'customer-declined' ? 'decline' : 'not-proceeding');
+  };
 
   // ---- dialogs: each resolves to an error message, or null when it worked ---------------------------------------------
 

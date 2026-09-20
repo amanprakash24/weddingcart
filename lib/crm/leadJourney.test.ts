@@ -147,7 +147,7 @@ describe('nextAction — exactly one primary action per state', () => {
 
   test('a sent quote offers the customer’s answer as secondary actions, not as a second primary', () => {
     const sent = nextAction('SENT', ctx);
-    expect(sent.secondary.map((s) => s.id)).toEqual(['customer-accepted', 'customer-declined']);
+    expect(sent.secondary.map((s) => s.id)).toEqual(['customer-accepted', 'customer-declined', 'revise-quote']);
     expect(sent.label).toContain('Follow up');
   });
 

@@ -27,6 +27,16 @@ describe('handleApiError — shared error-to-HTTP-response mapping', () => {
     expect(res.status).toBe(409);
   });
 
+  test('DuplicateError keeps its default sentence, and only adds the rule name when one is known', async () => {
+    const plain = await bodyOf(handleApiError(new DuplicateError('Event', 'slug')));
+    expect(plain.error).toBe('Event already exists with this slug');
+    expect(plain.constraint).toBeUndefined();
+
+    const named = await bodyOf(handleApiError(new DuplicateError('Quotation', 'field', 'quotations_supersedesId_key', 'This quotation already has a revision — refresh the page to see it.')));
+    expect(named.error).toBe('This quotation already has a revision — refresh the page to see it.');
+    expect(named.constraint).toBe('quotations_supersedesId_key');
+  });
+
   test('ValidationError maps to 400 with its own message', async () => {
     const res = handleApiError(new ValidationError('Discount cannot exceed the subtotal'));
     expect(res.status).toBe(400);

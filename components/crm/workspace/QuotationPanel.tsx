@@ -105,6 +105,8 @@ function previewTotals(d: Draft) {
 export interface QuotationPanelHandle {
   startCreate: () => void;
   startEdit: () => void;
+  // Opens the price editor on a revision that was just created, so "Revise" ends with the prices ready to change.
+  editRevision: (revision: WorkspaceQuotation) => void;
 }
 
 const BOX_CLASS = {
@@ -145,6 +147,7 @@ const QuotationPanel = forwardRef<
     startEdit: () => {
       if (current?.status === 'DRAFT') setEditing({ id: current.id, draft: draftFromQuotation(current) });
     },
+    editRevision: (revision) => setEditing({ id: revision.id, draft: draftFromQuotation(revision) }),
   }));
 
   const save = async () => {
@@ -323,18 +326,6 @@ const QuotationPanel = forwardRef<
                 </button>
                 <button type="button" disabled={busy} onClick={() => remove(current.id)} className="min-h-[40px] rounded-xl px-3 text-sm font-medium text-red-700 underline underline-offset-4 disabled:opacity-40">
                   {current.revision > 1 ? 'Discard revision' : 'Delete draft'}
-                </button>
-              </div>
-            )}
-            {!readOnly && current.status === 'SENT' && (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => act(current.id, '/revise', undefined, 'A new draft was created from this quote.')}
-                  className="min-h-[40px] rounded-xl border border-gray-200 px-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
-                >
-                  Revise quote
                 </button>
               </div>
             )}

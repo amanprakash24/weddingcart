@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
+import { columnFromIndex, constraintFromMeta, friendlyDuplicateMessage } from '@/lib/duplicateConstraint';
 
 // Repository error contract — see docs/repository-contract.md.
 // Repositories catch known Prisma error codes and rethrow these; anything
@@ -25,9 +26,13 @@ export class InvalidTransitionError extends Error {
 export class DuplicateError extends Error {
   constructor(
     entity: string,
-    public readonly field: string
+    public readonly field: string,
+    // The database's own name for the rule that was hit (e.g. "quotations_supersedesId_key"), when known — returned to the
+    // client and logged so a failure can be traced to the exact rule. `message` overrides the default sentence.
+    public readonly constraint: string | null = null,
+    message?: string
   ) {
-    super(`${entity} already exists with this ${field}`);
+    super(message ?? `${entity} already exists with this ${field}`);
     this.name = 'DuplicateError';
   }
 }
@@ -72,8 +77,9 @@ export async function withPrismaErrors<T>(entity: string, fn: () => Promise<T>):
         throw new NotFoundError(entity, String(err.meta?.cause ?? 'unknown'));
       }
       if (err.code === 'P2002') {
-        const field = Array.isArray(err.meta?.target) ? err.meta.target[0] : String(err.meta?.target ?? 'field');
-        throw new DuplicateError(entity, field);
+        const info = constraintFromMeta(err.meta);
+        const field = info.fields[0] ?? columnFromIndex(info.index) ?? 'field';
+        throw new DuplicateError(entity, field, info.index, friendlyDuplicateMessage(entity, info));
       }
       // Foreign-key restrict violation (e.g. deleting a Vendor that still
       // has VendorBooking/Payout rows referencing it) — the DB-level
@@ -96,7 +102,8 @@ export function handleApiError(err: unknown): NextResponse {
     return NextResponse.json({ success: false, error: err.message }, { status: 404 });
   }
   if (err instanceof DuplicateError) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 409 });
+    if (err.constraint) console.warn(`duplicate: ${err.message} (rule: ${err.constraint})`);
+    return NextResponse.json({ success: false, error: err.message, ...(err.constraint ? { constraint: err.constraint } : {}) }, { status: 409 });
   }
   if (err instanceof InvalidTransitionError) {
     return NextResponse.json({ success: false, error: err.message }, { status: 400 });

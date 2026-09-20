@@ -123,7 +123,7 @@ export type NextActionId =
   | 'create-wedding'
   | 'view-reason';
 
-export type SecondaryActionId = 'customer-accepted' | 'customer-declined' | 'not-proceeding';
+export type SecondaryActionId = 'customer-accepted' | 'customer-declined' | 'revise-quote' | 'not-proceeding';
 
 export interface NextAction {
   id: NextActionId;
@@ -169,6 +169,8 @@ export function nextAction(state: JourneyState, c: NextActionContext): NextActio
         secondary: [
           { id: 'customer-accepted', label: 'Customer said yes' },
           { id: 'customer-declined', label: 'Customer declined', danger: true },
+          // Changing prices on a sent quote means revising it: a copy is made and opened for editing.
+          { id: 'revise-quote', label: 'Revise quote (change prices)' },
         ],
       };
     case 'LAPSED':
