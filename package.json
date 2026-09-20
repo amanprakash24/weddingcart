@@ -10,7 +10,8 @@
     "lint": "eslint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "bun test"
+    "test": "bun test",
+    "test:db": "bun test tests-db --timeout 180000"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
