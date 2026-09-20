@@ -2,101 +2,112 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Link as LinkIcon } from 'lucide-react';
-import { STAGE_LABELS, STAGE_COLORS, SOURCE_LABELS } from '@/components/crm/types';
-import { LOST_REASON_LABELS } from '@/lib/crm/pipeline';
+import { ArrowLeft, Calendar, MapPin, Users } from 'lucide-react';
+import { STAGE_LABELS } from '@/components/crm/types';
+import { allowedNextStages } from '@/lib/crm/pipeline';
+import type { StatusChip as Chip } from '@/lib/crm/leadJourney';
 import StageControl, { type StageTransitionInput } from './StageControl';
 import AssignControl from './AssignControl';
-import ConvertToWeddingDialog, { type ConvertToWeddingInput } from './ConvertToWeddingDialog';
+import { StatusChip, StatusTrio } from './JourneyParts';
 import type { LeadWorkspace } from './types';
 
+// The top of the Lead Workspace: who the client is, where the deal stands (Quotation / Lead / Booking — three separate
+// facts), who owns it, and — in the slot on the right — the one Next action. The lead's own stage is shown exactly as it is;
+// accepting a quotation never changes it.
 export default function LeadWorkspaceHeader({
   subject,
   customerName,
-  customerCity,
+  weddingDate,
+  guestCount,
+  city,
+  chips,
+  nextAction,
   onTransition,
   onAssign,
-  onConvert,
 }: {
   subject: LeadWorkspace['subject'];
   customerName: string;
-  customerCity: string;
+  weddingDate: string | null;
+  guestCount: number | null;
+  city: string | null;
+  chips: { quotation: Chip; booking: Chip };
+  nextAction: React.ReactNode;
   onTransition: (input: StageTransitionInput) => Promise<void>;
   onAssign: (assignedToId: string | null) => Promise<void>;
-  onConvert: (input: ConvertToWeddingInput) => Promise<void>;
 }) {
   const router = useRouter();
-  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [showStatus, setShowStatus] = useState(false);
+  const locked = !!subject.wedding;
+  const canChangeStatus = !locked && allowedNextStages(subject.pipelineStage, { hasAcceptedQuotation: subject.hasAcceptedQuotation }).length > 0;
 
   return (
-    <div className="space-y-3">
-      <button
-        onClick={() => router.back()}
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to CRM
-      </button>
+    <div className="grid gap-5 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-3">
+        <button type="button" onClick={() => router.back()} className="inline-flex w-fit items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900">
+          <ArrowLeft className="h-4 w-4" /> Back to leads
+        </button>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif]">{customerName}</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{SOURCE_LABELS[subject.sourceType]}</p>
+          <h1 className="text-[26px] font-bold leading-tight text-gray-900 font-[Playfair_Display,serif] sm:text-3xl">{customerName}</h1>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+            {weddingDate && (
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" />
+                {weddingDate}
+              </span>
+            )}
+            {guestCount != null && (
+              <span className="inline-flex items-center gap-1.5">
+                <Users className="h-4 w-4" />
+                {guestCount} guests
+              </span>
+            )}
+            {city && (
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="h-4 w-4" />
+                {city}
+              </span>
+            )}
+          </div>
         </div>
-        <span className={`text-xs font-medium px-3 py-1 rounded-full ${STAGE_COLORS[subject.pipelineStage]}`}>
-          {STAGE_LABELS[subject.pipelineStage]}
-        </span>
+
+        <StatusTrio quotation={chips.quotation} lead={{ label: STAGE_LABELS[subject.pipelineStage], tone: 'gray' }} booking={chips.booking} />
+
+        {subject.pipelineStage === 'ON_HOLD' && subject.holdReason && <p className="text-sm text-gray-600">On hold: {subject.holdReason}</p>}
+        {locked && subject.wedding && (
+          <p className="text-sm text-gray-600">
+            This lead is now part of wedding {subject.wedding.weddingNumber}, so it can no longer be edited.
+          </p>
+        )}
+
+        {!locked && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span>Assigned to</span>
+              <AssignControl assignedTo={subject.assignedTo} onAssign={onAssign} />
+            </div>
+            {canChangeStatus && (
+              <button type="button" onClick={() => setShowStatus((v) => !v)} aria-expanded={showStatus} className="min-h-[40px] text-sm font-medium text-gray-600 underline underline-offset-4">
+                {showStatus ? 'Hide status options' : 'Change status'}
+              </button>
+            )}
+          </div>
+        )}
+        {locked && (
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>Assigned to</span>
+            <StatusChip chip={{ label: subject.assignedTo?.name ?? 'Unassigned', tone: 'gray' }} />
+          </div>
+        )}
+
+        {showStatus && canChangeStatus && (
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+            <StageControl currentStage={subject.pipelineStage} hasAcceptedQuotation={subject.hasAcceptedQuotation} onTransition={onTransition} />
+          </div>
+        )}
       </div>
 
-      {subject.wedding ? (
-        // Converted — pipeline/deal fields are read-only from here
-        // (domain-model.md §5.1); Notes stay editable, handled by Timeline.
-        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2">
-          <LinkIcon className="w-4 h-4" />
-          Converted to Wedding {subject.wedding.weddingNumber} — this record is read-only.
-          <a href={`/admin/weddings/${subject.wedding.id}`} className="font-medium underline ml-auto">
-            Open Wedding Workspace
-          </a>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Assigned to</span>
-            <AssignControl assignedTo={subject.assignedTo} onAssign={onAssign} />
-          </div>
-          <StageControl currentStage={subject.pipelineStage} hasAcceptedQuotation={subject.hasAcceptedQuotation} onTransition={onTransition} />
-          {subject.pipelineStage === 'WON' && (
-            <button
-              onClick={() => setShowConvertDialog(true)}
-              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
-            >
-              Create Wedding Workspace
-            </button>
-          )}
-        </div>
-      )}
-
-      {subject.pipelineStage === 'LOST' && subject.lostReason && (
-        <div className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2">
-          Lost reason: {LOST_REASON_LABELS[subject.lostReason]}
-          {subject.lostReasonDetail ? ` — ${subject.lostReasonDetail}` : ''}
-        </div>
-      )}
-      {subject.pipelineStage === 'ON_HOLD' && subject.holdReason && (
-        <div className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2">
-          On hold: {subject.holdReason}
-        </div>
-      )}
-
-      {showConvertDialog && (
-        <ConvertToWeddingDialog
-          defaultCity={customerCity}
-          onClose={() => setShowConvertDialog(false)}
-          onConvert={async (input) => {
-            await onConvert(input);
-            setShowConvertDialog(false);
-          }}
-        />
-      )}
+      {nextAction}
     </div>
   );
 }
