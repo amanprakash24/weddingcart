@@ -13,6 +13,7 @@ import VendorInterestPanel from './VendorInterestPanel';
 import Timeline from './Timeline';
 import TaskPanel from './TaskPanel';
 import InsightsPanel from './InsightsPanel';
+import QuotationPanel from './QuotationPanel';
 
 async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = 'POST') {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -117,6 +118,21 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
       </div>
 
       <VendorInterestPanel vendorInterest={workspace.vendorInterest} />
+
+      <QuotationPanel
+        sourceType={sourceType}
+        sourceId={id}
+        readOnly={!!workspace.subject.wedding}
+        prefill={
+          workspace.vendorInterest.length > 0
+            ? workspace.vendorInterest.map((v) => ({
+                description: v.vendorName || v.vendorCategory,
+                category: v.vendorCategory,
+                vendorId: v.vendorId || undefined,
+              }))
+            : workspace.weddingDetails.services.map((service) => ({ description: service, category: service }))
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TaskPanel tasks={workspace.tasks} onAddTask={addTask} onCompleteTask={completeTask} readOnly={!!workspace.subject.wedding} />

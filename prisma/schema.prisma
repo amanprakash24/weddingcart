@@ -133,7 +133,8 @@ model User {
   approvalsGiven            ApprovalRequest[]   @relation("ApprovalApprovedBy")
   timelineMilestonesOwned   TimelineMilestone[]
   documentsUploaded         Document[]
-  quotationsCreated         Quotation[]
+  quotationsCreated         Quotation[]         @relation("QuotationCreatedBy")
+  quotationsAccepted        Quotation[]         @relation("QuotationAcceptedBy")
   aiConversations           AiConversation[]
   notifications             Notification[]
   paymentLinks              PaymentLink[]
@@ -307,6 +308,7 @@ model Vendor {
   availability   VendorAvailability[]
   reviews        Review[]
   paymentDetails VendorPaymentDetails?
+  quotationItems QuotationItem[]
 
   // categoryId+city+status is every public listing query's exact where
   // clause (city/category page, sitemap, /api/vendors search); rating stays
@@ -589,6 +591,11 @@ model Booking {
   // guard) run on every CRM conversion/idempotency check, not just this
   // Booking's own confirm — same "hot lookup column" reasoning as the
   // pipelineStage indexes above.
+  // Set when the Booking was created from an ACCEPTED quotation (08-quotation.md).
+  // Unique → a second Booking for the same quotation fails cleanly at the database.
+  quotationId String?    @unique
+  quotation   Quotation? @relation(fields: [quotationId], references: [id])
+
   @@index([enquiryId])
   @@index([consultationId])
   @@map("bookings")
@@ -648,6 +655,9 @@ model Invoice {
   // load queries this by weddingId, ordered by createdAt; Postgres doesn't
   // auto-index FK columns. Found during this pass — not in the original
   // audit's enumerated list, but the identical gap on the same query path.
+  // The quotation whose advance this invoice was created from (at most one).
+  advanceForQuotation Quotation? @relation("QuotationAdvanceInvoice")
+
   @@index([weddingId, createdAt])
   @@map("invoices")
 }
@@ -854,28 +864,95 @@ enum QuotationStatus {
   ACCEPTED
   REJECTED
   EXPIRED
+  // A newer revision was sent — the old one is kept as history, never edited.
+  SUPERSEDED
 }
 
+// Quotation workflow (docs/wedding-os/08-quotation.md). Money is integer rupees
+// like Invoice; totals are ALWAYS recomputed server-side (lib/quotation/totals.ts) —
+// the API never accepts subtotal/total from a client. Tax is a typed amount, never
+// an auto-percentage (06-finance.md §5); V1 applies no tax to the advance invoice.
+//
+// DB-level guarantees added by hand in the migration (Prisma can't express them):
+//  - CHECK: exactly one of leadId/enquiryId/consultationId is set;
+//  - partial unique index: at most one open (DRAFT/SENT) quotation per source;
+//  - partial unique index: at most one ACCEPTED quotation per source.
 model Quotation {
-  id             String          @id @default(uuid())
-  // Exactly one of these three should be set (application-enforced — a
-  // Quotation belongs to whichever capture entity is being worked, not all three).
-  leadId         String?
-  lead           Lead?           @relation(fields: [leadId], references: [id])
-  enquiryId      String?
-  enquiry        Enquiry?        @relation(fields: [enquiryId], references: [id])
-  consultationId String?
-  consultation   Consultation?   @relation(fields: [consultationId], references: [id])
-  amount         Int
-  validUntil     DateTime?
-  status         QuotationStatus @default(DRAFT)
-  pdfUrl         String?
-  createdById    String?
-  createdBy      User?           @relation(fields: [createdById], references: [id])
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id              String     @id @default(uuid())
+  quotationNumber String     @unique // QTN-YYYYMM-NNNN, same scheme as INV-/WED-
+  revision        Int        @default(1)
+  supersedesId    String?    @unique // the revision this one replaces
+  supersedes      Quotation? @relation("QuotationRevision", fields: [supersedesId], references: [id])
+  supersededBy    Quotation? @relation("QuotationRevision")
 
+  // Exactly one of these three is set (enforced by a DB CHECK constraint).
+  leadId         String?
+  // onDelete: Restrict — a source with quotations cannot be deleted (SET NULL would
+  // violate the exactly-one-source CHECK); the delete guards return a clear message.
+  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: Restrict)
+  enquiryId      String?
+  enquiry        Enquiry?      @relation(fields: [enquiryId], references: [id], onDelete: Restrict)
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+
+  status        QuotationStatus @default(DRAFT)
+  subtotal      Int // Σ unitPrice × quantity (server-computed)
+  discount      Int             @default(0)
+  gstEnabled    Boolean         @default(false) // NOT defaulted on — a compliance question, see 06-finance.md §5
+  gstAmount     Int             @default(0) // typed by staff, like Invoice.gstAmount
+  total         Int // subtotal − discount + gstAmount (server-computed)
+  advanceAmount Int             @default(0) // 0 ≤ advance ≤ total; balance is derived, never stored
+  validUntil    DateTime?
+  terms         String?
+  notes         String? // internal, never shown to the customer
+  pdfUrl        String? // reserved; no PDF generation in V1
+
+  sentAt          DateTime?
+  acceptedAt      DateTime?
+  acceptedById    String?
+  acceptedBy      User?     @relation("QuotationAcceptedBy", fields: [acceptedById], references: [id])
+  acceptedChannel String? // WHATSAPP | PHONE | IN_PERSON | OTHER — recorded by staff (no customer login in V1)
+  acceptedNote    String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  // Idempotency anchor for the automatic advance invoice created inside the
+  // booking/lead → wedding conversion transaction (unique → at most one).
+  advanceInvoiceId String?  @unique
+  advanceInvoice   Invoice? @relation("QuotationAdvanceInvoice", fields: [advanceInvoiceId], references: [id])
+  booking          Booking? // one Booking per quotation (Booking.quotationId is unique)
+
+  items       QuotationItem[]
+  createdById String?
+  createdBy   User?           @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  // Postgres doesn't auto-index FK columns; the source lookups are this panel's
+  // hot path, and (status, validUntil) drives expiry checks.
+  @@index([leadId])
+  @@index([enquiryId])
+  @@index([consultationId])
+  @@index([status, validUntil])
   @@map("quotations")
+}
+
+model QuotationItem {
+  id            String    @id @default(uuid())
+  quotationId   String
+  quotation     Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  sortOrder     Int
+  description   String // e.g. "Grand Ballroom — 500 guests"
+  category      String? // Venue / Catering / Decoration …
+  functionLabel String? // e.g. "Sangeet" — informational until a Wedding exists
+  vendorId      String? // null = custom line; a vendor is assigned after conversion
+  vendor        Vendor?   @relation(fields: [vendorId], references: [id])
+  unitPrice     Int
+  quantity      Int       @default(1)
+
+  @@index([quotationId])
+  @@index([vendorId])
+  @@map("quotation_items")
 }
 
 // docs/wedding-os/02-crm.md "AI insight storage" — a separate, versioned
@@ -1298,6 +1375,12 @@ enum ActivityType {
   APPROVAL_APPROVED
   APPROVAL_CHANGES_REQUESTED
   APPROVAL_CANCELLED
+  // Quotation workflow (08-quotation.md)
+  QUOTATION_SENT
+  QUOTATION_ACCEPTED
+  QUOTATION_REJECTED
+  QUOTATION_REVISED
+  INVOICE_CREATED
 }
 
 model ActivityLog {

@@ -1,3 +1,5 @@
+import { quotationRepository } from '@/repositories/quotation.repository';
+import { quotationDeleteBlock } from '@/lib/quotation/rules';
 import { leadRepository } from '@/repositories/lead.repository';
 import { findWeddingForSource } from '@/services/weddingConversion.service';
 import { ConversionLockedError } from '@/lib/errors';
@@ -25,6 +27,8 @@ export const leadService = {
         `Cannot delete: this lead converted to Wedding ${wedding.weddingNumber}`
       );
     }
+    const blockedByQuotations = quotationDeleteBlock('lead', await quotationRepository.count({ leadId: id }));
+    if (blockedByQuotations) throw blockedByQuotations;
     return leadRepository.delete(id);
   },
 };

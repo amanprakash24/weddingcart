@@ -65,3 +65,33 @@ export interface LeadWorkspace {
   tasks: WorkspaceTask[];
   insights: WorkspaceInsight[];
 }
+
+// Mirrors services/quotation.service.ts's QuotationView, with Dates as ISO strings.
+export interface WorkspaceQuotation {
+  id: string;
+  quotationNumber: string;
+  revision: number;
+  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
+  subtotal: number;
+  discount: number;
+  gstEnabled: boolean;
+  gstAmount: number;
+  total: number;
+  advanceAmount: number;
+  balance: number;
+  validUntil: string | null;
+  terms: string | null;
+  notes: string | null;
+  createdAt: string;
+  items: {
+    id: string;
+    sortOrder: number;
+    description: string;
+    category: string | null;
+    functionLabel: string | null;
+    vendorId: string | null;
+    unitPrice: number;
+    quantity: number;
+    lineTotal: number;
+  }[];
+}
