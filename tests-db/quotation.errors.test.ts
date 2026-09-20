@@ -99,6 +99,14 @@ dbDescribe('quotation duplicate rules speak plainly (real database)', () => {
     expect(explained.message).not.toMatch(/COALESCE|_key/);
   });
 
+  test('a step trace, when given, is appended so an unexpected refusal can be traced', async () => {
+    const c = await fx.consultation();
+    await make(c.id, { status: 'SENT', quotationNumber: `QTN-DBERR-trace-${Date.now()}` });
+    const clash = await failure(make(c.id, { status: 'DRAFT' }));
+    const explained = (await explainSourceConflict(clash, { sourceType: 'CONSULTATION', sourceId: c.id }, ['locked, was SENT @120ms', 'original now SUPERSEDED @380ms'])) as Error;
+    expect(explained.message).toContain('(steps: locked, was SENT @120ms, original now SUPERSEDED @380ms)');
+  });
+
   test('any other error passes through the explainer untouched', async () => {
     const boom = new Error('boom');
     expect(await explainSourceConflict(boom, { sourceType: 'CONSULTATION', sourceId: 'x' })).toBe(boom);
