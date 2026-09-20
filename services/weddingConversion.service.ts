@@ -1,3 +1,4 @@
+import { agreedPriceFor, planVendorlessItem } from '@/lib/booking/unassigned';
 import { prisma } from '@/lib/prisma';
 import { bookingRepository } from '@/repositories/booking.repository';
 import { weddingRepository } from '@/repositories/wedding.repository';
@@ -193,10 +194,13 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
         // but VendorBooking.vendorId is required by design. Skip, log, and
         // flag for manual resolution rather than silently dropping the item
         // or loosening VendorBooking's constraint.
+        // Two different reasons land here (lib/booking/unassigned.ts): a quoted custom line that never
+        // had a vendor, and a legacy vendor that was removed — each gets its own honest wording.
+        const plan = planVendorlessItem(item);
         await activityLogRepository.create(
           {
             type: 'STATUS_CHANGED',
-            summary: `Skipped converting "${item.packageName}" (${item.vendorName}) — vendor no longer exists`,
+            summary: plan.summary,
             wedding: { connect: { id: wedding.id } },
           },
           tx
@@ -204,8 +208,8 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
         await taskRepository.create(
           {
             context: 'WEDDING_TASK',
-            title: `Assign replacement vendor for "${item.packageName}"`,
-            description: `Original vendor "${item.vendorName}" (${item.vendorCategory}) no longer exists. Original price: ${item.price}.`,
+            title: plan.taskTitle,
+            description: plan.taskDescription,
             priority: 'HIGH',
             wedding: { connect: { id: wedding.id } },
             weddingEvent: { connect: { id: weddingEvent.id } },
@@ -219,7 +223,8 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
         {
           weddingEvent: { connect: { id: weddingEvent.id } },
           vendor: { connect: { id: item.vendorId } },
-          agreedPrice: item.price,
+          // unit price × quantity — the vendor's whole share of this line, not one unit of it
+          agreedPrice: agreedPriceFor(item),
           status: 'PENDING_VENDOR_CONFIRMATION',
         },
         tx

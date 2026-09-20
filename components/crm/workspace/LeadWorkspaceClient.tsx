@@ -125,6 +125,12 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
         readOnly={!!workspace.subject.wedding}
         customerName={workspace.customer.name}
         customerPhone={workspace.customer.phone}
+        bookingDefaults={{
+          // Only an exact YYYY-MM-DD is offered; free-text dates are left blank for staff to enter.
+          weddingDate: workspace.weddingDetails.date && /^\d{4}-\d{2}-\d{2}$/.test(workspace.weddingDetails.date) ? workspace.weddingDetails.date : '',
+          guestCount: workspace.weddingDetails.guestCount ? String(workspace.weddingDetails.guestCount) : '',
+          city: workspace.customer.city ?? '',
+        }}
         onChanged={load}
         prefill={
           workspace.vendorInterest.length > 0

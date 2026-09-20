@@ -83,6 +83,8 @@ export interface WorkspaceQuotation {
   validUntil: string | null;
   terms: string | null;
   notes: string | null;
+  // The Booking created from this quotation, if any.
+  booking: { id: string; status: 'NEW' | 'CONTACTED' | 'CONFIRMED' | 'CLOSED' } | null;
   sentAt: string | null;
   acceptedAt: string | null;
   acceptedChannel: string | null;

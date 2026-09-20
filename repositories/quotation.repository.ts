@@ -6,7 +6,11 @@ type Tx = Prisma.TransactionClient;
 
 // Every read includes the line items in their saved order — a quotation is never
 // meaningful without them.
-const withItems = { items: { orderBy: { sortOrder: 'asc' } } } satisfies Prisma.QuotationInclude;
+const withItems = {
+  items: { orderBy: { sortOrder: 'asc' } },
+  // The Booking created from this quotation, if any (Booking.quotationId is unique).
+  booking: { select: { id: true, status: true } },
+} satisfies Prisma.QuotationInclude;
 export type QuotationWithItems = Prisma.QuotationGetPayload<{ include: typeof withItems }>;
 
 export const quotationRepository = {
