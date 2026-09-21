@@ -10,7 +10,7 @@ import { describe, test, expect, mock } from 'bun:test';
 // fully self-contained — no DATABASE_URL/DB connection needed — without
 // having to restructure lifecycle.ts itself.
 mock.module('@/lib/prisma', () => ({ prisma: {} }));
-const { canTransitionVendorBooking, VENDOR_BOOKING_STATUS_TRANSITIONS, canTransitionVenueBooking, VENUE_BOOKING_STATUS_TRANSITIONS } =
+const { canTransitionVendorBooking, VENDOR_BOOKING_STATUS_TRANSITIONS, canTransitionVenueBooking, VENUE_BOOKING_STATUS_TRANSITIONS, canTransitionWedding, WEDDING_STATUS_TRANSITIONS } =
   await import('./lifecycle');
 
 // Exhaustively covers the transition matrix authorized for this
@@ -174,5 +174,49 @@ describe('canTransitionVenueBooking', () => {
   test('a status cannot transition to itself', () => {
     expect(canTransitionVenueBooking('PENDING', 'PENDING')).toBe(false);
     expect(canTransitionVenueBooking('READY', 'READY')).toBe(false);
+  });
+});
+
+// The whole wedding matrix, written out so any accidental broadening shows up as a failing test. The one change in the V1
+// restructuring is PLANNING -> COMPLETED (a wedding no vendor ever confirmed must still be completable); the not-before-the-last-day
+// rule for it is enforced in weddingWorkspaceService.transitionStatus (see weddingWorkspace.service.test.ts).
+describe('canTransitionWedding', () => {
+  test('the full matrix is exactly this', () => {
+    expect(WEDDING_STATUS_TRANSITIONS).toEqual({
+      PLANNING: ['COMPLETED', 'POSTPONED', 'CANCELLED'],
+      ACTIVE: ['COMPLETED', 'POSTPONED', 'CANCELLED'],
+      POSTPONED: ['PLANNING', 'ACTIVE'],
+      COMPLETED: [],
+      CANCELLED: [],
+    });
+  });
+
+  test('PLANNING -> COMPLETED is allowed (vendorless / venue-only weddings)', () => {
+    expect(canTransitionWedding('PLANNING', 'COMPLETED')).toBe(true);
+  });
+
+  test('existing ACTIVE transitions are unchanged', () => {
+    expect(canTransitionWedding('ACTIVE', 'COMPLETED')).toBe(true);
+    expect(canTransitionWedding('ACTIVE', 'POSTPONED')).toBe(true);
+    expect(canTransitionWedding('ACTIVE', 'CANCELLED')).toBe(true);
+    expect(canTransitionWedding('ACTIVE', 'PLANNING')).toBe(false);
+  });
+
+  test('PLANNING -> ACTIVE is still not a manual move (it only ever happens automatically)', () => {
+    expect(canTransitionWedding('PLANNING', 'ACTIVE')).toBe(false);
+  });
+
+  test('POSTPONED still resumes only to PLANNING or ACTIVE — it cannot jump straight to COMPLETED', () => {
+    expect(canTransitionWedding('POSTPONED', 'PLANNING')).toBe(true);
+    expect(canTransitionWedding('POSTPONED', 'ACTIVE')).toBe(true);
+    expect(canTransitionWedding('POSTPONED', 'COMPLETED')).toBe(false);
+    expect(canTransitionWedding('POSTPONED', 'CANCELLED')).toBe(false);
+  });
+
+  test('COMPLETED and CANCELLED remain terminal', () => {
+    for (const to of ['PLANNING', 'ACTIVE', 'POSTPONED', 'COMPLETED', 'CANCELLED'] as const) {
+      expect(canTransitionWedding('COMPLETED', to)).toBe(false);
+      expect(canTransitionWedding('CANCELLED', to)).toBe(false);
+    }
   });
 });

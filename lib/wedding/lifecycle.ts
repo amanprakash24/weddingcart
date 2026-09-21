@@ -14,8 +14,14 @@ type Tx = Prisma.TransactionClient;
 // than tracking a single "paused from" state — same precedent as ON_HOLD in
 // lib/crm/pipeline.ts, since postponement is about the date/plans slipping,
 // not about undoing whatever vendor-confirmation progress already happened.
+//
+// PLANNING -> COMPLETED: a wedding must be completable without any vendor ever
+// confirming (a venue-only or vendorless wedding never reaches ACTIVE, because
+// ACTIVE only means "first vendor confirmed"). This matrix only says the move
+// exists; the "not before the wedding's last day" rule for it lives in
+// weddingWorkspaceService.transitionStatus.
 export const WEDDING_STATUS_TRANSITIONS: Record<WeddingStatus, WeddingStatus[]> = {
-  PLANNING: ['POSTPONED', 'CANCELLED'],
+  PLANNING: ['COMPLETED', 'POSTPONED', 'CANCELLED'],
   ACTIVE: ['COMPLETED', 'POSTPONED', 'CANCELLED'],
   POSTPONED: ['PLANNING', 'ACTIVE'],
   COMPLETED: [],

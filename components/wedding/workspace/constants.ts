@@ -19,6 +19,9 @@ export const STATUS_COLORS: Record<WeddingStatus, string> = {
 // Mirrors lib/wedding/lifecycle.ts's WEDDING_STATUS_TRANSITIONS — PLANNING is
 // intentionally absent as a target anywhere except from POSTPONED, since
 // PLANNING->ACTIVE only ever happens automatically (domain-model.md §5.2).
+// Deliberately NOT mirrored yet: the server also accepts PLANNING->COMPLETED once the wedding's last day has arrived (V1 model,
+// docs/wedding-os/09-wedding-v1-model.md). It is not offered in this dropdown because it would be refused for most weddings; the
+// Header/Overview step replaces this dropdown and offers it only when the stage allows it.
 export const WEDDING_STATUS_TRANSITIONS: Record<WeddingStatus, WeddingStatus[]> = {
   PLANNING: ['POSTPONED', 'CANCELLED'],
   ACTIVE: ['COMPLETED', 'POSTPONED', 'CANCELLED'],

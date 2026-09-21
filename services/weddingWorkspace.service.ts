@@ -13,6 +13,7 @@ import { documentRepository } from '@/repositories/document.repository';
 import { invoiceRepository } from '@/repositories/invoice.repository';
 import { payoutRepository } from '@/repositories/payout.repository';
 import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
+import { computeWeddingStage } from '@/lib/wedding/stage';
 import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
 import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
 import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus, type PayoutStatus } from '@/generated/prisma/enums';
@@ -623,6 +624,17 @@ export const weddingWorkspaceService = {
     const wedding = await findWeddingOrThrow(weddingId);
     if (!canTransitionWedding(wedding.status, toStatus)) {
       throw new InvalidTransitionError(`Cannot move Wedding from ${wedding.status} to ${toStatus}`);
+    }
+
+    // Completing straight from PLANNING (a wedding no vendor ever confirmed) is allowed only once the wedding has happened —
+    // its last function day has arrived. Nothing else is checked: vendors, open tasks and unpaid money never block it.
+    // ACTIVE -> COMPLETED keeps its existing behaviour, untouched.
+    if (toStatus === 'COMPLETED' && wedding.status === 'PLANNING') {
+      const { data: functions } = await weddingEventRepository.findMany({ where: { weddingId }, orderBy: { date: 'asc' } });
+      const stage = computeWeddingStage({ status: wedding.status, primaryDate: wedding.primaryDate, functionDates: functions.map((f) => f.date) });
+      if (!stage.canComplete) {
+        throw new InvalidTransitionError('This wedding cannot be completed yet — it can be completed once its last day has arrived.');
+      }
     }
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
