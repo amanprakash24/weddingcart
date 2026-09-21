@@ -3,7 +3,7 @@
 
 export type PipelineStage =
   | 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'SITE_VISIT_SCHEDULED'
-  | 'QUOTATION_SENT' | 'NEGOTIATION' | 'WON' | 'LOST' | 'ON_HOLD';
+  | 'QUOTATION_SENT' | 'NEGOTIATION' | 'ACCEPTED' | 'WON' | 'LOST' | 'ON_HOLD';
 
 export type SourceType = 'LEAD' | 'ENQUIRY' | 'CONSULTATION';
 
@@ -41,12 +41,12 @@ export interface LeadFiltersState {
 }
 
 export const PIPELINE_STAGES: PipelineStage[] = [
-  'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'WON', 'LOST', 'ON_HOLD',
+  'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'ACCEPTED', 'WON', 'LOST', 'ON_HOLD',
 ];
 
 // Display labels only — the underlying PipelineStage enum values are stable
 // (Sprint 5.3 decision: keep the reviewed enum, relabel in the UI instead of
-// renaming the schema). WON displays as "Booked".
+// renaming the schema). ACCEPTED displays as "Accepted — booking pending", WON as "Booked".
 export const STAGE_LABELS: Record<PipelineStage, string> = {
   NEW: 'New',
   CONTACTED: 'Contacted',
@@ -54,6 +54,7 @@ export const STAGE_LABELS: Record<PipelineStage, string> = {
   SITE_VISIT_SCHEDULED: 'Site Visit Scheduled',
   QUOTATION_SENT: 'Quotation Sent',
   NEGOTIATION: 'Negotiation',
+  ACCEPTED: 'Accepted — booking pending',
   WON: 'Booked',
   LOST: 'Lost',
   ON_HOLD: 'On Hold',
@@ -66,6 +67,7 @@ export const STAGE_COLORS: Record<PipelineStage, string> = {
   SITE_VISIT_SCHEDULED: 'bg-cyan-100 text-cyan-700',
   QUOTATION_SENT: 'bg-orange-100 text-orange-700',
   NEGOTIATION: 'bg-pink-100 text-pink-700',
+  ACCEPTED: 'bg-teal-100 text-teal-700',
   WON: 'bg-emerald-100 text-emerald-700',
   LOST: 'bg-gray-200 text-gray-600',
   ON_HOLD: 'bg-slate-200 text-slate-600',

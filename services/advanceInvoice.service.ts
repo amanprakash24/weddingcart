@@ -23,10 +23,12 @@ export async function ensureAdvanceInvoice(
     wedding: { id: string; primaryDate: Date; weddingType: string | null; customerId: string | null };
     quotation: QuotationWithItems | null;
     client: AdvanceInvoiceClient;
+    // The booking this wedding came from (booking path); null on the CRM path, which has no Booking.
+    bookingId?: string | null;
     actorId: string | null;
   }
 ): Promise<{ invoiceId: string; invoiceNumber: string } | null> {
-  const { wedding, quotation, client, actorId } = input;
+  const { wedding, quotation, client, actorId, bookingId } = input;
   if (decideAdvanceInvoice(quotation).action !== 'CREATE' || !quotation) return null;
 
   const plan = planAdvanceInvoice({ quotation, wedding, client });
@@ -35,6 +37,10 @@ export async function ensureAdvanceInvoice(
       invoiceNumber: await generateInvoiceNumber(tx),
       ...plan.invoice,
       status: 'DRAFT',
+      // The invoice belongs to the accepted agreement it came from: its quotation and, on the booking path, its booking.
+      kind: 'ADVANCE',
+      quotation: { connect: { id: quotation.id } },
+      booking: bookingId ? { connect: { id: bookingId } } : undefined,
       customerId: wedding.customerId ?? undefined,
       wedding: { connect: { id: wedding.id } },
       items: { create: plan.items },

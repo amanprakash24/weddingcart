@@ -49,6 +49,8 @@ export interface VendorCreateData {
   priceMax: number;
   guestCapacity?: number;
   venueType?: string;
+  // The vendor's default Terms & Conditions — copied into a quotation at creation, never referenced live.
+  defaultTerms?: string;
   image: string;
   images?: string[];
   virtualTourVideo?: string;
@@ -147,6 +149,7 @@ export const vendorService = {
       priceMax: data.priceMax,
       guestCapacity: data.guestCapacity,
       venueType: data.venueType,
+      defaultTerms: data.defaultTerms,
       image: data.image,
       images: data.images ?? [],
       virtualTourVideo: data.virtualTourVideo,

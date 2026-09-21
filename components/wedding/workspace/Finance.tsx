@@ -1,15 +1,116 @@
 'use client';
 
 import { useState } from 'react';
-import type { WorkspaceFinance, WorkspaceInvoice, CreateInvoiceInput } from './types';
+import type { WorkspaceFinance, WorkspaceInvoice, CreateInvoiceInput, ManualPaymentMethod } from './types';
 import {
   INVOICE_STATUS_LABELS,
   INVOICE_STATUS_COLORS,
+  INVOICE_KIND_LABELS,
+  MANUAL_PAYMENT_LABELS,
   PAYMENT_LINK_STATUS_LABELS,
   PAYMENT_LINK_STATUS_COLORS,
 } from './constants';
 
 const money = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+
+type RecordPayment = (invoiceId: string, input: { amount: number; method: ManualPaymentMethod; reference?: string }) => Promise<void>;
+
+// What was agreed with the customer: the accepted quotation the wedding was booked on. Read-only, because the accepted terms never
+// change; this is where an operator checks what the invoices should add up to.
+function AgreementBlock({ agreement, onCreateBalance }: { agreement: NonNullable<WorkspaceFinance['agreement']>; onCreateBalance: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const create = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onCreateBalance();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not create the balance invoice');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50/60 p-3" aria-label="Agreed with the customer">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs font-semibold text-gray-900">
+          Agreed with the customer · Quotation {agreement.quotationNumber}
+          {agreement.revision > 1 ? <span className="font-normal text-gray-500"> (revision {agreement.revision})</span> : null}
+        </div>
+        {agreement.acceptedAt && <div className="text-[11px] text-gray-500">Accepted {new Date(agreement.acceptedAt).toLocaleDateString('en-IN')}</div>}
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg bg-white p-2"><div className="text-[10px] uppercase text-gray-400">Total</div><div className="text-sm font-semibold text-gray-900">{money(agreement.total)}</div></div>
+        <div className="rounded-lg bg-white p-2"><div className="text-[10px] uppercase text-gray-400">Advance</div><div className="text-sm font-semibold text-gray-900">{money(agreement.advance)}</div></div>
+        <div className="rounded-lg bg-white p-2"><div className="text-[10px] uppercase text-gray-400">Balance</div><div className="text-sm font-semibold text-gray-900">{money(agreement.balance)}</div></div>
+      </div>
+      <details className="mt-2 text-xs text-gray-600">
+        <summary className="cursor-pointer font-medium">What was agreed ({agreement.lines.length} {agreement.lines.length === 1 ? 'line' : 'lines'})</summary>
+        <ul className="mt-1.5 grid gap-1">
+          {agreement.lines.map((l, i) => (
+            <li key={i} className="flex justify-between gap-2">
+              <span>{l.description}{l.quantity > 1 ? ` × ${l.quantity} at ${money(l.unitPrice)}` : ''}</span>
+              <span className="tabular-nums">{money(l.unitPrice * l.quantity)}</span>
+            </li>
+          ))}
+          {agreement.discount > 0 && <li className="flex justify-between gap-2"><span>Discount</span><span className="tabular-nums">−{money(agreement.discount)}</span></li>}
+          {agreement.gstAmount > 0 && <li className="flex justify-between gap-2"><span>Tax</span><span className="tabular-nums">{money(agreement.gstAmount)}</span></li>}
+        </ul>
+      </details>
+      {agreement.terms && (
+        <details className="mt-1.5 text-xs text-gray-600">
+          <summary className="cursor-pointer font-medium">Terms &amp; conditions accepted</summary>
+          <p className="mt-1.5 whitespace-pre-line">{agreement.terms}</p>
+        </details>
+      )}
+      {!agreement.hasBalanceInvoice && agreement.balance > 0 && (
+        <div className="mt-2">
+          <button disabled={busy} onClick={create} className="text-xs text-emerald-600 hover:underline disabled:opacity-40">
+            {busy ? 'Creating…' : `+ Create balance invoice (${money(agreement.balance)})`}
+          </button>
+          {error && <p role="alert" className="mt-1 text-xs text-red-500">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Money received outside Razorpay: cash, UPI, bank transfer, cheque.
+function RecordPaymentForm({ invoice, onRecord, onDone }: { invoice: WorkspaceInvoice; onRecord: RecordPayment; onDone: () => void }) {
+  const [amount, setAmount] = useState(String(invoice.outstanding));
+  const [method, setMethod] = useState<ManualPaymentMethod>('CASH');
+  const [reference, setReference] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onRecord(invoice.id, { amount: Number(amount), method, reference: reference.trim() || undefined });
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not record the payment');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const field = 'rounded-lg border border-gray-200 px-2 py-1 text-xs';
+  return (
+    <div className="mt-2 rounded-lg border border-gray-100 bg-gray-50 p-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <input aria-label="Amount received" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className={`${field} w-24`} />
+        <select aria-label="How it was received" value={method} onChange={(e) => setMethod(e.target.value as ManualPaymentMethod)} className={field}>
+          {(Object.keys(MANUAL_PAYMENT_LABELS) as ManualPaymentMethod[]).map((m) => <option key={m} value={m}>{MANUAL_PAYMENT_LABELS[m]}</option>)}
+        </select>
+        <input aria-label="Reference (optional)" placeholder="Reference (optional)" value={reference} onChange={(e) => setReference(e.target.value)} className={`${field} w-40`} />
+        <button disabled={busy} onClick={submit} className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save payment'}</button>
+        <button onClick={onDone} className="text-xs text-gray-400 hover:underline">Cancel</button>
+      </div>
+      {error && <p role="alert" className="mt-1 text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
 
 function BudgetBlock({ budget }: { budget: WorkspaceFinance['budget'] }) {
   return (
@@ -38,15 +139,33 @@ function InvoiceCard({
   weddingId,
   invoice,
   onGeneratePaymentLink,
+  onIssueInvoice,
+  onRecordPayment,
 }: {
   weddingId: string;
   invoice: WorkspaceInvoice;
   onGeneratePaymentLink: (invoiceId: string) => Promise<void>;
+  onIssueInvoice: (invoiceId: string) => Promise<void>;
+  onRecordPayment: RecordPayment;
 }) {
+  const [issuing, setIssuing] = useState(false);
+  const [recording, setRecording] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
 
   const hasActiveLink = invoice.paymentLinks.some((l) => l.status === 'CREATED');
+
+  const issue = async () => {
+    setIssuing(true);
+    setGenError(null);
+    try {
+      await onIssueInvoice(invoice.id);
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Could not issue the invoice');
+    } finally {
+      setIssuing(false);
+    }
+  };
 
   const generate = async () => {
     setGenerating(true);
@@ -65,6 +184,7 @@ function InvoiceCard({
       <div className="flex items-center justify-between mb-1">
         <div>
           <span className="font-medium text-gray-900 text-sm">{invoice.invoiceNumber}</span>
+          {invoice.kind !== 'OTHER' && <span className="ml-2 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{INVOICE_KIND_LABELS[invoice.kind]}</span>}
           <span className="text-gray-400 text-xs ml-2">{invoice.clientName}</span>
         </div>
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${INVOICE_STATUS_COLORS[invoice.status]}`}>
@@ -128,11 +248,22 @@ function InvoiceCard({
       )}
 
       {genError && <p className="text-xs text-red-500 mb-1">{genError}</p>}
-      {invoice.outstanding > 0 && !hasActiveLink && (
-        <button disabled={generating} onClick={generate} className="text-xs text-emerald-600 hover:underline disabled:opacity-40">
-          {generating ? 'Generating…' : '+ Generate Payment Link'}
-        </button>
-      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {invoice.status === 'DRAFT' && (
+          <button disabled={issuing} onClick={issue} className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-40">
+            {issuing ? 'Issuing…' : 'Mark as issued'}
+          </button>
+        )}
+        {invoice.outstanding > 0 && !hasActiveLink && (
+          <button disabled={generating} onClick={generate} className="text-xs text-emerald-600 hover:underline disabled:opacity-40">
+            {generating ? 'Generating…' : '+ Generate Payment Link'}
+          </button>
+        )}
+        {invoice.outstanding > 0 && !recording && (
+          <button onClick={() => setRecording(true)} className="text-xs text-emerald-600 hover:underline">+ Record payment</button>
+        )}
+      </div>
+      {recording && <RecordPaymentForm invoice={invoice} onRecord={onRecordPayment} onDone={() => setRecording(false)} />}
     </li>
   );
 }
@@ -302,17 +433,24 @@ export default function Finance({
   finance,
   onCreateInvoice,
   onGeneratePaymentLink,
+  onIssueInvoice,
+  onCreateBalanceInvoice,
+  onRecordPayment,
 }: {
   weddingId: string;
   finance: WorkspaceFinance;
   onCreateInvoice: (input: CreateInvoiceInput) => Promise<void>;
   onGeneratePaymentLink: (invoiceId: string) => Promise<void>;
+  onIssueInvoice: (invoiceId: string) => Promise<void>;
+  onCreateBalanceInvoice: () => Promise<void>;
+  onRecordPayment: RecordPayment;
 }) {
   const [creating, setCreating] = useState(false);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 className="text-sm font-semibold text-gray-900 mb-3">Finance</h2>
+      {finance.agreement && <AgreementBlock agreement={finance.agreement} onCreateBalance={onCreateBalanceInvoice} />}
       <BudgetBlock budget={finance.budget} />
 
       {finance.invoices.length === 0 ? (
@@ -320,7 +458,7 @@ export default function Finance({
       ) : (
         <ul className="space-y-2 mb-2">
           {finance.invoices.map((invoice) => (
-            <InvoiceCard key={invoice.id} weddingId={weddingId} invoice={invoice} onGeneratePaymentLink={onGeneratePaymentLink} />
+            <InvoiceCard key={invoice.id} weddingId={weddingId} invoice={invoice} onGeneratePaymentLink={onGeneratePaymentLink} onIssueInvoice={onIssueInvoice} onRecordPayment={onRecordPayment} />
           ))}
         </ul>
       )}

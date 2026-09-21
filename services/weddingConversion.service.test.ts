@@ -10,6 +10,15 @@ import { describe, test, expect, mock } from 'bun:test';
 // Enquiry/Consultation (enquiryId/consultationId set) that already
 // converted via the separate CRM pipeline must not spawn a second Wedding.
 // This file does not modify weddingConversion.service.ts.
+// The lead's stage follows the booking (services/leadStage.service.ts): a stand-in for the lead / enquiry / consultation tables
+// that starts at ACCEPTED and records what the conversion writes.
+function stageDelegate(stage = 'ACCEPTED') {
+  return {
+    findUnique: mock(async () => ({ pipelineStage: stage })),
+    update: mock(async (args: { data: Record<string, unknown> }) => ({ ...args.data })),
+  };
+}
+
 function fakeBooking(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: 'booking-1',
@@ -123,6 +132,9 @@ function makePrismaMock({
     vendorBooking: { create: vendorBookingCreateMock },
     task: { create: taskCreateMock },
     activityLog: { create: activityLogCreateMock },
+    lead: stageDelegate(),
+    enquiry: stageDelegate(),
+    consultation: stageDelegate(),
     $executeRaw: executeRawMock,
   };
   const prismaMock = {
@@ -131,6 +143,7 @@ function makePrismaMock({
   };
   return {
     prismaMock,
+    stageTables: { enquiry: base.enquiry, consultation: base.consultation },
     weddingCreateMock,
     weddingEventCreateMock,
     vendorBookingCreateMock,
@@ -243,6 +256,29 @@ describe('convertBookingToWedding — duplicate-Wedding cross-path guard (produc
 
     expect((wedding as { sourceBookingId: string }).sourceBookingId).toBe('booking-1');
     expect(weddingCreateMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('the enquiry the booking came from reads Booked once the wedding exists — same transaction, and logged on its timeline', async () => {
+    const booking = fakeBooking({ enquiryId: 'enquiry-1' });
+    const { prismaMock, stageTables, activityLogCreateMock } = makePrismaMock({ booking, weddings: {} });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+
+    await convertBookingToWedding('booking-1');
+
+    expect(stageTables.enquiry.update).toHaveBeenCalledTimes(1);
+    expect(stageTables.enquiry.update.mock.calls[0][0].data.pipelineStage).toBe('WON');
+    expect(stageTables.consultation.update).not.toHaveBeenCalled();
+    const logged = activityLogCreateMock.mock.calls.map((c) => c[0].data.summary as string);
+    expect(logged).toContain('Stage changed: Accepted — booking pending → Booked');
+  });
+
+  test('a standalone booking (no enquiry/consultation) touches no lead stage', async () => {
+    const booking = fakeBooking();
+    const { prismaMock, stageTables } = makePrismaMock({ booking, weddings: {} });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+    await convertBookingToWedding('booking-1');
+    expect(stageTables.enquiry.update).not.toHaveBeenCalled();
+    expect(stageTables.consultation.update).not.toHaveBeenCalled();
   });
 
   test('a booking linked to an Enquiry that already converted via the CRM pipeline throws ConversionLockedError, not creating a second Wedding', async () => {
@@ -466,6 +502,9 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
       quotation: { findFirst: mock(async () => acceptedQuotation), update: quotationUpdateMock },
       weddingEvent: { create: mock(async () => ({ id: 'we-1' })) },
       activityLog: { create: mock(async () => ({ id: 'log-1' })) },
+      lead: stageDelegate(),
+      enquiry: stageDelegate(),
+      consultation: stageDelegate(),
       timelineMilestone: { createMany: mock(async () => ({ count: 0 })) },
       task: { create: mock(async () => ({ id: 'task-1' })) },
       $executeRaw: executeRawMock,

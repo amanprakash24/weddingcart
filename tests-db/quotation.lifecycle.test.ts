@@ -24,27 +24,24 @@ dbDescribe('quotation lifecycle (real database)', () => {
   const setStage = (id: string, pipelineStage: 'NEW' | 'SITE_VISIT_SCHEDULED' | 'QUOTATION_SENT') =>
     app.prisma.consultation.update({ where: { id }, data: { pipelineStage } });
 
-  test('QUOTATION_SENT → WON is REFUSED by the server without an accepted quotation, and the stage does not change', async () => {
+  test('Booked (WON) and Accepted can never be set by hand — with or without an accepted quotation — and the stage does not change', async () => {
     const c = await fx.consultation();
     await fx.sentQuote(c.id); // sent, but the customer has not accepted
     await setStage(c.id, 'QUOTATION_SENT');
-
-    const workspace = await app.leadWorkspaceService.getWorkspace('CONSULTATION', c.id);
-    expect(workspace.subject.hasAcceptedQuotation).toBe(false);
-
-    const error = await errorOf(app.leadWorkspaceService.transitionStage('CONSULTATION', c.id, { toStage: 'WON', actorId: null }));
-    expect(error?.name).toBe('InvalidTransitionError');
-    expect(error?.message).toContain('acceptance');
+    for (const toStage of ['WON', 'ACCEPTED'] as const) {
+      const error = await errorOf(app.leadWorkspaceService.transitionStage('CONSULTATION', c.id, { toStage, actorId: null }));
+      expect(error?.name).toBe('InvalidTransitionError');
+      expect(error?.message).toContain('automatically');
+    }
     expect((await app.prisma.consultation.findUniqueOrThrow({ where: { id: c.id } })).pipelineStage).toBe('QUOTATION_SENT');
   });
 
-  test('…and ALLOWED once the customer\'s acceptance is recorded; the old route via Negotiation still works', async () => {
+  test('recording the acceptance moves the lead to Accepted by itself; the manual route to Negotiation still works', async () => {
     const accepted = await fx.consultation();
     await fx.acceptedQuote(accepted.id);
-    await setStage(accepted.id, 'QUOTATION_SENT');
-    expect((await app.leadWorkspaceService.getWorkspace('CONSULTATION', accepted.id)).subject.hasAcceptedQuotation).toBe(true);
-    const won = await app.leadWorkspaceService.transitionStage('CONSULTATION', accepted.id, { toStage: 'WON', actorId: null });
-    expect(won.pipelineStage).toBe('WON');
+    expect((await app.prisma.consultation.findUniqueOrThrow({ where: { id: accepted.id } })).pipelineStage).toBe('ACCEPTED');
+    const refused = await errorOf(app.leadWorkspaceService.transitionStage('CONSULTATION', accepted.id, { toStage: 'WON', actorId: null }));
+    expect(refused?.name).toBe('InvalidTransitionError');
 
     const viaNegotiation = await fx.consultation();
     await setStage(viaNegotiation.id, 'QUOTATION_SENT');
@@ -52,7 +49,7 @@ dbDescribe('quotation lifecycle (real database)', () => {
     expect(moved.pipelineStage).toBe('NEGOTIATION');
   });
 
-  test('sending from Site Visit Scheduled moves the lead to Quotation Sent; from New it still sends and reports it did not move', async () => {
+  test('sending a quotation moves the lead to Quotation Sent from any early stage — including New', async () => {
     const ready = await fx.consultation();
     await setStage(ready.id, 'SITE_VISIT_SCHEDULED');
     const draft = await app.quotationService.create('CONSULTATION', ready.id, { items: [fx.line('Venue', 100000)], validUntil: inDays(5) }, null);
@@ -60,11 +57,12 @@ dbDescribe('quotation lifecycle (real database)', () => {
     expect(sent.stageAdvanced).toBe(true);
     expect((await app.prisma.consultation.findUniqueOrThrow({ where: { id: ready.id } })).pipelineStage).toBe('QUOTATION_SENT');
 
-    const early = await fx.consultation(); // stage NEW: the state machine does not allow NEW → QUOTATION_SENT
+    const early = await fx.consultation(); // stage NEW: sending now catches the stage up
     const earlyDraft = await app.quotationService.create('CONSULTATION', early.id, { items: [fx.line('Venue', 100000)], validUntil: inDays(5) }, null);
     const earlySent = await app.quotationService.send(earlyDraft.id, null);
     expect(earlySent.quotation.status).toBe('SENT');
-    expect(earlySent.stageAdvanced).toBe(false);
+    expect(earlySent.stageAdvanced).toBe(true);
+    expect((await app.prisma.consultation.findUniqueOrThrow({ where: { id: early.id } })).pipelineStage).toBe('QUOTATION_SENT');
   });
 
   test('a SENT quote past its date shows as EXPIRED, cannot be accepted, and frees the source for a new quote', async () => {

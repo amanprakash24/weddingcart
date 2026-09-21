@@ -6,6 +6,7 @@ import { bookingChip, quotationChip, type JourneyState } from '@/lib/crm/leadJou
 import { StatusChip } from './JourneyParts';
 import { errorMessage, type QuotationsApi } from './useQuotations';
 import type { WorkspaceQuotation } from './types';
+import QuotationHistory from './QuotationHistory';
 
 // The quotation card (docs/wedding-os/08-quotation.md). It shows the CURRENT quotation like a document you could hand to
 // a customer — services, quantity × price, total, advance, balance, validity — with the quotation's status and the
@@ -202,7 +203,6 @@ const QuotationPanel = forwardRef<
   const inputClass =
     'w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-colors';
   const busy = current ? busyId === current.id : false;
-  const earlier = (quotations ?? []).filter((q) => q.id !== current?.id);
   const acceptedWhen = current?.acceptedAt ? formatQuoteDate(current.acceptedAt) : null;
   const acceptedVia = current?.acceptedChannel ? CHANNEL_LABEL[current.acceptedChannel] ?? current.acceptedChannel : null;
 
@@ -331,19 +331,7 @@ const QuotationPanel = forwardRef<
             )}
           </div>
 
-          {earlier.length > 0 && (
-            <details className="border-t border-gray-100 px-5 py-3 text-sm">
-              <summary className="cursor-pointer font-medium text-gray-600">Earlier versions ({earlier.length})</summary>
-              <ul className="mt-2 grid gap-1.5 text-xs text-gray-600">
-                {earlier.map((q) => (
-                  <li key={q.id} className="flex flex-wrap justify-between gap-2">
-                    <span>{q.quotationNumber}{q.revision > 1 ? ` · revision ${q.revision}` : ''} — {STATUS_LABEL[q.status]}</span>
-                    <span className="tabular-nums">{rupees(q.total)}</span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
+          <QuotationHistory quotations={quotations ?? []} currentId={current.id} />
         </>
       )}
 

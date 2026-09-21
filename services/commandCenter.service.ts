@@ -137,6 +137,7 @@ export const commandCenterService = {
         countPipeline('QUALIFIED'),
         countPipeline('QUOTATION_SENT'),
         countPipeline('NEGOTIATION'),
+        countPipeline('ACCEPTED'),
         countPipeline('WON'),
       ]),
       prisma.task.count({ where: { ...openTaskWhere, dueAt: { lt: now } } }),
@@ -184,7 +185,8 @@ export const commandCenterService = {
       { label: 'Consultation', stages: ['QUALIFIED'] as PipelineStage[], count: pipelineCounts[1] },
       { label: 'Proposal', stages: ['QUOTATION_SENT'] as PipelineStage[], count: pipelineCounts[2] },
       { label: 'Negotiation', stages: ['NEGOTIATION'] as PipelineStage[], count: pipelineCounts[3] },
-      { label: 'Confirmed booking', stages: ['WON'] as PipelineStage[], count: pipelineCounts[4] },
+      { label: 'Accepted — booking pending', stages: ['ACCEPTED'] as PipelineStage[], count: pipelineCounts[4] },
+      { label: 'Confirmed booking', stages: ['WON'] as PipelineStage[], count: pipelineCounts[5] },
     ];
 
     const events = upcomingEvents.map((event) => {

@@ -107,6 +107,18 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     await postJson(`${basePath}/invoices/${invoiceId}/payment-link`, {});
     load();
   };
+  const issueInvoice = async (invoiceId: string) => {
+    await postJson(`${basePath}/invoices/${invoiceId}/issue`, {});
+    load();
+  };
+  const createBalanceInvoice = async () => {
+    await postJson(`${basePath}/invoices/balance`, {});
+    load();
+  };
+  const recordPayment = async (invoiceId: string, input: { amount: number; method: string; reference?: string }) => {
+    await postJson(`${basePath}/invoices/${invoiceId}/payments`, input);
+    load();
+  };
   const updateMilestoneStatus = async (milestoneId: string, status: MilestoneStatus) => {
     await postJson(`${basePath}/milestones/${milestoneId}`, { status }, 'PATCH');
     load();
@@ -156,7 +168,7 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
 
       <section id="guests" className="scroll-mt-16"><GuestRsvp weddingId={id} events={workspace.events} initialGuests={workspace.guests} /></section>
 
-      <section id="finance" className="scroll-mt-16"><Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} /></section>
+      <section id="finance" className="scroll-mt-16"><Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} /></section>
 
       <section id="timeline" className="scroll-mt-16"><TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} /></section>
 

@@ -128,7 +128,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
 
   const { subject, customer, weddingDetails } = workspace;
   const customerName = customer.name ?? customer.phone;
-  const state = deriveJourney({ pipelineStage: subject.pipelineStage, hasWedding: !!subject.wedding, quotation: current });
+  const state = deriveJourney({ pipelineStage: subject.pipelineStage, hasWedding: !!subject.wedding, quotation: current, sourceType: subject.sourceType });
   const eventDate = eventDateWords(weddingDetails.date);
   const sentOn = current?.sentAt ? formatQuoteDate(current.sentAt) : null;
   const acceptedOn = current?.acceptedAt ? formatQuoteDate(current.acceptedAt) : null;

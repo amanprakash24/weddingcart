@@ -47,13 +47,16 @@ export interface JourneyInput {
   pipelineStage: PipelineStage;
   hasWedding: boolean;
   quotation: JourneyQuotation | null;
+  // A Lead has no Booking — once it has accepted, the next step is creating its wedding. (Enquiries and consultations book.)
+  sourceType?: 'LEAD' | 'ENQUIRY' | 'CONSULTATION';
 }
 
-export function deriveJourney({ pipelineStage, hasWedding, quotation }: JourneyInput): JourneyState {
+export function deriveJourney({ pipelineStage, hasWedding, quotation, sourceType }: JourneyInput): JourneyState {
   if (hasWedding) return 'BOOKING_CONFIRMED';
   if (pipelineStage === 'LOST') return 'NOT_PROCEEDING';
   if (quotation?.booking?.status === 'CLOSED') return 'NOT_PROCEEDING';
   if (pipelineStage === 'WON') return 'READY_TO_CONVERT';
+  if (sourceType === 'LEAD' && pipelineStage === 'ACCEPTED') return 'READY_TO_CONVERT';
   if (!quotation) return 'NO_QUOTE';
   switch (quotation.status) {
     case 'DRAFT':
@@ -192,7 +195,7 @@ export function nextAction(state: JourneyState, c: NextActionContext): NextActio
     case 'BOOKING_CONFIRMED':
       return { id: 'manage-wedding', title: 'Continue in the wedding', why: `${c.weddingNumber ?? 'The wedding'} is set up. Vendors, tasks and payments are managed there.`, label: 'Manage wedding', quiet: true, secondary: [] };
     case 'READY_TO_CONVERT':
-      return { id: 'create-wedding', title: 'Create the wedding workspace', why: 'This lead is Booked. Create its wedding workspace to continue.', label: 'Create wedding workspace', quiet: false, secondary: [] };
+      return { id: 'create-wedding', title: 'Create the wedding workspace', why: 'The customer has accepted. Create the wedding workspace to continue.', label: 'Create wedding workspace', quiet: false, secondary: [] };
     default:
       return { id: 'view-reason', title: 'This deal is closed', why: c.closedReason ?? 'Marked as not proceeding.', label: 'View reason', quiet: true, secondary: [] };
   }

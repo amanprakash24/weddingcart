@@ -1,5 +1,6 @@
 import { ensureAdvanceInvoice } from '@/services/advanceInvoice.service';
 import { quotationRepository } from '@/repositories/quotation.repository';
+import { applyCommercialEvent } from '@/services/leadStage.service';
 import { subjectWhere } from '@/lib/crm/subject';
 import { generateWeddingNumber } from '@/services/documentNumber.service';
 import { agreedPriceFor, planVendorlessItem } from '@/lib/booking/unassigned';
@@ -272,9 +273,14 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
         wedding,
         quotation: await quotationRepository.findById(booking.quotationId, tx),
         client: { name: booking.name, phone: booking.phone, city: booking.city },
+        bookingId: booking.id,
         actorId: null,
       });
     }
+
+    // The lead this booking came from now reads "Booked" — inside the same transaction as the wedding.
+    if (booking.enquiryId) await applyCommercialEvent(tx, 'ENQUIRY', booking.enquiryId, 'BOOKING_CONFIRMED', null);
+    if (booking.consultationId) await applyCommercialEvent(tx, 'CONSULTATION', booking.consultationId, 'BOOKING_CONFIRMED', null);
 
     return wedding;
   }, CONVERSION_TX_OPTIONS);
@@ -375,9 +381,11 @@ export async function convertLeadToWedding(
   if (!subject) {
     throw new NotFoundError(sourceType, id);
   }
-  if (subject.pipelineStage !== 'WON') {
+  // Accepted (the customer said yes, no booking yet) is the normal way in; Booked is kept for records that reached it before
+  // the commercial flow set it automatically.
+  if (subject.pipelineStage !== 'ACCEPTED' && subject.pipelineStage !== 'WON') {
     throw new InvalidTransitionError(
-      `Cannot create a Wedding Workspace — ${sourceType.toLowerCase()} is not Booked (current stage: ${subject.pipelineStage})`
+      `Cannot create a Wedding Workspace — the customer's acceptance of a quotation has not been recorded (current stage: ${subject.pipelineStage})`
     );
   }
 
@@ -484,6 +492,9 @@ export async function convertLeadToWedding(
       client: clientFromSubject(sourceType, subject, input.city),
       actorId,
     });
+
+    // The lead reads "Booked" from this moment (a no-op if it already did).
+    await applyCommercialEvent(tx, sourceType, id, 'BOOKING_CONFIRMED', actorId);
 
     return wedding;
   }, CONVERSION_TX_OPTIONS);

@@ -13,7 +13,9 @@ export type VendorBookingStatus =
   | 'COMPLETED';
 export type MilestoneStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED';
 export type WeddingHealth = 'HEALTHY' | 'AT_RISK' | 'OVERDUE';
-export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID';
+export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID';
+export type InvoiceKind = 'ADVANCE' | 'BALANCE' | 'OTHER';
+export type ManualPaymentMethod = 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE';
 export type PaymentStatus = 'SUCCESS' | 'FAILED' | 'REFUNDED';
 export type PaymentLinkStatus = 'CREATED' | 'PAID' | 'EXPIRED' | 'CANCELLED';
 export type PayoutStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
@@ -117,6 +119,10 @@ export interface WorkspaceInvoice {
   amountPaid: number;
   outstanding: number;
   createdAt: string;
+  kind: InvoiceKind;
+  quotationId: string | null;
+  bookingId: string | null;
+  issuedAt: string | null;
   items: WorkspaceInvoiceItem[];
   payments: WorkspacePayment[];
   paymentLinks: WorkspacePaymentLink[];
@@ -126,6 +132,24 @@ export interface WorkspaceFinance {
   budget: { planned: number | null; committed: number; variance: number | null };
   invoices: WorkspaceInvoice[];
   totals: { invoicedTotal: number; collected: number; outstanding: number };
+  // The accepted quotation the wedding was booked on — what was agreed. Null when the wedding did not come from one.
+  agreement: {
+    quotationId: string;
+    quotationNumber: string;
+    revision: number;
+    bookingId: string | null;
+    acceptedAt: string | null;
+    subtotal: number;
+    discount: number;
+    gstEnabled: boolean;
+    gstAmount: number;
+    total: number;
+    advance: number;
+    balance: number;
+    terms: string | null;
+    lines: { description: string; category: string | null; quantity: number; unitPrice: number }[];
+    hasBalanceInvoice: boolean;
+  } | null;
 }
 
 export interface CreateInvoiceInput {

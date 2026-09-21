@@ -3,6 +3,7 @@ import { invoiceService } from '@/services/invoice.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { InvoiceWithDetails } from '@/repositories/invoice.repository';
+import { findWeddingsForClientPhone, standaloneInvoiceWarning } from '@/services/invoiceWorkflow.service';
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
 // ('draft'/'sent'/'paid', Prisma's InvoiceStatus enum is uppercase) and an
@@ -39,6 +40,18 @@ export async function POST(req: NextRequest) {
       clientName, clientPhone, clientEmail, clientCity, eventDate, eventType,
       subtotal, discount, gstEnabled, gstAmount, total, amountPaid, notes, items,
     } = body;
+
+    // The old Invoices screen makes STANDALONE invoices (no wedding). If this customer already has a wedding, the right place is
+    // that wedding's Money section — so ask before creating a second, unconnected invoice.
+    if (body.confirmStandalone !== true) {
+      const weddings = await findWeddingsForClientPhone(String(clientPhone ?? ''));
+      if (weddings.length > 0) {
+        return NextResponse.json(
+          { success: false, code: 'HAS_WEDDING', error: standaloneInvoiceWarning(weddings), weddings },
+          { status: 409 }
+        );
+      }
+    }
 
     const invoice = await invoiceService.create({
       clientName, clientPhone, clientEmail, clientCity, eventDate, eventType,

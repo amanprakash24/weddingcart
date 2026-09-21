@@ -78,8 +78,17 @@ enum ConsultationStatus {
 
 enum InvoiceStatus {
   DRAFT
-  SENT
+  SENT // issued to the customer (set when staff issue it or a payment link is created)
+  PARTIALLY_PAID // some, but not all, of the total has been received
   PAID
+}
+
+// What an invoice is for. ADVANCE / BALANCE are the two invoices of an accepted quotation (at most one of each per
+// quotation); OTHER is everything created by hand.
+enum InvoiceKind {
+  ADVANCE
+  BALANCE
+  OTHER
 }
 
 enum BlogStatus {
@@ -292,6 +301,9 @@ model Vendor {
   // categories (photographers, makeup artists, ...) have neither.
   guestCapacity    Int?
   venueType        String?
+  // Commercial V1: the vendor's (venue's) default Terms & Conditions. COPIED into a quotation when it is created —
+  // changing this later never alters an existing quotation, booking or invoice.
+  defaultTerms     String?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -473,8 +485,8 @@ model Enquiry {
   // its own) and links it back here. Deliberately not unique: one
   // Consultation can reasonably produce more than one Enquiry (different
   // vendors/categories), same relationship shape as Enquiry.bookings above.
-  consultationId   String?
-  consultation     Consultation? @relation(fields: [consultationId], references: [id])
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
 
   // Production-hardening audit (2026-09-01) — see Lead's identical indexes
   // for the reasoning.
@@ -583,8 +595,9 @@ model Booking {
   consultationId String?
   consultation   Consultation? @relation(fields: [consultationId], references: [id])
 
-  items   BookingItem[]
-  wedding Wedding? // set once status reaches CONFIRMED and this converts
+  items    BookingItem[]
+  invoices Invoice[] // invoices raised for this booking (advance, balance)
+  wedding  Wedding? // set once status reaches CONFIRMED and this converts
 
   // Lookups by these two (findByLinkedBookingEnquiryId/
   // findByLinkedBookingConsultationId, the cross-path duplicate-Wedding
@@ -651,6 +664,15 @@ model Invoice {
   payments     Payment[]
   paymentLinks PaymentLink[]
 
+  // Commercial V1: the accepted commercial agreement this invoice belongs to. The accepted quotation is immutable, so
+  // its line items, prices, discount, tax, total, advance and terms are read through this relation rather than copied.
+  kind        InvoiceKind @default(OTHER)
+  quotationId String?
+  quotation   Quotation?  @relation("InvoiceQuotation", fields: [quotationId], references: [id])
+  bookingId   String?
+  booking     Booking?    @relation(fields: [bookingId], references: [id])
+  issuedAt    DateTime? // when it was issued to the customer (DRAFT → SENT)
+
   // Production-hardening audit (2026-09-17) — every Wedding Workspace page
   // load queries this by weddingId, ordered by createdAt; Postgres doesn't
   // auto-index FK columns. Found during this pass — not in the original
@@ -658,7 +680,11 @@ model Invoice {
   // The quotation whose advance this invoice was created from (at most one).
   advanceForQuotation Quotation? @relation("QuotationAdvanceInvoice")
 
+  // At most one ADVANCE and one BALANCE invoice per quotation (NULL quotationId — manual invoices — never clash).
+  @@unique([quotationId, kind])
   @@index([weddingId, createdAt])
+  @@index([quotationId])
+  @@index([bookingId])
   @@map("invoices")
 }
 
@@ -841,6 +867,10 @@ enum PipelineStage {
   SITE_VISIT_SCHEDULED
   QUOTATION_SENT
   NEGOTIATION
+  // Commercial V1: the customer has accepted a quotation but the booking is not confirmed yet ("Accepted — booking
+  // pending"). Set automatically by recording the acceptance; never picked by hand.
+  ACCEPTED
+  // Displays as "Booked": the booking is confirmed and the wedding exists. Set automatically at conversion.
   WON
   LOST
   // Sprint 5.3 — pause state, not terminal; resumes to any active stage.
@@ -918,8 +948,9 @@ model Quotation {
 
   // Idempotency anchor for the automatic advance invoice created inside the
   // booking/lead → wedding conversion transaction (unique → at most one).
-  advanceInvoiceId String?  @unique
-  advanceInvoice   Invoice? @relation("QuotationAdvanceInvoice", fields: [advanceInvoiceId], references: [id])
+  advanceInvoiceId String?   @unique
+  advanceInvoice   Invoice?  @relation("QuotationAdvanceInvoice", fields: [advanceInvoiceId], references: [id])
+  invoices         Invoice[] @relation("InvoiceQuotation") // every invoice raised against this agreement (advance, balance)
   booking          Booking? // one Booking per quotation (Booking.quotationId is unique)
 
   items       QuotationItem[]
@@ -1059,7 +1090,7 @@ model Wedding {
   timelineMilestones TimelineMilestone[]
   reviews            Review[]
   aiConversations    AiConversation[]
-  approvals          ApprovalRequest[] @relation("ApprovalWedding")
+  approvals          ApprovalRequest[]   @relation("ApprovalWedding")
   guests             Guest[]
 
   @@map("weddings")
@@ -1148,13 +1179,13 @@ model Guest {
 }
 
 model GuestFunctionResponse {
-  id          String          @id @default(uuid())
-  guestId     String
-  guest       Guest           @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  id             String          @id @default(uuid())
+  guestId        String
+  guest          Guest           @relation(fields: [guestId], references: [id], onDelete: Cascade)
   weddingEventId String
-  weddingEvent WeddingEvent   @relation(fields: [weddingEventId], references: [id], onDelete: Cascade)
-  status      GuestRsvpStatus @default(PENDING)
-  updatedAt   DateTime        @updatedAt
+  weddingEvent   WeddingEvent    @relation(fields: [weddingEventId], references: [id], onDelete: Cascade)
+  status         GuestRsvpStatus @default(PENDING)
+  updatedAt      DateTime        @updatedAt
 
   @@unique([guestId, weddingEventId])
   @@index([weddingEventId, status])
@@ -1453,27 +1484,27 @@ enum ApprovalStatus {
 // drift from each other over time. `subjectId` is resolved at the application
 // layer based on `subjectType` (no DB-level polymorphic FK in Postgres).
 model ApprovalRequest {
-  id            String              @id @default(uuid())
-  subjectType   ApprovalSubjectType
-  subjectId     String
-  title         String?
-  description   String?
-  amount        Int?
-  deadline      DateTime?
-  weddingId     String?
-  wedding       Wedding?            @relation("ApprovalWedding", fields: [weddingId], references: [id], onDelete: Cascade)
+  id             String              @id @default(uuid())
+  subjectType    ApprovalSubjectType
+  subjectId      String
+  title          String?
+  description    String?
+  amount         Int?
+  deadline       DateTime?
+  weddingId      String?
+  wedding        Wedding?            @relation("ApprovalWedding", fields: [weddingId], references: [id], onDelete: Cascade)
   weddingEventId String?
-  weddingEvent  WeddingEvent?      @relation(fields: [weddingEventId], references: [id], onDelete: SetNull)
-  requestedById String?
-  requestedBy   User?               @relation("ApprovalRequestedBy", fields: [requestedById], references: [id])
-  status        ApprovalStatus      @default(PENDING)
-  approvedById  String?
-  approvedBy    User?               @relation("ApprovalApprovedBy", fields: [approvedById], references: [id])
-  approvedAt    DateTime?
-  notes         String?
-  clientComment String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  weddingEvent   WeddingEvent?       @relation(fields: [weddingEventId], references: [id], onDelete: SetNull)
+  requestedById  String?
+  requestedBy    User?               @relation("ApprovalRequestedBy", fields: [requestedById], references: [id])
+  status         ApprovalStatus      @default(PENDING)
+  approvedById   String?
+  approvedBy     User?               @relation("ApprovalApprovedBy", fields: [approvedById], references: [id])
+  approvedAt     DateTime?
+  notes          String?
+  clientComment  String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
   @@map("approval_requests")
 }

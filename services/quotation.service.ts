@@ -6,10 +6,10 @@ import { ConflictError, DuplicateError, NotFoundError, ValidationError } from '@
 import { describeSourceConflict } from '@/lib/quotation/conflict';
 import { isSourceKeyRule } from '@/lib/duplicateConstraint';
 import { subjectCreateData, subjectWhere } from '@/lib/crm/subject';
-import { canTransition } from '@/lib/crm/pipeline';
 import { lockNumberBucket, monthBucket, nextSequenceNumber } from '@/lib/numbering';
 import { calculateQuotationTotals } from '@/lib/quotation/totals';
 import { formatQuoteDate } from '@/lib/quotation/message';
+import { pickVenueTerms, type TermsVendor } from '@/lib/quotation/terms';
 import { planBookingFromQuotation, type BookingOverrides, type BookingSource } from '@/lib/quotation/booking';
 import {
   evaluateAcceptable,
@@ -30,7 +30,8 @@ import { enquiryRepository } from '@/repositories/enquiry.repository';
 import { consultationRepository } from '@/repositories/consultation.repository';
 import { leadRepository } from '@/repositories/lead.repository';
 import { findWeddingForSource } from '@/services/weddingConversion.service';
-import { leadWorkspaceService } from '@/services/leadWorkspace.service';
+import { applyCommercialEvent } from '@/services/leadStage.service';
+import type { CommercialEvent } from '@/lib/crm/stageEvents';
 import type { SourceType } from '@/services/leadInbox.service';
 
 // Quotation workflow (docs/wedding-os/08-quotation.md).
@@ -172,13 +173,15 @@ function prepare(input: QuotationInput) {
   return { totals, gstEnabled };
 }
 
-async function assertVendorsExist(items: QuotationItemInput[], tx: Tx | typeof prisma): Promise<void> {
+// Also returns what a new quotation needs from those vendors (their default terms), so create() costs no extra query.
+async function assertVendorsExist(items: QuotationItemInput[], tx: Tx | typeof prisma): Promise<TermsVendor[]> {
   const ids = [...new Set(items.map((i) => i.vendorId).filter((v): v is string => !!v))];
-  if (ids.length === 0) return;
-  const found = await tx.vendor.findMany({ where: { id: { in: ids } }, select: { id: true } });
+  if (ids.length === 0) return [];
+  const found = await tx.vendor.findMany({ where: { id: { in: ids } }, select: { id: true, defaultTerms: true, category: { select: { name: true } } } });
   const foundIds = new Set(found.map((v) => v.id));
   const missing = ids.find((id) => !foundIds.has(id));
   if (missing) throw new NotFoundError('Vendor', missing);
+  return found.map((v) => ({ id: v.id, defaultTerms: v.defaultTerms, categoryName: v.category.name }));
 }
 
 function itemRows(items: QuotationItemInput[]) {
@@ -235,16 +238,14 @@ async function nextQuotationNumber(tx: Tx): Promise<string> {
   return nextSequenceNumber(bucket, await quotationRepository.findLastNumber(bucket, tx));
 }
 
-// After a send, move the source to QUOTATION_SENT if the pipeline allows it from where it is. Never bypasses
-// the state machine and never fails the send: the quotation is already sent, so a refusal is only logged.
-async function tryAdvanceStage(sourceType: SourceType, sourceId: string, actorId: string | null): Promise<boolean> {
+// After a commercial event that happens outside the write that caused it (a send, a revision), bring the lead's stage in line
+// (lib/crm/stageEvents.ts). Never fails the caller: the quotation is already saved, so a refusal is only logged, and the next
+// event catches the stage up. Returns whether the stage moved.
+async function tryAdvanceStage(sourceType: SourceType, sourceId: string, event: CommercialEvent, actorId: string | null): Promise<boolean> {
   try {
-    const source = (await loadSource(sourceType, sourceId, prisma)) as { pipelineStage: PipelineStage } | null;
-    if (!source || !canTransition(source.pipelineStage, 'QUOTATION_SENT')) return false;
-    await leadWorkspaceService.transitionStage(sourceType, sourceId, { toStage: 'QUOTATION_SENT', actorId });
-    return true;
+    return (await applyCommercialEvent(prisma, sourceType, sourceId, event, actorId)) !== null;
   } catch (err) {
-    console.error('quotation send: pipeline advance skipped', err);
+    console.error(`quotation ${event}: pipeline advance skipped`, err);
     return false;
   }
 }
@@ -270,7 +271,7 @@ export const quotationService = {
 
     try {
       return await prisma.$transaction(async (tx) => {
-        await assertVendorsExist(input.items, tx);
+        const vendors = await assertVendorsExist(input.items, tx);
 
         // Serialize concurrent creates for the same source; the partial unique index
         // (one open quotation per source) is the database backstop.
@@ -303,7 +304,9 @@ export const quotationService = {
             total: totals.total,
             advanceAmount: totals.advanceAmount,
             validUntil: input.validUntil ?? null,
-            terms: input.terms?.trim() || null,
+            // Terms typed for this quotation win; otherwise the venue's default is COPIED in (lib/quotation/terms.ts). From here
+            // on the quotation owns its terms — the venue's default can change without touching it.
+            terms: input.terms?.trim() || pickVenueTerms(input.items, vendors),
             notes: input.notes?.trim() || null,
             createdBy: actorId ? { connect: { id: actorId } } : undefined,
             items: { create: itemRows(input.items) },
@@ -412,7 +415,7 @@ export const quotationService = {
       return { updated, sourceType, sourceId };
     });
 
-    const stageAdvanced = await tryAdvanceStage(sent.sourceType, sent.sourceId, actorId);
+    const stageAdvanced = await tryAdvanceStage(sent.sourceType, sent.sourceId, 'QUOTE_SENT', actorId);
     return { quotation: toQuotationView(sent.updated), stageAdvanced };
   },
 
@@ -446,6 +449,8 @@ export const quotationService = {
         note,
         actorId
       );
+      // The lead now reads "Accepted — booking pending". Same transaction: the acceptance and the stage never disagree.
+      await applyCommercialEvent(tx, sourceType, sourceId, 'QUOTE_ACCEPTED', actorId);
       return toQuotationView(updated);
     });
   },
@@ -534,7 +539,7 @@ export const quotationService = {
     try {
       await expireOverdue({ id });
       mark('expiry checked');
-      return await prisma.$transaction(async (tx) => {
+      const revised = await prisma.$transaction(async (tx) => {
         const { q, sourceType, sourceId } = await loadLocked(tx, id);
         mark(`locked, was ${q.status}`);
         const blocked = evaluateRevisable(q.status);
@@ -602,8 +607,11 @@ export const quotationService = {
           null,
           actorId
         );
-        return toQuotationView(revision);
+        return { view: toQuotationView(revision), sourceType, sourceId };
       });
+      // A revised quotation means the customer is negotiating; the stage follows (never fails the revise).
+      await tryAdvanceStage(revised.sourceType, revised.sourceId, 'QUOTE_REVISED', actorId);
+      return revised.view;
     } catch (err) {
       const first = err instanceof DuplicateError ? await quotationRepository.findById(id) : null;
       throw await explainSourceConflict(err, first ? sourceOf(first) : null, trace);

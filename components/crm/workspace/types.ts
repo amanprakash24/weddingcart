@@ -86,7 +86,7 @@ export interface WorkspaceQuotation {
   // The Booking created from this quotation, if any.
   booking: { id: string; status: 'NEW' | 'CONTACTED' | 'CONFIRMED' | 'CLOSED' } | null;
   // Created automatically when the booking/lead converted to a wedding (draft; no tax in V1).
-  advanceInvoice: { id: string; invoiceNumber: string; status: 'DRAFT' | 'SENT' | 'PAID' } | null;
+  advanceInvoice: { id: string; invoiceNumber: string; status: 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID' } | null;
   sentAt: string | null;
   acceptedAt: string | null;
   acceptedChannel: string | null;

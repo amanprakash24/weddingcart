@@ -38,7 +38,7 @@ export default function LeadWorkspaceHeader({
   const router = useRouter();
   const [showStatus, setShowStatus] = useState(false);
   const locked = !!subject.wedding;
-  const canChangeStatus = !locked && allowedNextStages(subject.pipelineStage, { hasAcceptedQuotation: subject.hasAcceptedQuotation }).length > 0;
+  const canChangeStatus = !locked && allowedNextStages(subject.pipelineStage).length > 0;
 
   return (
     <div className="grid gap-5 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-start">
@@ -102,7 +102,7 @@ export default function LeadWorkspaceHeader({
 
         {showStatus && canChangeStatus && (
           <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-            <StageControl currentStage={subject.pipelineStage} hasAcceptedQuotation={subject.hasAcceptedQuotation} onTransition={onTransition} />
+            <StageControl currentStage={subject.pipelineStage} onTransition={onTransition} />
           </div>
         )}
       </div>

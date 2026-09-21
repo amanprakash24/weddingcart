@@ -154,7 +154,7 @@ export function ConfirmBookingDialog({ advanceAmount, onSave, onClose }: { advan
   const { saving, error, submit } = useSubmit(onSave);
   const lines = [
     'Sets up the wedding workspace for this couple',
-    advanceAmount > 0 ? `Creates the advance invoice for ₹${advanceAmount.toLocaleString('en-IN')} (a draft — you review and send it)` : null,
+    advanceAmount > 0 ? `Creates the advance invoice for ₹${advanceAmount.toLocaleString('en-IN')} (a draft — you issue it from the wedding's Money section)` : null,
     'Creates a confirmation task for each vendor assigned in the quote',
     'Makes this lead read-only — the wedding takes over',
   ].filter((l): l is string => Boolean(l));
