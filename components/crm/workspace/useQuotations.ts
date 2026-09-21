@@ -12,7 +12,7 @@ export function errorMessage(payload: { error?: string; issues?: { message?: str
   return first ?? payload.error ?? 'Request failed';
 }
 
-export function useQuotations({ sourceType, sourceId, onChanged }: { sourceType: string; sourceId: string; onChanged: () => void }) {
+export function useQuotations({ sourceType, sourceId, onChanged }: { sourceType: string; sourceId: string; onChanged: () => void | Promise<void> }) {
   const [quotations, setQuotations] = useState<WorkspaceQuotation[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -20,8 +20,8 @@ export function useQuotations({ sourceType, sourceId, onChanged }: { sourceType:
   // The last failure message, readable right after an awaited call (state would still hold the old value inside the caller).
   const lastError = useRef<string | null>(null);
 
-  const load = useCallback(() => {
-    fetch(`/api/quotations?sourceType=${sourceType}&sourceId=${sourceId}`)
+  const load = useCallback((): Promise<void> => {
+    return fetch(`/api/quotations?sourceType=${sourceType}&sourceId=${sourceId}`)
       .then(async (r) => {
         const body = await r.json();
         if (!r.ok || !body.success) throw new Error(errorMessage(body));
@@ -37,7 +37,8 @@ export function useQuotations({ sourceType, sourceId, onChanged }: { sourceType:
     return () => clearTimeout(timeout);
   }, [load]);
 
-  // One helper for every lifecycle call: shows the server's message on failure, reloads on success.
+  // One helper for every lifecycle call: shows the server's message on failure, reloads on success. It waits for that reload before
+  // it returns, so a dialog stays open on "Saving…" until the screen shows the real, refreshed state — never a stale one.
   const act = useCallback(
     async (id: string, path: string, body?: unknown, okNotice?: string) => {
       setBusyId(id);
@@ -52,13 +53,12 @@ export function useQuotations({ sourceType, sourceId, onChanged }: { sourceType:
         const payload = await res.json();
         if (!res.ok || !payload.success) throw new Error(errorMessage(payload));
         if (okNotice) setNotice(okNotice);
-        load();
-        onChanged();
+        await Promise.all([load(), onChanged()]);
         return payload;
       } catch (e) {
         lastError.current = (e as Error).message;
         setLoadError((e as Error).message);
-        load(); // the state may have moved under us (e.g. it just expired) — show the truth
+        await load(); // the state may have moved under us (e.g. it just expired) — show the truth
         return null;
       } finally {
         setBusyId(null);
@@ -82,13 +82,12 @@ export function useQuotations({ sourceType, sourceId, onChanged }: { sourceType:
         const payload = await res.json();
         if (!res.ok || !payload.success) throw new Error(errorMessage(payload));
         if (okNotice) setNotice(okNotice);
-        load();
-        onChanged();
+        await Promise.all([load(), onChanged()]);
         return true;
       } catch (e) {
         lastError.current = (e as Error).message;
         setLoadError((e as Error).message);
-        load();
+        await load();
         return false;
       } finally {
         setBusyId(null);

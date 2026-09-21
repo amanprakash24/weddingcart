@@ -287,6 +287,24 @@ dbDescribe('Commercial flow V1 (real database)', () => {
     expect(await app.prisma.invoice.count({ where: { quotationId: q3, kind: 'BALANCE' } })).toBe(1);
   });
 
+  test('issuing an invoice while a payment is being recorded never leaves a part-paid invoice showing "Sent" (found in the browser test)', async () => {
+    for (let i = 0; i < 4; i++) {
+      const inv = await app.prisma.invoice.create({
+        data: { invoiceNumber: `INV-DBTEST-RACE-${fx.runId}-${i}`, clientName: 'DBTEST race', clientPhone: '9000000000', subtotal: 50000, total: 50000, status: 'DRAFT', weddingId },
+      });
+      const results = await Promise.allSettled([
+        app.invoiceWorkflowService.issueInvoice(weddingId, inv.id, null),
+        app.invoiceWorkflowService.recordManualPayment(weddingId, inv.id, { amount: 20000, method: 'CASH' }, null),
+      ]);
+      expect(results[1].status).toBe('fulfilled'); // the payment is never lost
+      const row = await app.prisma.invoice.findUniqueOrThrow({ where: { id: inv.id }, include: { payments: true } });
+      expect(row.payments).toHaveLength(1);
+      expect(row.status).toBe('PARTIALLY_PAID'); // whichever came first, the money is reflected
+      expect(row.issuedAt).not.toBeNull();
+      if (results[0].status === 'rejected') expect((results[0].reason as Error).message).toContain('already been issued'); // lost the race: told so, not silently
+    }
+  });
+
   // ---------------------------------------------------------------- the old standalone Invoices screen
 
   test('the old screen is told this customer already has a wedding (and a stranger is not)', async () => {

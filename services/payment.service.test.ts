@@ -7,14 +7,22 @@ import { describe, test, expect, mock } from 'bun:test';
 type Row = Record<string, unknown>;
 
 function makeMocks(invoice: Row, payments: Row[] = []) {
-  const invoiceUpdate = mock(async (args: { data: Row }) => ({ ...invoice, ...args.data }));
+  // A tiny stand-in for the invoice row: writes change it, and reads see the payments that exist NOW (the status is worked out from
+  // the database under a lock, never from a copy read earlier).
+  const state: Row = { ...invoice };
+  const paymentRows: Row[] = [...payments];
+  const invoiceUpdate = mock(async (args: { data: Row }) => Object.assign(state, args.data));
   const linkCreate = mock(async (args: { data: Row }) => ({ id: 'link-1', ...args.data }));
-  const paymentCreate = mock(async (args: { data: Row }) => ({ id: 'pay-1', ...args.data }));
+  const paymentCreate = mock(async (args: { data: Row }) => {
+    paymentRows.push({ status: 'SUCCESS', amount: args.data.amount });
+    return { id: 'pay-1', ...args.data };
+  });
   const base = {
     invoice: {
-      findUnique: mock(async () => ({ ...invoice, items: [], payments, paymentLinks: [] })),
+      findUnique: mock(async () => ({ ...state, items: [], payments: paymentRows, paymentLinks: [] })),
       update: invoiceUpdate,
     },
+    $queryRaw: mock(async () => []),
     paymentLink: { create: linkCreate, findFirst: mock(async () => null), findUnique: mock(async () => null), update: mock(async () => ({})) },
     payment: { create: paymentCreate, findMany: mock(async () => []), count: mock(async () => 0) },
     activityLog: { create: mock(async () => ({ id: 'log-1' })) },

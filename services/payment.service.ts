@@ -6,7 +6,7 @@ import { paymentRepository } from '@/repositories/payment.repository';
 import { paymentLinkRepository } from '@/repositories/paymentLink.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { createPaymentLink as createRazorpayPaymentLink } from '@/lib/razorpay';
-import { deriveInvoiceStatus } from '@/lib/invoice/lifecycle';
+import { settleInvoiceStatus } from '@/services/invoiceWorkflow.service';
 import { NotFoundError } from '@/lib/errors';
 
 type Tx = Prisma.TransactionClient;
@@ -65,15 +65,6 @@ async function markLinkPaid(tx: Tx, razorpayPaymentLinkId: string | undefined) {
   }
 }
 
-// After a payment: PARTIALLY_PAID for part of the total, PAID for all of it (lib/invoice/lifecycle.ts).
-async function updateInvoiceStatusAfterPayment(tx: Tx, invoice: InvoiceWithDetails, newPaymentAmount: number) {
-  const amountPaid = invoiceAmountPaid(invoice) + newPaymentAmount;
-  const status = deriveInvoiceStatus({ current: invoice.status, total: invoice.total, paid: amountPaid, issued: invoice.issuedAt !== null });
-  if (status !== invoice.status) {
-    await invoiceRepository.update(invoice.id, { status, issuedAt: invoice.issuedAt ?? new Date() }, tx);
-  }
-}
-
 export const paymentService = {
   async createPaymentLinkForInvoice(weddingId: string, invoiceId: string, actorId: string | null): Promise<PaymentLink> {
     const invoice = await invoiceRepository.findById(invoiceId);
@@ -114,9 +105,7 @@ export const paymentService = {
       );
 
       // A payment link is how the invoice reaches the customer — from this moment it is issued, no longer a draft.
-      if (invoice.status === 'DRAFT') {
-        await invoiceRepository.update(invoice.id, { status: 'SENT', issuedAt: new Date() }, tx);
-      }
+      await settleInvoiceStatus(tx, invoice.id, { issue: true });
 
       await activityLogRepository.create(
         {
@@ -193,7 +182,7 @@ export const paymentService = {
       });
 
       await markLinkPaid(tx, linkEntity?.id);
-      await updateInvoiceStatusAfterPayment(tx, invoice, amountRupees);
+      await settleInvoiceStatus(tx, invoice.id); // PARTIALLY_PAID for part of the total, PAID for all of it (lib/invoice/lifecycle.ts)
 
       await activityLogRepository.create(
         {

@@ -43,10 +43,28 @@ export async function findAgreementForWedding(tx: Tx, wedding: Wedding) {
   return { quotation, booking };
 }
 
+// The ONE place an invoice's status is worked out and written. It locks the invoice row first and reads the payments FROM THE DATABASE,
+// so two things happening at once (issuing while a payment is recorded, a webhook while someone records cash) can never overwrite each
+// other with a stale status: whoever gets the lock second sees what the first one did. Found in the browser test — an issue that was
+// still in flight overwrote a payment recorded a moment earlier, leaving a part-paid invoice showing "Sent".
+export async function settleInvoiceStatus(tx: Tx, invoiceId: string, opts: { issue?: boolean } = {}) {
+  await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${invoiceId} FOR UPDATE`;
+  const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, include: { payments: true } });
+  if (!invoice) throw new NotFoundError('Invoice', invoiceId);
+  const paid = paidOf(invoice);
+  const status = deriveInvoiceStatus({ current: invoice.status, total: invoice.total, paid, issued: Boolean(opts.issue) || invoice.issuedAt !== null });
+  const issuedAt = invoice.issuedAt ?? (status !== 'DRAFT' ? new Date() : null);
+  if (status !== invoice.status || issuedAt?.getTime() !== invoice.issuedAt?.getTime()) {
+    await invoiceRepository.update(invoiceId, { status, issuedAt }, tx);
+  }
+  return { status, paid, balance: balanceOf(invoice.total, paid), invoice };
+}
+
 export const invoiceWorkflowService = {
   // DRAFT → SENT. Issuing is what makes an invoice "sent" — creating a payment link does it too (payment.service.ts).
   async issueInvoice(weddingId: string, invoiceId: string, actorId: string | null) {
     return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${invoiceId} FOR UPDATE`; // whoever arrives second sees the first one's result
       const invoice = await loadWeddingInvoice(tx, weddingId, invoiceId);
       if (invoice.status !== 'DRAFT') throw new ConflictError(`Invoice ${invoice.invoiceNumber} has already been issued`);
       const updated = await invoiceRepository.update(invoiceId, { status: 'SENT', issuedAt: new Date() }, tx);
@@ -140,9 +158,7 @@ export const invoiceWorkflowService = {
       const payment = await tx.payment.create({
         data: { invoiceId, amount: input.amount, method: input.method, status: 'SUCCESS', paidAt: input.paidAt ?? new Date() },
       });
-      const newPaid = paid + input.amount;
-      const status = deriveInvoiceStatus({ current: invoice.status, total: invoice.total, paid: newPaid, issued: invoice.issuedAt !== null });
-      await invoiceRepository.update(invoiceId, { status, issuedAt: invoice.issuedAt ?? new Date() }, tx);
+      const { status, paid: newPaid } = await settleInvoiceStatus(tx, invoiceId, { issue: true });
       const reference = input.reference?.trim();
       await activityLogRepository.create(
         {

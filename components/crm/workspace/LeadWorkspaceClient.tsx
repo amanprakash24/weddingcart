@@ -53,9 +53,10 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
 
   const basePath = `/api/crm/leads/${sourceType}/${id}`;
 
-  const load = useCallback(() => {
+  // Returns the reload's promise so a caller can wait for the authoritative result before it tells the operator it is done.
+  const load = useCallback((): Promise<void> => {
     setLoading(true);
-    fetch(basePath)
+    return fetch(basePath)
       .then(async (r) => {
         const body = await r.json();
         if (!r.ok || !body.success) throw new Error(body.error ?? 'Failed to load');
