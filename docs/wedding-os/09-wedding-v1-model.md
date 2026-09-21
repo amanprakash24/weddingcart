@@ -105,10 +105,15 @@ to the controlled same-day exception, later.)
 ## 3. What every wedding screen must answer
 
 1. **One sentence:** couple · date · venue/city · guests · stage.
-2. **One next action**, chosen by priority: pending vendor confirmation → send draft advance invoice →
-   collect unpaid advance → assign coordinator → missing couple names → first open task. (Same pattern
-   as the Lead Workspace "Next action".)
-3. **Three facts:** money (quoted / advance due or paid), venue confirmation, date.
+2. **One next action**, chosen by priority: 1 critical overdue → 2 pending vendor confirmation →
+   3 invoice/payment action → 4 missing coordinator → 5 missing essential wedding information → 6 open
+   task → 7 on track (or, after the wedding's last day, "Mark the wedding as completed"). After the
+   last day an unpaid balance still outranks closing. A wedding with no invoice is NOT assumed to need
+   one. Same pattern as the Lead Workspace "Next action".
+3. **Three facts:** money, venue confirmation, date. Money is never one loose number: the Overview
+   and Money views must separate **Total · Advance due · Received · Balance · Invoice status**, and a
+   next action states an amount only when the data says what that amount is. Otherwise it uses precise
+   words — "Send advance invoice", "Advance payment pending", "Payment of ₹X pending".
 4. A link back to the quote and lead the wedding came from.
 
 ## 4. Vocabulary
