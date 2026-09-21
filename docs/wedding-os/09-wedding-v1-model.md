@@ -37,18 +37,32 @@ Rules:
 ### Sales / commercial (already built; three separate facts)
 
 ```
-Lead → Quote → Customer Accepted → Booking Pending → [Payment / Advance] → BOOKING CONFIRMED
+Lead → Quote → Customer Accepted → Booking Pending → BOOKING CONFIRMED
+                                                          │ creates the Wedding
+                                                          ▼
+                                       Wedding → Invoice → Payment / Advance → wedding execution
 ```
 
 Quote status, lead stage and booking status stay three independent facts (`lib/crm/leadJourney.ts`).
-When the Booking is confirmed the commercial journey is complete.
+When the Booking is confirmed the commercial milestone is reached and the Wedding exists.
 
-> **Open decision A — where the advance sits.** The diagram above puts "Payment / Advance" *before*
-> Booking Confirmed. Today's code and the 2026-09-20 decision are the opposite: Booking is confirmed
-> first, then the Wedding is created, then the advance is a DRAFT invoice collected through the wedding
-> (`Invoice.weddingId`; Razorpay links only work for wedding-linked invoices). V1 keeps the code's order
-> unless told otherwise. Making the advance a *gate* for confirmation would be a new rule and a
-> re-plumbing of payments — not part of this restructuring.
+## Locked decisions (founder, 2026-09-21)
+
+1. **Advance/payment stays AFTER Booking Confirmed in V1.** Flow: Quote Accepted → Booking Confirmed →
+   Wedding → Invoice → Payment/Advance → Wedding execution. (Matches the code and the 2026-09-20
+   decision: the advance is a DRAFT invoice created with the Wedding and collected through it —
+   `Invoice.weddingId`; Razorpay links only work for wedding-linked invoices.)
+2. **Advance payment is NOT a prerequisite for Booking Confirmed.** No payment gate, and Razorpay /
+   payment behaviour is not rewired by this restructuring.
+3. **Vendor confirmation does NOT determine the wedding's operational stage.** `PLANNING` and `ACTIVE`
+   read the same (Planning); only the calendar moves a wedding on.
+4. **A valid vendorless / venue-only wedding can reach Completed.** Zero confirmed vendors is fine.
+5. **Postpone / Cancel normally disappear once the wedding reaches Wedding day.** Wedding day is the
+   primary state on that date. A same-day cancellation stays a controlled exception to be built
+   later — no exception workflow in V1.
+6. **Completion is an operational action**, not dependent on vendor confirmation or payment
+   completion. Open tasks, unpaid money and unconfirmed vendors are warnings, not blockers. The only
+   hard rule is the calendar: not before the wedding's last day.
 
 ### Wedding / operations (this spec)
 
@@ -77,14 +91,16 @@ Stage is **computed for display**, in one pure, unit-tested function (`lib/weddi
 style as `leadJourney.ts`). Nothing new is stored. "Date passed but not completed" surfaces as a
 prompt to close the wedding, not as another stage.
 
-> **Open decision B — closing a wedding.** Today `COMPLETED` is reachable only from `ACTIVE`
-> (`lib/wedding/lifecycle.ts`), and `PLANNING → ACTIVE` is automatic on the first vendor confirmation.
-> A wedding whose services are all vendorless (tasks, no `VendorBooking`) never becomes `ACTIVE` and
-> so can never be completed. Options: (1) allow `COMPLETED` from `PLANNING`; (2) make a vendorless
-> wedding `ACTIVE` at creation. Needs a decision before the "Complete wedding" action ships.
+**Closing a wedding (decided).** `COMPLETED` used to be reachable only from `ACTIVE`, and
+`PLANNING → ACTIVE` fires on the first vendor confirmation, so a vendorless wedding could never be
+completed. Resolved by allowing `PLANNING → COMPLETED` in `lib/wedding/lifecycle.ts`. The status API
+requires the wedding's last day to have arrived for that new path (`ACTIVE → COMPLETED` is unchanged).
+No new status, no schema change.
 
-> **Open decision C — postponing on the day.** The diagram allows Postpone/Cancel from Planning and
-> Final week. The existing matrix also allows it from Wedding day (status `ACTIVE`). Keep, or block?
+**Postpone / cancel on the day (decided).** Not offered from Wedding day onward — see
+`canPostponeOrCancel` in `lib/wedding/stage.ts`. (The stored transition matrix itself still permits
+`ACTIVE → POSTPONED/CANCELLED`; the screen simply does not offer it. Enforcing it server-side belongs
+to the controlled same-day exception, later.)
 
 ## 3. What every wedding screen must answer
 
