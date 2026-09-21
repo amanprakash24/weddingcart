@@ -204,23 +204,61 @@ describe('computeNextAction — priority order', () => {
     expect(a).toMatchObject({ kind: 'INVOICE_PAYMENT', priority: 3, title: 'Send the invoice to the couple', target: 'money' });
   });
 
-  test('3. a sent invoice with a balance: collect it, and say whether a link already went out', () => {
+  test('3. an advance invoice still in draft says "Send advance invoice"', () => {
+    const a = computeNextAction(wedding({ invoices: [{ status: 'DRAFT', outstanding: 90_000, isAdvance: true }] }));
+    expect(a).toMatchObject({ kind: 'INVOICE_PAYMENT', title: 'Send advance invoice' });
+  });
+
+  test('3. several drafts: never a single loose amount; an advance among them leads', () => {
+    const two = computeNextAction(wedding({ invoices: [draftInvoice, draftInvoice] }));
+    expect(two.title).toBe('Send 2 draft invoices to the couple');
+    const withAdvance = computeNextAction(wedding({ invoices: [draftInvoice, { ...draftInvoice, isAdvance: true }] }));
+    expect(withAdvance.title).toBe('Send advance invoice');
+    expect(withAdvance.detail).toBe('1 other draft invoice is also waiting.');
+  });
+
+  test('3. one sent invoice with a balance: "Payment of ₹X pending" — never "Collect"; a link already sent is mentioned', () => {
     const noLink = computeNextAction(wedding({ invoices: [{ status: 'SENT', outstanding: 125_000 }] }));
-    expect(noLink.title).toBe('Collect ₹1,25,000');
+    expect(noLink.title).toBe('Payment of ₹1,25,000 pending');
     expect(noLink.detail).toContain('Share a payment link');
     const withLink = computeNextAction(wedding({ invoices: [{ status: 'SENT', outstanding: 125_000, hasActivePaymentLink: true }] }));
     expect(withLink.detail).toContain('link has been sent');
   });
 
-  test('3. balances across invoices add up; paid invoices and zero balances are ignored', () => {
+  test('3. when the invoice is known to be the advance, the wording says so', () => {
+    const a = computeNextAction(wedding({ invoices: [{ status: 'SENT', outstanding: 90_000, isAdvance: true }] }));
+    expect(a.title).toBe('Advance payment of ₹90,000 pending');
+  });
+
+  test('3. several unpaid invoices are NOT added into one number', () => {
     const a = computeNextAction(wedding({
       invoices: [{ status: 'SENT', outstanding: 1000 }, { status: 'SENT', outstanding: 2500 }, { status: 'PAID', outstanding: 0 }],
     }));
-    expect(a.title).toBe('Collect ₹3,500');
+    expect(a.title).toBe('Payments pending on 2 invoices');
+    expect(a.title).not.toContain('₹');
+    const withAdvance = computeNextAction(wedding({
+      invoices: [{ status: 'SENT', outstanding: 90_000, isAdvance: true }, { status: 'SENT', outstanding: 2500 }],
+    }));
+    expect(withAdvance.title).toBe('Advance payment pending');
   });
 
-  test('3. no invoice at all is worth a nudge', () => {
-    expect(computeNextAction(wedding({ invoices: [] }))).toMatchObject({ kind: 'INVOICE_PAYMENT', title: 'Create the first invoice' });
+  test('3. paid invoices and zero balances are not an action', () => {
+    expect(computeNextAction(wedding({ invoices: [{ status: 'PAID', outstanding: 0 }, { status: 'SENT', outstanding: 0 }] })).kind).toBe('ON_TRACK');
+  });
+
+  test('3. a wedding with no invoice is NOT assumed to need one', () => {
+    expect(computeNextAction(wedding({ invoices: [] })).kind).toBe('ON_TRACK');
+    expect(listNextActions(wedding({ invoices: [] })).some((a) => a.kind === 'INVOICE_PAYMENT')).toBe(false);
+  });
+
+  test('no next action ever says "Collect"', () => {
+    const variants = [
+      wedding({ invoices: [{ status: 'SENT', outstanding: 5000 }] }),
+      wedding({ invoices: [{ status: 'SENT', outstanding: 5000, isAdvance: true }] }),
+      wedding({ primaryDate: plusDays(-2), functionDates: [plusDays(-2)], invoices: [{ status: 'SENT', outstanding: 5000 }] }),
+      wedding({ status: 'COMPLETED', invoices: [{ status: 'SENT', outstanding: 5000 }] }),
+    ];
+    for (const v of variants) for (const a of listNextActions(v)) expect(`${a.title} ${a.detail ?? ''}`).not.toContain('Collect');
   });
 
   test('2. a pending vendor confirmation beats invoices', () => {
@@ -293,12 +331,12 @@ describe('computeNextAction — wedding day, closing, and outcomes', () => {
   const past = { primaryDate: plusDays(-2), functionDates: [plusDays(-2)] };
 
   test('after the last day with nothing else open, the action is to close the wedding', () => {
-    expect(computeNextAction(wedding(past))).toMatchObject({ kind: 'CLOSE_WEDDING', title: 'Mark the wedding as completed' });
+    expect(computeNextAction(wedding(past))).toMatchObject({ kind: 'CLOSE_WEDDING', title: 'Mark wedding as completed' });
   });
 
   test('after the last day, money owed comes before closing (payment is collected after the wedding)', () => {
     const a = computeNextAction(wedding({ ...past, invoices: [{ status: 'SENT', outstanding: 40_000 }] }));
-    expect(a).toMatchObject({ kind: 'INVOICE_PAYMENT', title: 'Collect ₹40,000' });
+    expect(a).toMatchObject({ kind: 'INVOICE_PAYMENT', title: 'Payment of ₹40,000 pending' });
   });
 
   test('a vendorless wedding reaches "close" without any vendor confirmation', () => {
@@ -309,7 +347,7 @@ describe('computeNextAction — wedding day, closing, and outcomes', () => {
     const done = wedding({ ...past, status: 'COMPLETED', tasks: [{ title: 'x', status: 'PENDING', priority: 'URGENT', dueAt: plusDays(-9) }], coordinatorName: null });
     expect(computeNextAction(done)).toMatchObject({ kind: 'NOTHING_TO_DO' });
     const owing = computeNextAction({ ...done, invoices: [{ status: 'SENT', outstanding: 9_000 }] });
-    expect(owing).toMatchObject({ kind: 'INVOICE_PAYMENT', title: 'Collect ₹9,000' });
+    expect(owing).toMatchObject({ kind: 'INVOICE_PAYMENT', title: 'Payment of ₹9,000 pending' });
   });
 
   test('a cancelled wedding has nothing to do', () => {
@@ -341,7 +379,7 @@ describe('checkCompletion', () => {
       invoices: [{ status: 'SENT', outstanding: 12_000 }, { status: 'DRAFT', outstanding: 5_000 }],
     }));
     expect(c.allowed).toBe(true);
-    expect(c.warnings).toEqual(['1 open task', '1 vendor never confirmed', '₹12,000 still to be collected', 'an invoice was never sent']);
+    expect(c.warnings).toEqual(['1 open task', '1 vendor never confirmed', '₹12,000 unpaid on sent invoices', 'an invoice was never sent']);
   });
 
   test('already completed, cancelled and postponed weddings cannot be completed', () => {

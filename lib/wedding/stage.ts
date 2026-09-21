@@ -144,6 +144,9 @@ export interface NextActionInvoice {
   status: 'DRAFT' | 'SENT' | 'PAID';
   outstanding: number;
   hasActivePaymentLink?: boolean;
+  // True only when the caller knows this is the quotation's advance invoice (Quotation.advanceInvoiceId). Left unset it means
+  // "not known" — the wording then never claims the amount is an advance or a balance.
+  isAdvance?: boolean;
 }
 
 export interface NextActionInput extends WeddingStageInput {
@@ -231,27 +234,30 @@ export function listNextActions(input: NextActionInput): NextAction[] {
     }
   }
 
-  // 3. Invoice / payment.
+  // 3. Invoice / payment. An amount is named only when the data says what it is: an invoice's own outstanding balance, or
+  // (when the caller flags it) the advance. Several invoices are never summed into one loose "collect ₹X". A wedding with no
+  // invoice is not assumed to need one.
   const draft = input.invoices.filter((i) => i.status === 'DRAFT');
   const owing = input.invoices.filter((i) => i.status !== 'DRAFT' && i.outstanding > 0);
   if (draft.length > 0) {
+    const advance = draft.some((i) => i.isAdvance);
+    const others = draft.length - 1;
     actions.push({
       kind: 'INVOICE_PAYMENT', priority: 3, target: 'money',
-      title: draft.length === 1 ? 'Send the invoice to the couple' : `Send ${draft.length} invoices to the couple`,
-      detail: 'It is still a draft — the couple cannot pay it yet.',
+      title: advance ? 'Send advance invoice' : draft.length === 1 ? 'Send the invoice to the couple' : `Send ${draft.length} draft invoices to the couple`,
+      detail: advance && others > 0
+        ? `${others} other draft ${plural(others, 'invoice is', 'invoices are')} also waiting.`
+        : 'It is still a draft — the couple cannot pay it yet.',
     });
   } else if (owing.length > 0) {
-    const total = owing.reduce((sum, i) => sum + i.outstanding, 0);
     const hasLink = owing.some((i) => i.hasActivePaymentLink);
+    const advance = owing.some((i) => i.isAdvance);
+    let title: string;
+    if (owing.length === 1) title = `${owing[0].isAdvance ? 'Advance payment' : 'Payment'} of ${rupees(owing[0].outstanding)} pending`;
+    else title = advance ? 'Advance payment pending' : `Payments pending on ${owing.length} invoices`;
     actions.push({
-      kind: 'INVOICE_PAYMENT', priority: 3, target: 'money',
-      title: `Collect ${rupees(total)}`,
+      kind: 'INVOICE_PAYMENT', priority: 3, target: 'money', title,
       detail: hasLink ? 'A payment link has been sent — follow up if it is unpaid.' : 'Share a payment link so the couple can pay.',
-    });
-  } else if (input.invoices.length === 0 && !completed) {
-    actions.push({
-      kind: 'INVOICE_PAYMENT', priority: 3, target: 'money',
-      title: 'Create the first invoice', detail: 'Nothing has been billed for this wedding yet.',
     });
   }
 
@@ -291,7 +297,7 @@ export function listNextActions(input: NextActionInput): NextAction[] {
   if (actions.length === 0) {
     actions.push(
       info.needsClosing
-        ? { kind: 'CLOSE_WEDDING', priority: 7, target: 'overview', title: 'Mark the wedding as completed', detail: 'The last day has passed and nothing else is open.' }
+        ? { kind: 'CLOSE_WEDDING', priority: 7, target: 'overview', title: 'Mark wedding as completed', detail: 'The last day has passed and nothing else is open.' }
         : completed
           ? { kind: 'NOTHING_TO_DO', priority: 7, target: 'overview', title: 'This wedding is complete', detail: null }
           : { kind: 'ON_TRACK', priority: 7, target: 'overview', title: info.stage === 'WEDDING_DAY' ? 'It is the wedding day — everything is on track' : 'Everything is on track', detail: null }
@@ -328,7 +334,7 @@ export function checkCompletion(input: NextActionInput): CompletionCheck {
   const unconfirmed = input.vendorBookings.filter((v) => v.status === 'PENDING_VENDOR_CONFIRMATION').length;
   if (unconfirmed > 0) warnings.push(`${unconfirmed} ${plural(unconfirmed, 'vendor', 'vendors')} never confirmed`);
   const owed = input.invoices.filter((i) => i.status !== 'DRAFT').reduce((sum, i) => sum + Math.max(0, i.outstanding), 0);
-  if (owed > 0) warnings.push(`${rupees(owed)} still to be collected`);
+  if (owed > 0) warnings.push(`${rupees(owed)} unpaid on sent invoices`);
   if (input.invoices.some((i) => i.status === 'DRAFT')) warnings.push('an invoice was never sent');
   return { allowed: true, reason: null, warnings };
 }
