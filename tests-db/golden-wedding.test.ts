@@ -101,14 +101,15 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
     expect(message.toLowerCase()).not.toContain('marketplace');
   });
 
-  test('5 · Rahul says yes on WhatsApp; staff record it, and the server allows Quotation Sent → Booked', async () => {
+  test('5 · Rahul says yes on WhatsApp; staff record it, and the lead reads "Accepted — booking pending" (Booked is set only when the booking is confirmed)', async () => {
     const accepted = await app.quotationService.accept(quotationId, { channel: 'WHATSAPP', note: 'Confirmed on chat' }, null);
     expect(accepted.status).toBe('ACCEPTED');
     expect(accepted.acceptedChannel).toBe('WHATSAPP');
     const workspace = await app.leadWorkspaceService.getWorkspace('CONSULTATION', consultationId);
     expect(workspace.subject.hasAcceptedQuotation).toBe(true);
-    const won = await app.leadWorkspaceService.transitionStage('CONSULTATION', consultationId, { toStage: 'WON', actorId: null });
-    expect(won.pipelineStage).toBe('WON');
+    expect(workspace.subject.pipelineStage).toBe('ACCEPTED');
+    const manual = await app.leadWorkspaceService.transitionStage('CONSULTATION', consultationId, { toStage: 'WON', actorId: null }).then(() => null, (e: Error) => e);
+    expect(manual?.name).toBe('InvalidTransitionError'); // Booked is never picked by hand
   });
 
   test('6 · A booking is created from the quote: quoted prices, ₹5,00,000, 20 Nov, 500 guests', async () => {

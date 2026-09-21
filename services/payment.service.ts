@@ -6,6 +6,7 @@ import { paymentRepository } from '@/repositories/payment.repository';
 import { paymentLinkRepository } from '@/repositories/paymentLink.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { createPaymentLink as createRazorpayPaymentLink } from '@/lib/razorpay';
+import { settleInvoiceStatus } from '@/services/invoiceWorkflow.service';
 import { NotFoundError } from '@/lib/errors';
 
 type Tx = Prisma.TransactionClient;
@@ -64,13 +65,6 @@ async function markLinkPaid(tx: Tx, razorpayPaymentLinkId: string | undefined) {
   }
 }
 
-async function updateInvoiceStatusIfSettled(tx: Tx, invoice: InvoiceWithDetails, newPaymentAmount: number) {
-  const amountPaid = invoiceAmountPaid(invoice) + newPaymentAmount;
-  if (amountPaid >= invoice.total) {
-    await invoiceRepository.update(invoice.id, { status: 'PAID' }, tx);
-  }
-}
-
 export const paymentService = {
   async createPaymentLinkForInvoice(weddingId: string, invoiceId: string, actorId: string | null): Promise<PaymentLink> {
     const invoice = await invoiceRepository.findById(invoiceId);
@@ -109,6 +103,9 @@ export const paymentService = {
         },
         tx
       );
+
+      // A payment link is how the invoice reaches the customer — from this moment it is issued, no longer a draft.
+      await settleInvoiceStatus(tx, invoice.id, { issue: true });
 
       await activityLogRepository.create(
         {
@@ -185,7 +182,7 @@ export const paymentService = {
       });
 
       await markLinkPaid(tx, linkEntity?.id);
-      await updateInvoiceStatusIfSettled(tx, invoice, amountRupees);
+      await settleInvoiceStatus(tx, invoice.id); // PARTIALLY_PAID for part of the total, PAID for all of it (lib/invoice/lifecycle.ts)
 
       await activityLogRepository.create(
         {

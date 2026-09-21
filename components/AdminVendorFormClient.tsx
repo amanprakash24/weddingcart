@@ -27,7 +27,7 @@ interface Category { id: string; name: string; slug: string; }
 const EMPTY_FORM = {
   name: '', ownerName: '', ownerPhone: '', ownerEmail: '',
   category: '', city: 'Patna', address: '',
-  priceMin: '', priceMax: '', guestCapacity: '', venueType: '',
+  priceMin: '', priceMax: '', guestCapacity: '', venueType: '', defaultTerms: '',
   description: '', features: '', isFeatured: false, status: 'DRAFT',
   virtualTourVideo: '',
 };
@@ -55,7 +55,7 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
       name: v.name || '', ownerName: v.ownerName || '', ownerPhone: v.ownerPhone || '', ownerEmail: v.ownerEmail || '',
       category: v.category || '', city: v.city || 'Patna', address: v.address || '',
       priceMin: String(v.priceMin ?? ''), priceMax: String(v.priceMax ?? ''),
-      guestCapacity: v.guestCapacity != null ? String(v.guestCapacity) : '', venueType: v.venueType || '',
+      guestCapacity: v.guestCapacity != null ? String(v.guestCapacity) : '', venueType: v.venueType || '', defaultTerms: v.defaultTerms || '',
       description: v.description || '', features: (v.features || []).join(', '),
       isFeatured: v.isFeatured || false, status: v.status || 'DRAFT',
       virtualTourVideo: v.virtualTourVideo || '',
@@ -134,6 +134,7 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
         priceMin: Number(form.priceMin),
         priceMax: Number(form.priceMax),
         guestCapacity: form.guestCapacity ? Number(form.guestCapacity) : undefined,
+        defaultTerms: form.defaultTerms,
         venueType: form.venueType.trim() || undefined,
         description: form.description.trim(),
         features: form.features.split(',').map((f) => f.trim()).filter(Boolean),
@@ -297,6 +298,12 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
                 <label className={labelCls}>Venue Type <span className="text-gray-400 font-normal">(if applicable)</span></label>
                 <input value={form.venueType} onChange={(e) => setForm({ ...form, venueType: e.target.value })}
                   className={inputCls} placeholder="Banquet Hall, Resort, Farmhouse..." />
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Default Terms &amp; Conditions <span className="text-gray-400 font-normal">(copied into each new quotation for this venue)</span></label>
+                <textarea rows={5} value={form.defaultTerms} onChange={(e) => setForm({ ...form, defaultTerms: e.target.value })}
+                  className={inputCls} placeholder="Cancellation and refund policy, outside catering / DJ rules, power backup, overtime charges..." />
+                <p className="mt-1 text-xs text-gray-400">Changing this later never changes quotations, bookings or invoices that already exist.</p>
               </div>
               <div className="sm:col-span-2">
                 <label className={labelCls}>Rooms, Parking, Catering, Decoration, Amenities <span className="text-gray-400 font-normal">(comma-separated tags)</span></label>

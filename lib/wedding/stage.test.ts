@@ -388,3 +388,25 @@ describe('checkCompletion', () => {
     }
   });
 });
+
+describe('invoice states feed the next action (issued invoices are not "unsent")', () => {
+  test('an advance invoice that has been issued (SENT) no longer says "Send advance invoice"', () => {
+    const a = computeNextAction(wedding({ invoices: [{ status: 'SENT', outstanding: 50_000, isAdvance: true }] }));
+    expect(a.title).toBe('Advance payment of ₹50,000 pending');
+    expect(a.title).not.toContain('Send');
+  });
+
+  test('a part-paid invoice asks for what is still pending on it', () => {
+    const a = computeNextAction(wedding({ invoices: [{ status: 'PARTIALLY_PAID', outstanding: 30_000, isAdvance: true }] }));
+    expect(a).toMatchObject({ kind: 'INVOICE_PAYMENT', title: 'Advance payment of ₹30,000 pending' });
+  });
+
+  test('a fully paid invoice is not an action', () => {
+    expect(computeNextAction(wedding({ invoices: [{ status: 'PAID', outstanding: 0, isAdvance: true }] })).kind).toBe('ON_TRACK');
+  });
+
+  test('a balance invoice still in draft is "Send the invoice to the couple"; the paid advance beside it does not hide it', () => {
+    const a = computeNextAction(wedding({ invoices: [{ status: 'PAID', outstanding: 0, isAdvance: true }, { status: 'DRAFT', outstanding: 60_000 }] }));
+    expect(a.title).toBe('Send the invoice to the couple');
+  });
+});

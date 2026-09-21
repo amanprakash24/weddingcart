@@ -141,7 +141,8 @@ export interface NextActionVendorBooking {
 }
 
 export interface NextActionInvoice {
-  status: 'DRAFT' | 'SENT' | 'PAID';
+  // DRAFT = not issued yet. Issuing, or a payment link, makes it SENT (lib/invoice/lifecycle.ts), so DRAFT here really means unsent.
+  status: 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID';
   outstanding: number;
   hasActivePaymentLink?: boolean;
   // True only when the caller knows this is the quotation's advance invoice (Quotation.advanceInvoiceId). Left unset it means

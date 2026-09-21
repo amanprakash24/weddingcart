@@ -14,6 +14,8 @@ import { invoiceRepository } from '@/repositories/invoice.repository';
 import { payoutRepository } from '@/repositories/payout.repository';
 import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
 import { computeWeddingStage } from '@/lib/wedding/stage';
+import { agreementFigures } from '@/lib/invoice/lifecycle';
+import { findAgreementForWedding } from '@/services/invoiceWorkflow.service';
 import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
 import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
 import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus, type PayoutStatus } from '@/generated/prisma/enums';
@@ -79,6 +81,11 @@ export interface WeddingWorkspaceFinance {
     amountPaid: number;
     outstanding: number;
     createdAt: Date;
+    // What the invoice is for and which accepted agreement it belongs to (null for a manual invoice).
+    kind: 'ADVANCE' | 'BALANCE' | 'OTHER';
+    quotationId: string | null;
+    bookingId: string | null;
+    issuedAt: Date | null;
     items: { id: string; description: string; vendorName: string | null; amount: number; quantity: number }[];
     payments: {
       id: string;
@@ -97,6 +104,25 @@ export interface WeddingWorkspaceFinance {
     }[];
   }[];
   totals: { invoicedTotal: number; collected: number; outstanding: number };
+  // The accepted commercial agreement the wedding was booked on — the source of truth for what is owed. Null when the wedding
+  // did not come from an accepted quotation.
+  agreement: {
+    quotationId: string;
+    quotationNumber: string;
+    revision: number;
+    bookingId: string | null;
+    acceptedAt: Date | null;
+    subtotal: number;
+    discount: number;
+    gstEnabled: boolean;
+    gstAmount: number;
+    total: number;
+    advance: number;
+    balance: number;
+    terms: string | null;
+    lines: { description: string; category: string | null; quantity: number; unitPrice: number }[];
+    hasBalanceInvoice: boolean;
+  } | null;
 }
 
 export interface WeddingWorkspace {
@@ -262,6 +288,10 @@ export const weddingWorkspaceService = {
         amountPaid,
         outstanding: inv.total - amountPaid,
         createdAt: inv.createdAt,
+        kind: inv.kind,
+        quotationId: inv.quotationId,
+        bookingId: inv.bookingId,
+        issuedAt: inv.issuedAt,
         items: inv.items.map((i) => ({
           id: i.id,
           description: i.description,
@@ -287,6 +317,26 @@ export const weddingWorkspaceService = {
       };
     });
 
+    const found = await findAgreementForWedding(prisma, wedding);
+    const agreement: WeddingWorkspaceFinance['agreement'] = found
+      ? {
+          quotationId: found.quotation.id,
+          quotationNumber: found.quotation.quotationNumber,
+          revision: found.quotation.revision,
+          bookingId: found.booking?.id ?? null,
+          acceptedAt: found.quotation.acceptedAt,
+          subtotal: found.quotation.subtotal,
+          discount: found.quotation.discount,
+          gstEnabled: found.quotation.gstEnabled,
+          gstAmount: found.quotation.gstAmount,
+          total: found.quotation.total,
+          ...(({ advance, balance }) => ({ advance, balance }))(agreementFigures(found.quotation)),
+          terms: found.quotation.terms,
+          lines: found.quotation.items.map((i) => ({ description: i.description, category: i.category, quantity: i.quantity, unitPrice: i.unitPrice })),
+          hasBalanceInvoice: financeInvoices.some((i) => i.kind === 'BALANCE'),
+        }
+      : null;
+
     const finance: WeddingWorkspaceFinance = {
       budget: {
         planned: wedding.totalBudget,
@@ -299,6 +349,7 @@ export const weddingWorkspaceService = {
         collected: financeInvoices.reduce((sum, i) => sum + i.amountPaid, 0),
         outstanding: financeInvoices.reduce((sum, i) => sum + i.outstanding, 0),
       },
+      agreement,
     };
 
     return {

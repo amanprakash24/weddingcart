@@ -16,15 +16,12 @@ export interface StageTransitionInput {
 // here the API would reject except a missing required reason.
 export default function StageControl({
   currentStage,
-  hasAcceptedQuotation = false,
   onTransition,
 }: {
   currentStage: PipelineStage;
-  // From the server: an ACCEPTED quotation lets Quotation Sent go straight to Won (display only).
-  hasAcceptedQuotation?: boolean;
   onTransition: (input: StageTransitionInput) => Promise<void>;
 }) {
-  const validTargets = allowedNextStages(currentStage, { hasAcceptedQuotation });
+  const validTargets = allowedNextStages(currentStage);
   const [toStage, setToStage] = useState<PipelineStage | ''>('');
   const [lostReason, setLostReason] = useState<LostReason | ''>('');
   const [lostReasonDetail, setLostReasonDetail] = useState('');
@@ -33,7 +30,7 @@ export default function StageControl({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (validTargets.length === 0) return null; // terminal stage (WON/LOST)
+  if (validTargets.length === 0) return null; // terminal stage (Booked/Lost), or one only the commercial facts move (Accepted)
 
   const reset = () => {
     setToStage('');

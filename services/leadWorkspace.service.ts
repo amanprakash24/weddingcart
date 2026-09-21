@@ -7,7 +7,7 @@ import { taskRepository } from '@/repositories/task.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { leadInsightRepository } from '@/repositories/leadInsight.repository';
 import { subjectWhere, subjectCreateData } from '@/lib/crm/subject';
-import { canTransitionWithContext } from '@/lib/crm/pipeline';
+import { canTransition, isSystemOnlyStage } from '@/lib/crm/pipeline';
 import { quotationRepository } from '@/repositories/quotation.repository';
 import { STAGE_LABELS } from '@/components/crm/types';
 import { NotFoundError, InvalidTransitionError, ConversionLockedError } from '@/lib/errors';
@@ -281,19 +281,17 @@ export const leadWorkspaceService = {
     await assertNotConverted(sourceType, id);
     const fromStage = subject.pipelineStage;
 
-    // QUOTATION_SENT → WON is legal only when the SERVER finds an ACCEPTED quotation for this source
-    // (decision Q2, 08-quotation.md). Looked up only for that one move; the client's view of the
-    // stage options is display-only and never trusted.
-    const needsQuoteCheck = fromStage === 'QUOTATION_SENT' && input.toStage === 'WON';
-    const hasAcceptedQuotation = needsQuoteCheck
-      ? (await quotationRepository.count({ ...subjectWhere(sourceType, id), status: 'ACCEPTED' })) > 0
-      : false;
-    if (!canTransitionWithContext(fromStage, input.toStage, { hasAcceptedQuotation })) {
+    // Accepted and Booked follow the commercial facts (the recorded acceptance; the confirmed booking) and are never
+    // picked by hand — see lib/crm/stageEvents.ts.
+    if (isSystemOnlyStage(input.toStage)) {
       throw new InvalidTransitionError(
-        needsQuoteCheck
-          ? `Cannot move from ${STAGE_LABELS[fromStage]} to ${STAGE_LABELS[input.toStage]} until the customer's acceptance of a quotation is recorded — or move to Negotiation first`
-          : `Cannot move from ${STAGE_LABELS[fromStage]} to ${STAGE_LABELS[input.toStage]}`
+        input.toStage === 'ACCEPTED'
+          ? 'Accepted is set automatically when the acceptance of a quotation is recorded'
+          : 'Booked is set automatically when the booking is confirmed'
       );
+    }
+    if (!canTransition(fromStage, input.toStage)) {
+      throw new InvalidTransitionError(`Cannot move from ${STAGE_LABELS[fromStage]} to ${STAGE_LABELS[input.toStage]}`);
     }
     if (input.toStage === 'LOST' && !input.reason) {
       throw new InvalidTransitionError('A reason is required to mark a lead as Lost');

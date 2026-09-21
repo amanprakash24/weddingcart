@@ -929,8 +929,17 @@ export default function AdminClient() {
     if (editingInvoice) {
       await fetch(`/api/invoices/${editingInvoice._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     } else {
-      const res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await res.json();
+      let res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      let data = await res.json();
+      // This customer already has a wedding: its invoices are managed inside the wedding (Money), not here. Creating a separate
+      // standalone invoice is still possible, but only on purpose.
+      if (res.status === 409 && data.code === 'HAS_WEDDING') {
+        if (!window.confirm(`${data.error}
+
+Create a separate standalone invoice anyway?`)) return;
+        res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, confirmStandalone: true }) });
+        data = await res.json();
+      }
       if (data.success) setPreviewInvoice(data.data);
     }
     setShowInvoiceForm(false);

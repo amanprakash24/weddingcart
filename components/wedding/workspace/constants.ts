@@ -1,4 +1,4 @@
-import type { WeddingStatus, WeddingHealth, InvoiceStatus, PaymentLinkStatus, PayoutStatus } from './types';
+import type { WeddingStatus, WeddingHealth, InvoiceStatus, InvoiceKind, ManualPaymentMethod, PaymentLinkStatus, PayoutStatus } from './types';
 
 export const STATUS_LABELS: Record<WeddingStatus, string> = {
   PLANNING: 'Planning',
@@ -45,12 +45,27 @@ export const HEALTH_COLORS: Record<WeddingHealth, string> = {
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   DRAFT: 'Draft',
   SENT: 'Sent',
+  PARTIALLY_PAID: 'Partly paid',
   PAID: 'Paid',
+};
+
+export const INVOICE_KIND_LABELS: Record<InvoiceKind, string> = {
+  ADVANCE: 'Advance',
+  BALANCE: 'Balance',
+  OTHER: 'Invoice',
+};
+
+export const MANUAL_PAYMENT_LABELS: Record<ManualPaymentMethod, string> = {
+  CASH: 'Cash',
+  UPI: 'UPI',
+  BANK_TRANSFER: 'Bank transfer',
+  CHEQUE: 'Cheque',
 };
 
 export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, string> = {
   DRAFT: 'bg-gray-200 text-gray-600',
   SENT: 'bg-blue-100 text-blue-700',
+  PARTIALLY_PAID: 'bg-amber-100 text-amber-700',
   PAID: 'bg-emerald-100 text-emerald-700',
 };
 

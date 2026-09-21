@@ -29,6 +29,7 @@ export async function loadApp() {
   const conversion = await import('@/services/weddingConversion.service');
   const { leadWorkspaceService } = await import('@/services/leadWorkspace.service');
   const { weddingWorkspaceService } = await import('@/services/weddingWorkspace.service');
+  const { invoiceWorkflowService } = await import('@/services/invoiceWorkflow.service');
   const { paymentService } = await import('@/services/payment.service');
   const { commandCenterService } = await import('@/services/commandCenter.service');
   const { generateInvoiceNumber } = await import('@/services/documentNumber.service');
@@ -44,6 +45,7 @@ export async function loadApp() {
     findWeddingForSource: conversion.findWeddingForSource,
     leadWorkspaceService,
     weddingWorkspaceService,
+    invoiceWorkflowService,
     paymentService,
     commandCenterService,
     generateInvoiceNumber,

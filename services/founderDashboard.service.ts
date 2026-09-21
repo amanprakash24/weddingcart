@@ -231,7 +231,7 @@ async function getPipelineHealth(): Promise<FounderDashboard['pipelineHealth']> 
 }
 
 const ACTIVE_STAGES: PipelineStage[] = [
-  'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'ON_HOLD',
+  'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'ACCEPTED', 'ON_HOLD',
 ];
 
 // Average days a subject spends in `fromStage` before its next transition —

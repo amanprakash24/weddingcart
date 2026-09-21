@@ -154,7 +154,7 @@ export function ConfirmBookingDialog({ advanceAmount, onSave, onClose }: { advan
   const { saving, error, submit } = useSubmit(onSave);
   const lines = [
     'Sets up the wedding workspace for this couple',
-    advanceAmount > 0 ? `Creates the advance invoice for ₹${advanceAmount.toLocaleString('en-IN')} (a draft — you review and send it)` : null,
+    advanceAmount > 0 ? `Creates the advance invoice for ₹${advanceAmount.toLocaleString('en-IN')} (a draft — you issue it from the wedding's Money section)` : null,
     'Creates a confirmation task for each vendor assigned in the quote',
     'Makes this lead read-only — the wedding takes over',
   ].filter((l): l is string => Boolean(l));
@@ -169,9 +169,14 @@ export function ConfirmBookingDialog({ advanceAmount, onSave, onClose }: { advan
           </li>
         ))}
       </ul>
+      {saving && (
+        <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Setting up the wedding — this can take several seconds. Please keep this window open; it closes when everything is ready.
+        </p>
+      )}
       <ErrorLine error={error} />
       <Actions>
-        <button type="button" className={secondaryBtn} onClick={onClose}>Not yet</button>
+        <button type="button" className={secondaryBtn} disabled={saving} onClick={onClose}>Not yet</button>
         <button type="button" className={primaryBtn} disabled={saving} onClick={submit}>{saving ? 'Confirming…' : 'Confirm booking'}</button>
       </Actions>
     </Modal>
