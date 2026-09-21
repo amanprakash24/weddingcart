@@ -129,6 +129,9 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
+        // The user's id (the JWT subject). Without it every `session.user.id ?? null` in the app was null, so nothing done by a person —
+        // a note, a stage change, a payment — could record who did it.
+        session.user.id = token.sub ?? undefined;
         session.user.roles = token.roles;
         session.user.vendorId = token.vendorId;
       }

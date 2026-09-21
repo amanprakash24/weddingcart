@@ -169,7 +169,19 @@ function makePrismaMock({
 // after it, regardless of what ran earlier — reads `booking` by reference
 // (not a snapshot), so tests that mutate it between calls (e.g. simulating a
 // weddingDate backfill) still see the update on a later call.
+// Money v1: the 25% confirmation rule (gate + attaching the agreement's invoices) lives in services/agreement.service.ts and is covered
+// against a real database (tests-db/money.v1.test.ts). Here it is stubbed out so these tests keep characterising the conversion itself —
+// including the historical advance-invoice-at-conversion behaviour that a booking made before the rule still gets.
+function stubAgreementRule() {
+  mock.module('@/services/agreement.service', () => ({
+    assertAgreementSatisfiedInTx: async () => undefined,
+    assertQuotationMayConfirm: async () => undefined,
+    attachAgreementToWedding: async () => false,
+  }));
+}
+
 async function loadServiceWith(prismaMock: unknown, booking: ReturnType<typeof fakeBooking>) {
+  stubAgreementRule();
   mock.module('@/lib/prisma', () => ({ prisma: prismaMock }));
   mock.module('@/repositories/booking.repository', () => ({
     bookingRepository: { findById: mock(async () => booking) },
@@ -514,6 +526,7 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
   }
 
   async function loadConvertLeadServiceWith(prismaMock: unknown, enquiry: ReturnType<typeof fakeEnquiry>) {
+    stubAgreementRule();
     mock.module('@/lib/prisma', () => ({ prisma: prismaMock }));
     mock.module('@/repositories/enquiry.repository', () => ({ enquiryRepository: { findById: mock(async () => enquiry) } }));
     mock.module('@/repositories/lead.repository', () => ({ leadRepository: { findById: mock(async () => null) } }));

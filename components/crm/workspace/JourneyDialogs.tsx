@@ -148,13 +148,15 @@ export function BookingDialog({ defaults, onSave, onClose }: { defaults: Booking
   );
 }
 
-// What confirming really does (services/weddingConversion.service.ts): the wedding workspace, a confirmation task per vendor,
-// and — only when the accepted quotation has an advance — a DRAFT advance invoice for that quotation's own advance.
-export function ConfirmBookingDialog({ advanceAmount, onSave, onClose }: { advanceAmount: number; onSave: () => Promise<string | null>; onClose: () => void }) {
+// What confirming really does (services/weddingConversion.service.ts): the wedding workspace, a confirmation task per vendor, and the
+// booking's invoices (already carrying the payments) move onto the wedding. The server only confirms once the confirmation amount
+// (25% of the accepted quote) has been received — if not, it says how much more is needed.
+export function ConfirmBookingDialog({ confirmationAmount, onSave, onClose }: { confirmationAmount: number; onSave: () => Promise<string | null>; onClose: () => void }) {
   const { saving, error, submit } = useSubmit(onSave);
   const lines = [
     'Sets up the wedding workspace for this couple',
-    advanceAmount > 0 ? `Creates the advance invoice for ₹${advanceAmount.toLocaleString('en-IN')} (a draft — you issue it from the wedding's Money section)` : null,
+    confirmationAmount > 0 ? `Needs the ₹${confirmationAmount.toLocaleString('en-IN')} confirmation payment to be received (checked by the system)` : null,
+    'Moves the booking invoice, with its payments, onto the wedding',
     'Creates a confirmation task for each vendor assigned in the quote',
     'Makes this lead read-only — the wedding takes over',
   ].filter((l): l is string => Boolean(l));

@@ -16,6 +16,7 @@ import type { FunctionPayload } from '@/components/wedding/functions/FunctionFor
 import TimelineMilestones from './TimelineMilestones';
 import Documents from './Documents';
 import Finance from './Finance';
+import type { PaymentResult, RecordPaymentInput } from '@/components/money/AgreementCard';
 import type { WeddingWorkspace, WeddingStatus, MilestoneStatus, CreateInvoiceInput } from './types';
 import ServiceRequirements from './ServiceRequirements';
 import Approvals from './Approvals';
@@ -34,10 +35,14 @@ function readTab(): TabKey {
   return isTabKey(t) ? t : 'overview';
 }
 
-async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' | 'DELETE' = 'POST') {
+async function postJsonData<T = unknown>(url: string, body: unknown, method: 'POST' | 'PATCH' | 'DELETE' = 'POST'): Promise<T> {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: method === 'DELETE' ? undefined : JSON.stringify(body) });
   const payload = await res.json();
   if (!res.ok || !payload.success) throw new Error(payload.error ?? 'Request failed');
+  return payload.data as T;
+}
+async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' | 'DELETE' = 'POST') {
+  await postJsonData(url, body, method);
 }
 
 // Same Workspace Loader philosophy as LeadWorkspaceClient.tsx: one aggregate
@@ -163,6 +168,12 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     await postJson(`${basePath}/payouts/${payoutId}`, { status: 'PAID' }, 'PATCH');
     await load();
   };
+  // Money v1: money received against the wedding's agreement — applied to the advance invoice first, the rest to the balance.
+  const recordAgreementPayment = async (input: RecordPaymentInput): Promise<PaymentResult> => {
+    const result = await postJsonData<PaymentResult>(`${basePath}/payments`, input);
+    await load();
+    return result;
+  };
   const createInvoice = async (input: CreateInvoiceInput) => {
     await postJson(`${basePath}/invoices`, input);
     load();
@@ -256,7 +267,7 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         </div>
       )}
 
-      {tab === 'money' && <Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} />}
+      {tab === 'money' && <Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} onRecordAgreementPayment={recordAgreementPayment} />}
 
       {tab === 'people' && (
         <div className="space-y-4">
