@@ -1,7 +1,7 @@
 import WeddingWorkspaceClient from '@/components/wedding/workspace/WeddingWorkspaceClient';
 
 export const metadata = {
-  title: 'Event Workspace | ShaadiShopping Admin',
+  title: 'Wedding Control Room | ShaadiShopping Admin',
   robots: { index: false, follow: false },
 };
 

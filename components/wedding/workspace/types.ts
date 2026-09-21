@@ -182,6 +182,8 @@ export interface WeddingWorkspace {
     createdAt: string;
     completedAt: string | null;
   };
+  // The lead / enquiry / consultation this wedding came from (for a link back), or null.
+  sourceLead: { sourceType: 'LEAD' | 'ENQUIRY' | 'CONSULTATION'; id: string } | null;
   health: WeddingHealth;
   couple: {
     brideName: string | null;

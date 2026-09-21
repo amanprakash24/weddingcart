@@ -1,46 +1,4 @@
-import type { WeddingStatus, WeddingHealth, InvoiceStatus, InvoiceKind, ManualPaymentMethod, PaymentLinkStatus, PayoutStatus } from './types';
-
-export const STATUS_LABELS: Record<WeddingStatus, string> = {
-  PLANNING: 'Planning',
-  ACTIVE: 'Active',
-  POSTPONED: 'Postponed',
-  COMPLETED: 'Completed',
-  CANCELLED: 'Cancelled',
-};
-
-export const STATUS_COLORS: Record<WeddingStatus, string> = {
-  PLANNING: 'bg-blue-100 text-blue-700',
-  ACTIVE: 'bg-emerald-100 text-emerald-700',
-  POSTPONED: 'bg-amber-100 text-amber-700',
-  COMPLETED: 'bg-gray-200 text-gray-600',
-  CANCELLED: 'bg-red-100 text-red-700',
-};
-
-// Mirrors lib/wedding/lifecycle.ts's WEDDING_STATUS_TRANSITIONS — PLANNING is
-// intentionally absent as a target anywhere except from POSTPONED, since
-// PLANNING->ACTIVE only ever happens automatically (domain-model.md §5.2).
-// Deliberately NOT mirrored yet: the server also accepts PLANNING->COMPLETED once the wedding's last day has arrived (V1 model,
-// docs/wedding-os/09-wedding-v1-model.md). It is not offered in this dropdown because it would be refused for most weddings; the
-// Header/Overview step replaces this dropdown and offers it only when the stage allows it.
-export const WEDDING_STATUS_TRANSITIONS: Record<WeddingStatus, WeddingStatus[]> = {
-  PLANNING: ['POSTPONED', 'CANCELLED'],
-  ACTIVE: ['COMPLETED', 'POSTPONED', 'CANCELLED'],
-  POSTPONED: ['PLANNING', 'ACTIVE'],
-  COMPLETED: [],
-  CANCELLED: [],
-};
-
-export const HEALTH_LABELS: Record<WeddingHealth, string> = {
-  HEALTHY: 'Healthy',
-  AT_RISK: 'At Risk',
-  OVERDUE: 'Overdue',
-};
-
-export const HEALTH_COLORS: Record<WeddingHealth, string> = {
-  HEALTHY: 'bg-emerald-100 text-emerald-700',
-  AT_RISK: 'bg-amber-100 text-amber-700',
-  OVERDUE: 'bg-red-100 text-red-700',
-};
+import type { InvoiceStatus, InvoiceKind, ManualPaymentMethod, PaymentLinkStatus, PayoutStatus } from './types';
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   DRAFT: 'Draft',

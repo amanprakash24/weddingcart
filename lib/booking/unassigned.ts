@@ -25,6 +25,13 @@ export function isUnassignedItem(item: Pick<ConvertibleItem, 'vendorName'>): boo
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
+// The service an open "assign a vendor" task is waiting for (`Assign a vendor for "Photography"` → "Photography"), or null when
+// the task is anything else. This is how the wedding page tells which quoted services still have no vendor.
+export function unassignedServiceFromTask(title: string): string | null {
+  const m = title.match(/^Assign (?:a|replacement) vendor for "(.+)"$/);
+  return m ? m[1] : null;
+}
+
 // The activity-log line and the follow-up task for an item that cannot become a VendorBooking yet.
 export function planVendorlessItem(item: ConvertibleItem): { summary: string; taskTitle: string; taskDescription: string } {
   if (isUnassignedItem(item)) {

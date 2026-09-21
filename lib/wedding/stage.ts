@@ -74,6 +74,12 @@ function weddingDays(input: WeddingStageInput): { start: number; end: number } |
   return { start: Math.min(...days), end: Math.max(...days) };
 }
 
+// Whole calendar days from today (India) to the given date: 0 = today, negative = past. Null for an unreadable date.
+export function daysFromToday(value: DateLike, now: Date = new Date()): number | null {
+  const day = istDay(value);
+  return day === null ? null : day - (istDay(now) as number);
+}
+
 export function computeWeddingStage(input: WeddingStageInput): WeddingStageInfo {
   const closed = { daysToGo: null, needsClosing: false, canPostponeOrCancel: false, canComplete: false };
   const today = istDay(input.now ?? new Date()) as number;
@@ -159,7 +165,7 @@ export interface NextActionInput extends WeddingStageInput {
   invoices: NextActionInvoice[];
 }
 
-const isOpenTask = (t: NextActionTask) => t.status === 'PENDING' || t.status === 'IN_PROGRESS';
+export const isOpenTask = (t: Pick<NextActionTask, 'status'>) => t.status === 'PENDING' || t.status === 'IN_PROGRESS';
 const filled = (s: string | null | undefined) => Boolean(s && s.trim());
 const rupees = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
