@@ -17,14 +17,6 @@ import QuotationHistory from './QuotationHistory';
 // discard a draft, revise a sent quote. Totals shown while typing are only a preview — the server recomputes and stores the
 // real ones. V1 has no customer login or link: staff record the customer's answer on their behalf.
 
-const STATUS_LABEL: Record<WorkspaceQuotation['status'], string> = {
-  DRAFT: 'Draft',
-  SENT: 'Sent',
-  ACCEPTED: 'Accepted',
-  REJECTED: 'Declined',
-  EXPIRED: 'Expired',
-  SUPERSEDED: 'Replaced',
-};
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel' };
 
 export interface QuotationPrefillLine {

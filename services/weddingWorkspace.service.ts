@@ -127,6 +127,7 @@ export interface WeddingWorkspaceFinance {
 
 export interface WeddingWorkspace {
   wedding: Wedding & { coordinatorName: string | null; customerName: string | null };
+  sourceLead: { sourceType: 'LEAD' | 'ENQUIRY' | 'CONSULTATION'; id: string } | null;
   health: WeddingHealth;
   couple: {
     brideName: string | null;
@@ -318,6 +319,17 @@ export const weddingWorkspaceService = {
     });
 
     const found = await findAgreementForWedding(prisma, wedding);
+    // Where the wedding came from, for a link back: directly, or through the booking it was made from.
+    const viaBooking = !wedding.sourceLeadId && !wedding.sourceEnquiryId && !wedding.sourceConsultationId && wedding.sourceBookingId
+      ? (found?.booking ?? (await prisma.booking.findUnique({ where: { id: wedding.sourceBookingId }, select: { enquiryId: true, consultationId: true } })))
+      : null;
+    const sourceLead: WeddingWorkspace['sourceLead'] = wedding.sourceLeadId
+      ? { sourceType: 'LEAD', id: wedding.sourceLeadId }
+      : wedding.sourceEnquiryId ?? viaBooking?.enquiryId
+        ? { sourceType: 'ENQUIRY', id: (wedding.sourceEnquiryId ?? viaBooking?.enquiryId) as string }
+        : wedding.sourceConsultationId ?? viaBooking?.consultationId
+          ? { sourceType: 'CONSULTATION', id: (wedding.sourceConsultationId ?? viaBooking?.consultationId) as string }
+          : null;
     const agreement: WeddingWorkspaceFinance['agreement'] = found
       ? {
           quotationId: found.quotation.id,
@@ -353,6 +365,7 @@ export const weddingWorkspaceService = {
     };
 
     return {
+      sourceLead,
       wedding: {
         ...wedding,
         coordinatorName: wedding.coordinatorId ? (nameById.get(wedding.coordinatorId) ?? null) : null,

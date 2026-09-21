@@ -1,10 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Timeline from '@/components/crm/workspace/Timeline';
 import TaskPanel from '@/components/crm/workspace/TaskPanel';
-import InsightsPanel from '@/components/crm/workspace/InsightsPanel';
-import WeddingHeader from './WeddingHeader';
+import ControlRoomHeader from '@/components/wedding/control-room/ControlRoomHeader';
+import Overview from '@/components/wedding/control-room/Overview';
+import ControlRoomTabs, { isTabKey, type TabKey } from '@/components/wedding/control-room/ControlRoomTabs';
+import { buildControlRoom } from '@/lib/wedding/controlRoom';
+import type { ActionTarget } from '@/lib/wedding/stage';
 import CoupleCard from './CoupleCard';
 import WeddingEvents from './WeddingEvents';
 import TimelineMilestones from './TimelineMilestones';
@@ -21,11 +24,12 @@ type Approval = {
   weddingEvent: { id: string; label: string | null; type: string } | null;
 };
 
-const NAV_ITEMS = [
-  ['overview', 'Overview'], ['functions', 'Functions'], ['services', 'Services'],
-  ['tasks', 'Tasks'], ['timeline', 'Timeline'], ['finance', 'Finance'],
-  ['documents', 'Documents'], ['approvals', 'Approvals'], ['guests', 'Guests & RSVP'], ['activity', 'Activity'],
-];
+// The tab in the address (?tab=money), so a link or a refresh lands where you were.
+function readTab(): TabKey {
+  if (typeof window === 'undefined') return 'overview';
+  const t = new URLSearchParams(window.location.search).get('tab');
+  return isTabKey(t) ? t : 'overview';
+}
 
 async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = 'POST') {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -43,6 +47,7 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [tab, setTab] = useState<TabKey>(readTab);
 
   const basePath = `/api/weddings/${id}`;
 
@@ -128,56 +133,66 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     load();
   };
 
+  const view = useMemo(() => (workspace ? buildControlRoom(workspace) : null), [workspace]);
+  // A dot on the tabs where something needs attention — the same list as "Needs attention" on the Overview.
+  const attention = useMemo(() => {
+    const counts: Partial<Record<TabKey, number>> = {};
+    for (const a of view?.attention ?? []) if (a.target !== 'overview') counts[a.target as ActionTarget & TabKey] = (counts[a.target as ActionTarget & TabKey] ?? 0) + 1;
+    return counts;
+  }, [view]);
+  const changeTab = (next: TabKey) => {
+    setTab(next);
+    const url = new URL(window.location.href);
+    if (next === 'overview') url.searchParams.delete('tab'); else url.searchParams.set('tab', next);
+    window.history.replaceState(null, '', url);
+    window.scrollTo({ top: 0 });
+  };
+
   if (loading && !workspace) {
     return <div className="p-6 max-w-6xl mx-auto text-center text-gray-400 text-sm">Loading…</div>;
   }
-  if (error || !workspace) {
+  if (error || !workspace || !view) {
     return <div className="p-6 max-w-6xl mx-auto text-center text-red-500 text-sm">{error ?? 'Not found'}</div>;
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <WeddingHeader wedding={workspace.wedding} health={workspace.health} outstanding={workspace.finance.totals.outstanding} onTransition={transitionStatus} />
+    <div className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
+      <ControlRoomHeader view={view} onTransition={transitionStatus} />
 
-      <nav aria-label="Event workspace sections" className="sticky top-0 z-10 -mx-2 overflow-x-auto rounded-xl border border-gray-100 bg-white/95 p-2 shadow-sm backdrop-blur">
-        <div className="flex min-w-max gap-1">
-          {NAV_ITEMS.map(([id, label]) => <a key={id} href={`#${id}`} className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-rose-50 hover:text-rose-700">{label}</a>)}
+      <ControlRoomTabs active={tab} attention={attention} onChange={changeTab} />
+
+      {tab === 'overview' && <Overview view={view} onOpen={(target) => changeTab(target === 'overview' ? 'overview' : (target as TabKey))} onTransition={transitionStatus} />}
+
+      {tab === 'plan' && (
+        <div className="space-y-4">
+          <TaskPanel tasks={workspace.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
+          <TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} />
+          <Approvals weddingId={id} events={workspace.events} approvals={approvals} onChange={load} />
         </div>
-      </nav>
+      )}
 
-      <section id="overview" className="scroll-mt-16 rounded-2xl border border-gray-100 bg-white p-5">
-        <h2 className="mb-3 text-lg font-bold text-gray-900">Event overview</h2>
-        <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-          <div><p className="text-xs uppercase text-gray-400">What&apos;s next</p><p className="font-medium text-gray-900">{workspace.tasks.find((task) => task.status !== 'DONE' && task.status !== 'CANCELLED')?.title || 'No open tasks'}</p></div>
-          <div><p className="text-xs uppercase text-gray-400">Functions</p><p className="font-medium text-gray-900">{workspace.events.length || 'None added yet'}</p></div>
-          <div><p className="text-xs uppercase text-gray-400">Services booked</p><p className="font-medium text-gray-900">{workspace.events.reduce((sum, event) => sum + event.vendorBookings.length, 0)}</p></div>
-          <div><p className="text-xs uppercase text-gray-400">Payments</p><p className="font-medium text-gray-900">{workspace.finance.totals.collected > 0 ? `₹${workspace.finance.totals.collected.toLocaleString('en-IN')} collected` : 'No payments recorded'}</p></div>
+      {tab === 'functions' && (
+        <div className="space-y-4">
+          <WeddingEvents events={workspace.events} onUpdateVendorBookingStatus={updateVendorBookingStatus} onAddVendorBooking={addVendorBooking} onCalculatePayout={calculatePayout} onMarkPayoutPaid={markPayoutPaid} />
+          <ServiceRequirements events={workspace.events} />
         </div>
-      </section>
+      )}
 
-      <section id="documents" className="scroll-mt-16 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <CoupleCard couple={workspace.couple} onSave={saveCouple} />
-        <Documents documents={workspace.documents} />
-      </section>
+      {tab === 'money' && <Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} />}
 
-      <section id="functions" className="scroll-mt-16"><WeddingEvents events={workspace.events} onUpdateVendorBookingStatus={updateVendorBookingStatus} onAddVendorBooking={addVendorBooking} onCalculatePayout={calculatePayout} onMarkPayoutPaid={markPayoutPaid} /></section>
+      {tab === 'people' && (
+        <div className="space-y-4">
+          <CoupleCard couple={workspace.couple} onSave={saveCouple} />
+          <GuestRsvp weddingId={id} events={workspace.events} initialGuests={workspace.guests} />
+        </div>
+      )}
 
-      <section id="services" className="scroll-mt-16"><ServiceRequirements events={workspace.events} /></section>
-
-      <section id="approvals" className="scroll-mt-16"><Approvals weddingId={id} events={workspace.events} approvals={approvals} onChange={load} /></section>
-
-      <section id="guests" className="scroll-mt-16"><GuestRsvp weddingId={id} events={workspace.events} initialGuests={workspace.guests} /></section>
-
-      <section id="finance" className="scroll-mt-16"><Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} /></section>
-
-      <section id="timeline" className="scroll-mt-16"><TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} /></section>
-
-      <section id="tasks" className="scroll-mt-16 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <TaskPanel tasks={workspace.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
-        <InsightsPanel insights={workspace.insights} />
-      </section>
-
-      <section id="activity" className="scroll-mt-16"><Timeline activities={workspace.activity} onAddNote={addNote} /></section>
+      {tab === 'files' && (
+        <div className="space-y-4">
+          <Documents documents={workspace.documents} />
+          <Timeline activities={workspace.activity} onAddNote={addNote} />
+        </div>
+      )}
     </div>
   );
 }
