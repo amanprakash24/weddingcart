@@ -52,22 +52,15 @@ export async function maybeActivateWedding(weddingId: string, tx: Tx): Promise<v
   );
 }
 
-// Production-integrity fix — only the 3 transitions currently exercised by
-// the real product workflow (components/wedding/workspace/WeddingEvents.tsx's
-// Confirm/Decline/Mark Completed buttons; verified against every actual
-// VendorBooking status write in the codebase before adding this) are
-// authorized here. DECLINED/CANCELLED/COMPLETED/CUSTOMER_APPROVAL_PENDING are
-// deliberately terminal in this matrix — not because the business will never
-// need e.g. a decline-retry or cancel flow, but because those are
-// undesigned future product decisions: CANCELLED has no UI trigger anywhere
-// today, and CUSTOMER_APPROVAL_PENDING's entire feature is an explicitly
-// undecided founder question (docs/wedding-os/05-customer-portal.md §3,
-// "flag for the founder rather than assume"). Widen this matrix only once
-// that workflow is deliberately designed, not preemptively.
+// A vendor booking's answer and its end. Confirm / Decline / Mark Completed are the vendor's own story; CANCELLED is the wedding
+// team's decision that this vendor is out (replaced, or the service dropped) — allowed from any booking that is not yet finished,
+// including a decline (so the service can be given to someone else). COMPLETED and CANCELLED are final.
+// CUSTOMER_APPROVAL_PENDING stays undesigned (docs/wedding-os/05-customer-portal.md §3, an open founder question) and unreachable.
+// Widened for cancel/replace by the founder's decision on the Functions & Services step (2026-09-22).
 export const VENDOR_BOOKING_STATUS_TRANSITIONS: Record<VendorBookingStatus, VendorBookingStatus[]> = {
-  PENDING_VENDOR_CONFIRMATION: ['CONFIRMED', 'DECLINED'],
-  CONFIRMED: ['COMPLETED'],
-  DECLINED: [],
+  PENDING_VENDOR_CONFIRMATION: ['CONFIRMED', 'DECLINED', 'CANCELLED'],
+  CONFIRMED: ['COMPLETED', 'CANCELLED'],
+  DECLINED: ['CANCELLED'],
   CUSTOMER_APPROVAL_PENDING: [],
   CANCELLED: [],
   COMPLETED: [],
