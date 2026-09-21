@@ -3,6 +3,7 @@
 import { ArrowRight } from 'lucide-react';
 import type { ControlRoomView } from '@/lib/wedding/controlRoom';
 import type { ActionTarget } from '@/lib/wedding/stage';
+import CoordinatorPicker, { type StaffMember } from '@/components/wedding/plan/CoordinatorPicker';
 
 export const TARGET_LABEL: Record<ActionTarget, string> = {
   overview: 'Overview',
@@ -15,9 +16,12 @@ export const TARGET_LABEL: Record<ActionTarget, string> = {
 // The one thing to do next — the first item of the same list "Needs attention" shows. The button goes where the work is done; the
 // wedding's own transitions (complete, resume) are offered right here when they are the next action.
 export default function NextActionCard({
-  view, onOpen, onTransition,
+  view, staff, coordinatorId, onAssignCoordinator, onOpen, onTransition,
 }: {
   view: ControlRoomView;
+  staff: StaffMember[];
+  coordinatorId: string | null;
+  onAssignCoordinator: (coordinatorId: string | null) => Promise<void>;
   onOpen: (target: ActionTarget) => void;
   onTransition: (to: 'COMPLETED' | 'PLANNING') => Promise<void>;
 }) {
@@ -36,6 +40,11 @@ export default function NextActionCard({
       <h2 className="mt-1 font-[Playfair_Display,serif] text-2xl font-bold leading-snug text-gray-900 sm:text-3xl">{next.title}</h2>
       {next.detail && <p className="mt-1 text-sm text-gray-600">{next.detail}</p>}
       {more > 0 && <p className="mt-2 text-xs text-gray-500">{more} more {more === 1 ? 'thing needs' : 'things need'} attention — see below.</p>}
+      {next.kind === 'MISSING_COORDINATOR' && (
+        <div className="mt-4 max-w-md">
+          <CoordinatorPicker current={coordinatorId} staff={staff} onAssign={onAssignCoordinator} label="Assign coordinator" />
+        </div>
+      )}
       {own && (
         <button type="button" onClick={own.run} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm">
           {own.label} <ArrowRight className="h-4 w-4" aria-hidden />

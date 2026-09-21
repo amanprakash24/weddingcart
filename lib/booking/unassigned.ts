@@ -32,6 +32,19 @@ export function unassignedServiceFromTask(title: string): string | null {
   return m ? m[1] : null;
 }
 
+// Tasks that only mirror a vendor fact: "Confirm booking with X…" (the vendor booking already carries that status) and "Assign a vendor
+// for X". The wedding page shows these as vendor rows with the real action (Confirm / Assign vendor) instead of as tasks, and the tasks
+// close themselves when the vendor is confirmed, declined or assigned.
+export function isVendorFollowUpTask(title: string): boolean {
+  return title.startsWith('Confirm booking with ') || unassignedServiceFromTask(title) !== null;
+}
+
+// What a quoted custom line was worth, read back from the task description written by planVendorlessItem ("… = ₹4,00,000. Choose the vendor…").
+export function quotedPriceFromTask(description: string | null | undefined): number | null {
+  const m = description?.match(/= ₹([\d,]+)\./);
+  return m ? Number(m[1].replace(/,/g, '')) : null;
+}
+
 // The activity-log line and the follow-up task for an item that cannot become a VendorBooking yet.
 export function planVendorlessItem(item: ConvertibleItem): { summary: string; taskTitle: string; taskDescription: string } {
   if (isUnassignedItem(item)) {

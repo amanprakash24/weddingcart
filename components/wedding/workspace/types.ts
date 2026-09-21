@@ -166,6 +166,9 @@ export interface CreateInvoiceInput {
   items: { description: string; vendorName?: string; amount: number; quantity: number }[];
 }
 
+// A wedding task also says which function / vendor booking it belongs to (both are on the row the server sends).
+export type WeddingTask = WorkspaceTask & { weddingEventId?: string | null; vendorBookingId?: string | null };
+
 export interface WeddingWorkspace {
   wedding: {
     id: string;
@@ -177,6 +180,7 @@ export interface WeddingWorkspace {
     guestCount: number | null;
     weddingType: string | null;
     totalBudget: number | null;
+    coordinatorId?: string | null;
     coordinatorName: string | null;
     customerName: string | null;
     createdAt: string;
@@ -196,7 +200,7 @@ export interface WeddingWorkspace {
   events: WorkspaceWeddingEvent[];
   timeline: WorkspaceMilestone[];
   activity: WorkspaceActivity[];
-  tasks: WorkspaceTask[];
+  tasks: WeddingTask[];
   documents: WorkspaceDocument[];
   finance: WorkspaceFinance;
   guests: {

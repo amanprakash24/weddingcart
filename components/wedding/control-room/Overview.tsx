@@ -4,6 +4,7 @@ import { AlertTriangle, Check, CircleDashed, X } from 'lucide-react';
 import type { ControlRoomView, JourneyStep, PulseCard, Tone, VendorRow } from '@/lib/wedding/controlRoom';
 import type { ActionTarget } from '@/lib/wedding/stage';
 import NextActionCard, { TARGET_LABEL } from './NextActionCard';
+import type { StaffMember } from '@/components/wedding/plan/CoordinatorPicker';
 
 const rupees = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const card = 'rounded-2xl border border-gray-100 bg-white p-4 sm:p-5';
@@ -216,15 +217,18 @@ function Vendors({ view }: { view: ControlRoomView }) {
 // ---- the page ------------------------------------------------------------------------------------------------------------
 
 export default function Overview({
-  view, onOpen, onTransition,
+  view, staff, coordinatorId, onAssignCoordinator, onOpen, onTransition,
 }: {
   view: ControlRoomView;
+  staff: StaffMember[];
+  coordinatorId: string | null;
+  onAssignCoordinator: (coordinatorId: string | null) => Promise<void>;
   onOpen: (target: ActionTarget) => void;
   onTransition: (to: 'COMPLETED' | 'PLANNING') => Promise<void>;
 }) {
   return (
     <div className="grid grid-cols-1 gap-4">
-      <NextActionCard view={view} onOpen={onOpen} onTransition={onTransition} />
+      <NextActionCard view={view} staff={staff} coordinatorId={coordinatorId} onAssignCoordinator={onAssignCoordinator} onOpen={onOpen} onTransition={onTransition} />
       <Money view={view} />
       <Pulse cards={view.pulse} onOpen={onOpen} />
       <Journey steps={view.journey} />

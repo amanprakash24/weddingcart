@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ArrowLeft, CalendarDays, Check, MapPin, MoreHorizontal, Users } from 'lucide-react';
 import type { ControlRoomView } from '@/lib/wedding/controlRoom';
 import type { WeddingStatus } from '@/components/wedding/workspace/types';
+import CoordinatorPicker, { type StaffMember } from '@/components/wedding/plan/CoordinatorPicker';
 
 const STAGE_TONE: Record<string, string> = {
   PLANNING: 'bg-blue-50 text-blue-700',
@@ -19,7 +20,16 @@ type Pending = { to: WeddingStatus; label: string; question: string } | null;
 
 // Who and when, at a glance: the couple, the date, the place, the guests, and where the wedding stands. Everything else about the
 // wedding is one tab away; the number, the quotation and the lead are here too, but small.
-export default function ControlRoomHeader({ view, onTransition }: { view: ControlRoomView; onTransition: (to: WeddingStatus) => Promise<void> }) {
+export default function ControlRoomHeader({
+  view, staff, coordinatorId, onAssignCoordinator, onTransition,
+}: {
+  view: ControlRoomView;
+  staff: StaffMember[];
+  coordinatorId: string | null;
+  onAssignCoordinator: (coordinatorId: string | null) => Promise<void>;
+  onTransition: (to: WeddingStatus) => Promise<void>;
+}) {
+  const [assigning, setAssigning] = useState(false);
   const [menu, setMenu] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [busy, setBusy] = useState(false);
@@ -115,9 +125,14 @@ export default function ControlRoomHeader({ view, onTransition }: { view: Contro
       <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
         <span>{view.secondary.weddingNumber}</span>
         {view.secondary.quotationNumber && <span>Quotation {view.secondary.quotationNumber}</span>}
-        <span>Coordinator: {view.secondary.coordinator ?? 'not assigned'}</span>
+        <span>Coordinator: {view.secondary.coordinator ?? 'not assigned'} <button type="button" onClick={() => setAssigning((v) => !v)} className="ml-1 text-gray-600 underline-offset-2 hover:underline">{view.secondary.coordinator ? 'Change' : 'Assign'}</button></span>
         {lead && <Link href={`/admin/crm/leads/${lead.sourceType}/${lead.id}`} className="text-gray-500 underline-offset-2 hover:underline">View lead</Link>}
       </p>
+      {assigning && (
+        <div className="mt-3 max-w-md">
+          <CoordinatorPicker current={coordinatorId} staff={staff} onAssign={onAssignCoordinator} onDone={() => setAssigning(false)} label="Save" />
+        </div>
+      )}
     </header>
   );
 }

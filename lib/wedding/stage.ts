@@ -109,6 +109,7 @@ export function computeWeddingStage(input: WeddingStageInput): WeddingStageInfo 
 export type NextActionKind =
   | 'CRITICAL_OVERDUE'
   | 'PENDING_VENDOR_CONFIRMATION'
+  | 'ASSIGN_VENDOR'
   | 'INVOICE_PAYMENT'
   | 'MISSING_COORDINATOR'
   | 'MISSING_INFORMATION'
@@ -162,6 +163,8 @@ export interface NextActionInput extends WeddingStageInput {
   couple: { brideName: string | null; groomName: string | null } | null;
   tasks: NextActionTask[];
   vendorBookings: NextActionVendorBooking[];
+  // Quoted services nobody is booked for yet (by name). Vendor work like a pending confirmation, so it shares priority 2.
+  unassignedServices?: string[];
   invoices: NextActionInvoice[];
 }
 
@@ -234,9 +237,17 @@ export function listNextActions(input: NextActionInput): NextAction[] {
     if (pending.length > 0) {
       const first = pending[0];
       actions.push({
-        kind: 'PENDING_VENDOR_CONFIRMATION', priority: 2, target: 'functions',
+        kind: 'PENDING_VENDOR_CONFIRMATION', priority: 2, target: 'plan',
         title: pending.length === 1 ? `Get ${first.vendorName} to confirm` : `${pending.length} vendors have not confirmed yet`,
         detail: pending.length === 1 ? `${first.vendorCategory} is waiting for a yes.` : `Start with ${first.vendorName} (${first.vendorCategory}).`,
+      });
+    }
+    const unassigned = input.unassignedServices ?? [];
+    if (unassigned.length > 0) {
+      actions.push({
+        kind: 'ASSIGN_VENDOR', priority: 2, target: 'plan',
+        title: unassigned.length === 1 ? `Assign a vendor for ${unassigned[0]}` : `${unassigned.length} services have no vendor yet`,
+        detail: unassigned.length === 1 ? 'It was quoted, but nobody is booked for it yet.' : `Start with ${unassigned[0]}.`,
       });
     }
   }

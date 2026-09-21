@@ -41,6 +41,7 @@ function makePrismaMock({
     weddingEvent: {
       findUnique: mock(async () => ({ id: 'we-1', weddingId })),
     },
+    task: { updateMany: mock(async () => ({ count: 1 })) },
     activityLog: {
       create: activityLogCreateMock,
     },
@@ -214,5 +215,105 @@ describe('weddingWorkspaceService.transitionStatus — completing a wedding', ()
       expect(await outcome(service.transitionStatus('wedding-1', to))).toBeInstanceOf(InvalidTransitionError);
       expect(weddingUpdate).not.toHaveBeenCalled();
     }
+  });
+});
+
+// ---- Plan tab: coordinator, task editing, and vendor tasks that close themselves ----
+function makePlanMock(over: { taskWeddingId?: string; taskTitle?: string; staff?: boolean; vendorBookingStatus?: string } = {}) {
+  const weddingRow = { id: 'wedding-1', status: 'PLANNING', primaryDate: new Date(), coordinatorId: null };
+  const taskRow = { id: 'task-1', weddingId: over.taskWeddingId ?? 'wedding-1', title: over.taskTitle ?? 'Book the band', status: 'PENDING' };
+  const weddingUpdate = mock(async (args: { data: Record<string, unknown> }) => ({ ...weddingRow, ...args.data }));
+  const taskUpdate = mock(async (args: { data: Record<string, unknown> }) => ({ ...taskRow, ...args.data }));
+  const taskUpdateMany = mock(async (args: Record<string, unknown>) => ({ count: args ? 1 : 0 }));
+  const logCreate = mock(async () => ({ id: 'log-1' }));
+  const vbUpdate = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'vb-1', ...args.data }));
+  const vbCreate = mock(async (args: { data: Record<string, unknown> }) => ({ id: 'vb-new', ...args.data }));
+  const base = {
+    wedding: { findUnique: mock(async () => weddingRow), update: weddingUpdate },
+    user: { findFirst: mock(async () => (over.staff === false ? null : { id: 'staff-1', name: 'Asha' })) },
+    task: { findUnique: mock(async () => taskRow), update: taskUpdate, updateMany: taskUpdateMany, create: mock(async () => ({ id: 'task-x' })) },
+    activityLog: { create: logCreate },
+    weddingEvent: { findUnique: mock(async () => ({ id: 'we-1', weddingId: 'wedding-1' })) },
+    vendor: { findUnique: mock(async () => ({ id: 'vendor-1', name: 'Lens Studio' })) },
+    vendorBooking: { findUnique: mock(async () => ({ id: 'vb-1', weddingEventId: 'we-1', status: over.vendorBookingStatus ?? 'PENDING_VENDOR_CONFIRMATION', respondedAt: null, onTimeService: null })), update: vbUpdate, create: vbCreate },
+  };
+  const prismaMock = { ...base, $transaction: mock(async (fn: (tx: typeof base) => unknown) => fn(base)) };
+  return { prismaMock, weddingUpdate, taskUpdate, taskUpdateMany, logCreate };
+}
+
+const failure = async (promise: Promise<unknown>) => promise.then(() => null, (e: unknown) => e as Error);
+
+describe('weddingWorkspaceService.assignCoordinator', () => {
+  test('connects the staff member and records who was assigned', async () => {
+    const { prismaMock, weddingUpdate, logCreate } = makePlanMock();
+    const service = await loadServiceWith(prismaMock);
+    await service.assignCoordinator('wedding-1', 'staff-1', 'actor-1');
+    expect(weddingUpdate.mock.calls[0][0].data.coordinator).toEqual({ connect: { id: 'staff-1' } });
+    expect((logCreate.mock.calls[0] as unknown as [{ data: { summary: string } }])[0].data.summary).toBe('Coordinator assigned: Asha');
+  });
+
+  test('null removes the coordinator', async () => {
+    const { prismaMock, weddingUpdate } = makePlanMock();
+    const service = await loadServiceWith(prismaMock);
+    await service.assignCoordinator('wedding-1', null, null);
+    expect(weddingUpdate.mock.calls[0][0].data.coordinator).toEqual({ disconnect: true });
+  });
+
+  test('someone who is not on the team cannot be made coordinator, and nothing is written', async () => {
+    const { prismaMock, weddingUpdate } = makePlanMock({ staff: false });
+    const service = await loadServiceWith(prismaMock);
+    expect(await failure(service.assignCoordinator('wedding-1', 'customer-9', null))).toBeInstanceOf(NotFoundError);
+    expect(weddingUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('weddingWorkspaceService.updateTask', () => {
+  test('changes only what is sent; a due date, priority and assignee are all editable', async () => {
+    const { prismaMock, taskUpdate } = makePlanMock();
+    const service = await loadServiceWith(prismaMock);
+    const due = new Date('2026-10-01T00:00:00Z');
+    await service.updateTask('wedding-1', 'task-1', { dueAt: due, priority: 'URGENT', assignedToId: 'staff-1' });
+    expect(taskUpdate.mock.calls[0][0].data).toEqual({ dueAt: due, priority: 'URGENT', assignedTo: { connect: { id: 'staff-1' } } });
+  });
+
+  test('done stamps completedAt; reopening clears it; null clears the due date and the assignee', async () => {
+    const { prismaMock, taskUpdate } = makePlanMock();
+    const service = await loadServiceWith(prismaMock);
+    await service.updateTask('wedding-1', 'task-1', { status: 'DONE' });
+    expect(taskUpdate.mock.calls[0][0].data.completedAt).toBeInstanceOf(Date);
+    await service.updateTask('wedding-1', 'task-1', { status: 'PENDING', dueAt: null, assignedToId: null });
+    expect(taskUpdate.mock.calls[1][0].data).toMatchObject({ status: 'PENDING', completedAt: null, dueAt: null, assignedTo: { disconnect: true } });
+  });
+
+  test('a task of another wedding is not found; a blank title and a non-staff assignee are refused', async () => {
+    const other = makePlanMock({ taskWeddingId: 'wedding-2' });
+    expect(await failure((await loadServiceWith(other.prismaMock)).updateTask('wedding-1', 'task-1', { title: 'x' }))).toBeInstanceOf(NotFoundError);
+    const { prismaMock, taskUpdate } = makePlanMock({ staff: false });
+    const service = await loadServiceWith(prismaMock);
+    expect(((await failure(service.updateTask('wedding-1', 'task-1', { title: '   ' }))) as Error).message).toContain('needs a title');
+    expect(await failure(service.updateTask('wedding-1', 'task-1', { assignedToId: 'customer-9' }))).toBeInstanceOf(NotFoundError);
+    expect(taskUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('vendor tasks close themselves', () => {
+  test('confirming a vendor booking finishes its "Confirm booking with…" task; declining cancels it', async () => {
+    const confirm = makePlanMock();
+    await (await loadServiceWith(confirm.prismaMock)).updateVendorBookingStatus('wedding-1', 'vb-1', 'CONFIRMED');
+    expect(confirm.taskUpdateMany.mock.calls[0][0]).toMatchObject({ where: { vendorBookingId: 'vb-1' }, data: { status: 'DONE' } });
+    const decline = makePlanMock();
+    await (await loadServiceWith(decline.prismaMock)).updateVendorBookingStatus('wedding-1', 'vb-1', 'DECLINED', 'busy');
+    expect(decline.taskUpdateMany.mock.calls[0][0]).toMatchObject({ data: { status: 'CANCELLED' } });
+  });
+
+  test('assigning a vendor to a quoted service closes that "Assign a vendor for…" task — and only that kind of task', async () => {
+    // Other test files replace this repository for the whole process (bun's mock.module is global), so pin the one call this test needs.
+    mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findById: mock(async () => ({ id: 'vendor-1', name: 'Lens Studio' })) } }));
+    const good = makePlanMock({ taskTitle: 'Assign a vendor for "Photography"' });
+    await (await loadServiceWith(good.prismaMock)).addVendorBooking('wedding-1', { weddingEventId: 'we-1', vendorId: 'vendor-1', agreedPrice: 12500, resolvesTaskId: 'task-1' }, null);
+    expect(good.taskUpdateMany.mock.calls[0][0]).toMatchObject({ where: { id: 'task-1' }, data: { status: 'DONE' } });
+    const notThatKind = makePlanMock({ taskTitle: 'Call the caterer' });
+    expect(await failure((await loadServiceWith(notThatKind.prismaMock)).addVendorBooking('wedding-1', { weddingEventId: 'we-1', vendorId: 'vendor-1', agreedPrice: 1, resolvesTaskId: 'task-1' }, null))).toBeInstanceOf(NotFoundError);
+    expect(notThatKind.taskUpdateMany).not.toHaveBeenCalled();
   });
 });

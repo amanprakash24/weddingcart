@@ -263,7 +263,7 @@ describe('computeNextAction — priority order', () => {
 
   test('2. a pending vendor confirmation beats invoices', () => {
     const a = computeNextAction(wedding({ vendorBookings: [pendingVendor], invoices: [draftInvoice] }));
-    expect(a).toMatchObject({ kind: 'PENDING_VENDOR_CONFIRMATION', priority: 2, title: 'Get Lens Studio to confirm', target: 'functions' });
+    expect(a).toMatchObject({ kind: 'PENDING_VENDOR_CONFIRMATION', priority: 2, title: 'Get Lens Studio to confirm', target: 'plan' });
   });
 
   test('2. several pending vendors are counted and the nearest event leads', () => {
@@ -408,5 +408,24 @@ describe('invoice states feed the next action (issued invoices are not "unsent")
   test('a balance invoice still in draft is "Send the invoice to the couple"; the paid advance beside it does not hide it', () => {
     const a = computeNextAction(wedding({ invoices: [{ status: 'PAID', outstanding: 0, isAdvance: true }, { status: 'DRAFT', outstanding: 60_000 }] }));
     expect(a.title).toBe('Send the invoice to the couple');
+  });
+});
+
+describe('quoted services with no vendor yet are vendor work (priority 2, done on the Plan tab)', () => {
+  const pendingVendor = { vendorName: 'Lens Studio', vendorCategory: 'Photography', status: 'PENDING_VENDOR_CONFIRMATION' as const, eventDate: plusDays(60) };
+  test('one service → "Assign a vendor for X"', () => {
+    expect(computeNextAction(wedding({ unassignedServices: ['Photography'] }))).toMatchObject({ kind: 'ASSIGN_VENDOR', priority: 2, title: 'Assign a vendor for Photography', target: 'plan' });
+  });
+  test('several services → counted, the first named', () => {
+    const a = computeNextAction(wedding({ unassignedServices: ['Photography', 'Decoration'] }));
+    expect(a.title).toBe('2 services have no vendor yet');
+    expect(a.detail).toBe('Start with Photography.');
+  });
+  test('it sits with the other vendor work: after a pending confirmation, before invoices and the coordinator', () => {
+    const list = listNextActions(wedding({ unassignedServices: ['Photography'], vendorBookings: [pendingVendor], invoices: [{ status: 'DRAFT', outstanding: 50_000 }], coordinatorName: null }));
+    expect(list.map((x) => x.kind)).toEqual(['PENDING_VENDOR_CONFIRMATION', 'ASSIGN_VENDOR', 'INVOICE_PAYMENT', 'MISSING_COORDINATOR']);
+  });
+  test('a completed or cancelled wedding does not chase vendors', () => {
+    expect(computeNextAction(wedding({ status: 'COMPLETED', unassignedServices: ['Photography'] })).kind).not.toBe('ASSIGN_VENDOR');
   });
 });

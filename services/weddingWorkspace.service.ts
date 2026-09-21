@@ -17,7 +17,9 @@ import { computeWeddingStage } from '@/lib/wedding/stage';
 import { agreementFigures } from '@/lib/invoice/lifecycle';
 import { findAgreementForWedding } from '@/services/invoiceWorkflow.service';
 import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
-import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
+import { NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
+import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { unassignedServiceFromTask } from '@/lib/booking/unassigned';
 import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus, type PayoutStatus } from '@/generated/prisma/enums';
 import type { Wedding, Task, ActivityLog, Document, TimelineMilestone, Prisma } from '@/generated/prisma/client';
 
@@ -455,6 +457,57 @@ export const weddingWorkspaceService = {
     });
   },
 
+  // Anyone who can work weddings (the same people the lead pages let you assign) — never a customer or a vendor.
+  async findStaff(userId: string) {
+    return prisma.user.findFirst({ where: { id: userId, roles: { some: { role: { in: ADMIN_ROLES } } } }, select: { id: true, name: true } });
+  },
+
+  // Who is looking after this wedding. Before this, only the CRM conversion could set it (and only optionally), so a wedding made from a
+  // booking — the normal path — could never have a coordinator.
+  async assignCoordinator(weddingId: string, coordinatorId: string | null, actorId: string | null) {
+    await findWeddingOrThrow(weddingId);
+    const staff = coordinatorId ? await this.findStaff(coordinatorId) : null;
+    if (coordinatorId && !staff) throw new NotFoundError('Staff member', coordinatorId);
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const updated = await weddingRepository.update(
+        weddingId,
+        { coordinator: staff ? { connect: { id: staff.id } } : { disconnect: true } },
+        tx
+      );
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: staff ? `Coordinator assigned: ${staff.name ?? 'team member'}` : 'Coordinator removed',
+          wedding: { connect: { id: weddingId } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+      return updated;
+    });
+  },
+
+  // Edit a wedding task: what it says, when it is due, how important, who has it — and its status, so a finished or cancelled task can be
+  // reopened. Only the fields that are sent change.
+  async updateTask(
+    weddingId: string,
+    taskId: string,
+    patch: { title?: string; description?: string | null; dueAt?: Date | null; priority?: Task['priority']; assignedToId?: string | null; status?: TaskStatus }
+  ) {
+    const task = await taskRepository.findById(taskId);
+    if (!task || task.weddingId !== weddingId) throw new NotFoundError('Task', taskId);
+    if (patch.title !== undefined && !patch.title.trim()) throw new ValidationError('A task needs a title');
+    if (patch.assignedToId && !(await this.findStaff(patch.assignedToId))) throw new NotFoundError('Staff member', patch.assignedToId);
+    return taskRepository.update(taskId, {
+      ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
+      ...(patch.description !== undefined ? { description: patch.description } : {}),
+      ...(patch.dueAt !== undefined ? { dueAt: patch.dueAt } : {}),
+      ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+      ...(patch.assignedToId !== undefined ? { assignedTo: patch.assignedToId ? { connect: { id: patch.assignedToId } } : { disconnect: true } } : {}),
+      ...(patch.status !== undefined ? { status: patch.status, completedAt: patch.status === 'DONE' ? new Date() : null } : {}),
+    });
+  },
+
   async completeTask(weddingId: string, taskId: string, status: TaskStatus) {
     const task = await taskRepository.findById(taskId);
     if (!task || task.weddingId !== weddingId) throw new NotFoundError('Task', taskId);
@@ -527,6 +580,15 @@ export const weddingWorkspaceService = {
         tx
       );
 
+      // The "Confirm booking with…" task only mirrors this status: once the vendor has answered it is finished (confirmed) or moot
+      // (declined), so nobody has to tick it separately.
+      if (status === 'CONFIRMED' || status === 'DECLINED') {
+        await tx.task.updateMany({
+          where: { vendorBookingId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+          data: { status: status === 'CONFIRMED' ? 'DONE' : 'CANCELLED', completedAt: status === 'CONFIRMED' ? new Date() : null },
+        });
+      }
+
       if (status === 'CONFIRMED') {
         await maybeActivateWedding(weddingId, tx);
       }
@@ -543,10 +605,15 @@ export const weddingWorkspaceService = {
   // ActivityLog, one transaction) rather than inventing a new shape.
   async addVendorBooking(
     weddingId: string,
-    input: { weddingEventId: string; vendorId: string; agreedPrice: number },
+    // resolvesTaskId: the "Assign a vendor for …" task this booking answers — it closes when the booking is made.
+    input: { weddingEventId: string; vendorId: string; agreedPrice: number; resolvesTaskId?: string },
     actorId: string | null
   ) {
     await findWeddingOrThrow(weddingId);
+    if (input.resolvesTaskId) {
+      const resolves = await taskRepository.findById(input.resolvesTaskId);
+      if (!resolves || resolves.weddingId !== weddingId || !unassignedServiceFromTask(resolves.title)) throw new NotFoundError('Task', input.resolvesTaskId);
+    }
 
     const event = await weddingEventRepository.findById(input.weddingEventId);
     if (!event || event.weddingId !== weddingId) {
@@ -566,6 +633,10 @@ export const weddingWorkspaceService = {
         },
         tx
       );
+
+      if (input.resolvesTaskId) {
+        await tx.task.updateMany({ where: { id: input.resolvesTaskId, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { status: 'DONE', completedAt: new Date() } });
+      }
 
       await taskRepository.create(
         {
