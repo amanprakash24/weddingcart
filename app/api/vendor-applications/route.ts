@@ -8,6 +8,7 @@ import { INDIAN_MOBILE_ERROR, normalizeIndianMobile } from '@/lib/indianPhone';
 import type { VendorApplicationWithCategory } from '@/repositories/vendorApplication.repository';
 import type { ApplicationStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { WeddingEventType } from '@/generated/prisma/enums';
 
 // Public, unauthenticated POST with previously zero rate limiting or
 // validation (audit finding) — reuses the exact throttle mechanism and
@@ -58,6 +59,9 @@ const schema = z.object({
   coverImage: z.string().trim().url().optional().or(z.literal('')),
   portfolioImages: z.array(z.string().trim().url()).max(10).optional(),
   foodMenuImages: z.array(z.string().trim().url()).max(5).optional(),
+  // Which wedding functions this vendor/venue serves (docs/wedding-os/11-vivah-os-ux-architecture.md §15).
+  // Capped at the enum's own size — there's no meaningful way to send more distinct values than exist.
+  capabilities: z.array(z.nativeEnum(WeddingEventType)).max(Object.keys(WeddingEventType).length).optional(),
 });
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
@@ -129,6 +133,7 @@ async function handlePOST(req: NextRequest) {
       coverImage: parsed.coverImage,
       portfolioImages: parsed.portfolioImages,
       foodMenuImages: parsed.foodMenuImages,
+      capabilities: parsed.capabilities,
     });
 
     return NextResponse.json({ success: true, data: toResponseShape(application) }, { status: 201 });

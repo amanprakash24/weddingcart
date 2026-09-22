@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { NotFoundError, DuplicateError } from '@/lib/errors';
 import { slugify } from '@/lib/slug';
 import { Role } from '@/lib/auth/roles';
-import type { ApplicationStatus, Prisma } from '@/generated/prisma/client';
+import type { ApplicationStatus, Prisma, WeddingEventType } from '@/generated/prisma/client';
 
 type Tx = Prisma.TransactionClient;
 
@@ -30,6 +30,7 @@ export interface VendorApplicationCreateData {
   coverImage?: string;
   portfolioImages?: string[];
   foodMenuImages?: string[];
+  capabilities?: WeddingEventType[]; // which wedding functions this vendor/venue serves — see VendorCapability
 }
 
 // Cross-repository composition (VendorApplication + Category + Vendor) — per
@@ -116,6 +117,18 @@ async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: 
   }
 }
 
+// Copies the application's draft `capabilities` array onto real VendorCapability rows for the newly
+// created vendor — the "capabilities copied/created on Vendor" step of the onboarding flow, so a
+// vendor's selections don't just disappear at approval. No-op (no query at all) when the applicant
+// selected nothing, same as portfolioImages/foodMenuImages already tolerate being empty.
+async function provisionVendorCapabilities(capabilities: WeddingEventType[], vendorId: string, tx: Tx) {
+  if (capabilities.length === 0) return;
+  await tx.vendorCapability.createMany({
+    data: capabilities.map((functionType) => ({ vendorId, function: functionType })),
+    skipDuplicates: true,
+  });
+}
+
 export const vendorApplicationService = {
   async list(params: { status?: ApplicationStatus }) {
     return vendorApplicationRepository.findMany({
@@ -150,6 +163,7 @@ export const vendorApplicationService = {
       coverImage: data.coverImage,
       portfolioImages: data.portfolioImages,
       foodMenuImages: data.foodMenuImages,
+      capabilities: data.capabilities,
     });
   },
 
@@ -173,6 +187,7 @@ export const vendorApplicationService = {
     return prisma.$transaction(async (tx) => {
       const vendor = await approveVendorApplication(existing, tx);
       await provisionVendorAccount(existing.ownerPhone, vendor.id, tx);
+      await provisionVendorCapabilities(existing.capabilities, vendor.id, tx);
       return vendorApplicationRepository.update(id, { status, vendor: { connect: { id: vendor.id } } }, tx);
     });
   },

@@ -317,6 +317,38 @@ describe('POST /api/vendor-applications — request validation', () => {
     expect(res.status).toBe(400);
     expect(create).not.toHaveBeenCalled();
   });
+
+  test('valid capabilities are accepted and reach vendorApplicationService.create', async () => {
+    const store = makeLoginAttemptStore();
+    const { POST, create } = await loadRouteWith(store);
+
+    const res = await POST(postRequest({ ...VALID_BODY, capabilities: ['HALDI', 'SANGEET'] }));
+
+    expect(res.status).toBe(201);
+    const [input] = create.mock.calls[0] as [Record<string, unknown>];
+    expect(input.capabilities).toEqual(['HALDI', 'SANGEET']);
+  });
+
+  test('an invalid capability value is rejected before the service is invoked', async () => {
+    const store = makeLoginAttemptStore();
+    const { POST, create } = await loadRouteWith(store);
+
+    const res = await POST(postRequest({ ...VALID_BODY, capabilities: ['NOT_A_REAL_FUNCTION'] }));
+
+    expect(res.status).toBe(400);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test('omitted capabilities are accepted (optional)', async () => {
+    const store = makeLoginAttemptStore();
+    const { POST, create } = await loadRouteWith(store);
+
+    const res = await POST(postRequest(VALID_BODY));
+
+    expect(res.status).toBe(201);
+    const [input] = create.mock.calls[0] as [Record<string, unknown>];
+    expect(input.capabilities).toBeUndefined();
+  });
 });
 
 describe('POST /api/vendor-applications — existing category-existence behavior still surfaces correctly', () => {
