@@ -112,7 +112,7 @@ dbDescribe('quotation & conversion concurrency (real database)', () => {
     const invoices = await app.prisma.invoice.findMany({ where: { weddingId: { in: weddings.map((w) => w.id) } }, select: { invoiceNumber: true, total: true } });
     expect(invoices).toHaveLength(2);
     expect(new Set(invoices.map((i) => i.invoiceNumber)).size).toBe(2);
-    expect(invoices.map((i) => i.total).sort((x, y) => x - y)).toEqual([100000, 150000]);
+    expect(invoices.map((i) => i.total).sort((x, y) => x - y)).toEqual([75000, 75000]); // Money V1: 25% of ₹3,00,000 each — not the typed ₹1,00,000 / ₹1,50,000 advances
   });
 
   test('a double-clicked "confirm" (the same booking converted twice at once) → one wedding, one invoice, both calls return it', async () => {
@@ -125,7 +125,7 @@ dbDescribe('quotation & conversion concurrency (real database)', () => {
     expect(await app.prisma.invoice.count({ where: { weddingId: [...ids][0] } })).toBe(1);
   });
 
-  test('if the advance invoice cannot be created, the WHOLE conversion rolls back — then the same call succeeds once fixed', async () => {
+  test('if the booking\'s invoice cannot be created, the WHOLE booking creation rolls back — then the same call succeeds once fixed (Money V1: the invoice is made with the booking)', async () => {
     // Plant two invoices so the number generator (which finds the highest by text order) proposes one that already exists.
     const bucket = app.monthBucket('INV');
     const planted = await Promise.all(
@@ -133,15 +133,20 @@ dbDescribe('quotation & conversion concurrency (real database)', () => {
         app.prisma.invoice.create({ data: { invoiceNumber, clientName: PLANTED_INVOICE_CLIENT, clientPhone: '9000000000', subtotal: 1, total: 1 } })
       )
     );
-    const { booking, quotation } = await fx.confirmedBooking((await fx.consultation()).id, { advance: 60000 });
+    const quotation = await fx.acceptedQuote((await fx.consultation()).id, { advance: 60000 });
 
-    const failure = await app.convertBookingToWedding(booking.id).then(() => null, (e: Error) => e);
-    expect(failure?.name).toBe('DuplicateError'); // the planted numbers collide, so the advance invoice cannot be created
-    expect(await app.prisma.wedding.count({ where: { sourceBookingId: booking.id } })).toBe(0); // no wedding without its invoice
+    const failure = await app.quotationService.createBooking(quotation.id, {}, null).then(() => null, (e: Error) => e);
+    expect(failure?.name).toBe('DuplicateError'); // the planted numbers collide, so the booking's invoice cannot be created
+    expect(await app.prisma.booking.count({ where: { quotationId: quotation.id } })).toBe(0); // no booking without its invoice
+    expect(await app.prisma.commercialAgreement.count({ where: { quotationId: quotation.id } })).toBe(0); // no agreement without its invoice
     expect((await app.quotationService.getById(quotation.id)).advanceInvoiceId).toBeNull(); // nothing half-linked
 
     await app.prisma.invoice.deleteMany({ where: { id: { in: planted.map((p) => p.id) } } });
-    const retry = await app.convertBookingToWedding(booking.id); // retry-safe: no manual repair needed
+    const booking = await app.quotationService.createBooking(quotation.id, {}, null); // retry-safe: no manual repair needed
+    expect(await app.prisma.invoice.count({ where: { quotationId: quotation.id } })).toBe(1);
+    await fx.payConfirmation(quotation.id);
+    await app.bookingService.update(booking.id, { status: 'CONFIRMED' });
+    const retry = await app.convertBookingToWedding(booking.id);
     expect(await app.prisma.invoice.count({ where: { weddingId: retry.id } })).toBe(1);
   });
 });

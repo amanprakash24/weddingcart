@@ -5,7 +5,7 @@
 // is wording and layout data — so the screen can never disagree with the rules.
 import type { WeddingWorkspace, WorkspaceInvoice, WorkspaceWeddingEvent } from '@/components/wedding/workspace/types';
 import { isVenueCategory } from '@/lib/quotation/terms';
-import { unassignedServiceFromTask } from '@/lib/booking/unassigned';
+import { isVendorFollowUpTask, quotedPriceFromTask, unassignedServiceFromTask } from '@/lib/booking/unassigned';
 import {
   STAGE_LABELS, computeWeddingStage, daysFromToday, isOpenTask, listNextActions,
   type ActionTarget, type NextAction, type NextActionInput, type WeddingStage, type WeddingStageInfo,
@@ -132,11 +132,18 @@ export interface VendorRow {
   functionName: string | null;
   state: 'confirmed' | 'pending' | 'declined' | 'unassigned';
   isVenue: boolean;
+  // What the Plan tab needs to act on the row: confirm/decline a booking, or assign a vendor to a quoted service.
+  vendorBookingId?: string;
+  taskId?: string;
+  weddingEventId?: string;
+  quotedPrice?: number | null;
 }
 
 // Every service the wedding needs: the vendor bookings (confirmed / pending / declined) and the quoted services that still have no
 // vendor at all (found from their open "assign a vendor" tasks). A vendor booking's own status is only ever read as the vendor's answer —
 // it never says anything about the wedding's stage.
+export const functionLabel = (e: { label: string | null; type: string }) => e.label || e.type.charAt(0) + e.type.slice(1).toLowerCase().replace(/_/g, ' ');
+
 export function buildVendors(ws: WeddingWorkspace): VendorRow[] {
   const rows: VendorRow[] = [];
   for (const event of ws.events) {
@@ -144,13 +151,16 @@ export function buildVendors(ws: WeddingWorkspace): VendorRow[] {
       if (vb.status === 'CANCELLED') continue;
       const state: VendorRow['state'] =
         vb.status === 'CONFIRMED' || vb.status === 'COMPLETED' ? 'confirmed' : vb.status === 'DECLINED' ? 'declined' : 'pending';
-      rows.push({ key: vb.id, name: vb.vendorName, category: vb.vendorCategory, functionName: event.label || event.type, state, isVenue: isVenueCategory(vb.vendorCategory) });
+      rows.push({ key: vb.id, name: vb.vendorName, category: vb.vendorCategory, functionName: functionLabel(event), state, isVenue: isVenueCategory(vb.vendorCategory), vendorBookingId: vb.id, weddingEventId: event.id });
     }
   }
   for (const task of ws.tasks) {
     if (!isOpenTask(task)) continue;
     const service = unassignedServiceFromTask(task.title);
-    if (service) rows.push({ key: `task-${task.id}`, name: service, category: service, functionName: null, state: 'unassigned', isVenue: isVenueCategory(service) });
+    if (service) {
+      const event = ws.events.find((e) => e.id === task.weddingEventId) ?? ws.events.find((e) => e.tasks.some((t) => t.id === task.id)) ?? ws.events[0];
+      rows.push({ key: `task-${task.id}`, name: service, category: service, functionName: event ? functionLabel(event) : null, state: 'unassigned', isVenue: isVenueCategory(service), taskId: task.id, weddingEventId: event?.id, quotedPrice: quotedPriceFromTask(task.description) });
+    }
   }
   return rows;
 }
@@ -192,14 +202,18 @@ export interface TaskSummary {
   next: { id: string; title: string; dueAt: string } | null;
 }
 
+// Real work only: the tasks that just mirror a vendor row ("Confirm booking with…", "Assign a vendor for…") are shown as vendors, not counted here.
+export const realTasks = (ws: WeddingWorkspace) => ws.tasks.filter((t) => !isVendorFollowUpTask(t.title));
+
 export function buildTasks(ws: WeddingWorkspace, now: Date): TaskSummary {
-  const open = ws.tasks.filter(isOpenTask);
+  const tasks = realTasks(ws);
+  const open = tasks.filter(isOpenTask);
   const days = (t: { dueAt: string | null }) => (t.dueAt ? daysFromToday(t.dueAt, now) : null);
   const upcoming = open
     .filter((t) => t.dueAt && (days(t) ?? 0) > 0) // strictly after today: today's tasks are listed under Today
     .sort((a, b) => (a.dueAt as string).localeCompare(b.dueAt as string))[0];
   return {
-    total: ws.tasks.length,
+    total: tasks.length,
     open: open.length,
     overdue: open.filter((t) => (days(t) ?? 0) < 0 && t.dueAt).length,
     dueToday: open.filter((t) => days(t) === 0).map((t) => ({ id: t.id, title: t.title })),
@@ -252,7 +266,8 @@ export function toNextActionInput(ws: WeddingWorkspace, now: Date): NextActionIn
     coordinatorName: ws.wedding.coordinatorName,
     guestCount: ws.wedding.guestCount,
     couple: ws.couple ? { brideName: ws.couple.brideName, groomName: ws.couple.groomName } : null,
-    tasks: ws.tasks.map((t) => ({ title: t.title, status: t.status, priority: t.priority, dueAt: t.dueAt })),
+    tasks: realTasks(ws).map((t) => ({ title: t.title, status: t.status, priority: t.priority, dueAt: t.dueAt })),
+    unassignedServices: ws.tasks.filter((t) => isOpenTask(t) && unassignedServiceFromTask(t.title)).map((t) => unassignedServiceFromTask(t.title) as string),
     vendorBookings: ws.events.flatMap((e) =>
       e.vendorBookings.map((v) => ({ vendorName: v.vendorName, vendorCategory: v.vendorCategory, status: v.status, eventDate: e.date }))
     ),

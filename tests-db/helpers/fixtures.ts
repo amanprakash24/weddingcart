@@ -69,12 +69,27 @@ export function createFixtures(app: App) {
     return quotationService.accept(sent.id, { channel: 'WHATSAPP', note: 'db test' }, null);
   }
 
-  // accepted quote → booking → CONFIRMED (not yet converted: the caller decides when to convert).
+  // accepted quote → booking (agreement + advance invoice made) → the 25% confirmation payment is recorded (Money v1: the server refuses to
+  // confirm without it) → CONFIRMED (not yet converted: the caller decides when to convert). Recorded through the payment service
+  // WITHOUT the automatic confirmation, so the caller still controls when the wedding is made.
   async function confirmedBooking(consultationId: string, input: Parameters<typeof sentQuote>[1] = {}) {
-    const quotation = await acceptedQuote(consultationId, input);
-    const booking = await quotationService.createBooking(quotation.id, {}, null);
+    const { quotation, booking } = await bookedQuote(consultationId, input);
+    await payConfirmation(quotation.id);
     await bookingService.update(booking.id, { status: 'CONFIRMED' });
     return { quotation, booking };
+  }
+
+  // accepted quote → booking, nothing paid yet.
+  async function bookedQuote(consultationId: string, input: Parameters<typeof sentQuote>[1] = {}) {
+    const quotation = await acceptedQuote(consultationId, input);
+    const booking = await quotationService.createBooking(quotation.id, {}, null);
+    return { quotation, booking };
+  }
+
+  // Receives exactly what the agreement needs to confirm the booking (or a given amount), as cash.
+  async function payConfirmation(quotationId: string, amount?: number) {
+    const agreement = await prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId } });
+    return app.agreement.recordAgreementPayment(quotationId, { amount: amount ?? agreement.confirmationAmount, method: 'CASH' }, null);
   }
 
   // Removes everything any run (this one or a crashed earlier one) created.
@@ -87,14 +102,15 @@ export function createFixtures(app: App) {
         select: { id: true },
       })
     ).map((w) => w.id);
-    const advanceIds = (await prisma.quotation.findMany({ where: { consultationId: { in: ids } }, select: { advanceInvoiceId: true } }))
-      .map((q) => q.advanceInvoiceId)
-      .filter((x): x is string => !!x);
+    const quotes = await prisma.quotation.findMany({ where: { consultationId: { in: ids } }, select: { id: true, advanceInvoiceId: true } });
+    const quotationIds = quotes.map((q) => q.id);
+    const advanceIds = quotes.map((q) => q.advanceInvoiceId).filter((x): x is string => !!x);
 
     // Invoices first (Invoice.wedding is SetNull — deleting a wedding first would orphan them). Payments and payment
     // links cascade with their invoice.
+    await prisma.commercialAgreement.deleteMany({ where: { quotation: { consultationId: { in: ids } } } });
     await prisma.invoice.deleteMany({
-      where: { OR: [{ clientName: PLANTED_INVOICE_CLIENT }, { weddingId: { in: weddingIds } }, { id: { in: advanceIds } }] },
+      where: { OR: [{ clientName: PLANTED_INVOICE_CLIENT }, { weddingId: { in: weddingIds } }, { id: { in: advanceIds } }, { quotationId: { in: quotationIds } }] },
     });
     for (const id of weddingIds) await prisma.wedding.delete({ where: { id } }); // cascades events, vendor bookings, tasks, milestones, logs
     await prisma.booking.deleteMany({ where: { id: { in: bookingIds } } });
@@ -104,7 +120,7 @@ export function createFixtures(app: App) {
     await prisma.consultation.deleteMany({ where: { id: { in: ids } } });
   }
 
-  return { runId, consultation, vendors, line, sentQuote, acceptedQuote, confirmedBooking, purge };
+  return { runId, consultation, vendors, line, sentQuote, acceptedQuote, bookedQuote, payConfirmation, confirmedBooking, purge };
 }
 
 export type Fixtures = ReturnType<typeof createFixtures>;

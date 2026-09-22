@@ -34,7 +34,7 @@ dbDescribe('completing a wedding that no vendor confirmed (real database)', () =
     expect(after.completedAt).toBeNull();
   });
 
-  test('once the day has passed it completes with zero confirmed vendors, an unpaid draft invoice and open tasks', async () => {
+  test('once the day has passed it completes with zero confirmed vendors, an unpaid balance and open tasks', async () => {
     // Move the whole wedding into the past, then make it vendorless. Everything else stays as the conversion made it.
     const past = inDays(-3);
     await app.prisma.wedding.update({ where: { id: weddingId }, data: { primaryDate: past } });
@@ -45,7 +45,10 @@ dbDescribe('completing a wedding that no vendor confirmed (real database)', () =
     expect(await app.prisma.task.count({ where: { weddingId, status: { in: ['PENDING', 'IN_PROGRESS'] } } })).toBeGreaterThan(0);
     const invoices = await app.prisma.invoice.findMany({ where: { weddingId } });
     expect(invoices.length).toBeGreaterThan(0);
-    expect(invoices.every((i) => i.status === 'DRAFT')).toBe(true);
+    // Money V1: the booking was confirmed on its 25%, so its (only) invoice is paid — the rest of the agreement is still unpaid.
+    expect(invoices.every((i) => i.status === 'PAID')).toBe(true);
+    const money = (await app.weddingWorkspaceService.getWorkspace(weddingId)).finance.agreement?.money;
+    expect(money?.outstanding ?? 0).toBeGreaterThan(0);
 
     const done = await app.weddingWorkspaceService.transitionStatus(weddingId, 'COMPLETED');
     expect(done.status).toBe('COMPLETED');

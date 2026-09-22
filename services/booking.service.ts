@@ -82,5 +82,15 @@ export const bookingService = {
   // Hard boundary: only `status` is ever passed in by the route.
   // weddingDate/weddingType/guestCount and the conversion pipeline
   // (weddingConversion.service.ts) are untouched here.
-  update: (id: string, data: Prisma.BookingUpdateInput) => bookingRepository.update(id, data),
+  //
+  // Money v1 — the ONE place a booking becomes CONFIRMED: a booking made from an accepted quotation may only be confirmed once 25% of
+  // that quotation's total has been received (services/agreement.service.ts). The server decides; nothing in the UI can bypass it. A
+  // booking with no quotation (marketplace checkout) is unaffected. Loaded on demand so this module stays free of database imports.
+  async update(id: string, data: Prisma.BookingUpdateInput) {
+    if (data.status === 'CONFIRMED') {
+      const { assertBookingMayConfirm } = await import('@/services/agreement.service');
+      await assertBookingMayConfirm(id);
+    }
+    return bookingRepository.update(id, data);
+  },
 };

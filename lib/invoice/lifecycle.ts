@@ -49,6 +49,8 @@ export function agreementFigures(q: { total: number; advanceAmount: number }): {
 export function checkBalanceInvoice(input: {
   quotation: { status: string; total: number; advanceAmount: number; quotationNumber: string } | null;
   alreadyHasBalanceInvoice: boolean;
+  // Money v1: the confirmation amount the agreement froze. When given it is the advance the balance is measured from.
+  advance?: number;
 }): string | null {
   const { quotation } = input;
   if (!quotation) return 'This wedding has no accepted quotation to invoice from';
@@ -56,31 +58,33 @@ export function checkBalanceInvoice(input: {
     return `Quotation ${quotation.quotationNumber} is ${quotation.status.toLowerCase()} — only the accepted quotation can be invoiced`;
   }
   if (input.alreadyHasBalanceInvoice) return `A balance invoice was already created for quotation ${quotation.quotationNumber}`;
-  if (agreementFigures(quotation).balance <= 0) return 'There is no balance left after the advance — nothing more to invoice';
+  if (agreementFigures({ total: quotation.total, advanceAmount: input.advance ?? quotation.advanceAmount }).balance <= 0) return 'There is no balance left after the advance — nothing more to invoice';
   return null;
 }
 
 export function planBalanceInvoice(input: {
   quotation: { quotationNumber: string; total: number; advanceAmount: number };
-  wedding: { primaryDate: Date; weddingType: string | null };
+  wedding: { primaryDate: Date | null; weddingType: string | null };
   client: { name: string; phone: string; email?: string | null; city?: string | null };
+  advance?: number; // Money v1: the agreement's frozen confirmation amount, when there is one
 }) {
   const { quotation, wedding, client } = input;
-  const { balance } = agreementFigures(quotation);
+  const advance = input.advance ?? quotation.advanceAmount;
+  const { balance } = agreementFigures({ total: quotation.total, advanceAmount: advance });
   return {
     invoice: {
       clientName: client.name,
       clientPhone: client.phone,
       clientEmail: client.email?.trim() || null,
       clientCity: client.city?.trim() || null,
-      eventDate: wedding.primaryDate.toISOString().slice(0, 10),
+      eventDate: wedding.primaryDate ? wedding.primaryDate.toISOString().slice(0, 10) : null,
       eventType: wedding.weddingType,
       subtotal: balance,
       discount: 0,
       gstEnabled: false as const,
       gstAmount: 0 as const,
       total: balance,
-      notes: `Balance against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}, advance ${inr(quotation.advanceAmount)}). No tax applied.`,
+      notes: `Balance against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}, advance ${inr(advance)}). No tax applied.`,
     },
     items: [{ description: `Balance — ${quotation.quotationNumber}`, amount: balance, quantity: 1 as const }],
   };

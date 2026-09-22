@@ -30,6 +30,8 @@ import { enquiryRepository } from '@/repositories/enquiry.repository';
 import { consultationRepository } from '@/repositories/consultation.repository';
 import { leadRepository } from '@/repositories/lead.repository';
 import { findWeddingForSource } from '@/services/weddingConversion.service';
+import { ensureAgreementInTx } from '@/services/agreement.service';
+import { requiredConfirmation } from '@/lib/commercial/rules';
 import { applyCommercialEvent } from '@/services/leadStage.service';
 import type { CommercialEvent } from '@/lib/crm/stageEvents';
 import type { SourceType } from '@/services/leadInbox.service';
@@ -515,12 +517,15 @@ export const quotationService = {
         },
         tx
       );
+      // Money v1: the agreement is frozen now, and its advance invoice (the 25% needed to confirm) exists from this moment — payment
+      // has to be possible BEFORE the booking is confirmed. Same transaction: a booking never exists without its agreement.
+      await ensureAgreementInTx(tx, { quotationId: id, booking, actorId });
       await logEvent(
         tx,
         sourceType,
         sourceId,
         ActivityType.STATUS_CHANGED,
-        `Booking created from quotation ${q.quotationNumber} — ${rupees(plan.total)}. Confirm it to create the wedding`,
+        `Booking created from quotation ${q.quotationNumber} — ${rupees(plan.total)}. It is confirmed once 25% (${rupees(requiredConfirmation(plan.total))}) is received`,
         null,
         actorId
       );

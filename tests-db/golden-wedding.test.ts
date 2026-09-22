@@ -6,12 +6,14 @@ import { createFixtures, type Fixtures } from './helpers/fixtures';
 
 // THE GOLDEN WEDDING WORKFLOW (handoff §12/§21; docs/VIVAH_OS_TECH_COMPLETION.md).
 //
-//   Rahul & Priya · 20 Nov 2026 · 500 guests · budget ₹5,00,000 · paid ₹2,00,000 · pending ₹3,00,000
+//   Rahul & Priya · 20 Nov 2026 · 500 guests · budget ₹5,00,000 · confirmation (25%) ₹1,25,000 · then ₹1,00,000 more · pending ₹2,75,000
 //   services: Venue, Catering, Decoration, Photography, DJ/Sound · venue + photographer confirmed, catering pending
 //
 // One realistic wedding operated from first enquiry to the point the product supports today, through the real
 // services against a real database — no mocks. The scenario is deterministic (all rows are created here and removed at
 // the end), so it can be re-run at any time; run it with `bun run test:db` after any change to a core journey.
+//
+// Money V1 (22 Sep 2026): the booking is confirmed only once 25% (₹1,25,000) is received, so Rahul pays before the wedding exists.
 //
 // Steps the product cannot do yet are listed as test.todo below — each is a P0/P1 gap in the audit, so this file is
 // also the living checklist of what is still missing from the golden path.
@@ -122,9 +124,22 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
     expect(booking.guestCount).toBe(500);
     expect(booking.items.find((i) => i.packageName === 'Catering per plate')).toMatchObject({ price: 300, quantity: 500 });
     expect(await app.prisma.booking.count({ where: { quotationId } })).toBe(1);
+    // the agreement is frozen and the booking's invoice — exactly the 25% (₹1,25,000), not the quote's typed ₹2,00,000 advance — exists before any wedding
+    expect(await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId } })).toMatchObject({ agreementTotal: 500000, confirmationAmount: 125000, bookingId });
+    const invoices = await app.prisma.invoice.findMany({ where: { quotationId } });
+    expect(invoices).toMatchObject([{ kind: 'ADVANCE', total: 125000, status: 'DRAFT', weddingId: null, bookingId }]);
+    advanceInvoiceId = invoices[0].id;
   });
 
-  test('7 · The booking is confirmed: ONE wedding is created, with its vendor bookings, tasks, timeline and advance invoice', async () => {
+  test('6b · Confirming before 25% is received is refused — with the exact amount — and creates nothing', async () => {
+    const error = await app.bookingService.update(bookingId, { status: 'CONFIRMED' }).then(() => null, (e: Error) => e);
+    expect(error?.message).toBe('₹1,25,000 more required to confirm this booking.');
+    expect(await app.prisma.wedding.count({ where: { sourceBookingId: bookingId } })).toBe(0);
+    expect(await app.prisma.invoice.count({ where: { quotationId } })).toBe(1);
+  });
+
+  test('7 · Rahul pays ₹1,25,000; the booking is confirmed: ONE wedding is created, with its vendor bookings, tasks and timeline', async () => {
+    await app.agreement.recordAgreementPayment(quotationId, { amount: 125000, method: 'UPI', reference: 'UTR-GOLDEN-1' }, null);
     await app.bookingService.update(bookingId, { status: 'CONFIRMED' });
     const wedding = await app.convertBookingToWedding(bookingId);
     weddingId = wedding.id;
@@ -154,52 +169,50 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
     expect(await app.prisma.task.count({ where: { weddingId, weddingEventId: null, vendorBookingId: { not: null } } })).toBe(0);
   });
 
-  test('9 · The advance invoice exists automatically: a draft for ₹2,00,000 with NO tax', async () => {
-    const invoices = await app.prisma.invoice.findMany({ where: { weddingId }, include: { items: true } });
+  test('9 · The booking invoice moved onto the wedding with its payment: paid ₹1,25,000, NO tax — nothing was created twice', async () => {
+    const invoices = await app.prisma.invoice.findMany({ where: { weddingId }, include: { items: true, payments: true } });
     expect(invoices).toHaveLength(1);
     const advance = invoices[0];
-    advanceInvoiceId = advance.id;
-    expect(advance.status).toBe('DRAFT');
-    expect([advance.subtotal, advance.total, advance.discount, advance.gstAmount]).toEqual([200000, 200000, 0, 0]);
+    expect(advance.id).toBe(advanceInvoiceId); // the same invoice that existed before the wedding
+    expect(advance.status).toBe('PAID');
+    expect([advance.subtotal, advance.total, advance.discount, advance.gstAmount]).toEqual([125000, 125000, 0, 0]);
     expect(advance.gstEnabled).toBe(false);
     expect(advance.items).toHaveLength(1);
+    expect(advance.payments).toHaveLength(1);
     expect((await app.quotationService.getById(quotationId)).advanceInvoiceId).toBe(advance.id);
     expect(await app.prisma.paymentLink.count({ where: { invoiceId: advance.id } })).toBe(0); // the payment link is a manual, later step
   });
 
-  test('10 · A payment attempt fails, then Rahul pays ₹2,00,000: the invoice is PAID', async () => {
-    const entity = (id: string) => ({ id, amount: 20000000, method: 'upi', notes: { invoiceId: advanceInvoiceId } });
+  test('10 · The balance invoice (₹3,75,000) is made from the agreement; a payment attempt fails, then ₹1,00,000 arrives by payment link: PARTIALLY_PAID', async () => {
+    const balance = await app.invoiceWorkflowService.createBalanceInvoice(weddingId, null);
+    balanceInvoiceId = balance.id;
+    expect(balance).toMatchObject({ kind: 'BALANCE', total: 375000, quotationId });
+    const entity = (id: string, paise = 10000000) => ({ id, amount: paise, method: 'upi', notes: { invoiceId: balanceInvoiceId } });
     const run = fx.runId;
 
     expect(await app.paymentService.handleWebhookEvent({ event: 'payment.failed', payload: { payment: { entity: entity(`pay_${run}_failed`) } } })).toEqual({ handled: true });
-    expect(await app.prisma.payment.count({ where: { invoiceId: advanceInvoiceId } })).toBe(0); // a failed attempt is not money
-    expect((await app.prisma.invoice.findUniqueOrThrow({ where: { id: advanceInvoiceId } })).status).toBe('DRAFT');
+    expect(await app.prisma.payment.count({ where: { invoiceId: balanceInvoiceId } })).toBe(0); // a failed attempt is not money
 
-    const paid = { event: 'payment_link.paid', payload: { payment: { entity: entity(`pay_${run}_ok`) }, payment_link: { entity: { id: `plink_${run}`, notes: { invoiceId: advanceInvoiceId } } } } };
+    const paid = { event: 'payment_link.paid', payload: { payment: { entity: entity(`pay_${run}_ok`) }, payment_link: { entity: { id: `plink_${run}`, notes: { invoiceId: balanceInvoiceId } } } } };
     expect(await app.paymentService.handleWebhookEvent(paid)).toEqual({ handled: true });
-    expect(await app.prisma.payment.count({ where: { invoiceId: advanceInvoiceId, status: 'SUCCESS' } })).toBe(1);
-    expect((await app.prisma.invoice.findUniqueOrThrow({ where: { id: advanceInvoiceId } })).status).toBe('PAID');
+    expect(await app.prisma.payment.count({ where: { invoiceId: balanceInvoiceId, status: 'SUCCESS' } })).toBe(1);
+    expect((await app.prisma.invoice.findUniqueOrThrow({ where: { id: balanceInvoiceId } })).status).toBe('PARTIALLY_PAID');
   });
 
   test('11 · The same payment webhook delivered again, twice at once, creates no duplicate money', async () => {
-    const paid = { event: 'payment_link.paid', payload: { payment: { entity: { id: `pay_${fx.runId}_ok`, amount: 20000000, method: 'upi', notes: { invoiceId: advanceInvoiceId } } } } };
+    const paid = { event: 'payment_link.paid', payload: { payment: { entity: { id: `pay_${fx.runId}_ok`, amount: 10000000, method: 'upi', notes: { invoiceId: balanceInvoiceId } } } } };
     await app.paymentService.handleWebhookEvent(paid); // sequential replay
     await Promise.allSettled([app.paymentService.handleWebhookEvent(paid), app.paymentService.handleWebhookEvent(paid)]); // concurrent replay
-    expect(await app.prisma.payment.count({ where: { invoiceId: advanceInvoiceId } })).toBe(1);
+    expect(await app.prisma.payment.count({ where: { invoiceId: balanceInvoiceId } })).toBe(1);
     expect(await app.prisma.activityLog.count({ where: { weddingId, type: 'PAYMENT_RECEIVED' } })).toBe(1);
   });
 
-  test('12 · The balance invoice (₹3,00,000): paid ₹2,00,000, pending ₹3,00,000 — one source of truth for the numbers', async () => {
-    const balance = await app.weddingWorkspaceService.createInvoice(
-      weddingId,
-      { clientName: 'Rahul Sharma', clientPhone: '9876500001', gstEnabled: false, gstAmount: 0, discount: 0, items: [{ description: 'Balance — wedding services', amount: 300000, quantity: 1 }] },
-      null
-    );
-    balanceInvoiceId = balance.id;
+  test('12 · One source of truth for the numbers: ₹5,00,000 agreed, ₹2,25,000 received, ₹2,75,000 pending', async () => {
     const { finance } = await app.weddingWorkspaceService.getWorkspace(weddingId);
-    expect(finance.totals).toEqual({ invoicedTotal: 500000, collected: 200000, outstanding: 300000 });
+    expect(finance.totals).toEqual({ invoicedTotal: 500000, collected: 225000, outstanding: 275000 });
     const advance = finance.invoices.find((i) => i.id === advanceInvoiceId);
-    expect([advance?.amountPaid, advance?.outstanding]).toEqual([200000, 0]);
+    expect([advance?.amountPaid, advance?.outstanding]).toEqual([125000, 0]);
+    expect(finance.agreement?.money).toMatchObject({ received: 225000, outstanding: 275000, bookingConfirmed: true, confirmationAmount: 125000 });
   });
 
   test('13 · Venue and photographer confirm; catering stays pending → the wedding becomes ACTIVE, attention items are visible', async () => {
@@ -222,13 +235,11 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
     expect((await app.commandCenterService.getDashboard()).tasks.overdue).toBe(dashboardBefore.overdue);
   });
 
-  test('15 · The Command Center shows the wedding as upcoming and the money as due once the invoice is sent', async () => {
-    const before = await app.commandCenterService.getDashboard();
-    // Only non-draft invoices count as due. Staff mark the invoice sent (see the todo below about payment links).
-    await app.prisma.invoice.update({ where: { id: balanceInvoiceId }, data: { status: 'SENT' } });
+  test('15 · The Command Center shows the wedding as upcoming and the money as due', async () => {
+    // Only non-draft invoices count as due: the balance invoice is PARTIALLY_PAID (a payment reached it), so its ₹2,75,000 is due.
     const after = await app.commandCenterService.getDashboard();
-    expect(after.finance.outstanding - before.finance.outstanding).toBe(300000);
-    expect(after.today.paymentsDue - before.today.paymentsDue).toBe(1);
+    expect(after.finance.outstanding).toBeGreaterThanOrEqual(275000);
+    expect(after.today.paymentsDue).toBeGreaterThanOrEqual(1);
     expect(after.upcomingEvents.some((e) => e.weddingId === weddingId && e.date.startsWith('2026-11-20'))).toBe(true);
   });
 

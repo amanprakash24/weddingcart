@@ -13,13 +13,9 @@ mock.module('@/lib/prisma', () => ({ prisma: {} }));
 const { canTransitionVendorBooking, VENDOR_BOOKING_STATUS_TRANSITIONS, canTransitionVenueBooking, VENUE_BOOKING_STATUS_TRANSITIONS, canTransitionWedding, WEDDING_STATUS_TRANSITIONS } =
   await import('./lifecycle');
 
-// Exhaustively covers the transition matrix authorized for this
-// production-integrity fix: only the 3 transitions currently exercised by
-// the real product workflow (components/wedding/workspace/WeddingEvents.tsx's
-// Confirm/Decline/Mark Completed buttons). Every other transition —
-// including ones a future feature might reasonably want (DECLINED retry, a
-// cancel flow, CUSTOMER_APPROVAL_PENDING) — is deliberately rejected until
-// that workflow is designed, not preemptively allowed.
+// Exhaustively covers the vendor-booking transition matrix: the vendor's own answer (confirm / decline / completed) and the wedding team's
+// cancel (allowed until the work is finished — also from a decline, so the service can go to someone else). CUSTOMER_APPROVAL_PENDING
+// stays undesigned and unreachable.
 describe('canTransitionVendorBooking', () => {
   describe('legal transitions', () => {
     test('PENDING_VENDOR_CONFIRMATION -> CONFIRMED', () => {
@@ -32,6 +28,12 @@ describe('canTransitionVendorBooking', () => {
 
     test('CONFIRMED -> COMPLETED', () => {
       expect(canTransitionVendorBooking('CONFIRMED', 'COMPLETED')).toBe(true);
+    });
+
+    test('a vendor can be cancelled until the work is finished — pending, confirmed or declined', () => {
+      expect(canTransitionVendorBooking('PENDING_VENDOR_CONFIRMATION', 'CANCELLED')).toBe(true);
+      expect(canTransitionVendorBooking('CONFIRMED', 'CANCELLED')).toBe(true);
+      expect(canTransitionVendorBooking('DECLINED', 'CANCELLED')).toBe(true);
     });
   });
 
@@ -52,7 +54,7 @@ describe('canTransitionVendorBooking', () => {
       expect(canTransitionVendorBooking('COMPLETED', 'DECLINED')).toBe(false);
     });
 
-    test('CANCELLED -> COMPLETED is rejected (no cancel flow exists yet)', () => {
+    test('CANCELLED -> COMPLETED is rejected (cancelled is final)', () => {
       expect(canTransitionVendorBooking('CANCELLED', 'COMPLETED')).toBe(false);
     });
 
@@ -62,8 +64,8 @@ describe('canTransitionVendorBooking', () => {
   });
 
   describe('every other state is fully terminal in this matrix', () => {
-    test('DECLINED has no legal outgoing transitions', () => {
-      expect(VENDOR_BOOKING_STATUS_TRANSITIONS.DECLINED).toEqual([]);
+    test('DECLINED can only be cancelled (so the service can go to someone else)', () => {
+      expect(VENDOR_BOOKING_STATUS_TRANSITIONS.DECLINED).toEqual(['CANCELLED']);
     });
 
     test('CANCELLED has no legal outgoing transitions', () => {
@@ -83,12 +85,8 @@ describe('canTransitionVendorBooking', () => {
     expect(canTransitionVendorBooking('PENDING_VENDOR_CONFIRMATION', 'COMPLETED')).toBe(false);
   });
 
-  test('PENDING_VENDOR_CONFIRMATION cannot jump straight to CANCELLED (no cancel flow yet)', () => {
-    expect(canTransitionVendorBooking('PENDING_VENDOR_CONFIRMATION', 'CANCELLED')).toBe(false);
-  });
-
-  test('CONFIRMED cannot move to CANCELLED (no cancel flow yet)', () => {
-    expect(canTransitionVendorBooking('CONFIRMED', 'CANCELLED')).toBe(false);
+  test('a completed booking cannot be cancelled — the work happened', () => {
+    expect(canTransitionVendorBooking('COMPLETED', 'CANCELLED')).toBe(false);
   });
 
   test('CONFIRMED cannot move to CUSTOMER_APPROVAL_PENDING (undesigned feature)', () => {

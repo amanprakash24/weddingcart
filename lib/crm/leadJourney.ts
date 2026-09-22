@@ -121,6 +121,7 @@ export type NextActionId =
   | 'revise-quote'
   | 'create-booking'
   | 'mark-booked'
+  | 'record-payment'
   | 'confirm-booking'
   | 'manage-wedding'
   | 'create-wedding'
@@ -149,7 +150,23 @@ export interface NextActionContext {
   weddingNumber: string | null;
   closedReason: string | null;
   followUps: number; // follow-ups already logged this session
+  // Money v1: where the accepted quotation's confirmation payment stands (null when there is no agreement to look at). Until the
+  // required amount (25% of the accepted total) is received the booking cannot be confirmed, so the next action is to record payment.
+  money?: { ready: boolean; remaining: number; required: number; percent: number } | null;
 }
+
+const inrWords = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const paymentFirst = (c: NextActionContext): NextAction | null =>
+  c.money && !c.money.ready
+    ? {
+        id: 'record-payment',
+        title: 'Record the confirmation payment',
+        why: `${inrWords(c.money.remaining)} more is needed to confirm this booking — ${c.money.percent}% of the accepted quote (${inrWords(c.money.required)}). A part payment holds the date for a few days.`,
+        label: 'Record payment',
+        quiet: false,
+        secondary: [NOT_PROCEEDING_LINK],
+      }
+    : null;
 
 const NOT_PROCEEDING_LINK = { id: 'not-proceeding', label: 'Not proceeding', danger: true } as const;
 
@@ -191,11 +208,11 @@ export function nextAction(state: JourneyState, c: NextActionContext): NextActio
         secondary: [NOT_PROCEEDING_LINK],
       };
     case 'BOOKING_PENDING':
-      return { id: 'confirm-booking', title: 'Confirm the booking', why: 'The booking is waiting for you. Confirming sets up the wedding, and the advance invoice if the quote has an advance.', label: 'Confirm booking', quiet: false, secondary: [NOT_PROCEEDING_LINK] };
+      return paymentFirst(c) ?? { id: 'confirm-booking', title: 'Confirm the booking', why: 'The confirmation payment is in. Confirming the booking sets up the wedding.', label: 'Confirm booking', quiet: false, secondary: [NOT_PROCEEDING_LINK] };
     case 'BOOKING_CONFIRMED':
       return { id: 'manage-wedding', title: 'Continue in the wedding', why: `${c.weddingNumber ?? 'The wedding'} is set up. Vendors, tasks and payments are managed there.`, label: 'Manage wedding', quiet: true, secondary: [] };
     case 'READY_TO_CONVERT':
-      return { id: 'create-wedding', title: 'Create the wedding workspace', why: 'The customer has accepted. Create the wedding workspace to continue.', label: 'Create wedding workspace', quiet: false, secondary: [] };
+      return paymentFirst(c) ?? { id: 'create-wedding', title: 'Create the wedding workspace', why: 'The customer has accepted. Create the wedding workspace to continue.', label: 'Create wedding workspace', quiet: false, secondary: [] };
     default:
       return { id: 'view-reason', title: 'This deal is closed', why: c.closedReason ?? 'Marked as not proceeding.', label: 'View reason', quiet: true, secondary: [] };
   }

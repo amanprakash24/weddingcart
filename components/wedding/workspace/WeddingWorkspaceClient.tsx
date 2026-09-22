@@ -2,18 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Timeline from '@/components/crm/workspace/Timeline';
-import TaskPanel from '@/components/crm/workspace/TaskPanel';
+import WeddingTasks, { type NewTask, type TaskPatch } from '@/components/wedding/plan/WeddingTasks';
+import VendorsToSortOut, { type AssignInput } from '@/components/wedding/plan/VendorsToSortOut';
+import type { StaffMember } from '@/components/wedding/plan/CoordinatorPicker';
 import ControlRoomHeader from '@/components/wedding/control-room/ControlRoomHeader';
 import Overview from '@/components/wedding/control-room/Overview';
 import ControlRoomTabs, { isTabKey, type TabKey } from '@/components/wedding/control-room/ControlRoomTabs';
 import { buildControlRoom } from '@/lib/wedding/controlRoom';
 import type { ActionTarget } from '@/lib/wedding/stage';
 import CoupleCard from './CoupleCard';
-import WeddingEvents from './WeddingEvents';
+import FunctionsPanel from '@/components/wedding/functions/FunctionsPanel';
+import type { FunctionPayload } from '@/components/wedding/functions/FunctionForm';
 import TimelineMilestones from './TimelineMilestones';
 import Documents from './Documents';
 import Finance from './Finance';
-import type { WeddingWorkspace, WeddingStatus, VendorBookingStatus, MilestoneStatus, CreateInvoiceInput } from './types';
+import type { PaymentResult, RecordPaymentInput } from '@/components/money/AgreementCard';
+import type { WeddingWorkspace, WeddingStatus, MilestoneStatus, CreateInvoiceInput } from './types';
 import ServiceRequirements from './ServiceRequirements';
 import Approvals from './Approvals';
 import GuestRsvp from './GuestRsvp';
@@ -31,10 +35,14 @@ function readTab(): TabKey {
   return isTabKey(t) ? t : 'overview';
 }
 
-async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = 'POST') {
-  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+async function postJsonData<T = unknown>(url: string, body: unknown, method: 'POST' | 'PATCH' | 'DELETE' = 'POST'): Promise<T> {
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: method === 'DELETE' ? undefined : JSON.stringify(body) });
   const payload = await res.json();
   if (!res.ok || !payload.success) throw new Error(payload.error ?? 'Request failed');
+  return payload.data as T;
+}
+async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' | 'DELETE' = 'POST') {
+  await postJsonData(url, body, method);
 }
 
 // Same Workspace Loader philosophy as LeadWorkspaceClient.tsx: one aggregate
@@ -48,12 +56,14 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [tab, setTab] = useState<TabKey>(readTab);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
 
   const basePath = `/api/weddings/${id}`;
 
-  const load = useCallback(() => {
+  // Returns the reload's promise, so an action can stay on "Saving…" until the screen shows the refreshed result.
+  const load = useCallback((): Promise<void> => {
     setLoading(true);
-    fetch(`${basePath}/workspace`)
+    return fetch(`${basePath}/workspace`)
       .then(async (r) => {
         const body = await r.json();
         if (!r.ok || !body.success) throw new Error(body.error ?? 'Failed to load');
@@ -72,37 +82,97 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     return () => clearTimeout(timeout);
   }, [load]);
 
+  // The team, for the coordinator picker and task owners (the same list the lead pages use).
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      fetch('/api/crm/sales-reps').then((r) => r.json()).then((body) => { if (body.success) setStaff(body.data); }).catch(() => undefined);
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, []);
+
   const addNote = async (detail: string) => {
     await postJson(`${basePath}/notes`, { detail });
     load();
   };
-  const addTask = async (title: string) => {
-    await postJson(`${basePath}/tasks`, { title });
-    load();
+  const addTask = async (task: NewTask) => {
+    await postJson(`${basePath}/tasks`, task);
+    await load();
   };
-  const completeTask = async (taskId: string, status: 'DONE' | 'CANCELLED') => {
-    await postJson(`${basePath}/tasks/${taskId}`, { status }, 'PATCH');
-    load();
+  const updateTask = async (taskId: string, patch: TaskPatch) => {
+    await postJson(`${basePath}/tasks/${taskId}`, patch, 'PATCH');
+    await load();
+  };
+  const assignCoordinator = async (coordinatorId: string | null) => {
+    await postJson(`${basePath}/coordinator`, { coordinatorId }, 'PATCH');
+    await load();
+  };
+  const confirmVendor = async (vbId: string) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}`, { status: 'CONFIRMED' }, 'PATCH');
+    await load();
+  };
+  const declineVendor = async (vbId: string, declineReason: string) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}`, { status: 'DECLINED', declineReason: declineReason || undefined }, 'PATCH');
+    await load();
+  };
+  const assignVendor = async (input: AssignInput) => {
+    await postJson(`${basePath}/vendor-bookings`, input);
+    await load();
   };
   const transitionStatus = async (toStatus: WeddingStatus) => {
     await postJson(`${basePath}/status`, { toStatus }, 'PATCH');
     load();
   };
-  const updateVendorBookingStatus = async (vbId: string, status: VendorBookingStatus, declineReason?: string, onTimeService?: boolean) => {
-    await postJson(`${basePath}/vendor-bookings/${vbId}`, { status, declineReason, onTimeService }, 'PATCH');
-    load();
+  const addFunction = async (payload: FunctionPayload) => {
+    await postJson(`${basePath}/functions`, payload);
+    await load();
   };
-  const addVendorBooking = async (weddingEventId: string, vendorId: string, agreedPrice: number) => {
+  const updateFunction = async (functionId: string, payload: FunctionPayload) => {
+    await postJson(`${basePath}/functions/${functionId}`, payload, 'PATCH');
+    await load();
+  };
+  const deleteFunction = async (functionId: string) => {
+    await postJson(`${basePath}/functions/${functionId}`, undefined, 'DELETE');
+    await load();
+  };
+  const completeVendor = async (vbId: string, onTimeService: boolean) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}`, { status: 'COMPLETED', onTimeService }, 'PATCH');
+    await load();
+  };
+  const cancelVendor = async (vbId: string, reason: string) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}/cancel`, { reason });
+    await load();
+  };
+  const replaceVendor = async (vbId: string, input: { vendorId: string; agreedPrice: number; reason: string }) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}/replace`, input);
+    await load();
+  };
+  const editVendorPrice = async (vbId: string, agreedPrice: number) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}`, { agreedPrice }, 'PATCH');
+    await load();
+  };
+  const addService = async (weddingEventId: string, vendorId: string, agreedPrice: number) => {
     await postJson(`${basePath}/vendor-bookings`, { weddingEventId, vendorId, agreedPrice });
-    load();
+    await load();
   };
+  // A quoted service nobody wants any more: its "assign a vendor" task is cancelled, so it stops waiting.
+  const removeService = async (taskId: string) => {
+    await postJson(`${basePath}/tasks/${taskId}`, { status: 'CANCELLED' }, 'PATCH');
+    await load();
+  };
+  // Payouts stay here, unchanged, until the Money tab work gives them one proper home.
   const calculatePayout = async (vbId: string) => {
     await postJson(`${basePath}/vendor-bookings/${vbId}/payout`, {});
-    load();
+    await load();
   };
   const markPayoutPaid = async (payoutId: string) => {
     await postJson(`${basePath}/payouts/${payoutId}`, { status: 'PAID' }, 'PATCH');
-    load();
+    await load();
+  };
+  // Money v1: money received against the wedding's agreement — applied to the advance invoice first, the rest to the balance.
+  const recordAgreementPayment = async (input: RecordPaymentInput): Promise<PaymentResult> => {
+    const result = await postJsonData<PaymentResult>(`${basePath}/payments`, input);
+    await load();
+    return result;
   };
   const createInvoice = async (input: CreateInvoiceInput) => {
     await postJson(`${basePath}/invoices`, input);
@@ -157,28 +227,47 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
-      <ControlRoomHeader view={view} onTransition={transitionStatus} />
+      <ControlRoomHeader view={view} staff={staff} coordinatorId={workspace.wedding.coordinatorId ?? null} onAssignCoordinator={assignCoordinator} onTransition={transitionStatus} />
 
       <ControlRoomTabs active={tab} attention={attention} onChange={changeTab} />
 
-      {tab === 'overview' && <Overview view={view} onOpen={(target) => changeTab(target === 'overview' ? 'overview' : (target as TabKey))} onTransition={transitionStatus} />}
+      {tab === 'overview' && <Overview view={view} staff={staff} coordinatorId={workspace.wedding.coordinatorId ?? null} onAssignCoordinator={assignCoordinator} onOpen={(target) => changeTab(target === 'overview' ? 'overview' : (target as TabKey))} onTransition={transitionStatus} />}
 
       {tab === 'plan' && (
         <div className="space-y-4">
-          <TaskPanel tasks={workspace.tasks} onAddTask={addTask} onCompleteTask={completeTask} />
-          <TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} />
+          <VendorsToSortOut rows={view.vendors} onConfirm={confirmVendor} onDecline={declineVendor} onAssign={assignVendor} onRemove={removeService} />
+          <WeddingTasks tasks={workspace.tasks} events={workspace.events} staff={staff} coordinatorId={workspace.wedding.coordinatorId ?? null} onAdd={addTask} onUpdate={updateTask} />
+          {workspace.timeline.length > 0 && <TimelineMilestones milestones={workspace.timeline} onUpdateStatus={updateMilestoneStatus} />}
           <Approvals weddingId={id} events={workspace.events} approvals={approvals} onChange={load} />
         </div>
       )}
 
       {tab === 'functions' && (
         <div className="space-y-4">
-          <WeddingEvents events={workspace.events} onUpdateVendorBookingStatus={updateVendorBookingStatus} onAddVendorBooking={addVendorBooking} onCalculatePayout={calculatePayout} onMarkPayoutPaid={markPayoutPaid} />
-          <ServiceRequirements events={workspace.events} />
+          <FunctionsPanel
+            events={workspace.events}
+            unassigned={view.vendors.filter((r) => r.state === 'unassigned')}
+            defaultCity={workspace.wedding.city}
+            onAddFunction={addFunction}
+            onUpdateFunction={updateFunction}
+            onDeleteFunction={deleteFunction}
+            onConfirm={confirmVendor}
+            onDecline={declineVendor}
+            onComplete={completeVendor}
+            onCancelVendor={cancelVendor}
+            onReplaceVendor={replaceVendor}
+            onEditPrice={editVendorPrice}
+            onAddService={addService}
+            onAssign={assignVendor}
+            onRemoveService={removeService}
+            onCalculatePayout={calculatePayout}
+            onMarkPayoutPaid={markPayoutPaid}
+          />
+          <ServiceRequirements events={workspace.events} unassigned={view.vendors.filter((r) => r.state === 'unassigned')} />
         </div>
       )}
 
-      {tab === 'money' && <Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} />}
+      {tab === 'money' && <Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} onRecordAgreementPayment={recordAgreementPayment} />}
 
       {tab === 'people' && (
         <div className="space-y-4">

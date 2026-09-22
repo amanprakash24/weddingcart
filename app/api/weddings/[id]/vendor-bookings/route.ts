@@ -9,6 +9,7 @@ const bodySchema = z.object({
   weddingEventId: z.string().trim().min(1),
   vendorId: z.string().trim().min(1),
   agreedPrice: z.number().int().positive(),
+  resolvesTaskId: z.string().trim().min(1).optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

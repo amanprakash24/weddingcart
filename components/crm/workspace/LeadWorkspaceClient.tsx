@@ -6,6 +6,8 @@ import type { LeadWorkspace } from './types';
 import { useRouter } from 'next/navigation';
 import LeadWorkspaceHeader from './LeadWorkspaceHeader';
 import type { StageTransitionInput } from './StageControl';
+import AgreementPanel from './AgreementPanel';
+import type { AgreementMoneyView } from '@/lib/commercial/view';
 import ConvertToWeddingDialog, { type ConvertToWeddingInput } from './ConvertToWeddingDialog';
 import ClientCard from './ClientCard';
 import VendorInterestPanel from './VendorInterestPanel';
@@ -48,6 +50,11 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   const [dialog, setDialog] = useState<Dialog>(null);
   const [showReason, setShowReason] = useState(false);
   const [followUps, setFollowUps] = useState(0);
+  // Money v1: where the accepted quotation's confirmation payment stands, reported by the agreement card; and a counter that reopens
+  // the card with its payment form open when the Next action is "Record payment".
+  const [money, setMoney] = useState<AgreementMoneyView | null>(null);
+  const [payNonce, setPayNonce] = useState(0);
+  const agreementAnchor = useRef<HTMLDivElement>(null);
   const panelRef = useRef<QuotationPanelHandle>(null);
   const quoteAnchor = useRef<HTMLDivElement>(null);
 
@@ -140,6 +147,8 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   const busy = quotesApi.busyId !== null;
   const canSend = !!current && current.status === 'DRAFT' && current.items.length > 0 && !!current.validUntil && new Date(current.validUntil).getTime() > new Date().getTime();
 
+  // The agreement card is shown for an accepted quotation until the wedding exists.
+  const showAgreement = !!current && current.status === 'ACCEPTED' && !subject.wedding && state !== 'NOT_PROCEEDING' && state !== 'BOOKING_CONFIRMED';
   const action = nextAction(state, {
     sourceType,
     customerName,
@@ -151,6 +160,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
     weddingNumber,
     closedReason,
     followUps,
+    money: showAgreement && money ? { ready: money.state === 'CONFIRMED', remaining: money.remaining, required: money.confirmationAmount, percent: money.confirmationPercent } : null,
   });
   const steps = journeySteps(state, current, {
     enquiryOn: formatQuoteDate(subject.createdAt),
@@ -267,6 +277,10 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
           quotesApi.setLoadError((e as Error).message);
         }
         break;
+      case 'record-payment':
+        setPayNonce((n) => n + 1);
+        agreementAnchor.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        break;
       case 'confirm-booking':
         setDialog('confirm');
         break;
@@ -368,6 +382,20 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
 
       <JourneyStepper steps={steps} />
 
+      {showAgreement && current && (
+        <div ref={agreementAnchor} className="scroll-mt-4">
+          <AgreementPanel
+            key={payNonce}
+            quotationId={current.id}
+            defaultRecording={payNonce > 0}
+            onMoney={setMoney}
+            onChanged={() => Promise.all([load(), quotesApi.load()])}
+            onConfirm={() => setDialog('confirm')}
+            onCreateWedding={() => setDialog('convert')}
+          />
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
         <div ref={quoteAnchor} className="scroll-mt-4 lg:col-start-1 lg:row-start-1">
           <QuotationPanel
@@ -450,7 +478,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
           }}
         />
       )}
-      {dialog === 'confirm' && <ConfirmBookingDialog advanceAmount={current?.advanceAmount ?? 0} onSave={saveConfirm} onClose={() => setDialog(null)} />}
+      {dialog === 'confirm' && <ConfirmBookingDialog confirmationAmount={money?.confirmationAmount ?? 0} onSave={saveConfirm} onClose={() => setDialog(null)} />}
       {dialog === 'not-proceeding' && (
         <NotProceedingDialog
           customerName={customerName}

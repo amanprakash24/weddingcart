@@ -320,3 +320,33 @@ describe('review fixes from the browser test', () => {
     }
   });
 });
+
+describe('vendor follow-up tasks are shown as vendors, not as tasks', () => {
+  const t = (id: string, title: string, over: Record<string, unknown> = {}) => ({ id, title, description: null, status: 'PENDING' as const, priority: 'HIGH' as const, dueAt: null, completedAt: null, assignedToName: null, createdAt: day(-9), ...over });
+  const settle = (w: WeddingWorkspace) => { w.finance.invoices = [invoice({ id: 'a', kind: 'ADVANCE', status: 'PAID', total: 50000, amountPaid: 50000 })]; return w; };
+
+  test('they are not counted or listed as tasks, and never become the "open task" next action', () => {
+    const w = settle(ws({ tasks: [t('1', 'Confirm booking with Lens Studio for "Photography"'), t('2', 'Assign a vendor for "Decoration"'), t('3', 'Send save-the-date cards', { priority: 'LOW', dueAt: day(3) })] }));
+    const view = buildControlRoom(w, NOW);
+    expect(view.tasks).toMatchObject({ total: 1, open: 1 });
+    expect(view.pulse.find((p) => p.key === 'tasks')?.value).toBe('1 open');
+  });
+
+  test('an unassigned service is an ASSIGN_VENDOR action that opens the Plan tab, with the quoted price ready for the form', () => {
+    const w = settle(ws({
+      events: [fn('e1', 'WEDDING', null, day(60), [vb('1', 'Rajdhani Palace', 'Venue', 'CONFIRMED')])],
+      tasks: [t('9', 'Assign a vendor for "Photography"', { description: 'Quoted as a custom line (Photography): 1 × ₹12,500 = ₹12,500. Choose the vendor and add the vendor booking.', weddingEventId: 'e1' })],
+    }));
+    const view = buildControlRoom(w, NOW);
+    expect(view.next).toMatchObject({ kind: 'ASSIGN_VENDOR', title: 'Assign a vendor for Photography', target: 'plan' });
+    expect(view.attention.map((a) => a.kind)).toEqual(['ASSIGN_VENDOR']);
+    expect(view.vendors.find((v) => v.state === 'unassigned')).toMatchObject({ name: 'Photography', taskId: '9', weddingEventId: 'e1', quotedPrice: 12500 });
+  });
+
+  test('a pending vendor booking carries what confirming needs, and the action opens the Plan tab', () => {
+    const w = ws({ events: [fn('e1', 'WEDDING', null, day(60), [vb('vb1', 'Lens Studio', 'Photography', 'PENDING_VENDOR_CONFIRMATION')])] });
+    const view = buildControlRoom(w, NOW);
+    expect(view.vendors[0]).toMatchObject({ state: 'pending', vendorBookingId: 'vb1', weddingEventId: 'e1' });
+    expect(view.next.target).toBe('plan');
+  });
+});
