@@ -55,6 +55,38 @@ function bookingView(booking: {
   };
 }
 
+// Vendor OS §23 (docs/wedding-os/11-vivah-os-ux-architecture.md) — the vendor-scoped payout read the
+// §14 audit identified as missing. Reuses bookingView/bookingInclude for the wedding/event context
+// instead of a second query shape, same discipline as everything else in this file.
+function payoutView(payout: {
+  id: string;
+  grossAmount: number;
+  commissionRate: number;
+  commissionAmount: number;
+  netAmount: number;
+  status: string;
+  paidAt: Date | null;
+  createdAt: Date;
+  vendorBooking: Parameters<typeof bookingView>[0];
+}) {
+  const booking = bookingView(payout.vendorBooking);
+  return {
+    id: payout.id,
+    bookingId: booking.id,
+    weddingName: booking.event.name,
+    weddingReference: booking.event.reference,
+    function: booking.event.function,
+    eventDate: booking.event.date,
+    grossAmount: payout.grossAmount,
+    commissionRate: payout.commissionRate,
+    commissionAmount: payout.commissionAmount,
+    netAmount: payout.netAmount,
+    status: payout.status,
+    paidAt: payout.paidAt?.toISOString() ?? null,
+    createdAt: payout.createdAt.toISOString(),
+  };
+}
+
 const bookingInclude = {
   weddingEvent: {
     include: {
@@ -85,12 +117,14 @@ export const venuePortalService = {
       orderBy: { createdAt: 'desc' },
     }) : [];
     const availability = await prisma.vendorAvailability.findMany({ where: { vendorId: profile.vendorId, date: { gte: new Date() } }, select: { date: true, status: true, note: true }, orderBy: { date: 'asc' }, take: 90 });
+    const payouts = await prisma.payout.findMany({ where: { vendorId: profile.vendorId }, include: { vendorBooking: { include: bookingInclude } }, orderBy: { createdAt: 'desc' } });
     return {
       vendor: profile.vendor,
       bookings: bookings.map(bookingView),
       documents: documents.map((document) => ({ ...document, createdAt: document.createdAt.toISOString() })),
       availability: availability.map((item) => ({ ...item, date: item.date.toISOString() })),
       approvals: approvals.map((approval) => ({ ...approval, title: approval.title || 'Client approval', weddingEventId: approval.weddingEventId })),
+      payouts: payouts.map(payoutView),
     };
   },
 

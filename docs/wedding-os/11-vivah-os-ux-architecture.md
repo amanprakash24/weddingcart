@@ -953,3 +953,54 @@ suite, including the updated `availabilityView.test.ts` assertion). `npm run bui
 cross-file "reuse" finding — code elsewhere in the same initiative already had the correct pattern, and
 these newer files hadn't picked it up. Fixed directly rather than left as a review comment, since it's a
 real correctness bug in code from this session, not a style preference.
+
+## 23. Vendor Payments — built (23 Sep 2026), reversing the §14 pause
+
+**§14's pause is explicitly overridden here, by your decision, not re-derived.** §14 recommended option
+(c) — skip Payments, return once admin payout calculation sees real use. That hasn't changed (payout
+calculation is still a manual, rarely-run admin step; staging has zero real `Payout` rows). You chose to
+build anyway, accepting the screen will be sparse today. This section records what shipped, not a new
+audit — §14's findings (no vendor-scoped read existed, most bookings have no `Payout` row yet, no
+customer-side money is or should be vendor-reachable) all still hold and shaped the design below.
+
+**What was built — exactly the "small, genuinely new, read-only, vendor-scoped query" §14 scoped, nothing
+more:**
+- `services/venuePortal.service.ts` — added one query to the existing `getDashboard()`:
+  `prisma.payout.findMany({ where: { vendorId }, include: { vendorBooking: { include: bookingInclude } } })`,
+  reusing `bookingInclude`/`bookingView` for the wedding/event context instead of a second query shape.
+  Same single-fetch pattern Today/Weddings/Services/Availability already share — no new endpoint, no new
+  auth boundary.
+- `lib/vendor/paymentsView.ts` (new, pure, tested) — buckets the vendor's `Payout` rows into `paid`
+  (`status: PAID`) and `pending` (everything else), plus a **derived** `awaitingCalculation` bucket:
+  `COMPLETED` bookings with no matching `Payout` row. Not fabricated status — `bookingStatus` and the
+  absence of a `Payout` are both real, already-fetched facts; this bucket exists specifically so the
+  screen isn't just empty for the (currently: all) vendors whose completed work hasn't been calculated
+  yet, per §14 point 2.
+- `components/vendor/VendorPaymentsScreen.tsx` (new) — summary cards (total received / pending), then
+  Pending → Awaiting calculation → Paid sections, each `Card`/`StatusPill` styled identically to
+  Weddings/Services. The "awaiting calculation" section carries an explicit one-line explanation
+  ("...that happens on our side once the wedding is fully wrapped up") rather than silently showing
+  nothing, since per §14 that's the *common* case today, not an edge case.
+- `app/vendor/payments/page.tsx` (new) — same `requireRole([Role.VENDOR])` → fetch → build-view → render
+  shape as every other Vendor OS page. No Venue Owner specialization needed here (payout math doesn't
+  differ by category).
+- **Confirmed still absent, correctly:** no customer-side money (invoice/payment/outstanding balance) is
+  or was made vendor-reachable — §14 point 3 stands unchanged. `VendorPaymentDetails` (bank/UPI) remains
+  completely unwired, per its own explicit security comment in `schema.prisma` — this round never touched
+  it.
+
+**Tests:** `lib/vendor/paymentsView.test.ts` (7 new: empty state, paid/pending bucketing, totals, the
+awaiting-calculation derivation including the "already has a payout" and "not completed" exclusions,
+commission label formatting). `tsc --noEmit` clean, `eslint` clean, `bun test` 954/954 pass (947 prior +
+7 new), `npm run build` clean — `/vendor/payments` now a real route in the build output.
+
+**Browser verification (desktop only; mobile still the standing unverified limitation):** no real vendor
+login exists on staging to go through the normal `/vendor/login` auth path (confirmed by querying
+`VendorProfile` directly — zero rows), so — same as done earlier in this initiative for Today — a
+throwaway scratch route rendered `VendorPaymentsScreen` directly with a hand-built view covering all four
+states (paid, pending, awaiting calculation, and fully empty), screenshotted, then deleted. No test/fake
+database records were created for this; the props were literal, never persisted.
+
+**Staging state after this round:** unchanged — zero `Payout` rows exist (confirmed both before and after
+this round). Nothing about implementing the screen created data; it will render real Pending/Paid/Awaiting
+sections the moment `payoutService.calculatePayoutForBooking` is actually run for a vendor.
