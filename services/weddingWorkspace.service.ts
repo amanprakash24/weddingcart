@@ -16,6 +16,7 @@ import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
 import { computeWeddingStage } from '@/lib/wedding/stage';
 import { agreementFigures } from '@/lib/invoice/lifecycle';
 import { findAgreementForWedding } from '@/services/invoiceWorkflow.service';
+import { buildAgreementMoney, type AgreementMoneyView } from '@/lib/commercial/view';
 import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
 import { NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
@@ -97,6 +98,10 @@ export interface WeddingWorkspaceFinance {
       status: PaymentStatus;
       paidAt: Date;
       razorpayPaymentId: string | null;
+      // Money v1: the bank / UPI reference and who recorded a payment received outside Razorpay.
+      reference: string | null;
+      recordedByName: string | null;
+      receiptId: string | null;
     }[];
     paymentLinks: {
       id: string;
@@ -125,6 +130,9 @@ export interface WeddingWorkspaceFinance {
     terms: string | null;
     lines: { description: string; category: string | null; quantity: number; unitPrice: number }[];
     hasBalanceInvoice: boolean;
+    // Money v1: the frozen confirmation rule and what has been received against it (null for a wedding whose agreement predates the
+    // rule — those keep the figures above, unchanged).
+    money: AgreementMoneyView | null;
   } | null;
 }
 
@@ -391,6 +399,7 @@ export const weddingWorkspaceService = {
       .filter((vb) => vb.status !== 'CANCELLED' && vb.status !== 'DECLINED')
       .reduce((sum, vb) => sum + vb.agreedPrice, 0);
 
+    const payerNames = await resolveUserNames(invoices.flatMap((inv) => inv.payments.map((p) => p.recordedById)));
     const financeInvoices = invoices.map((inv) => {
       const amountPaid = inv.payments
         .filter((p) => p.status === 'SUCCESS')
@@ -426,6 +435,9 @@ export const weddingWorkspaceService = {
           status: p.status,
           paidAt: p.paidAt,
           razorpayPaymentId: p.razorpayPaymentId,
+          reference: p.reference,
+          recordedByName: p.recordedById ? (payerNames.get(p.recordedById) ?? null) : null,
+          receiptId: p.receiptId,
         })),
         paymentLinks: inv.paymentLinks.map((l) => ({
           id: l.id,
@@ -449,6 +461,18 @@ export const weddingWorkspaceService = {
         : wedding.sourceConsultationId ?? viaBooking?.consultationId
           ? { sourceType: 'CONSULTATION', id: (wedding.sourceConsultationId ?? viaBooking?.consultationId) as string }
           : null;
+    // Money v1: the terms the booking was made on (frozen at booking time), when this wedding's agreement has them.
+    const frozen = found ? await prisma.commercialAgreement.findUnique({ where: { quotationId: found.quotation.id } }) : null;
+    const money = found && frozen
+      ? buildAgreementMoney({
+          quotationId: found.quotation.id,
+          quotationNumber: found.quotation.quotationNumber,
+          agreement: frozen,
+          invoices: financeInvoices.filter((i) => i.quotationId === found.quotation.id),
+          bookingConfirmed: true, // the wedding exists, so the booking was confirmed
+          weddingId: wedding.id,
+        })
+      : null;
     const agreement: WeddingWorkspaceFinance['agreement'] = found
       ? {
           quotationId: found.quotation.id,
@@ -461,10 +485,12 @@ export const weddingWorkspaceService = {
           gstEnabled: found.quotation.gstEnabled,
           gstAmount: found.quotation.gstAmount,
           total: found.quotation.total,
-          ...(({ advance, balance }) => ({ advance, balance }))(agreementFigures(found.quotation)),
+          // the agreement's frozen confirmation amount is the advance; a wedding from before the rule keeps the quotation's own advance
+          ...(({ advance, balance }) => ({ advance, balance }))(agreementFigures({ total: found.quotation.total, advanceAmount: frozen?.confirmationAmount ?? found.quotation.advanceAmount })),
           terms: found.quotation.terms,
           lines: found.quotation.items.map((i) => ({ description: i.description, category: i.category, quantity: i.quantity, unitPrice: i.unitPrice })),
           hasBalanceInvoice: financeInvoices.some((i) => i.kind === 'BALANCE'),
+          money,
         }
       : null;
 
