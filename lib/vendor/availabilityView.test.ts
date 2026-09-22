@@ -20,7 +20,7 @@ describe('groupAvailabilityByMonth', () => {
 
   test('months are sorted chronologically even if input order is not', () => {
     const groups = groupAvailabilityByMonth([row('2026-11-01'), row('2026-09-01'), row('2026-10-01')]);
-    expect(groups.map((g) => g.monthKey)).toEqual(['2026-08', '2026-09', '2026-10']);
+    expect(groups.map((g) => g.monthKey)).toEqual(['2026-09', '2026-10', '2026-11']);
   });
 
   test('entries within a month are sorted by date ascending', () => {

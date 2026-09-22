@@ -15,10 +15,15 @@ export interface AvailabilityMonthGroup {
 }
 
 export function groupAvailabilityByMonth(rows: VendorAvailabilityRow[]): AvailabilityMonthGroup[] {
+  // row.date is a @db.Date column, serialized by Prisma as an ISO string ("2026-10-15T00:00:00.000Z") —
+  // the first 7 characters ("2026-10") are the unambiguous calendar month, straight from the source of
+  // truth. Reading it via d.getFullYear()/d.getMonth() (the previous implementation) reinterprets that
+  // instant through the server's local timezone, which can bucket a date into the wrong month near a
+  // month boundary when the server isn't running in IST (see lib/vendor/todayView.ts for the same class
+  // of bug). monthKey is therefore "YYYY-MM" (1-indexed month), not the old 0-indexed getMonth() value.
   const groups = new Map<string, VendorAvailabilityRow[]>();
   for (const row of rows) {
-    const d = new Date(row.date);
-    const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+    const key = row.date.slice(0, 7);
     const list = groups.get(key) ?? [];
     list.push(row);
     groups.set(key, list);
@@ -29,7 +34,9 @@ export function groupAvailabilityByMonth(rows: VendorAvailabilityRow[]): Availab
       const [year, month] = monthKey.split('-').map(Number);
       return {
         monthKey,
-        monthLabel: new Date(year, month, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+        // Date.UTC + timeZone: 'UTC' keeps this label construction free of the same local-timezone
+        // reinterpretation the monthKey itself was just fixed to avoid.
+        monthLabel: new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
         entries: [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
       };
     })

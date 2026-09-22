@@ -30,7 +30,7 @@ const FILTERS: TabItem<FilterKey>[] = [
 ];
 
 function dateLabel(value: string) {
-  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 }
 
 function WeddingCard({ wedding, isVenue, onAdvanceVenueStatus, advancingBookingId }: { wedding: VendorWeddingCard; isVenue: boolean; onAdvanceVenueStatus: (weddingId: string, bookingId: string, next: Booking['venueStatus']) => void; advancingBookingId: string | null }) {

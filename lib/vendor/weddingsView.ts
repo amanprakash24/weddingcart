@@ -92,7 +92,7 @@ export function buildVendorWeddingsView(bookings: VendorBookingRow[]): VendorWed
     let nextAction: string | null = null;
     if (awaitingResponse.length > 0) nextAction = `Respond to booking request — ${awaitingResponse[0].function}`;
     else if (withOverdueTasks.length > 0) nextAction = `${withOverdueTasks[0].overdueTasks[0].title} is overdue — ${withOverdueTasks[0].function}`;
-    else if (!allClosed && upcoming) nextAction = `Next: ${primary.event.function} on ${new Date(primary.event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+    else if (!allClosed && upcoming) nextAction = `Next: ${primary.event.function} on ${new Date(primary.event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}`;
 
     cards.push({
       weddingId,

@@ -913,3 +913,43 @@ screens.
 vendor-scoped by the same query every other field goes through. `proxy.ts` diff empty; all three routes
 (`/vendor/today`, `/vendor/weddings`, `/vendor/services`) confirmed `HTTP 307` for an unauthenticated
 request, live.
+
+## 22. IST/UTC date-handling fix across Vendor OS (22 Sep 2026)
+
+**What:** `lib/wedding/stage.ts`/`controlRoom.ts` established IST (Asia/Kolkata) calendar-day-aware date
+handling as a deliberate pattern early in Vivah OS — "a wedding date is a day, not an instant." The Vendor
+OS screens built in §17–21 didn't consistently follow it: 7 call sites across `lib/vendor/*.ts` and
+`components/vendor/*.tsx` used `toLocaleDateString('en-IN', {...})` without pinning `timeZone:
+'Asia/Kolkata'`, and two files did calendar-day bucketing (`todayView.ts`'s "is this today/imminent?",
+`availabilityView.ts`'s month grouping) via raw UTC-based `Date` math instead of reusing
+`daysFromToday()`. This was previously theoretical; open GitHub issue #120 confirms production Vercel
+functions run in `iad1` (US East), so a naive UTC comparison near the IST day boundary can genuinely put a
+booking in the wrong "today"/month bucket for a real user.
+
+**Fixed:**
+- `lib/vendor/todayView.ts` — `dateLabel()` now pins `timeZone: 'Asia/Kolkata'`; `timeAgo()` rewritten to
+  use `daysFromToday()` + `whenWords()` instead of raw millisecond math; `todaysServices`/`upcomingWeddings`/
+  `setupAtRisk`'s imminent-window check all now key off a single `daysFromToday()`-derived map instead of
+  UTC `toISOString().slice(0,10)` / raw `getTime()` comparisons.
+- `lib/vendor/weddingsView.ts`, `lib/vendor/servicesView.ts` — their `nextAction` date-label strings now
+  pin `timeZone: 'Asia/Kolkata'`.
+- `lib/vendor/availabilityView.ts` — month bucketing rewritten from `d.getFullYear()`/`d.getMonth()` (server
+  -local-timezone-dependent) to `row.date.slice(0, 7)` (a `@db.Date` column serialized by Prisma as an
+  unambiguous ISO string — string-slicing it needs no timezone at all). This flips `monthKey` from
+  0-indexed to 1-indexed months; `monthLabel` construction correspondingly moved to `Date.UTC(...)` +
+  `timeZone: 'UTC'` so it doesn't reintroduce local-timezone reinterpretation.
+  `availabilityView.test.ts`'s month-ordering assertion updated for the new convention.
+- `components/vendor/VendorServicesScreen.tsx`, `VendorWeddingsScreen.tsx`, `VendorAvailabilityScreen.tsx`
+  — each local `dateLabel`/`dayLabel` now pins `timeZone: 'Asia/Kolkata'`.
+
+**Not a new pattern:** every fix reuses either `timeZone: 'Asia/Kolkata'` (the existing convention in
+`controlRoom.ts`) or `daysFromToday()` (the existing IST calendar-day-diff helper in `stage.ts`) — no new
+date-handling logic was invented.
+
+**Tests:** `tsc --noEmit` clean, `eslint` clean on all changed files, `bun test` — 947 pass / 0 fail (full
+suite, including the updated `availabilityView.test.ts` assertion). `npm run build` clean.
+
+**How this was found:** a `/code-review` pass on the 7 open Vendor OS PRs surfaced this as a genuine
+cross-file "reuse" finding — code elsewhere in the same initiative already had the correct pattern, and
+these newer files hadn't picked it up. Fixed directly rather than left as a review comment, since it's a
+real correctness bug in code from this session, not a style preference.

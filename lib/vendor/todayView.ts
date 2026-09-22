@@ -4,6 +4,8 @@
 // framework. This is the first time Today has been built from real data — it previously shipped as a
 // static mock spec-proof (docs/wedding-os/11-vivah-os-ux-architecture.md §1) with no page wired to it.
 import { isOverdue, type VendorBookingRow } from './weddingsView';
+import { daysFromToday } from '@/lib/wedding/stage';
+import { whenWords } from '@/lib/wedding/controlRoom';
 
 export interface VendorTodayView {
   nextAction: { title: string; detail?: string; tone: 'calm' | 'attention' };
@@ -14,21 +16,27 @@ export interface VendorTodayView {
   recentActivity: { id: string; text: string; when: string }[];
 }
 
+// IST-pinned (Asia/Kolkata), matching lib/wedding/controlRoom.ts's dateWords/shortDate — a wedding date is a
+// calendar day in India, not an instant, and the server this renders on isn't guaranteed to run in IST.
 function dateLabel(value: string) {
-  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
 }
 
+// Reuses lib/wedding/stage.ts's daysFromToday (IST calendar-day diff) + controlRoom.ts's whenWords ("N days
+// ago") instead of a second, UTC-naive days-ago implementation — same day-boundary risk as dateLabel above.
 function timeAgo(value: string) {
-  const days = Math.floor((Date.now() - new Date(value).getTime()) / (24 * 60 * 60 * 1000));
-  if (days <= 0) return 'today';
-  if (days === 1) return '1 day ago';
-  return `${days} days ago`;
+  const days = daysFromToday(value);
+  if (days === null || days >= 0) return 'today';
+  return whenWords(days) ?? 'today';
 }
 
 export function buildVendorTodayView(bookings: VendorBookingRow[], isVenue = false): VendorTodayView {
-  const now = Date.now();
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+  // "Today"/"imminent" are calendar-day (IST) questions, not instant-in-time ones — daysFromToday (0 =
+  // today, negative = past, positive = future) is the same rule lib/wedding/stage.ts's whole stage/next-
+  // action engine is built on. A plain toISOString().slice(0,10) comparison (the previous implementation)
+  // is UTC, not IST, and this app's functions don't run in IST (see the open "move to bom1" latency issue)
+  // — near the IST day boundary it could show yesterday's or tomorrow's bookings as "today's services".
+  const eventDays = new Map(bookings.map((b) => [b.id, daysFromToday(b.event.date) ?? Number.POSITIVE_INFINITY]));
 
   const awaitingResponse = bookings.filter((b) => b.bookingStatus === 'PENDING_VENDOR_CONFIRMATION');
   const overdueByBooking = bookings
@@ -40,8 +48,8 @@ export function buildVendorTodayView(bookings: VendorBookingRow[], isVenue = fal
   // just informational — surfaced as its own attention item.
   const setupAtRisk = isVenue
     ? bookings.filter((b) => {
-        const eventTime = new Date(b.event.date).getTime();
-        const isImminent = eventTime - now <= twoDaysMs && eventTime - now > -24 * 60 * 60 * 1000;
+        const daysOut = eventDays.get(b.id) as number;
+        const isImminent = daysOut >= 0 && daysOut <= 2;
         const notReady = b.venueStatus !== 'READY' && b.venueStatus !== 'COMPLETED';
         const isLive = b.bookingStatus === 'CONFIRMED' || b.bookingStatus === 'COMPLETED';
         return isImminent && notReady && isLive;
@@ -55,7 +63,7 @@ export function buildVendorTodayView(bookings: VendorBookingRow[], isVenue = fal
   ];
 
   const todaysServices = bookings
-    .filter((b) => b.event.date.slice(0, 10) === todayKey)
+    .filter((b) => eventDays.get(b.id) === 0)
     .map((b) => ({
       id: b.id,
       wedding: b.event.name,
@@ -66,8 +74,8 @@ export function buildVendorTodayView(bookings: VendorBookingRow[], isVenue = fal
     }));
 
   const upcomingWeddings = bookings
-    .filter((b) => new Date(b.event.date).getTime() > now && b.event.date.slice(0, 10) !== todayKey && b.bookingStatus === 'CONFIRMED')
-    .sort((a, b) => new Date(a.event.date).getTime() - new Date(b.event.date).getTime())
+    .filter((b) => (eventDays.get(b.id) as number) > 0 && b.bookingStatus === 'CONFIRMED')
+    .sort((a, b) => (eventDays.get(a.id) as number) - (eventDays.get(b.id) as number))
     .slice(0, 6)
     .map((b) => ({ id: b.id, wedding: b.event.name, date: dateLabel(b.event.date), function: b.event.function }));
 

@@ -37,7 +37,7 @@ export function buildVendorServicesView(bookings: VendorBookingRow[]): VendorSer
     let nextAction: string | null = null;
     if (b.bookingStatus === 'PENDING_VENDOR_CONFIRMATION') nextAction = 'Respond to this booking request';
     else if (overdueTasks.length > 0) nextAction = `${overdueTasks[0].title} is overdue`;
-    else if (bucket === 'upcoming') nextAction = `Service on ${new Date(b.event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+    else if (bucket === 'upcoming') nextAction = `Service on ${new Date(b.event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })}`;
 
     return {
       bookingId: b.id,

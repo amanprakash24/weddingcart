@@ -11,7 +11,7 @@ const STATUS_PILL: Record<VendorAvailabilityRow['status'], { status: PillStatus;
 };
 
 function dayLabel(value: string) {
-  return new Date(value).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  return new Date(value).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
 }
 
 export default function VendorAvailabilityScreen({ months }: { months: AvailabilityMonthGroup[] }) {

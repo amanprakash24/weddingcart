@@ -30,7 +30,7 @@ const FILTERS: TabItem<FilterKey>[] = [
 ];
 
 function dateLabel(value: string) {
-  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 }
 
 function ServiceCard({ service, isVenue, onAdvanceVenueStatus, advancing }: { service: VendorServiceCard; isVenue: boolean; onAdvanceVenueStatus: (bookingId: string, next: VendorServiceCard['venueStatus']) => void; advancing: boolean }) {
