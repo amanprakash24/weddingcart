@@ -17,6 +17,7 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 - **`05-customer-portal.md`** — written last on purpose, after AI. Couple-facing view of the Wedding Workspace data: overview, timeline, vendor directory, payments (Razorpay), budget (margin-filtered), documents, communication.
 - **`06-finance.md`** — payments (Razorpay), vendor payouts, commission, GST data requirements, profit reporting.
 - **`07-ai-assistant.md`** — AI mapped across every role (Founder/Sales/Operations/Vendor/Customer), 3-level framework (Assistant/Copilot/Autonomous — v1 ships Assistant+Copilot only), closes the AI-upgrade loop left open by 02/03/04.
+- **`08-quotation.md`** — quotation design (added 20 Sep 2026, after the first-pass set): line items, server-side totals, send/revise/accept/reject, Booking link, and the **automatic advance invoice** created inside the booking/lead → wedding conversion. Design only — not yet built. Tracks P0-1 in `docs/VIVAH_OS_TECH_COMPLETION.md`.
 - **`10-commercial-flow-v1.md`** — the V1 commercial flow (quotation → negotiation → acceptance → booking → invoice): lead stages that follow the commercial facts, T&C copying, invoice lifecycle, Wedding → Money workflow. Read with `09-wedding-v1-model.md`.
 - **`user-journeys.md`** — three end-to-end journeys (Customer, Venue Owner, Founder), each grounded in real entities/gaps from the docs above. Not a new design pass — evidence for *why* Role-Based Experience matters, not a restatement of it.
 
