@@ -142,7 +142,7 @@ export interface VendorRow {
 // Every service the wedding needs: the vendor bookings (confirmed / pending / declined) and the quoted services that still have no
 // vendor at all (found from their open "assign a vendor" tasks). A vendor booking's own status is only ever read as the vendor's answer —
 // it never says anything about the wedding's stage.
-const functionLabel = (e: { label: string | null; type: string }) => e.label || e.type.charAt(0) + e.type.slice(1).toLowerCase().replace(/_/g, ' ');
+export const functionLabel = (e: { label: string | null; type: string }) => e.label || e.type.charAt(0) + e.type.slice(1).toLowerCase().replace(/_/g, ' ');
 
 export function buildVendors(ws: WeddingWorkspace): VendorRow[] {
   const rows: VendorRow[] = [];

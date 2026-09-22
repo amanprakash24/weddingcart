@@ -16,10 +16,12 @@ import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
 import { computeWeddingStage } from '@/lib/wedding/stage';
 import { agreementFigures } from '@/lib/invoice/lifecycle';
 import { findAgreementForWedding } from '@/services/invoiceWorkflow.service';
+import { buildAgreementMoney, type AgreementMoneyView } from '@/lib/commercial/view';
 import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
 import { NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { unassignedServiceFromTask } from '@/lib/booking/unassigned';
+import { functionDeleteBlocker, functionProblem, normalizeFunction, primaryDateFor, FUNCTION_TYPE_LABELS, type FunctionFields, type FunctionType } from '@/lib/wedding/functions';
 import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus, type PayoutStatus } from '@/generated/prisma/enums';
 import type { Wedding, Task, ActivityLog, Document, TimelineMilestone, Prisma } from '@/generated/prisma/client';
 
@@ -96,6 +98,10 @@ export interface WeddingWorkspaceFinance {
       status: PaymentStatus;
       paidAt: Date;
       razorpayPaymentId: string | null;
+      // Money v1: the bank / UPI reference and who recorded a payment received outside Razorpay.
+      reference: string | null;
+      recordedByName: string | null;
+      receiptId: string | null;
     }[];
     paymentLinks: {
       id: string;
@@ -124,6 +130,9 @@ export interface WeddingWorkspaceFinance {
     terms: string | null;
     lines: { description: string; category: string | null; quantity: number; unitPrice: number }[];
     hasBalanceInvoice: boolean;
+    // Money v1: the frozen confirmation rule and what has been received against it (null for a wedding whose agreement predates the
+    // rule — those keep the figures above, unchanged).
+    money: AgreementMoneyView | null;
   } | null;
 }
 
@@ -160,6 +169,122 @@ async function findWeddingOrThrow(id: string): Promise<Wedding> {
   const wedding = await weddingRepository.findById(id);
   if (!wedding) throw new NotFoundError('Wedding', id);
   return wedding;
+}
+
+// A finished or cancelled wedding is history: its functions are not edited any more.
+function assertPlanningOpen(wedding: Wedding) {
+  if (wedding.status === 'COMPLETED' || wedding.status === 'CANCELLED') {
+    throw new ValidationError(`This wedding is ${wedding.status.toLowerCase()} — its functions can no longer be changed`);
+  }
+}
+
+const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const functionName = (e: { type: string; label: string | null }) => e.label || FUNCTION_TYPE_LABELS[e.type as FunctionType] || e.type;
+
+// Wedding.primaryDate is a cache of the main function's date (schema note) — keep it following the "Wedding" function, because the stage
+// engine counts it too and a stale date would put the wedding in the wrong stage.
+async function syncPrimaryDate(weddingId: string, tx: Prisma.TransactionClient) {
+  const [events, wedding] = await Promise.all([
+    tx.weddingEvent.findMany({ where: { weddingId }, select: { type: true, date: true } }),
+    tx.wedding.findUnique({ where: { id: weddingId }, select: { primaryDate: true } }),
+  ]);
+  if (!wedding) return;
+  const next = primaryDateFor(events, wedding.primaryDate);
+  if (next) await tx.wedding.update({ where: { id: weddingId }, data: { primaryDate: next } });
+}
+
+// The one place a vendor booking (and its "Confirm booking with…" task and log line) is created — used when adding a vendor and when
+// replacing one.
+async function createVendorBookingInTx(
+  tx: Prisma.TransactionClient,
+  weddingId: string,
+  input: { weddingEventId: string; vendorId: string; agreedPrice: number },
+  vendorName: string,
+  actorId: string | null,
+  logSummary?: string
+) {
+  const vendorBooking = await vendorBookingRepository.create(
+    {
+      weddingEvent: { connect: { id: input.weddingEventId } },
+      vendor: { connect: { id: input.vendorId } },
+      agreedPrice: input.agreedPrice,
+      status: 'PENDING_VENDOR_CONFIRMATION',
+    },
+    tx
+  );
+  await taskRepository.create(
+    {
+      context: 'WEDDING_TASK',
+      title: `Confirm booking with ${vendorName}`,
+      priority: 'MEDIUM',
+      wedding: { connect: { id: weddingId } },
+      weddingEvent: { connect: { id: input.weddingEventId } },
+      vendorBooking: { connect: { id: vendorBooking.id } },
+    },
+    tx
+  );
+  await activityLogRepository.create(
+    {
+      type: ActivityType.STATUS_CHANGED,
+      summary: logSummary ?? `Vendor booking added: ${vendorName} (${inr(input.agreedPrice)}), pending confirmation`,
+      wedding: { connect: { id: weddingId } },
+      vendorBooking: { connect: { id: vendorBooking.id } },
+      performedBy: actorId ? { connect: { id: actorId } } : undefined,
+    },
+    tx
+  );
+  return vendorBooking;
+}
+
+// Ends a vendor booking because the wedding team dropped or replaced that vendor. Its own "Confirm booking…" task is cancelled with it.
+// Unless a replacement is being booked in the same step, the service goes back to "needs a vendor" (an "Assign a vendor for…" task), so
+// a quoted service never silently disappears.
+async function cancelVendorBookingInTx(
+  tx: Prisma.TransactionClient,
+  weddingId: string,
+  booking: { id: string; weddingEventId: string; agreedPrice: number },
+  vendor: { name: string; category: string },
+  reason: string,
+  actorId: string | null,
+  options: { needsNewVendor: boolean; replacedBy?: string }
+) {
+  await vendorBookingRepository.update(booking.id, { status: 'CANCELLED' }, tx);
+  await tx.task.updateMany({ where: { vendorBookingId: booking.id, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { status: 'CANCELLED', completedAt: null } });
+  await activityLogRepository.create(
+    {
+      type: ActivityType.STATUS_CHANGED,
+      summary: options.replacedBy
+        ? `${vendor.name} replaced by ${options.replacedBy}${reason ? ` — ${reason}` : ''}`
+        : `Vendor cancelled: ${vendor.name} (${vendor.category})${reason ? ` — ${reason}` : ''}`,
+      wedding: { connect: { id: weddingId } },
+      vendorBooking: { connect: { id: booking.id } },
+      performedBy: actorId ? { connect: { id: actorId } } : undefined,
+    },
+    tx
+  );
+  if (options.needsNewVendor) {
+    await taskRepository.create(
+      {
+        context: 'WEDDING_TASK',
+        title: `Assign a vendor for "${vendor.category}"`,
+        description: `${vendor.name} was cancelled${reason ? ` (${reason})` : ''}. Service value = ${inr(booking.agreedPrice)}. Choose the vendor and add the vendor booking.`,
+        priority: 'HIGH',
+        wedding: { connect: { id: weddingId } },
+        weddingEvent: { connect: { id: booking.weddingEventId } },
+      },
+      tx
+    );
+  }
+}
+
+// A vendor booking of this wedding, with the vendor's name and category (a booking of another wedding is "not found").
+async function loadBookingForChange(weddingId: string, vendorBookingId: string) {
+  const booking = await vendorBookingRepository.findById(vendorBookingId);
+  if (!booking) throw new NotFoundError('VendorBooking', vendorBookingId);
+  const event = await weddingEventRepository.findById(booking.weddingEventId);
+  if (!event || event.weddingId !== weddingId) throw new NotFoundError('VendorBooking', vendorBookingId);
+  const found = await prisma.vendor.findUnique({ where: { id: booking.vendorId }, select: { name: true, category: { select: { name: true } } } });
+  return { booking, vendor: { name: found?.name ?? 'the vendor', category: found?.category.name ?? 'Service' } };
 }
 
 // INV-YYYYMM-NNNN, sequential within the month — the same format already live in the database. The
@@ -274,6 +399,7 @@ export const weddingWorkspaceService = {
       .filter((vb) => vb.status !== 'CANCELLED' && vb.status !== 'DECLINED')
       .reduce((sum, vb) => sum + vb.agreedPrice, 0);
 
+    const payerNames = await resolveUserNames(invoices.flatMap((inv) => inv.payments.map((p) => p.recordedById)));
     const financeInvoices = invoices.map((inv) => {
       const amountPaid = inv.payments
         .filter((p) => p.status === 'SUCCESS')
@@ -309,6 +435,9 @@ export const weddingWorkspaceService = {
           status: p.status,
           paidAt: p.paidAt,
           razorpayPaymentId: p.razorpayPaymentId,
+          reference: p.reference,
+          recordedByName: p.recordedById ? (payerNames.get(p.recordedById) ?? null) : null,
+          receiptId: p.receiptId,
         })),
         paymentLinks: inv.paymentLinks.map((l) => ({
           id: l.id,
@@ -332,6 +461,18 @@ export const weddingWorkspaceService = {
         : wedding.sourceConsultationId ?? viaBooking?.consultationId
           ? { sourceType: 'CONSULTATION', id: (wedding.sourceConsultationId ?? viaBooking?.consultationId) as string }
           : null;
+    // Money v1: the terms the booking was made on (frozen at booking time), when this wedding's agreement has them.
+    const frozen = found ? await prisma.commercialAgreement.findUnique({ where: { quotationId: found.quotation.id } }) : null;
+    const money = found && frozen
+      ? buildAgreementMoney({
+          quotationId: found.quotation.id,
+          quotationNumber: found.quotation.quotationNumber,
+          agreement: frozen,
+          invoices: financeInvoices.filter((i) => i.quotationId === found.quotation.id),
+          bookingConfirmed: true, // the wedding exists, so the booking was confirmed
+          weddingId: wedding.id,
+        })
+      : null;
     const agreement: WeddingWorkspaceFinance['agreement'] = found
       ? {
           quotationId: found.quotation.id,
@@ -344,10 +485,12 @@ export const weddingWorkspaceService = {
           gstEnabled: found.quotation.gstEnabled,
           gstAmount: found.quotation.gstAmount,
           total: found.quotation.total,
-          ...(({ advance, balance }) => ({ advance, balance }))(agreementFigures(found.quotation)),
+          // the agreement's frozen confirmation amount is the advance; a wedding from before the rule keeps the quotation's own advance
+          ...(({ advance, balance }) => ({ advance, balance }))(agreementFigures({ total: found.quotation.total, advanceAmount: frozen?.confirmationAmount ?? found.quotation.advanceAmount })),
           terms: found.quotation.terms,
           lines: found.quotation.items.map((i) => ({ description: i.description, category: i.category, quantity: i.quantity, unitPrice: i.unitPrice })),
           hasBalanceInvoice: financeInvoices.some((i) => i.kind === 'BALANCE'),
+          money,
         }
       : null;
 
@@ -537,6 +680,9 @@ export const weddingWorkspaceService = {
     const event = await weddingEventRepository.findById(vendorBooking.weddingEventId);
     if (!event || event.weddingId !== weddingId) throw new NotFoundError('VendorBooking', vendorBookingId);
 
+    // Cancelling has its own path: it also puts the service back on the "needs a vendor" list.
+    if (status === 'CANCELLED') throw new ValidationError('Use “Cancel vendor” to drop a vendor — it also puts the service back on the list of things to assign');
+
     if (!canTransitionVendorBooking(vendorBooking.status, status)) {
       throw new InvalidTransitionError(`Cannot move a vendor booking from ${vendorBooking.status} to ${status}`);
     }
@@ -624,44 +770,173 @@ export const weddingWorkspaceService = {
     if (!vendor) throw new NotFoundError('Vendor', input.vendorId);
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const vendorBooking = await vendorBookingRepository.create(
-        {
-          weddingEvent: { connect: { id: input.weddingEventId } },
-          vendor: { connect: { id: input.vendorId } },
-          agreedPrice: input.agreedPrice,
-          status: 'PENDING_VENDOR_CONFIRMATION',
-        },
-        tx
-      );
-
+      const vendorBooking = await createVendorBookingInTx(tx, weddingId, input, vendor.name, actorId);
       if (input.resolvesTaskId) {
         await tx.task.updateMany({ where: { id: input.resolvesTaskId, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { status: 'DONE', completedAt: new Date() } });
       }
+      return vendorBooking;
+    });
+  },
 
-      await taskRepository.create(
+  // ---------- functions ----------
+
+  async addFunction(weddingId: string, input: FunctionFields, actorId: string | null) {
+    const wedding = await findWeddingOrThrow(weddingId);
+    assertPlanningOpen(wedding);
+    const fields = normalizeFunction(input);
+    const problem = functionProblem(fields);
+    if (problem) throw new ValidationError(problem);
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const created = await weddingEventRepository.create(
         {
-          context: 'WEDDING_TASK',
-          title: `Confirm booking with ${vendor.name}`,
-          priority: 'MEDIUM',
           wedding: { connect: { id: weddingId } },
-          weddingEvent: { connect: { id: input.weddingEventId } },
-          vendorBooking: { connect: { id: vendorBooking.id } },
+          type: fields.type,
+          label: fields.label ?? null,
+          date: fields.date,
+          startTime: fields.startTime ?? null,
+          venueName: fields.venueName ?? null,
+          venueAddress: fields.venueAddress ?? null,
+          city: fields.city || wedding.city,
+          budget: fields.budget ?? null,
         },
         tx
       );
-
+      await syncPrimaryDate(weddingId, tx);
       await activityLogRepository.create(
         {
           type: ActivityType.STATUS_CHANGED,
-          summary: `Vendor booking added: ${vendor.name} (₹${input.agreedPrice.toLocaleString('en-IN')}), pending confirmation`,
+          summary: `Function added: ${functionName(created)} on ${created.date.toISOString().slice(0, 10)}`,
           wedding: { connect: { id: weddingId } },
-          vendorBooking: { connect: { id: vendorBooking.id } },
           performedBy: actorId ? { connect: { id: actorId } } : undefined,
         },
         tx
       );
+      return created;
+    });
+  },
 
-      return vendorBooking;
+  // Only the fields that are sent change. Moving the Wedding function moves the wedding's date with it.
+  async updateFunction(weddingId: string, eventId: string, patch: Partial<FunctionFields>, actorId: string | null) {
+    const wedding = await findWeddingOrThrow(weddingId);
+    assertPlanningOpen(wedding);
+    const event = await weddingEventRepository.findById(eventId);
+    if (!event || event.weddingId !== weddingId) throw new NotFoundError('WeddingEvent', eventId);
+    const fields = normalizeFunction(patch);
+    const type = (fields.type ?? event.type) as FunctionType;
+    const label = fields.label !== undefined ? fields.label : event.label;
+    const problem = functionProblem({ type, label, startTime: fields.startTime, budget: fields.budget, city: fields.city });
+    if (problem) throw new ValidationError(problem);
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const updated = await weddingEventRepository.update(
+        eventId,
+        {
+          ...(fields.type !== undefined ? { type: fields.type } : {}),
+          ...(fields.type !== undefined || fields.label !== undefined ? { label: type === 'OTHER' ? label ?? null : null } : {}),
+          ...(fields.date !== undefined ? { date: fields.date } : {}),
+          ...(fields.startTime !== undefined ? { startTime: fields.startTime } : {}),
+          ...(fields.venueName !== undefined ? { venueName: fields.venueName } : {}),
+          ...(fields.venueAddress !== undefined ? { venueAddress: fields.venueAddress } : {}),
+          ...(fields.city ? { city: fields.city } : {}),
+          ...(fields.budget !== undefined ? { budget: fields.budget } : {}),
+        },
+        tx
+      );
+      await syncPrimaryDate(weddingId, tx);
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: `Function updated: ${functionName(updated)}${updated.date.getTime() !== event.date.getTime() ? ` — date now ${updated.date.toISOString().slice(0, 10)}` : ''}`,
+          wedding: { connect: { id: weddingId } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+      return updated;
+    });
+  },
+
+  // Deleting a function is only for one that is empty (see functionDeleteBlocker): it cascades to vendor bookings and guest replies, so
+  // anything attached blocks it. The event row is locked first so a vendor cannot be booked into it while it is being removed.
+  async deleteFunction(weddingId: string, eventId: string, actorId: string | null) {
+    const wedding = await findWeddingOrThrow(weddingId);
+    assertPlanningOpen(wedding);
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.$queryRaw`SELECT "id" FROM "wedding_events" WHERE "id" = ${eventId} FOR UPDATE`;
+      const event = await tx.weddingEvent.findUnique({ where: { id: eventId } });
+      if (!event || event.weddingId !== weddingId) throw new NotFoundError('WeddingEvent', eventId);
+      const [functions, vendorBookings, servicesWithoutVendor, guestReplies] = await Promise.all([
+        tx.weddingEvent.count({ where: { weddingId } }),
+        tx.vendorBooking.count({ where: { weddingEventId: eventId, status: { notIn: ['DECLINED', 'CANCELLED'] } } }),
+        tx.task.count({
+          where: {
+            weddingEventId: eventId,
+            status: { in: ['PENDING', 'IN_PROGRESS'] },
+            OR: [{ title: { startsWith: 'Assign a vendor for "' } }, { title: { startsWith: 'Assign replacement vendor for "' } }],
+          },
+        }),
+        tx.guestFunctionResponse.count({ where: { weddingEventId: eventId, status: { not: 'PENDING' } } }),
+      ]);
+      const blocker = functionDeleteBlocker({ isLastFunction: functions <= 1, vendorBookings, servicesWithoutVendor, guestReplies });
+      if (blocker) throw new ValidationError(blocker);
+      await weddingEventRepository.delete(eventId, tx);
+      await syncPrimaryDate(weddingId, tx);
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: `Function deleted: ${functionName(event)}`,
+          wedding: { connect: { id: weddingId } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+      return event;
+    });
+  },
+
+  // ---------- vendor changes ----------
+
+  async cancelVendorBooking(weddingId: string, vendorBookingId: string, reason: string, actorId: string | null) {
+    const { booking, vendor } = await loadBookingForChange(weddingId, vendorBookingId);
+    if (!canTransitionVendorBooking(booking.status, 'CANCELLED')) throw new InvalidTransitionError(`Cannot cancel a vendor booking that is ${booking.status}`);
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await cancelVendorBookingInTx(tx, weddingId, booking, vendor, reason.trim(), actorId, { needsNewVendor: true });
+      return { id: booking.id };
+    });
+  },
+
+  // Cancel the old vendor and book the new one in a single step — the service never goes without an owner in between.
+  async replaceVendorBooking(weddingId: string, vendorBookingId: string, input: { vendorId: string; agreedPrice: number; reason?: string }, actorId: string | null) {
+    const { booking, vendor } = await loadBookingForChange(weddingId, vendorBookingId);
+    if (!canTransitionVendorBooking(booking.status, 'CANCELLED')) throw new InvalidTransitionError(`Cannot replace a vendor booking that is ${booking.status}`);
+    if (!Number.isInteger(input.agreedPrice) || input.agreedPrice <= 0) throw new ValidationError('The agreed price should be a whole number of rupees');
+    if (input.vendorId === booking.vendorId) throw new ValidationError('That is the same vendor — pick someone else');
+    const next = await vendorRepository.findById(input.vendorId);
+    if (!next) throw new NotFoundError('Vendor', input.vendorId);
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await cancelVendorBookingInTx(tx, weddingId, booking, vendor, (input.reason ?? '').trim(), actorId, { needsNewVendor: false, replacedBy: next.name });
+      return createVendorBookingInTx(tx, weddingId, { weddingEventId: booking.weddingEventId, vendorId: input.vendorId, agreedPrice: input.agreedPrice }, next.name, actorId, `Vendor booking added: ${next.name} (${inr(input.agreedPrice)}), replacing ${vendor.name}, pending confirmation`);
+    });
+  },
+
+  // The price can be corrected while the vendor is still pending or confirmed; once the work is done, declined or cancelled it is a record.
+  async updateVendorBookingPrice(weddingId: string, vendorBookingId: string, agreedPrice: number, actorId: string | null) {
+    const { booking, vendor } = await loadBookingForChange(weddingId, vendorBookingId);
+    if (booking.status !== 'PENDING_VENDOR_CONFIRMATION' && booking.status !== 'CONFIRMED') throw new InvalidTransitionError(`The price of a ${booking.status.toLowerCase().replace(/_/g, ' ')} booking can no longer be changed`);
+    if (!Number.isInteger(agreedPrice) || agreedPrice <= 0) throw new ValidationError('The agreed price should be a whole number of rupees');
+    if (agreedPrice === booking.agreedPrice) return booking;
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const updated = await vendorBookingRepository.update(vendorBookingId, { agreedPrice }, tx);
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: `Agreed price for ${vendor.name} changed: ${inr(booking.agreedPrice)} → ${inr(agreedPrice)}`,
+          wedding: { connect: { id: weddingId } },
+          vendorBooking: { connect: { id: vendorBookingId } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+      return updated;
     });
   },
 

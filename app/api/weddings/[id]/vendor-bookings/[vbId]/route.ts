@@ -11,12 +11,20 @@ import { handleApiError } from '@/lib/errors';
 // Operations records a real confirmation obtained by phone/WhatsApp. It's
 // also the only trigger path this milestone has for the automatic
 // PLANNING->ACTIVE transition.
-const bodySchema = z.object({
-  status: z.enum(['PENDING_VENDOR_CONFIRMATION', 'CONFIRMED', 'DECLINED', 'CUSTOMER_APPROVAL_PENDING', 'CANCELLED', 'COMPLETED']),
-  declineReason: z.string().trim().min(1).optional(),
-  // Sprint 7.3 — captured only when status is COMPLETED.
-  onTimeService: z.boolean().optional(),
-});
+//
+// Send { status } to record the vendor's answer (confirm / decline / completed), or { agreedPrice } to correct the price.
+// Cancelling a vendor is its own call (…/cancel), because it also puts the service back on the "needs a vendor" list.
+const bodySchema = z
+  .object({
+    status: z.enum(['PENDING_VENDOR_CONFIRMATION', 'CONFIRMED', 'DECLINED', 'CUSTOMER_APPROVAL_PENDING', 'CANCELLED', 'COMPLETED']),
+    declineReason: z.string().trim().min(1).optional(),
+    // Sprint 7.3 — captured only when status is COMPLETED.
+    onTimeService: z.boolean().optional(),
+    agreedPrice: z.number().int().positive(),
+  })
+  .partial()
+  .refine((v) => v.status !== undefined || v.agreedPrice !== undefined, { message: 'Send a status or an agreed price' })
+  .refine((v) => v.status === undefined || v.agreedPrice === undefined, { message: 'Change the status or the price, not both at once' });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
@@ -26,8 +34,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id, vbId } = await params;
   try {
-    const { status, declineReason, onTimeService } = bodySchema.parse(await req.json());
-    const vendorBooking = await weddingWorkspaceService.updateVendorBookingStatus(id, vbId, status, declineReason, onTimeService);
+    const { status, declineReason, onTimeService, agreedPrice } = bodySchema.parse(await req.json());
+    if (agreedPrice !== undefined) {
+      const updated = await weddingWorkspaceService.updateVendorBookingPrice(id, vbId, agreedPrice, session.user.id ?? null);
+      return NextResponse.json({ success: true, data: updated });
+    }
+    const vendorBooking = await weddingWorkspaceService.updateVendorBookingStatus(id, vbId, status as NonNullable<typeof status>, declineReason, onTimeService);
     return NextResponse.json({ success: true, data: vendorBooking });
   } catch (err) {
     return handleApiError(err);

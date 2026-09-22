@@ -12,7 +12,8 @@ const bodySchema = z.object({
   venueName: z.string().trim().min(1).optional(),
   coordinatorId: z.string().trim().min(1).optional(),
   notes: z.string().trim().min(1).optional(),
-  tokenAdvanceReceived: z.boolean(),
+  // Ignored since Money v1 (the server decides from the recorded payments); still accepted so an older client keeps working.
+  tokenAdvanceReceived: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ sourceType: string; id: string }> }) {

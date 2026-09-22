@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, CircleDashed } from 'lucide-react';
 import type { VendorRow } from '@/lib/wedding/controlRoom';
+import VendorPicker, { type VendorHit } from './VendorPicker';
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const btn = 'min-h-9 rounded-lg px-3 py-1.5 text-sm font-medium';
-
-type VendorHit = { id: string; name: string; city: string; category: string };
 
 export interface AssignInput {
   weddingEventId: string;
@@ -19,12 +18,13 @@ export interface AssignInput {
 // Vendor work, done here: a vendor who has not answered gets Confirm / Decline; a quoted service nobody is booked for gets a vendor. The
 // "Confirm booking…" / "Assign a vendor…" tasks this replaces close themselves when the action is done.
 export default function VendorsToSortOut({
-  rows, onConfirm, onDecline, onAssign,
+  rows, onConfirm, onDecline, onAssign, onRemove,
 }: {
   rows: VendorRow[];
   onConfirm: (vendorBookingId: string) => Promise<void>;
   onDecline: (vendorBookingId: string, reason: string) => Promise<void>;
   onAssign: (input: AssignInput) => Promise<void>;
+  onRemove?: (taskId: string) => Promise<void>;
 }) {
   const work = rows.filter((r) => r.state === 'pending' || r.state === 'unassigned');
   if (work.length === 0) return null;
@@ -34,7 +34,7 @@ export default function VendorsToSortOut({
       <ul className="mt-3 grid grid-cols-1 gap-2">
         {work.map((row) => (
           <li key={row.key} className="rounded-xl border border-amber-100 bg-white p-3">
-            {row.state === 'pending' ? <PendingRow row={row} onConfirm={onConfirm} onDecline={onDecline} /> : <UnassignedRow row={row} onAssign={onAssign} />}
+            {row.state === 'pending' ? <PendingRow row={row} onConfirm={onConfirm} onDecline={onDecline} /> : <UnassignedRow row={row} onAssign={onAssign} onRemove={onRemove} />}
           </li>
         ))}
       </ul>
@@ -42,7 +42,7 @@ export default function VendorsToSortOut({
   );
 }
 
-function useAction() {
+export function useAction() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const run = async (fn: () => Promise<void>) => {
@@ -59,7 +59,7 @@ function useAction() {
   return { busy, error, run };
 }
 
-function PendingRow({ row, onConfirm, onDecline }: { row: VendorRow; onConfirm: (id: string) => Promise<void>; onDecline: (id: string, reason: string) => Promise<void> }) {
+export function PendingRow({ row, onConfirm, onDecline }: { row: VendorRow; onConfirm: (id: string) => Promise<void>; onDecline: (id: string, reason: string) => Promise<void> }) {
   const { busy, error, run } = useAction();
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState('');
@@ -90,24 +90,12 @@ function PendingRow({ row, onConfirm, onDecline }: { row: VendorRow; onConfirm: 
   );
 }
 
-function UnassignedRow({ row, onAssign }: { row: VendorRow; onAssign: (input: AssignInput) => Promise<void> }) {
+export function UnassignedRow({ row, onAssign, onRemove }: { row: VendorRow; onAssign: (input: AssignInput) => Promise<void>; onRemove?: (taskId: string) => Promise<void> }) {
   const { busy, error, run } = useAction();
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [hits, setHits] = useState<VendorHit[]>([]);
+  const [removing, setRemoving] = useState(false);
   const [picked, setPicked] = useState<VendorHit | null>(null);
   const [price, setPrice] = useState(row.quotedPrice ? String(row.quotedPrice) : '');
-
-  useEffect(() => {
-    if (!open || picked || query.trim().length < 2) return;
-    const handle = setTimeout(() => {
-      fetch(`/api/weddings/vendor-search?q=${encodeURIComponent(query.trim())}`)
-        .then((r) => r.json())
-        .then((body) => setHits(body.success ? body.data : []))
-        .catch(() => setHits([]));
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [open, picked, query]);
 
   const amount = Number(price.replace(/,/g, ''));
   const ready = picked && Number.isInteger(amount) && amount > 0 && row.weddingEventId && row.taskId;
@@ -120,28 +108,19 @@ function UnassignedRow({ row, onAssign }: { row: VendorRow; onAssign: (input: As
           <p className="text-sm font-semibold text-gray-900">{row.name}</p>
           <p className="text-xs text-gray-500">{row.quotedPrice ? `Quoted at ${rupees(row.quotedPrice)}` : 'Quoted'} · nobody is booked for this yet</p>
         </div>
-        {!open && <button type="button" onClick={() => setOpen(true)} className={`${btn} shrink-0 bg-gray-900 text-white`}>Assign vendor</button>}
+        {!open && !removing && <button type="button" onClick={() => setOpen(true)} className={`${btn} shrink-0 bg-gray-900 text-white`}>Assign vendor</button>}
       </div>
+      {!open && !removing && onRemove && row.taskId && <button type="button" onClick={() => setRemoving(true)} className="mt-1 text-xs text-gray-500 underline">Remove this service</button>}
+      {removing && onRemove && row.taskId && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm">
+          <span className="text-gray-700">Drop {row.name} from the plan? It will no longer be waiting for a vendor.</span>
+          <button type="button" disabled={busy} onClick={() => run(async () => { await onRemove(row.taskId as string); })} className={`${btn} bg-red-600 text-white disabled:opacity-40`}>{busy ? 'Saving…' : 'Remove service'}</button>
+          <button type="button" disabled={busy} onClick={() => setRemoving(false)} className={`${btn} text-gray-500 hover:bg-gray-100`}>Keep it</button>
+        </div>
+      )}
       {open && (
         <div className="mt-2 grid grid-cols-1 gap-2">
-          {picked ? (
-            <div className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm">
-              <span className="min-w-0 truncate"><span className="font-medium text-gray-900">{picked.name}</span> <span className="text-gray-500">· {picked.category} · {picked.city}</span></span>
-              <button type="button" onClick={() => { setPicked(null); setHits([]); }} className="shrink-0 text-xs text-gray-500 underline">Change</button>
-            </div>
-          ) : (
-            <>
-              <input aria-label="Search vendors" placeholder="Search vendors by name…" value={query} onChange={(e) => setQuery(e.target.value)} className="min-h-10 rounded-lg border border-gray-200 px-3 py-2 text-sm" />
-              {hits.length > 0 && (
-                <ul className="max-h-48 overflow-y-auto rounded-lg border border-gray-100">
-                  {hits.map((h) => (
-                    <li key={h.id}><button type="button" onClick={() => setPicked(h)} className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50"><span className="font-medium text-gray-900">{h.name}</span> <span className="text-gray-500">· {h.category} · {h.city}</span></button></li>
-                  ))}
-                </ul>
-              )}
-              {query.trim().length >= 2 && hits.length === 0 && <p className="text-xs text-gray-400">No vendor found yet — keep typing.</p>}
-            </>
-          )}
+          <VendorPicker picked={picked} onPick={setPicked} onClear={() => setPicked(null)} />
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-xs text-gray-500" htmlFor={`price-${row.key}`}>Agreed price ₹</label>
             <input id={`price-${row.key}`} inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className="min-h-9 w-32 rounded-lg border border-gray-200 px-3 py-1.5 text-sm" />
@@ -153,7 +132,7 @@ function UnassignedRow({ row, onAssign }: { row: VendorRow; onAssign: (input: As
             >
               {busy ? 'Saving…' : 'Assign'}
             </button>
-            <button type="button" disabled={busy} onClick={() => { setOpen(false); setPicked(null); setQuery(''); setHits([]); }} className={`${btn} text-gray-500 hover:bg-gray-100`}>Cancel</button>
+            <button type="button" disabled={busy} onClick={() => { setOpen(false); setPicked(null); }} className={`${btn} text-gray-500 hover:bg-gray-100`}>Cancel</button>
           </div>
         </div>
       )}

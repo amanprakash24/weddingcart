@@ -128,6 +128,7 @@ model User {
   // table; these are the many places Wedding OS entities reference a user.
   weddingsAsCustomer        Wedding[]           @relation("WeddingCustomer")
   weddingsAsCoordinator     Wedding[]           @relation("WeddingCoordinator")
+  paymentsRecorded          Payment[]           @relation("PaymentRecordedBy")
   leadsAssigned             Lead[]              @relation("LeadAssignedTo")
   leadsAssignedByMe         Lead[]              @relation("LeadAssignedBy")
   enquiriesAssigned         Enquiry[]           @relation("EnquiryAssignedTo")
@@ -598,6 +599,7 @@ model Booking {
   items    BookingItem[]
   invoices Invoice[] // invoices raised for this booking (advance, balance)
   wedding  Wedding? // set once status reaches CONFIRMED and this converts
+  agreement CommercialAgreement? // the frozen commercial terms of the accepted quotation this booking was made from
 
   // Lookups by these two (findByLinkedBookingEnquiryId/
   // findByLinkedBookingConsultationId, the cross-path duplicate-Wedding
@@ -952,6 +954,7 @@ model Quotation {
   advanceInvoice   Invoice?  @relation("QuotationAdvanceInvoice", fields: [advanceInvoiceId], references: [id])
   invoices         Invoice[] @relation("InvoiceQuotation") // every invoice raised against this agreement (advance, balance)
   booking          Booking? // one Booking per quotation (Booking.quotationId is unique)
+  agreement        CommercialAgreement? // the frozen commercial terms this quotation was accepted on (money v1)
 
   items       QuotationItem[]
   createdById String?
@@ -1536,6 +1539,16 @@ model Payment {
   paidAt            DateTime      @default(now())
   createdAt         DateTime      @default(now())
 
+  // Money v1: who recorded a payment received outside Razorpay, and its bank / UPI reference (UTR). `receiptId` groups the rows one
+  // receipt was split into (a payment larger than the advance invoice is applied to the balance invoice too); `idempotencyKey`
+  // (unique) makes a double-submitted form a no-op.
+  reference      String?
+  recordedById   String?
+  recordedBy     User?   @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+  receiptId      String?
+  idempotencyKey String? @unique
+
+  @@index([receiptId])
   @@map("payments")
 }
 
@@ -1550,6 +1563,47 @@ enum PaymentLinkStatus {
 // can see "link sent, awaiting payment" without a fake/nullable Payment row.
 // Payment stays "money that actually moved" (Sprint 7.1's rule); this is the
 // pending-state table that rule implies is needed alongside it.
+// Money v1 (docs/wedding-os/10-commercial-flow-v1.md, 22 Sep 2026). The commercial terms an accepted quotation was booked on, frozen
+// when the booking is made: the total, the confirmation rule it was made under (percent, rounding, hold window) and the exact amount
+// that rule required, what was accepted (items with their quotation-item ids, function labels, terms) and by whom. It is the
+// booking-time protection — a later change to a venue's default terms, a vendor price, or the business rules never re-prices a deal.
+//
+// It stores NO money that moves: what was received is always summed from Payment rows, and "Date Held" / "Confirmed" are derived
+// from that (lib/commercial/rules.ts). The only operational timestamps kept are the hold window's start/end (set once, by the first
+// payment) and the moment the booking was confirmed. One per accepted quotation; the booking is optional because a CRM lead whose
+// quotation was accepted has no Booking.
+model CommercialAgreement {
+  id                   String    @id @default(uuid())
+  quotationId          String    @unique
+  quotation            Quotation @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  quotationRevision    Int
+  bookingId            String?   @unique
+  booking              Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customerId           String?
+  customerName         String
+  customerPhone        String
+  currency             String    @default("INR")
+  subtotal             Int
+  discountAmount       Int
+  taxAmount            Int
+  agreementTotal       Int
+  confirmationPercent  Int
+  confirmationAmount   Int
+  confirmationRounding String
+  holdWindowDays       Int
+  termsSnapshot        String?
+  itemsSnapshot        Json
+  functionLabels       Json
+  acceptedAt           DateTime?
+  acceptedById         String?
+  holdStartedAt        DateTime?
+  holdExpiresAt        DateTime?
+  confirmedAt          DateTime?
+  createdAt            DateTime  @default(now())
+
+  @@map("commercial_agreements")
+}
+
 model PaymentLink {
   id                    String            @id @default(uuid())
   invoiceId             String

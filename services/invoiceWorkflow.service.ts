@@ -88,7 +88,9 @@ export const invoiceWorkflowService = {
       if (!wedding) throw new NotFoundError('Wedding', weddingId);
       const agreement = await findAgreementForWedding(tx, wedding);
       const existing = agreement ? await tx.invoice.findFirst({ where: { quotationId: agreement.quotation.id, kind: 'BALANCE' }, select: { id: true } }) : null;
-      const blocked = checkBalanceInvoice({ quotation: agreement?.quotation ?? null, alreadyHasBalanceInvoice: existing !== null });
+      // Money v1: an agreement's balance is measured from the confirmation amount it froze, not from the quotation's free-form advance.
+      const frozen = agreement ? await tx.commercialAgreement.findUnique({ where: { quotationId: agreement.quotation.id }, select: { confirmationAmount: true } }) : null;
+      const blocked = checkBalanceInvoice({ quotation: agreement?.quotation ?? null, alreadyHasBalanceInvoice: existing !== null, advance: frozen?.confirmationAmount });
       if (blocked || !agreement) throw new ConflictError(blocked ?? 'This wedding has no accepted quotation to invoice from');
 
       // Who to bill: the same person the advance invoice went to, else the booking, else the source record.
@@ -111,7 +113,7 @@ export const invoiceWorkflowService = {
       }
       if (!client) throw new ValidationError('There are no customer details to bill');
 
-      const plan = planBalanceInvoice({ quotation: agreement.quotation, wedding, client });
+      const plan = planBalanceInvoice({ quotation: agreement.quotation, wedding, client, advance: frozen?.confirmationAmount });
       const invoice = await invoiceRepository.create(
         {
           invoiceNumber: await generateInvoiceNumber(tx),
@@ -151,6 +153,11 @@ export const invoiceWorkflowService = {
       // Two people recording at once must not both fit under the balance: serialise on the invoice row.
       await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${invoiceId} FOR UPDATE`;
       const invoice = await loadWeddingInvoice(tx, weddingId, invoiceId);
+      // Money v1: an invoice of an agreement is paid through the agreement (services/agreement.service.ts), which applies the money to
+      // the right invoice, starts the hold window and allows a payment above the 25%. Two ways of recording the same money would disagree.
+      if (invoice.quotationId && (await tx.commercialAgreement.findUnique({ where: { quotationId: invoice.quotationId }, select: { id: true } }))) {
+        throw new ConflictError('This invoice belongs to the booking agreement — record the payment against the agreement');
+      }
       const paid = paidOf(invoice);
       const blocked = checkManualPayment({ amount: input.amount, total: invoice.total, paid, method: input.method });
       if (blocked) throw new ValidationError(blocked);

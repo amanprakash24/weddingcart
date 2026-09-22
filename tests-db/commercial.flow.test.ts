@@ -11,6 +11,11 @@ import { computeNextAction } from '@/lib/wedding/stage';
 //   → wedding created → invoice created
 //
 // It also pins the rejection cases, the Terms & Conditions rules and the invoice lifecycle.
+//
+// Money V1 (22 Sep 2026): a booking is confirmed only once 25% of the accepted quotation has been received, and the booking's advance
+// invoice (that 25%) exists from the moment the booking is created. So the story below pays the confirmation amount before it confirms.
+// The invoice-lifecycle tests further down run on a booking made BEFORE that rule (no agreement), which keeps the old flow exactly —
+// the historical behaviour they pin is unchanged and still supported.
 dbDescribe('Commercial flow V1 (real database)', () => {
   let app: App;
   let fx: Fixtures;
@@ -26,6 +31,7 @@ dbDescribe('Commercial flow V1 (real database)', () => {
   let bookingId = '';
   let weddingId = '';
   let advanceInvoiceId = '';
+  let legacyQuoteId = ''; // the accepted quotation of the booking made before Money V1 (used by the invoice-lifecycle tests)
 
   const errorOf = async (p: Promise<unknown>) => (await p.then(() => null, (e: Error) => e)) as Error | null;
   const stageOf = async () => (await app.prisma.consultation.findUniqueOrThrow({ where: { id: consultationId } })).pipelineStage;
@@ -165,13 +171,26 @@ dbDescribe('Commercial flow V1 (real database)', () => {
     expect(booking.total).toBe(110000);
     expect(booking.quotationId).toBe(q3);
     expect(await stageOf()).toBe('ACCEPTED'); // still pending until it is confirmed
+    // Money V1: the agreement is frozen now (25% of ₹1,10,000 = ₹27,500, not the ₹50,000 typed as the quotation's advance) and the
+    // booking's invoice exists, for exactly that amount, before any wedding does.
+    expect(await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId: q3 } })).toMatchObject({ bookingId: booking.id, agreementTotal: 110000, confirmationAmount: 27500, confirmationPercent: 25, holdWindowDays: 7 });
+    expect(await app.prisma.invoice.findMany({ where: { quotationId: q3 } })).toMatchObject([{ kind: 'ADVANCE', total: 27500, bookingId: booking.id, weddingId: null, status: 'DRAFT' }]);
     expect((await errorOf(app.quotationService.createBooking(q3, {}, null)))?.message).toContain('A booking was already created from this quotation');
     expect(await app.prisma.booking.count({ where: { quotationId: q3 } })).toBe(1);
   });
 
   // ---------------------------------------------------------------- booking confirmed → wedding → invoice
 
-  test('booking confirmed → wedding created → the lead reads Booked → the advance invoice is created from QTN-3', async () => {
+  test('confirming before 25% is received is refused with the exact amount still needed — no wedding, no second invoice, the lead still reads Accepted', async () => {
+    const error = await errorOf(app.bookingService.update(bookingId, { status: 'CONFIRMED' }));
+    expect(error?.message).toBe('₹27,500 more required to confirm this booking.');
+    expect(await app.prisma.wedding.count({ where: { sourceBookingId: bookingId } })).toBe(0);
+    expect(await app.prisma.invoice.count({ where: { quotationId: q3 } })).toBe(1);
+    expect(await stageOf()).toBe('ACCEPTED');
+  });
+
+  test('booking confirmed (25% received) → wedding created → the lead reads Booked → the SAME invoice, with its payment, belongs to the wedding', async () => {
+    await app.agreement.recordAgreementPayment(q3, { amount: 27500, method: 'CASH' }, null);
     await app.bookingService.update(bookingId, { status: 'CONFIRMED' }); // what the confirm action writes first
     const wedding = await app.convertBookingToWedding(bookingId); // …and then converts
     weddingId = wedding.id;
@@ -180,12 +199,12 @@ dbDescribe('Commercial flow V1 (real database)', () => {
     expect(wedding.status).toBe('PLANNING');
     expect(await stageOf()).toBe('WON'); // displays as "Booked"
 
-    const invoices = await app.prisma.invoice.findMany({ where: { weddingId } });
+    const invoices = await app.prisma.invoice.findMany({ where: { weddingId }, include: { payments: true } });
     expect(invoices).toHaveLength(1);
     const inv = invoices[0];
-    advanceInvoiceId = inv.id;
-    expect(inv).toMatchObject({ kind: 'ADVANCE', quotationId: q3, bookingId, status: 'DRAFT', total: 50000, subtotal: 50000, gstEnabled: false, gstAmount: 0, amountPaid: 0 });
-    expect(inv.issuedAt).toBeNull();
+    expect(inv).toMatchObject({ kind: 'ADVANCE', quotationId: q3, bookingId, status: 'PAID', total: 27500, subtotal: 27500, gstEnabled: false, gstAmount: 0 });
+    expect(inv.payments).toHaveLength(1);
+    expect(inv.issuedAt).not.toBeNull();
     // the quotation points back at it (the idempotency anchor) and is still the accepted one
     const quote = await quoteRow(q3);
     expect(quote.advanceInvoiceId).toBe(inv.id);
@@ -204,10 +223,12 @@ dbDescribe('Commercial flow V1 (real database)', () => {
 
   test('the wedding\'s Money shows the accepted agreement: QTN-3, its figures, its lines and the terms that were accepted', async () => {
     const { finance } = await app.weddingWorkspaceService.getWorkspace(weddingId);
-    expect(finance.agreement).toMatchObject({ quotationId: q3, quotationNumber: (await quoteRow(q3)).quotationNumber, revision: 3, bookingId, total: 110000, advance: 50000, balance: 60000, hasBalanceInvoice: false });
+    // Money V1: the advance is the frozen confirmation amount (25%), not the quotation's typed advance of ₹50,000.
+    expect(finance.agreement).toMatchObject({ quotationId: q3, quotationNumber: (await quoteRow(q3)).quotationNumber, revision: 3, bookingId, total: 110000, advance: 27500, balance: 82500, hasBalanceInvoice: false });
+    expect(finance.agreement?.money).toMatchObject({ bookingConfirmed: true, received: 27500, confirmationAmount: 27500, outstanding: 82500 });
     expect(finance.agreement?.lines).toHaveLength(4);
     expect(finance.agreement?.terms).toBe(venueTermsV1); // NOT the venue's current v2
-    expect(finance.invoices[0]).toMatchObject({ id: advanceInvoiceId, kind: 'ADVANCE', quotationId: q3, bookingId });
+    expect(finance.invoices[0]).toMatchObject({ kind: 'ADVANCE', quotationId: q3, bookingId });
   });
 
   test('the venue\'s later terms change altered nothing historical: the accepted quotation, the booking and the invoice', async () => {
@@ -229,7 +250,28 @@ dbDescribe('Commercial flow V1 (real database)', () => {
     expect(await app.prisma.invoice.count({ where: { weddingId } })).toBe(1);
   });
 
-  // ---------------------------------------------------------------- invoice lifecycle
+  // ---------------------------------------------------------------- invoice lifecycle (on a booking made BEFORE Money V1)
+
+  test("a booking made before Money V1 (no agreement) still converts as it always did: a DRAFT advance invoice from the quotation's own advance", async () => {
+    const c = await fx.consultation({ name: 'DBTEST Commercial before-the-rule booking' });
+    const accepted = await fx.acceptedQuote(c.id, { items: [line('Banquet hall hire', 110000, 1, venueId)], advance: 50000 });
+    legacyQuoteId = accepted.id;
+    const booking = await app.prisma.booking.create({
+      data: {
+        name: 'DBTEST Legacy', phone: '9000000000', city: 'Patna', total: 110000, status: 'CONFIRMED', weddingDate: new Date('2026-12-05T00:00:00Z'),
+        quotation: { connect: { id: legacyQuoteId } }, consultation: { connect: { id: c.id } },
+        items: { create: [{ vendorId: venueId, vendorName: 'DBTEST Venue', vendorCategory: 'Venue', packageName: 'Banquet hall hire', price: 110000, quantity: 1 }] },
+      },
+    });
+    bookingId = booking.id;
+    const wedding = await app.convertBookingToWedding(booking.id);
+    weddingId = wedding.id;
+    const inv = await app.prisma.invoice.findFirstOrThrow({ where: { weddingId } });
+    advanceInvoiceId = inv.id;
+    expect(inv).toMatchObject({ kind: 'ADVANCE', quotationId: legacyQuoteId, bookingId, status: 'DRAFT', total: 50000, gstEnabled: false, gstAmount: 0 });
+    expect(inv.issuedAt).toBeNull();
+    expect(await app.prisma.commercialAgreement.count({ where: { quotationId: legacyQuoteId } })).toBe(0);
+  });
 
   test('next action follows the real invoice state: draft → "Send advance invoice"; issued → "Advance payment … pending"', async () => {
     const ws = await app.weddingWorkspaceService.getWorkspace(weddingId);
@@ -276,15 +318,15 @@ dbDescribe('Commercial flow V1 (real database)', () => {
 
   test('the balance invoice comes from the accepted quotation only (total − advance), once', async () => {
     const balance = await app.invoiceWorkflowService.createBalanceInvoice(weddingId, null);
-    expect(balance).toMatchObject({ kind: 'BALANCE', quotationId: q3, bookingId, status: 'DRAFT', total: 60000, gstEnabled: false });
-    expect(balance.items.map((i) => `${i.description}|${i.amount}`)).toEqual([`Balance — ${(await quoteRow(q3)).quotationNumber}|60000`]);
+    expect(balance).toMatchObject({ kind: 'BALANCE', quotationId: legacyQuoteId, bookingId, status: 'DRAFT', total: 60000, gstEnabled: false });
+    expect(balance.items.map((i) => `${i.description}|${i.amount}`)).toEqual([`Balance — ${(await quoteRow(legacyQuoteId)).quotationNumber}|60000`]);
     expect((await errorOf(app.invoiceWorkflowService.createBalanceInvoice(weddingId, null)))?.message).toContain('already created');
     // the database itself also refuses a second one
     const dup = await errorOf(
-      app.prisma.invoice.create({ data: { invoiceNumber: `INV-DBTEST-${fx.runId}`, clientName: 'DBTEST dup', clientPhone: '9', subtotal: 1, total: 1, kind: 'BALANCE', quotationId: q3, weddingId } })
+      app.prisma.invoice.create({ data: { invoiceNumber: `INV-DBTEST-${fx.runId}`, clientName: 'DBTEST dup', clientPhone: '9', subtotal: 1, total: 1, kind: 'BALANCE', quotationId: legacyQuoteId, weddingId } })
     );
     expect(dup).not.toBeNull();
-    expect(await app.prisma.invoice.count({ where: { quotationId: q3, kind: 'BALANCE' } })).toBe(1);
+    expect(await app.prisma.invoice.count({ where: { quotationId: legacyQuoteId, kind: 'BALANCE' } })).toBe(1);
   });
 
   test('issuing an invoice while a payment is being recorded never leaves a part-paid invoice showing "Sent" (found in the browser test)', async () => {
@@ -317,13 +359,16 @@ dbDescribe('Commercial flow V1 (real database)', () => {
 
   // ---------------------------------------------------------------- CRM path (a lead with no booking)
 
-  test('CRM path: accepted → the lead reads Accepted → wedding created → Booked, and its advance invoice belongs to the accepted quotation', async () => {
+  test('CRM path: accepted → the lead reads Accepted → refused until 25% is received → wedding created → Booked, and its invoice (with the payment) belongs to the accepted quotation', async () => {
     const c = await fx.consultation({ name: 'DBTEST Commercial CRM path' });
-    const accepted = await fx.acceptedQuote(c.id, { advance: 40000 });
+    const accepted = await fx.acceptedQuote(c.id, { advance: 40000 }); // ₹3,00,000 → ₹75,000 is what the rule requires (not the ₹40,000 typed)
     expect((await app.prisma.consultation.findUniqueOrThrow({ where: { id: c.id } })).pipelineStage).toBe('ACCEPTED');
-    const wedding = await app.convertLeadToWedding('CONSULTATION', c.id, { weddingDate: new Date('2026-12-05T00:00:00Z'), city: 'Patna', tokenAdvanceReceived: false }, null);
+    const input = { weddingDate: new Date('2026-12-05T00:00:00Z'), city: 'Patna' };
+    expect((await errorOf(app.convertLeadToWedding('CONSULTATION', c.id, input, null)))?.message).toBe('₹75,000 more required to confirm this booking.');
+    await app.agreement.recordAgreementPayment(accepted.id, { amount: 75000, method: 'CASH' }, null);
+    const wedding = await app.convertLeadToWedding('CONSULTATION', c.id, input, null);
     expect((await app.prisma.consultation.findUniqueOrThrow({ where: { id: c.id } })).pipelineStage).toBe('WON');
     const inv = await app.prisma.invoice.findFirstOrThrow({ where: { weddingId: wedding.id } });
-    expect(inv).toMatchObject({ kind: 'ADVANCE', quotationId: accepted.id, bookingId: null, total: 40000 });
+    expect(inv).toMatchObject({ kind: 'ADVANCE', quotationId: accepted.id, bookingId: null, total: 75000, status: 'PAID' });
   });
 });

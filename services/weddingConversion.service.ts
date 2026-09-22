@@ -1,4 +1,5 @@
 import { ensureAdvanceInvoice } from '@/services/advanceInvoice.service';
+import { assertAgreementSatisfiedInTx, assertQuotationMayConfirm, attachAgreementToWedding } from '@/services/agreement.service';
 import { quotationRepository } from '@/repositories/quotation.repository';
 import { applyCommercialEvent } from '@/services/leadStage.service';
 import { subjectWhere } from '@/lib/crm/subject';
@@ -121,6 +122,11 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
     if (existing) {
       return existing;
     }
+
+    // Money v1: a wedding is created only for a booking whose agreement has received its confirmation amount (25% of the accepted
+    // quotation). Checked here too — not only where the booking is confirmed — so nothing else can create a wedding early. Reads only;
+    // an agreement made under the old flow (or a booking with no quotation) passes untouched.
+    if (booking.quotationId) await assertAgreementSatisfiedInTx(tx, booking.quotationId);
 
     // Cross-path duplicate-Wedding guard (production-integrity fix) — if
     // this booking is linked to an Enquiry/Consultation (e.g. created via
@@ -269,6 +275,10 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
     // quotation carries its advance forward as a DRAFT invoice, inside THIS transaction — if it fails, the
     // whole conversion rolls back. No payment link here (external call; staff create it from Finance).
     if (booking.quotationId) {
+      // Money v1: the agreement's advance invoice (and any payments already on it) was made when the booking was created — it now
+      // belongs to this wedding. ensureAdvanceInvoice below is then a no-op (the quotation already points at its advance invoice);
+      // for a booking made under the old flow it still creates the invoice exactly as before.
+      await attachAgreementToWedding(tx, booking.quotationId, wedding, null);
       await ensureAdvanceInvoice(tx, {
         wedding,
         quotation: await quotationRepository.findById(booking.quotationId, tx),
@@ -368,7 +378,8 @@ export interface ConvertSourceInput {
   venueName?: string;
   coordinatorId?: string;
   notes?: string;
-  tokenAdvanceReceived: boolean;
+  // Money v1: no longer read — whether the confirmation payment was received is decided from the recorded payments.
+  tokenAdvanceReceived?: boolean;
 }
 
 export async function convertLeadToWedding(
@@ -388,6 +399,13 @@ export async function convertLeadToWedding(
       `Cannot create a Wedding Workspace — the customer's acceptance of a quotation has not been recorded (current stage: ${subject.pipelineStage})`
     );
   }
+
+  // Money v1: the CRM path obeys the same 25% rule as the booking path. If the source has an accepted quotation, its agreement must
+  // have received the confirmation amount — the server decides, not the dialog's "token advance received" checkbox. (A source with no
+  // accepted quotation, or one made under the old flow, is outside the rule.) Checked before anything is created; a refusal creates
+  // no wedding and no invoice.
+  const acceptedQuotation = await quotationRepository.findFirst({ ...subjectWhere(sourceType, id), status: 'ACCEPTED' });
+  if (acceptedQuotation) await assertQuotationMayConfirm(acceptedQuotation.id);
 
   const carryOver = carryOverWeddingFields(sourceType, subject);
   const sourceLink =
@@ -453,13 +471,7 @@ export async function convertLeadToWedding(
       {
         type: 'STATUS_CHANGED',
         summary: `Wedding ${weddingNumber} created from ${subjectName(sourceType, subject)}'s ${sourceType.toLowerCase()}`,
-        detail:
-          [
-            input.notes,
-            input.tokenAdvanceReceived ? 'Token advance received.' : 'Token advance not yet received.',
-          ]
-            .filter(Boolean)
-            .join(' ') || null,
+        detail: input.notes || null,
         wedding: { connect: { id: wedding.id } },
         performedBy: actorId ? { connect: { id: actorId } } : undefined,
       },
@@ -486,9 +498,14 @@ export async function convertLeadToWedding(
 
     // The source's ACCEPTED quotation, if it has one, becomes the advance invoice (same rules and same
     // transaction as the booking path; idempotent through Quotation.advanceInvoiceId).
+    const quotationInTx = await quotationRepository.findFirst({ ...subjectWhere(sourceType, id), status: 'ACCEPTED' }, tx);
+    if (quotationInTx) {
+      await assertAgreementSatisfiedInTx(tx, quotationInTx.id); // re-checked inside the transaction: nothing early can slip in
+      await attachAgreementToWedding(tx, quotationInTx.id, wedding, actorId); // the agreement's invoices and payments now belong to the wedding
+    }
     await ensureAdvanceInvoice(tx, {
       wedding,
-      quotation: await quotationRepository.findFirst({ ...subjectWhere(sourceType, id), status: 'ACCEPTED' }, tx),
+      quotation: quotationInTx,
       client: clientFromSubject(sourceType, subject, input.city),
       actorId,
     });

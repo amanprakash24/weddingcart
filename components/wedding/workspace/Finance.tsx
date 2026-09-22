@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AgreementCard, { type PaymentResult, type RecordPaymentInput } from '@/components/money/AgreementCard';
 import type { WorkspaceFinance, WorkspaceInvoice, CreateInvoiceInput, ManualPaymentMethod } from './types';
 import {
   INVOICE_STATUS_LABELS,
@@ -141,12 +142,15 @@ function InvoiceCard({
   onGeneratePaymentLink,
   onIssueInvoice,
   onRecordPayment,
+  agreementManaged,
 }: {
   weddingId: string;
   invoice: WorkspaceInvoice;
   onGeneratePaymentLink: (invoiceId: string) => Promise<void>;
   onIssueInvoice: (invoiceId: string) => Promise<void>;
   onRecordPayment: RecordPayment;
+  // Money v1: this invoice belongs to the booking agreement, which takes the payments (the card above) — so no separate form here.
+  agreementManaged: boolean;
 }) {
   const [issuing, setIssuing] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -215,7 +219,7 @@ function InvoiceCard({
           {invoice.payments.map((p) => (
             <li key={p.id} className="text-xs text-gray-500 flex items-center justify-between">
               <span>
-                {money(p.amount)} via {p.method} — {new Date(p.paidAt).toLocaleDateString()}
+                {money(p.amount)} via {p.method} — {new Date(p.paidAt).toLocaleDateString()}{p.reference ? ` · ref ${p.reference}` : ''}{p.recordedByName ? ` · ${p.recordedByName}` : ''}
               </span>
               <a
                 href={`/api/weddings/${weddingId}/invoices/${invoice.id}/payments/${p.id}/receipt`}
@@ -259,7 +263,7 @@ function InvoiceCard({
             {generating ? 'Generating…' : '+ Generate Payment Link'}
           </button>
         )}
-        {invoice.outstanding > 0 && !recording && (
+        {invoice.outstanding > 0 && !recording && !agreementManaged && (
           <button onClick={() => setRecording(true)} className="text-xs text-emerald-600 hover:underline">+ Record payment</button>
         )}
       </div>
@@ -436,6 +440,7 @@ export default function Finance({
   onIssueInvoice,
   onCreateBalanceInvoice,
   onRecordPayment,
+  onRecordAgreementPayment,
 }: {
   weddingId: string;
   finance: WorkspaceFinance;
@@ -444,10 +449,14 @@ export default function Finance({
   onIssueInvoice: (invoiceId: string) => Promise<void>;
   onCreateBalanceInvoice: () => Promise<void>;
   onRecordPayment: RecordPayment;
+  onRecordAgreementPayment: (input: RecordPaymentInput) => Promise<PaymentResult | void>;
 }) {
   const [creating, setCreating] = useState(false);
+  const money = finance.agreement?.money ?? null;
 
   return (
+    <div className="space-y-4">
+    {money && <AgreementCard money={money} onRecordPayment={onRecordAgreementPayment} />}
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 className="text-sm font-semibold text-gray-900 mb-3">Finance</h2>
       {finance.agreement && <AgreementBlock agreement={finance.agreement} onCreateBalance={onCreateBalanceInvoice} />}
@@ -458,7 +467,7 @@ export default function Finance({
       ) : (
         <ul className="space-y-2 mb-2">
           {finance.invoices.map((invoice) => (
-            <InvoiceCard key={invoice.id} weddingId={weddingId} invoice={invoice} onGeneratePaymentLink={onGeneratePaymentLink} onIssueInvoice={onIssueInvoice} onRecordPayment={onRecordPayment} />
+            <InvoiceCard key={invoice.id} weddingId={weddingId} invoice={invoice} onGeneratePaymentLink={onGeneratePaymentLink} onIssueInvoice={onIssueInvoice} onRecordPayment={onRecordPayment} agreementManaged={Boolean(money) && invoice.kind !== 'OTHER' && invoice.quotationId === finance.agreement?.quotationId} />
           ))}
         </ul>
       )}
@@ -470,6 +479,7 @@ export default function Finance({
           + Create Invoice
         </button>
       )}
+    </div>
     </div>
   );
 }

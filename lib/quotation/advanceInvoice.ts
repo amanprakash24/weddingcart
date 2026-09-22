@@ -39,7 +39,7 @@ export interface AdvanceInvoicePlan {
     clientPhone: string;
     clientEmail: string | null;
     clientCity: string | null;
-    eventDate: string; // YYYY-MM-DD
+    eventDate: string | null; // YYYY-MM-DD; null when the wedding date is not known yet (a CRM quotation before its wedding exists)
     eventType: string | null;
     subtotal: number;
     discount: number;
@@ -55,25 +55,32 @@ const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 export function planAdvanceInvoice(input: {
   quotation: { quotationNumber: string; total: number; advanceAmount: number };
-  wedding: { primaryDate: Date; weddingType: string | null };
+  wedding: { primaryDate: Date | null; weddingType: string | null };
   client: AdvanceInvoiceClient;
+  // Money v1: the booking-confirmation amount the agreement froze (25% of the accepted total). When given, it is what the invoice is
+  // for — the quotation's own free-form advance no longer decides it. Absent = the historical behaviour (quotation.advanceAmount).
+  confirmationAmount?: number;
 }): AdvanceInvoicePlan {
   const { quotation, wedding, client } = input;
+  const amount = input.confirmationAmount ?? quotation.advanceAmount;
   return {
     invoice: {
       clientName: client.name,
       clientPhone: client.phone,
       clientEmail: client.email?.trim() || null,
       clientCity: client.city?.trim() || null,
-      eventDate: wedding.primaryDate.toISOString().slice(0, 10),
+      eventDate: wedding.primaryDate ? wedding.primaryDate.toISOString().slice(0, 10) : null,
       eventType: wedding.weddingType,
-      subtotal: quotation.advanceAmount,
+      subtotal: amount,
       discount: 0,
       gstEnabled: false,
       gstAmount: 0,
-      total: quotation.advanceAmount,
-      notes: `Advance against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}). No tax applied.`,
+      total: amount,
+      notes:
+        input.confirmationAmount !== undefined
+          ? `Booking confirmation amount against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}). No tax applied.`
+          : `Advance against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}). No tax applied.`,
     },
-    items: [{ description: `Advance — ${quotation.quotationNumber}`, amount: quotation.advanceAmount, quantity: 1 }],
+    items: [{ description: `Advance — ${quotation.quotationNumber}`, amount, quantity: 1 }],
   };
 }

@@ -7,6 +7,7 @@ import { paymentLinkRepository } from '@/repositories/paymentLink.repository';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { createPaymentLink as createRazorpayPaymentLink } from '@/lib/razorpay';
 import { settleInvoiceStatus } from '@/services/invoiceWorkflow.service';
+import { startHoldIfNeeded } from '@/services/agreement.service';
 import { NotFoundError } from '@/lib/errors';
 
 type Tx = Prisma.TransactionClient;
@@ -183,6 +184,7 @@ export const paymentService = {
 
       await markLinkPaid(tx, linkEntity?.id);
       await settleInvoiceStatus(tx, invoice.id); // PARTIALLY_PAID for part of the total, PAID for all of it (lib/invoice/lifecycle.ts)
+      if (invoice.quotationId) await startHoldIfNeeded(tx, invoice.quotationId, new Date()); // Money v1: a first payment, however it arrives, holds the date
 
       await activityLogRepository.create(
         {

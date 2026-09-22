@@ -7,15 +7,14 @@ export interface ConvertToWeddingInput {
   city: string;
   venueName?: string;
   notes?: string;
-  tokenAdvanceReceived: boolean;
 }
 
 const inputClass =
   'w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition-all bg-gray-50 focus:bg-white';
 
-// The "operational handoff" dialog from domain-model.md §5.1 — captures
-// enough for Operations to start, doesn't require a token advance to exist
-// yet (captured as a checkbox, not a payment record).
+// The "operational handoff" dialog from domain-model.md §5.1 — captures enough for Operations to start. Money v1: whether the
+// confirmation payment (25% of the accepted quote) has been received is decided by the server from the recorded payments, never by
+// a checkbox here; if it has not, the server refuses and says how much more is needed.
 export default function ConvertToWeddingDialog({
   defaultCity,
   onConvert,
@@ -29,7 +28,6 @@ export default function ConvertToWeddingDialog({
   const [city, setCity] = useState(defaultCity);
   const [venueName, setVenueName] = useState('');
   const [notes, setNotes] = useState('');
-  const [tokenAdvanceReceived, setTokenAdvanceReceived] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +42,6 @@ export default function ConvertToWeddingDialog({
         city: city.trim(),
         venueName: venueName.trim() || undefined,
         notes: notes.trim() || undefined,
-        tokenAdvanceReceived,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create Wedding Workspace');
@@ -82,10 +79,7 @@ export default function ConvertToWeddingDialog({
             <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Optional" className={inputClass} />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={tokenAdvanceReceived} onChange={(e) => setTokenAdvanceReceived(e.target.checked)} />
-            Token advance received
-          </label>
+          <p className="text-xs text-gray-500">The wedding can be created once the confirmation payment is recorded on the agreement.</p>
 
           {error && <p className="text-xs text-red-500">{error}</p>}
 
