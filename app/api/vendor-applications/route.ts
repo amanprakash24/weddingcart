@@ -4,6 +4,7 @@ import { vendorApplicationService } from '@/services/vendorApplication.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
+import { INDIAN_MOBILE_ERROR, normalizeIndianMobile } from '@/lib/indianPhone';
 import type { VendorApplicationWithCategory } from '@/repositories/vendorApplication.repository';
 import type { ApplicationStatus } from '@/generated/prisma/client';
 
@@ -36,7 +37,14 @@ function clientIp(req: NextRequest): string {
 const schema = z.object({
   businessName: z.string().trim().min(1),
   ownerName: z.string().trim().min(1),
-  ownerPhone: z.string().regex(/^\d{10}$/, 'Invalid phone number'),
+  // Accepts the way people actually write a number ("+91 98765 43210",
+  // "98765-43210", "09876543210") and normalizes to the bare 10 digits that
+  // /api/otp/send and the vendor's OTP login use. Anything that still isn't an
+  // Indian mobile number after normalizing is rejected with a field-level message.
+  ownerPhone: z
+    .string()
+    .transform((value) => normalizeIndianMobile(value) ?? value.trim())
+    .refine((value) => /^[6-9]\d{9}$/.test(value), { message: INDIAN_MOBILE_ERROR }),
   ownerEmail: z.string().trim().email().optional().or(z.literal('')),
   category: z.string().trim().min(1),
   city: z.string().trim().min(1),

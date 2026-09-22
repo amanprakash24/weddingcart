@@ -46,13 +46,22 @@ const REQUEST_WINDOW_MINUTES = 15;
 // submission (production incident 2026-09-17: a rate-limiter DB error
 // crashed /api/consultations with an opaque 500 before the real work — the
 // consultation write itself — ever ran).
-export async function isRequestRateLimited(identifier: string): Promise<boolean> {
+// `options` lets a caller with a legitimately higher volume (e.g. the
+// onboarding form uploads several photos per application) use a bigger budget
+// under its own namespaced identifier; every existing caller passes nothing
+// and keeps the 5-per-15-minutes default unchanged.
+export async function isRequestRateLimited(
+  identifier: string,
+  options: { max?: number; windowMinutes?: number } = {}
+): Promise<boolean> {
   try {
-    const since = new Date(Date.now() - REQUEST_WINDOW_MINUTES * 60 * 1000);
+    const max = options.max ?? MAX_REQUESTS_PER_WINDOW;
+    const windowMinutes = options.windowMinutes ?? REQUEST_WINDOW_MINUTES;
+    const since = new Date(Date.now() - windowMinutes * 60 * 1000);
     const recentRequests = await prisma.loginAttempt.count({
       where: { identifier, createdAt: { gt: since } },
     });
-    return recentRequests >= MAX_REQUESTS_PER_WINDOW;
+    return recentRequests >= max;
   } catch (err) {
     console.error('isRequestRateLimited: DB error, failing open:', err);
     return false;

@@ -52,6 +52,29 @@ describe('isRequestRateLimited / recordRequest — general request-volume thrott
     expect(await isRequestRateLimited('consultation:1.2.3.4')).toBe(true);
   });
 
+  test('a caller-supplied max raises the budget without changing the default for others', async () => {
+    const store = makeLoginAttemptStore();
+    const { isRequestRateLimited, recordRequest } = await loadRateLimitWith(store);
+
+    for (let i = 0; i < 5; i++) await recordRequest('onboarding-upload:1.2.3.4');
+    // Default (5) is exhausted, but a 20-per-window caller still has room...
+    expect(await isRequestRateLimited('onboarding-upload:1.2.3.4')).toBe(true);
+    expect(await isRequestRateLimited('onboarding-upload:1.2.3.4', { max: 20 })).toBe(false);
+    // ...and is blocked exactly at its own limit.
+    for (let i = 0; i < 15; i++) await recordRequest('onboarding-upload:1.2.3.4');
+    expect(await isRequestRateLimited('onboarding-upload:1.2.3.4', { max: 20 })).toBe(true);
+  });
+
+  test('a caller-supplied window is honoured', async () => {
+    const store = makeLoginAttemptStore();
+    const { isRequestRateLimited, recordRequest } = await loadRateLimitWith(store);
+
+    for (let i = 0; i < 5; i++) await recordRequest('x:1');
+    // Default 15-minute window sees them; a zero-length window sees none.
+    expect(await isRequestRateLimited('x:1')).toBe(true);
+    expect(await isRequestRateLimited('x:1', { windowMinutes: 0 })).toBe(false);
+  });
+
   test('does not let one identifier affect another', async () => {
     const store = makeLoginAttemptStore();
     const { isRequestRateLimited, recordRequest } = await loadRateLimitWith(store);
