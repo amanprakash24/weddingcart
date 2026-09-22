@@ -18,6 +18,36 @@
   --deep-dark: #2A1F1B;         /* Rich Espresso */
   --warm-brown: #6B5B4D;        /* Warm Brown */
   --blush: #F5E0D6;
+
+  /* Vivah OS operational tokens (docs/wedding-os/11-vivah-os-ux-architecture.md §5) — deliberately separate
+     neutral scale from the marketplace's ivory/charcoal above. Matches the Figma variables 1:1 (same names
+     as each variable's WEB code syntax) so the design file and this codebase never drift apart. Plain custom
+     properties, not @theme, so no new global Tailwind utilities are generated; components reference them
+     with Tailwind's arbitrary-value syntax, e.g. bg-[var(--color-bg-surface)]. */
+  --color-bg-surface: #FFFFFF;
+  --color-bg-surface-muted: #F9FAFB;
+  --color-bg-inverse: #111827;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #6B7280;
+  --color-text-disabled: #9CA3AF;
+  --color-border-default: #E5E7EB;
+  --color-border-subtle: #F3F4F6;
+  --color-primary-hover: #5C1133;
+  --color-primary-subtle-bg: #FBEEF2;
+  --color-on-primary: #FFFFFF;
+  --color-success-bg: #ECFDF5;
+  --color-success-default: #10B981;
+  --color-success-text: #047857;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-default: #F59E0B;
+  --color-warning-text: #92400E;
+  --color-danger-bg: #FEF2F2;
+  --color-danger-default: #DC2626;
+  --color-danger-text: #B91C1C;
+  --color-info-bg: #F0F9FF;
+  --color-info-default: #0284C7;
+  --color-info-text: #0369A1;
 }
 
 html,
