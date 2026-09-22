@@ -322,12 +322,32 @@ model Vendor {
   reviews        Review[]
   paymentDetails VendorPaymentDetails?
   quotationItems QuotationItem[]
+  // Which wedding functions this vendor can serve (docs/wedding-os/11-vivah-os-ux-architecture.md §15) —
+  // deliberately not a backfill: an existing vendor with zero rows here just has no known capabilities yet,
+  // not an error. Establishes the data only; nothing reads this for matching/assignment yet (a later step).
+  capabilities   VendorCapability[]
 
   // categoryId+city+status is every public listing query's exact where
   // clause (city/category page, sitemap, /api/vendors search); rating stays
   // last since it's usually a sort key layered on top, not a filter.
   @@index([categoryId, city, status, rating])
   @@map("vendors")
+}
+
+// docs/wedding-os/11-vivah-os-ux-architecture.md §14-15 — the smallest V1 model that lets a vendor record
+// which wedding functions they serve, without redesigning the quotation/matching pipeline. Reuses the
+// existing WeddingEventType enum (no new function taxonomy) and Vendor (no new top-level entity). Deliberately
+// function-level, not category-scoped — a vendor either serves a function or doesn't, in V1. Not read by
+// anything yet: no matching, no vendor-search filtering, no quotation change. That's a later, separate step.
+model VendorCapability {
+  id        String           @id @default(uuid())
+  vendorId  String
+  vendor    Vendor           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  function  WeddingEventType
+  createdAt DateTime         @default(now())
+
+  @@unique([vendorId, function])
+  @@map("vendor_capabilities")
 }
 
 model VendorPackage {
@@ -360,31 +380,81 @@ model VendorFaq {
 }
 
 model VendorApplication {
-  id              String            @id @default(uuid())
-  legacyMongoId   String?           @unique
+  id              String             @id @default(uuid())
+  legacyMongoId   String?            @unique
   businessName    String
   ownerName       String
   ownerPhone      String
   ownerEmail      String
   categoryId      String
-  category        Category          @relation(fields: [categoryId], references: [id])
+  category        Category           @relation(fields: [categoryId], references: [id])
   city            String
-  priceMin        Int               @default(0)
-  priceMax        Int               @default(0)
-  experience      String            @default("")
-  description     String            @default("")
-  instagram       String            @default("")
-  website         String            @default("")
-  coverImage      String            @default("")
-  portfolioImages String[]          @default([])
-  foodMenuImages  String[]          @default([])
-  status          ApplicationStatus @default(NEW)
-  vendorId        String?           @unique
-  vendor          Vendor?           @relation(fields: [vendorId], references: [id])
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  priceMin        Int                @default(0)
+  priceMax        Int                @default(0)
+  experience      String             @default("")
+  description     String             @default("")
+  instagram       String             @default("")
+  website         String             @default("")
+  coverImage      String             @default("")
+  portfolioImages String[]           @default([])
+  foodMenuImages  String[]           @default([])
+  // Draft capture at application time, mirroring portfolioImages/foodMenuImages's array-field convention
+  // above rather than a second join table — this vendor doesn't exist yet, so there's no vendorId to key a
+  // VendorCapability row on. Copied into real VendorCapability rows on Vendor when the application is
+  // approved (vendorApplication.service.ts) — never left to just disappear at approval.
+  capabilities    WeddingEventType[] @default([])
+  status          ApplicationStatus  @default(NEW)
+  vendorId        String?            @unique
+  vendor          Vendor?            @relation(fields: [vendorId], references: [id])
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 
   @@map("vendor_applications")
+}
+
+// Sales-side outreach tracker for venues not yet on ShaadiShopping — distinct from VendorApplication
+// (which is the venue's OWN self-submitted onboarding form). A VendorProspect starts from a list Sales
+// is working (e.g. a competitor-site venue list used for outreach leads only, never their descriptions/
+// photos — see docs/wedding-os/12-vendor-prospects.md) and is meant to end at either ONBOARDED (someone
+// actually went through VendorApplication) or DECLINED/ALREADY_LISTED. Deliberately no FK to Vendor or
+// VendorApplication: linking is a manual status change for V1, not automated matching.
+enum VendorProspectStatus {
+  NEW
+  CONTACTED
+  INTERESTED
+  ONBOARDING
+  ONBOARDED
+  DECLINED
+  ALREADY_LISTED
+}
+
+model VendorProspect {
+  id                  String               @id @default(uuid())
+  name                String
+  area                String?
+  fullAddress         String?
+  city                String
+  // Not unique — the same phone legitimately appears on more than one prospect row (one owner/group
+  // running several halls), confirmed against real scraped data before this was modeled.
+  phone               String
+  email               String?
+  contactPerson       String?
+  seatingCapacity     Int?
+  maxCapacity         Int?
+  priceVegPerPlate    Int?
+  priceNonVegPerPlate Int?
+  venueType           String?
+  status              VendorProspectStatus @default(NEW)
+  notes               String?
+  source              String
+  sourceUrl           String?
+  lastContactedAt     DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([status])
+  @@index([phone])
+  @@map("vendor_prospects")
 }
 
 // ---------- Leads / bookings / consultations ----------
@@ -596,9 +666,9 @@ model Booking {
   consultationId String?
   consultation   Consultation? @relation(fields: [consultationId], references: [id])
 
-  items    BookingItem[]
-  invoices Invoice[] // invoices raised for this booking (advance, balance)
-  wedding  Wedding? // set once status reaches CONFIRMED and this converts
+  items     BookingItem[]
+  invoices  Invoice[] // invoices raised for this booking (advance, balance)
+  wedding   Wedding? // set once status reaches CONFIRMED and this converts
   agreement CommercialAgreement? // the frozen commercial terms of the accepted quotation this booking was made from
 
   // Lookups by these two (findByLinkedBookingEnquiryId/
@@ -950,9 +1020,9 @@ model Quotation {
 
   // Idempotency anchor for the automatic advance invoice created inside the
   // booking/lead → wedding conversion transaction (unique → at most one).
-  advanceInvoiceId String?   @unique
-  advanceInvoice   Invoice?  @relation("QuotationAdvanceInvoice", fields: [advanceInvoiceId], references: [id])
-  invoices         Invoice[] @relation("InvoiceQuotation") // every invoice raised against this agreement (advance, balance)
+  advanceInvoiceId String?              @unique
+  advanceInvoice   Invoice?             @relation("QuotationAdvanceInvoice", fields: [advanceInvoiceId], references: [id])
+  invoices         Invoice[]            @relation("InvoiceQuotation") // every invoice raised against this agreement (advance, balance)
   booking          Booking? // one Booking per quotation (Booking.quotationId is unique)
   agreement        CommercialAgreement? // the frozen commercial terms this quotation was accepted on (money v1)
 
