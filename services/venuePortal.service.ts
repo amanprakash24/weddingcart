@@ -23,7 +23,7 @@ export async function vendorForUser(userId: string) {
 }
 
 function bookingView(booking: {
-  id: string; status: string; venueStatus: VenueBookingStatus; agreedPrice: number;
+  id: string; status: string; venueStatus: VenueBookingStatus; agreedPrice: number; respondedAt: Date | null;
   weddingEvent: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; venueAddress: string | null; city: string; wedding: { id: string; weddingNumber: string; weddingType: string | null; guestCount: number | null; customer: { name: string | null } | null; events: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; city: string }[] } };
   vendorPackage: { name: string; description: string } | null;
   tasks: { id: string; title: string; status: string; dueAt: Date | null }[];
@@ -33,6 +33,9 @@ function bookingView(booking: {
     bookingStatus: booking.status,
     venueStatus: booking.venueStatus,
     amount: booking.agreedPrice,
+    // Already fetched (no `select` narrows this query, so every VendorBooking scalar column is returned by
+    // default) — just wasn't exposed until the Vendor -> Today screen needed a real "recent activity" source.
+    respondedAt: booking.respondedAt?.toISOString() ?? null,
     event: {
       id: booking.weddingEvent.wedding.id,
       name: booking.weddingEvent.wedding.customer?.name || booking.weddingEvent.wedding.weddingNumber,
