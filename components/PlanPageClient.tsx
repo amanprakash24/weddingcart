@@ -76,8 +76,9 @@ export default function PlanPageClient() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [attempted, setAttempted] = useState(false);
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [step]);
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setAttempted(false); }, [step]);
   const [success, setSuccess] = useState(false);
   const [form, setForm] = useState<PlanFormData>({
     name: '', phone: '', email: '', city: 'Patna', weddingDate: '', days: 1,
@@ -232,8 +233,17 @@ export default function PlanPageClient() {
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Full Name *</label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input required value={form.name} onChange={(e) => updateField('name', e.target.value)} className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 transition-colors" placeholder="Priya Sharma" />
+                      <input
+                        required
+                        value={form.name}
+                        onChange={(e) => updateField('name', e.target.value)}
+                        className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm transition-colors border ${attempted && !form.name ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
+                        placeholder="Priya Sharma"
+                      />
                     </div>
+                    {attempted && !form.name && (
+                      <p className="text-xs text-rose-500 mt-1">Please enter your name</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Phone Number *</label>
@@ -246,12 +256,15 @@ export default function PlanPageClient() {
                         maxLength={10}
                         value={form.phone}
                         onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm transition-colors border ${form.phone && !isValidPhone(form.phone) ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
+                        className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm transition-colors border ${(form.phone && !isValidPhone(form.phone)) || (attempted && !form.phone) ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
                         placeholder="10-digit mobile number"
                       />
                     </div>
                     {form.phone && !isValidPhone(form.phone) && (
                       <p className="text-xs text-rose-500 mt-1">Enter a valid 10-digit mobile number</p>
+                    )}
+                    {attempted && !form.phone && (
+                      <p className="text-xs text-rose-500 mt-1">Phone number is required</p>
                     )}
                   </div>
                   <div>
@@ -274,8 +287,17 @@ export default function PlanPageClient() {
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">{eventLabel} Date *</label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input required type="date" value={form.weddingDate} onChange={(e) => updateField('weddingDate', e.target.value)} className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 transition-colors" />
+                      <input
+                        required
+                        type="date"
+                        value={form.weddingDate}
+                        onChange={(e) => updateField('weddingDate', e.target.value)}
+                        className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm transition-colors border ${attempted && !form.weddingDate ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
+                      />
                     </div>
+                    {attempted && !form.weddingDate && (
+                      <p className="text-xs text-rose-500 mt-1">Please select a date</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Number of Days</label>
@@ -434,6 +456,9 @@ export default function PlanPageClient() {
                 </div>
                 {form.services.length > 0 && (
                   <p className="text-xs text-amber-600 mb-3 font-medium">Most couples with similar weddings select these services.</p>
+                )}
+                {attempted && form.services.length === 0 && (
+                  <p className="text-xs text-rose-500 mb-3 font-medium">Please select at least one service to continue.</p>
                 )}
                 <div className="space-y-5">
                   {[
@@ -688,9 +713,15 @@ export default function PlanPageClient() {
 
             {step < STEPS.length - 1 ? (
               <button
-                onClick={() => { if (canNext()) setStep((s) => s + 1); }}
-                disabled={!canNext()}
-                className="flex items-center gap-2 bg-[#8B1A4A] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (canNext()) {
+                    setStep((s) => s + 1);
+                  } else {
+                    setAttempted(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                className={`flex items-center gap-2 bg-[#8B1A4A] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all ${!canNext() ? 'opacity-50' : ''}`}
               >
                 Continue <ChevronRight className="w-4 h-4" />
               </button>
