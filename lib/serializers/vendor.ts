@@ -12,6 +12,7 @@ import type { Vendor, CategoryType } from '@/types';
 export function toLegacyVendor(vendor: VendorWithRelations, categorySlug: string): Vendor {
   return {
     id: vendor.slug,
+    slug: vendor.slug,
     name: vendor.name,
     ownerName: vendor.ownerName || undefined,
     ownerPhone: vendor.ownerPhone || undefined,

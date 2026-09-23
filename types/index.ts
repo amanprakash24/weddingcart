@@ -36,6 +36,7 @@ export interface Package {
 export interface Vendor {
   _id?: string;
   id: string;
+  slug?: string;
   name: string;
   ownerName?: string;
   ownerPhone?: string;
