@@ -1,7 +1,17 @@
 import { prisma } from '@/lib/prisma';
-import { NotFoundError, InvalidTransitionError } from '@/lib/errors';
-import { VenueBookingStatus } from '@/generated/prisma/enums';
+import { NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
+import { VenueBookingStatus, AvailabilityStatus } from '@/generated/prisma/enums';
 import { canTransitionVenueBooking } from '@/lib/wedding/lifecycle';
+
+// A vendor can set at most this many dates in one request — generous enough for
+// "block the next 3 months" in one go, small enough to keep the transaction bounded.
+const MAX_AVAILABILITY_DATES_PER_REQUEST = 90;
+
+export interface AvailabilityEntry {
+  date: string; // 'YYYY-MM-DD'
+  status: AvailabilityStatus | null; // null clears the override back to the default (unset = available)
+  note?: string;
+}
 
 async function vendorForUser(userId: string) {
   const profile = await prisma.vendorProfile.findUnique({
@@ -91,5 +101,50 @@ export const venuePortalService = {
     }
 
     return prisma.vendorBooking.update({ where: { id: bookingId }, data: { venueStatus } });
+  },
+
+  // Self-service availability: a vendor sets AVAILABLE/TENTATIVE/BOOKED/BLOCKED on
+  // their own dates (all four values, since nothing in the app derives BOOKED
+  // automatically today — restricting it would make that status permanently
+  // unreachable). status: null removes the override entirely (back to the
+  // implicit default of "no row = available").
+  async setAvailability(userId: string, entries: AvailabilityEntry[]) {
+    const profile = await vendorForUser(userId);
+    if (entries.length === 0) throw new ValidationError('At least one date is required');
+    if (entries.length > MAX_AVAILABILITY_DATES_PER_REQUEST) {
+      throw new ValidationError(`Cannot set more than ${MAX_AVAILABILITY_DATES_PER_REQUEST} dates in one request`);
+    }
+
+    // UTC-anchored, matching the `T00:00:00.000Z` parse below — a local-time
+    // midnight would drift by the server's UTC offset and reject/allow the
+    // wrong boundary date.
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const parsed = entries.map((entry) => {
+      const date = new Date(`${entry.date}T00:00:00.000Z`);
+      if (Number.isNaN(date.getTime())) throw new ValidationError(`Invalid date: ${entry.date}`);
+      if (date < today) throw new ValidationError(`Cannot set availability for a past date: ${entry.date}`);
+      return { ...entry, date };
+    });
+
+    await prisma.$transaction(
+      parsed.map(({ date, status, note }) =>
+        status === null
+          ? prisma.vendorAvailability.deleteMany({ where: { vendorId: profile.vendorId, date } })
+          : prisma.vendorAvailability.upsert({
+              where: { vendorId_date: { vendorId: profile.vendorId, date } },
+              create: { vendorId: profile.vendorId, date, status, note: note || null },
+              update: { status, note: note || null },
+            })
+      )
+    );
+
+    const updated = await prisma.vendorAvailability.findMany({
+      where: { vendorId: profile.vendorId, date: { in: parsed.map((p) => p.date) } },
+      select: { date: true, status: true, note: true },
+      orderBy: { date: 'asc' },
+    });
+    return updated.map((item) => ({ ...item, date: item.date.toISOString() }));
   },
 };
