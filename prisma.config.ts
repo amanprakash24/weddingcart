@@ -13,7 +13,12 @@ export default defineConfig({
   migrations: {
     path: 'prisma/migrations',
   },
+  // DATABASE_URL is the pooled, transaction-mode connection (PgBouncer) the running app uses — it
+  // doesn't support the session-level advisory lock the migration engine needs, which hangs the CLI
+  // indefinitely (confirmed: migrate status/dev hung past 240s here with no error, only fixed by
+  // switching to DIRECT_URL's session-mode pooler). The CLI only runs locally/in CI, never in the
+  // request path, so this doesn't affect the app's own runtime connection in lib/prisma.ts.
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('DIRECT_URL'),
   },
 });
