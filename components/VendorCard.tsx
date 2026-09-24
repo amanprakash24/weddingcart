@@ -27,7 +27,7 @@ export default function VendorCard({ vendor }: Props) {
     : Math.min(...vendor.packages.map((p) => p.price));
 
   return (
-    <Link href={`/vendors/${vendor.id}`} className="block group vendor-card-luxury">
+    <Link href={`/vendors/${vendor.slug ?? vendor.id}`} className="block group vendor-card-luxury">
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100/80 h-full transition-all duration-300 group-hover:border-[#C5A46D]/35 group-hover:shadow-[0_20px_50px_rgba(139,26,74,0.1)]">
 
         {/* Image */}
