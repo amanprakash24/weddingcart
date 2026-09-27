@@ -65,11 +65,19 @@ Each phase ends in something a person can check by using the site, not just "inf
   Node 24 with `.next/standalone`, `.next/static`, `public`); `.dockerignore` that excludes
   every `.env*` file
 - `NEXT_PUBLIC_*` values are **build-time** — pass them as build args, never secrets
-- Add `GET /api/health` (checks a trivial DB query) for the load balancer health check
+- Add `GET /api/health` for the load balancer health check — **no DB call**, so a brief
+  database blip can't make ECS replace healthy tasks
 - Replace `@vercel/analytics` (GA is already wired) and remove the dependency
-- Remove the dead `mongodb`/`mongoose` dependencies while touching `package.json`
+- `mongodb`/`mongoose` stay for now: only the retired one-off `scripts/*.mjs` import them,
+  and they're excluded from the image — remove together with those scripts later
 - **Done when:** `docker build` then `docker run -p 3001:3000 --env-file .env.local` serves
   the site locally, `/admin` login works, `/api/health` returns 200, `bun test` + `tsc` pass
+
+**Status (2026-09-27): code done, verified without Docker** (Docker isn't installed on the
+dev machine): a Docker-equivalent context with no `.env` files installs from `bun.lock` and
+builds with only `DATABASE_URL`; the standalone server passes health/homepage/API/page/
+sitemap/image checks and redirects `/admin/*` to login. Still to verify: a real `docker build`
+(locally or in the Phase 3 pipeline) and an admin login against the container.
 
 ### Phase 2 — AWS foundation + first deploy on the AWS URL
 - AWS Budgets alarm; CloudTrail on (default)
