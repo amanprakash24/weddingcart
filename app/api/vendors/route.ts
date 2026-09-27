@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { vendorService } from '@/services/vendor.service';
 import { requireAdmin } from '@/lib/adminAuth';
+import { handleApiError } from '@/lib/errors';
 import type { VendorStatus } from '@/generated/prisma/client';
 
 const VALID_STATUSES: VendorStatus[] = ['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED'];
@@ -91,9 +92,11 @@ export async function POST(req: NextRequest) {
       categoryId,
       city,
       address,
+      area,
       mapEmbedUrl,
       priceMin,
       priceMax,
+      priceUnit,
       guestCapacity,
       venueType,
       defaultTerms,
@@ -115,9 +118,11 @@ export async function POST(req: NextRequest) {
       categoryId,
       city,
       address,
+      area,
       mapEmbedUrl,
       priceMin,
       priceMax,
+      priceUnit,
       guestCapacity,
       venueType,
       defaultTerms: typeof defaultTerms === 'string' ? defaultTerms.trim() || undefined : undefined,
@@ -140,9 +145,6 @@ export async function POST(req: NextRequest) {
     );
   } catch (err) {
     console.error('POST /api/vendors failed:', err);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create vendor' },
-      { status: 500 }
-    );
+    return handleApiError(err);
   }
 }

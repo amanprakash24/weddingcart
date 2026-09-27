@@ -2079,7 +2079,7 @@ Create a separate standalone invoice anyway?`)) return;
                                 <button
                                   key={v.id}
                                   type="button"
-                                  onClick={() => setEnquiryCreateVendor({ slug: v.slug, name: v.name, category: v.categoryId })}
+                                  onClick={() => setEnquiryCreateVendor({ slug: v.slug, name: v.name, category: categories.find((c) => c.id === v.categoryId)?.name ?? '' })}
                                   className="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 transition-colors flex items-center justify-between gap-2"
                                 >
                                   <span className="font-medium text-gray-800">{v.name}</span>

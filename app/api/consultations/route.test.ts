@@ -113,7 +113,7 @@ describe('POST /api/consultations — validation (production-integrity fix)', ()
     expect(res.status).toBe(201);
   });
 
-  test('weddingStyle/budgetRange/consultationDate in the body are still accepted (used for WhatsApp messages) but not required', async () => {
+  test('budgetRange is accepted for persistence while weddingStyle/consultationDate remain optional WhatsApp fields', async () => {
     const store = makeLoginAttemptStore();
     const { POST } = await loadRouteWith(store);
 
@@ -121,5 +121,7 @@ describe('POST /api/consultations — validation (production-integrity fix)', ()
       postRequest({ ...VALID_BODY, weddingStyle: 'traditional', budgetRange: '10-20L', consultationDate: '2027-02-20' }, '12.12.12.12')
     );
     expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.data.budgetRange).toBe('10-20L');
   });
 });

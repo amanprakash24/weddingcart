@@ -37,6 +37,7 @@ export const categoryService = {
     return { data: withCounts, total };
   },
 
+  listOptions: categoryRepository.findOptions,
   create: categoryRepository.create,
   update: categoryRepository.update,
   delete: categoryRepository.delete,

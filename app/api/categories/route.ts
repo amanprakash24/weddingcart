@@ -5,6 +5,11 @@ import { requireAdmin } from '@/lib/adminAuth';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
+    if (searchParams.get('options') === 'true') {
+      const data = await categoryService.listOptions();
+      return NextResponse.json({ success: true, data });
+    }
+
     const isSpecialParam = searchParams.get('isSpecial');
     const isSpecial =
       isSpecialParam === 'true' ? true : isSpecialParam === 'false' ? false : undefined;

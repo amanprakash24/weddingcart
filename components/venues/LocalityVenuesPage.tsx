@@ -2,38 +2,48 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { MapPin, ChevronRight, Phone, Info } from 'lucide-react';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
+import { VenueFilterList, type LocalityVenue } from '@/components/venues/VenueFilterList';
 
-export interface LocalityGuideFaq {
+export interface LocalityFaq {
   q: string;
   a: string;
 }
 
-export interface LocalityGuideArea {
+export interface LocalityNearbyArea {
   name: string;
   href: string;
   desc: string;
 }
 
-export function LocalityGuidePage({
-  localityName,
+// One template for every /venues/patna/{area} page, real venues or none — replaces the previous split
+// between a hardcoded-venues template and a separate LocalityGuidePage template. `venues` is real,
+// already-queried Vendor data (app/venues/patna/*/page.tsx queries Vendor.area directly); when it's
+// empty this shows `emptyNote` instead of fabricating a listing. Everything else (hero, unique locality
+// content, nearby areas, FAQ, final CTA) stays identical either way — the honesty is scoped to the one
+// section that would otherwise need to lie.
+export function LocalityVenuesPage({
   breadcrumbLabel,
-  tagline,
+  heroTitle,
+  heroTagline,
   content,
-  honestNote,
+  venues,
+  emptyNote,
   nearbyAreas,
   faqs,
   whatsappMessage,
 }: {
-  localityName: string;
   breadcrumbLabel: string;
-  tagline: string;
+  heroTitle: string;
+  heroTagline: string;
   content: ReactNode;
-  honestNote: string;
-  nearbyAreas: LocalityGuideArea[];
-  faqs: LocalityGuideFaq[];
+  venues: LocalityVenue[];
+  emptyNote: string;
+  nearbyAreas: LocalityNearbyArea[];
+  faqs: LocalityFaq[];
   whatsappMessage: string;
 }) {
   const wa = shaadiWhatsAppLink(whatsappMessage);
+  const hasVenues = venues.length > 0;
 
   return (
     <div className="min-h-screen bg-[#FFFAF5]">
@@ -53,9 +63,9 @@ export function LocalityGuidePage({
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-5" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-            Wedding Venues Near {localityName}, Patna
+            {heroTitle}
           </h1>
-          <p className="text-white/65 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-8">{tagline}</p>
+          <p className="text-white/65 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed mb-8">{heroTagline}</p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#25D366] text-white font-bold px-7 py-4 rounded-full text-sm shadow-lg hover:opacity-90 transition-all">
@@ -73,19 +83,31 @@ export function LocalityGuidePage({
         <div className="prose-content text-gray-600 text-sm sm:text-base leading-relaxed space-y-5">{content}</div>
       </section>
 
-      {/* ── HONEST CALLOUT (no fabricated venues) ── */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pb-14 sm:pb-20">
-        <div className="flex items-start gap-3 bg-[#FAF5EE] border border-[#C5A46D]/25 rounded-2xl px-6 py-5">
-          <Info className="w-5 h-5 text-[#C5A46D] flex-shrink-0 mt-0.5" />
-          <p className="text-[#6B5B4D] text-sm leading-relaxed">{honestNote}</p>
-        </div>
-      </section>
+      {/* ── VENUES, OR THE HONEST ALTERNATIVE ── */}
+      {hasVenues ? (
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-14 sm:pb-20">
+          <div className="text-center mb-8">
+            <p className="text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.2em] mb-2">Verified &amp; Trusted</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#2A1F1B]" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
+              Verified Wedding Venues in {breadcrumbLabel}
+            </h2>
+          </div>
+          <VenueFilterList venues={venues} />
+        </section>
+      ) : (
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pb-14 sm:pb-20">
+          <div className="flex items-start gap-3 bg-[#FAF5EE] border border-[#C5A46D]/25 rounded-2xl px-6 py-5">
+            <Info className="w-5 h-5 text-[#C5A46D] flex-shrink-0 mt-0.5" />
+            <p className="text-[#6B5B4D] text-sm leading-relaxed">{emptyNote}</p>
+          </div>
+        </section>
+      )}
 
-      {/* ── NEARBY AREAS / REAL VENUES ── */}
+      {/* ── NEARBY AREAS ── */}
       <section className="bg-white border-y border-[#C5A46D]/15 py-12 sm:py-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-xl sm:text-2xl font-bold text-[#2A1F1B] mb-6 text-center" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-            Verified Patna Venues Worth Considering
+            {hasVenues ? 'Nearby Patna Wedding Areas' : 'Verified Patna Venues Worth Considering'}
           </h2>
           <div className="grid sm:grid-cols-3 gap-4">
             {nearbyAreas.map(({ name, href, desc }) => (
@@ -105,7 +127,7 @@ export function LocalityGuidePage({
         <div className="text-center mb-10">
           <p className="text-[#C5A46D] text-[0.65rem] font-bold uppercase tracking-[0.2em] mb-2">Common Questions</p>
           <h2 className="text-2xl sm:text-3xl font-bold text-[#2A1F1B]" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-            {localityName} Wedding Venues — FAQ
+            {breadcrumbLabel} Wedding Venues — FAQ
           </h2>
         </div>
         <div className="space-y-4">
@@ -122,10 +144,12 @@ export function LocalityGuidePage({
       <section className="bg-[#8B1A4A] py-14 sm:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3" style={{ fontFamily: 'var(--font-playfair, serif)' }}>
-            Planning a Wedding Near {localityName}? Talk to Us — Free
+            {hasVenues ? `Book a Venue in ${breadcrumbLabel} — Free Consultation` : `Planning a Wedding Near ${breadcrumbLabel}? Talk to Us — Free`}
           </h2>
           <p className="text-white/65 text-sm mb-8 max-w-xl mx-auto">
-            Our Patna team knows every verified venue in the city and will recommend the best fit for your budget, guest count, and location — no hidden charges, no spam.
+            {hasVenues
+              ? 'Our Patna team visits every venue, negotiates pricing on your behalf, and responds within 30 minutes.'
+              : 'Our Patna team knows every verified venue in the city and will recommend the best fit for your budget, guest count, and location — no hidden charges, no spam.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-[#25D366] text-white font-bold px-8 py-4 rounded-full text-sm shadow-lg hover:opacity-90 transition-all">

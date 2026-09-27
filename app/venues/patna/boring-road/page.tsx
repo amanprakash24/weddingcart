@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
 import { JsonLd } from '@/components/JsonLd';
-import { LocalityGuidePage } from '@/components/venues/LocalityGuidePage';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { toLocalityVenues } from '@/lib/venues/localityVendors';
+import { LocalityVenuesPage } from '@/components/venues/LocalityVenuesPage';
+
+const AREA_LABEL = 'Boring Road';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 const PAGE_URL = `${BASE_URL}/venues/patna/boring-road`;
+const WHATSAPP_MESSAGE = 'Hi, I am planning a wedding near Boring Road, Patna. Please recommend verified venues.';
 
 export const metadata: Metadata = {
   title: 'Wedding Venues Near Boring Road, Patna — Area Guide | ShaadiShopping',
@@ -30,7 +35,7 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: 'Is there a verified wedding venue on Boring Road itself?',
-    a: 'No — we don\'t have a venue located directly on Boring Road. The closest verified option is Ashiyana Resort, in nearby Digha/Rukanpura (west Patna), which serves Boring Road families among others. Our Wedding Expert can also recommend other verified venues that match your budget.',
+    a: "Ask our Wedding Expert for the current list — none is confirmed to be located directly on Boring Road today. The closest verified option is Ashiyana Resort, in nearby Digha/Rukanpura (west Patna), which serves Boring Road families among others.",
   },
   {
     q: 'What is a typical wedding budget in Patna?',
@@ -63,61 +68,94 @@ const faqSchema = {
   mainEntity: FAQS.map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
 };
 
-export default function BoringRoadVenuesPage() {
+function buildLocalBusinessSchema(venue: { name: string; image: string; href: string; rating: number; reviewCount: number }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: venue.name,
+    image: venue.image,
+    address: { '@type': 'PostalAddress', addressLocality: `${AREA_LABEL}, Patna`, addressRegion: 'Bihar', addressCountry: 'IN' },
+    aggregateRating: { '@type': 'AggregateRating', ratingValue: venue.rating, reviewCount: venue.reviewCount },
+    url: `${BASE_URL}${venue.href}`,
+  };
+}
+
+// Ashiyana Resort is genuinely NEAR Boring Road (Digha/Rukanpura), not on it — kept as a manual "closest
+// option" recommendation here, never given area="Boring Road" in the database. That distinction was a
+// real, deliberate call made earlier in this project (verify proximity before publishing a locality
+// match) and this dynamic rewrite preserves it rather than loosening it for convenience.
+const NEARBY_AREAS = [
+  { name: 'Ashiyana Resort', href: '/vendors/ashiyana-resort-rukanpura', desc: 'Closest verified venue — Digha/Rukanpura, serving Boring Road families. From ₹900/plate.' },
+  { name: 'All Patna Venues', href: '/venues/patna', desc: 'Compare every verified venue we list across Patna.' },
+  { name: 'Danapur', href: '/venues/patna/danapur', desc: 'Large-capacity halls built for big Bihari weddings.' },
+];
+
+const CONTENT = (
+  <>
+    <p>
+      Boring Road is one of Patna&apos;s best-known commercial roads — a central, heavily trafficked corridor
+      lined with showrooms, restaurants, and shopping destinations that draws visitors from across the city.
+      Its name and reputation make it a natural landmark for families in west and central Patna when they start
+      thinking about where to host a wedding, even though the road itself is primarily commercial rather than a
+      venue destination.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Average wedding budgets.</strong> Across Patna, banquet halls
+      typically charge ₹999–₹1,600 per plate all-inclusive, and total wedding budgets commonly range from ₹5
+      lakh to ₹50 lakh depending on guest count and the scale of décor and entertainment. Ashiyana Resort, the
+      closest verified venue to this area, starts from ₹900/plate.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Best guest capacities.</strong> As a general rule across Patna,
+      intimate weddings under 250 guests suit smaller, modern venues well, while larger celebrations of 400–600+
+      guests need the scale of halls found in corridors like Danapur, Saguna Mor, or west Patna&apos;s
+      Digha/Rukanpura belt. Always confirm a venue&apos;s seated dinner capacity specifically, since it is
+      usually lower than the advertised maximum.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Parking and accessibility.</strong> Boring Road is one of Patna&apos;s
+      busiest commercial and dining destinations, which means traffic and street parking near it can be
+      genuinely congested, particularly in the evenings. If you&apos;re considering a venue anywhere near this
+      corridor, ask specifically about dedicated on-site parking rather than relying on the road itself for
+      guest vehicles.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Nearby wedding shopping.</strong> This is where Boring Road genuinely
+      shines — along with Bailey Road, it&apos;s one of Patna&apos;s two most established wedding-shopping
+      corridors, well known for bridal wear, jewellery, and invitation card shops. Many families plan a shopping
+      trip here regardless of which locality they eventually choose for the venue itself.
+    </p>
+  </>
+);
+
+const EMPTY_NOTE =
+  "We don't have a venue located directly on Boring Road. The closest verified option is Ashiyana Resort in nearby Digha/Rukanpura, which serves Boring Road families among others — or our Wedding Expert can recommend other verified venues that match your budget.";
+
+export default async function BoringRoadVenuesPage() {
+  const { data: vendors } = await vendorRepository.findMany({
+    where: { city: 'Patna', area: AREA_LABEL, status: 'PUBLISHED', category: { slug: 'venue' } },
+  });
+  const venues = toLocalityVenues(
+    vendors.map((v) => ({ name: v.name, slug: v.slug, rating: v.rating, guestCapacity: v.guestCapacity, venueType: v.venueType, priceMin: v.priceMin, priceMax: v.priceMax, features: v.features, image: v.image })),
+    AREA_LABEL
+  );
+
   return (
     <>
       <JsonLd data={breadcrumbSchema} />
       <JsonLd data={faqSchema} />
-      <LocalityGuidePage
-        localityName="Boring Road"
-        breadcrumbLabel="Boring Road"
-        tagline="One of Patna's busiest commercial roads — an honest guide to planning a wedding near Boring Road."
-        whatsappMessage="Hi, I am planning a wedding near Boring Road, Patna. Please recommend verified venues."
-        honestNote="We don't have a venue located directly on Boring Road. The closest verified option is Ashiyana Resort in nearby Digha/Rukanpura, which serves Boring Road families among others — or our Wedding Expert can recommend other verified venues that match your budget."
-        nearbyAreas={[
-          { name: 'Ashiyana Resort', href: '/vendors/ashiyana-resort-rukanpura', desc: 'Closest verified venue — Digha/Rukanpura, serving Boring Road families. From ₹900/plate.' },
-          { name: 'All Patna Venues', href: '/venues/patna', desc: 'Compare every verified venue we list across Patna.' },
-          { name: 'Danapur', href: '/venues/patna/danapur', desc: 'Large-capacity halls built for big Bihari weddings.' },
-        ]}
+      {venues[0] && <JsonLd data={buildLocalBusinessSchema({ ...venues[0], reviewCount: vendors[0].reviewCount })} />}
+
+      <LocalityVenuesPage
+        breadcrumbLabel={AREA_LABEL}
+        heroTitle={`Wedding Venues ${venues.length > 0 ? 'in' : 'Near'} Boring Road, Patna`}
+        heroTagline="One of Patna's busiest commercial roads — an honest guide to planning a wedding near Boring Road."
+        content={CONTENT}
+        venues={venues}
+        emptyNote={EMPTY_NOTE}
+        nearbyAreas={NEARBY_AREAS}
         faqs={FAQS}
-        content={
-          <>
-            <p>
-              Boring Road is one of Patna&apos;s best-known commercial roads — a central, heavily trafficked corridor
-              lined with showrooms, restaurants, and shopping destinations that draws visitors from across the city.
-              Its name and reputation make it a natural landmark for families in west and central Patna when they start
-              thinking about where to host a wedding, even though the road itself is primarily commercial rather than a
-              venue destination.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Average wedding budgets.</strong> We don&apos;t have a venue located
-              directly on Boring Road, so we won&apos;t quote road-specific pricing here. Across Patna more broadly,
-              banquet halls typically charge ₹999–₹1,600 per plate all-inclusive, and total wedding budgets commonly
-              range from ₹5 lakh to ₹50 lakh depending on guest count and the scale of décor and entertainment. Ashiyana
-              Resort, the closest verified venue to this area, starts from ₹900/plate.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Best guest capacities.</strong> As a general rule across Patna,
-              intimate weddings under 250 guests suit smaller, modern venues well, while larger celebrations of 400–600+
-              guests need the scale of halls found in corridors like Danapur, Saguna Mor, or west Patna&apos;s
-              Digha/Rukanpura belt. Always confirm a venue&apos;s seated dinner capacity specifically, since it is
-              usually lower than the advertised maximum.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Parking and accessibility.</strong> Boring Road is one of Patna&apos;s
-              busiest commercial and dining destinations, which means traffic and street parking near it can be
-              genuinely congested, particularly in the evenings. If you&apos;re considering a venue anywhere near this
-              corridor, ask specifically about dedicated on-site parking rather than relying on the road itself for
-              guest vehicles.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Nearby wedding shopping.</strong> This is where Boring Road genuinely
-              shines — along with Bailey Road, it&apos;s one of Patna&apos;s two most established wedding-shopping
-              corridors, well known for bridal wear, jewellery, and invitation card shops. Many families plan a shopping
-              trip here regardless of which locality they eventually choose for the venue itself.
-            </p>
-          </>
-        }
+        whatsappMessage={WHATSAPP_MESSAGE}
       />
     </>
   );

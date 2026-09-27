@@ -256,6 +256,7 @@ model Category {
   vendors            Vendor[]
   vendorApplications VendorApplication[]
   commissionRates    CommissionRate[] // Phase B — nullable-categoryId rows are the global default rate
+  consultationSelections ConsultationVendorSelection[]
 
   @@map("categories")
 }
@@ -271,42 +272,60 @@ enum VendorStatus {
   PUBLISHED
 }
 
+enum VendorPriceUnit {
+  PER_PLATE
+  PACKAGE
+}
+
 model Vendor {
-  id               String       @id @default(uuid())
-  legacyMongoId    String?      @unique
-  slug             String       @unique // was Mongo's human-readable `id` field, still used in /vendors/[id] URLs
+  id               String           @id @default(uuid())
+  legacyMongoId    String?          @unique
+  slug             String           @unique // was Mongo's human-readable `id` field, still used in /vendors/[id] URLs
   name             String
-  ownerName        String       @default("")
-  ownerPhone       String       @default("")
-  ownerEmail       String       @default("")
+  ownerName        String           @default("")
+  ownerPhone       String           @default("")
+  ownerEmail       String           @default("")
   categoryId       String
-  category         Category     @relation(fields: [categoryId], references: [id])
+  category         Category         @relation(fields: [categoryId], references: [id])
   city             String
-  address          String       @default("")
-  mapEmbedUrl      String       @default("")
+  address          String           @default("")
+  mapEmbedUrl      String           @default("")
   priceMin         Int
   priceMax         Int
-  rating           Float        @default(4.5)
-  reviewCount      Int          @default(0)
+  // What priceMin/priceMax actually mean — a venue billed per plate (catering included) and one billed
+  // as a flat hall rental are both real, common pricing models in this market, and mixing them in one
+  // listing grid with no label is genuinely confusing (₹1,00,000 flat next to ₹850/plate reads like a
+  // 100x price difference at a glance). Nullable — existing vendors show no unit suffix until an admin
+  // sets this explicitly; never guessed or backfilled automatically.
+  priceUnit        VendorPriceUnit?
+  rating           Float            @default(4.5)
+  reviewCount      Int              @default(0)
   image            String
-  images           String[]     @default([])
-  virtualTourVideo String       @default("")
+  images           String[]         @default([])
+  virtualTourVideo String           @default("")
   description      String
-  features         String[]     @default([])
-  isFeatured       Boolean      @default(false)
-  sortOrder        Int          @default(999)
-  status           VendorStatus @default(DRAFT)
+  features         String[]         @default([])
+  isFeatured       Boolean          @default(false)
+  sortOrder        Int              @default(999)
+  status           VendorStatus     @default(DRAFT)
   // Structured (not folded into `features`) because the marketplace card
   // and search need to sort/filter on these directly — e.g. "capacity
   // 200-500", not parse it out of free text. Nullable: most vendor
   // categories (photographers, makeup artists, ...) have neither.
   guestCapacity    Int?
   venueType        String?
+  // Structured locality within `city` (e.g. "Danapur", "Boring Road") — deliberately separate from the
+  // free-text `address` field, which mixes street address and locality together and can't be reliably
+  // matched on ("near Boring Road" vs. actually on it — a real false-positive this was built to avoid).
+  // Admin-set only (a dropdown of known localities, see AdminVendorFormClient.tsx), never guessed from
+  // `address` text. Drives the /venues/{city}/{area} local-SEO pages: a page queries this field directly
+  // and lists nothing it can't verify. Nullable — most vendors, and most cities, don't have this yet.
+  area             String?
   // Commercial V1: the vendor's (venue's) default Terms & Conditions. COPIED into a quotation when it is created —
   // changing this later never alters an existing quotation, booking or invoice.
   defaultTerms     String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   packages      VendorPackage[]
   faqs          VendorFaq[]
@@ -316,16 +335,20 @@ model Vendor {
   enquiries     Enquiry[]
 
   // Phase B (Wedding OS / Vendor OS / Finance)
-  vendorBookings VendorBooking[]
-  payouts        Payout[]
-  availability   VendorAvailability[]
-  reviews        Review[]
-  paymentDetails VendorPaymentDetails?
-  quotationItems QuotationItem[]
+  vendorBookings    VendorBooking[]
+  payouts           Payout[]
+  // Route A commercial-tier history — see PartnerAgreement's own comment. Required by Prisma
+  // as the opposite side of that model's `vendor` relation; nothing reads this list yet.
+  partnerAgreements PartnerAgreement[]
+  availability      VendorAvailability[]
+  reviews           Review[]
+  paymentDetails    VendorPaymentDetails?
+  quotationItems    QuotationItem[]
+  consultationSelections ConsultationVendorSelection[]
   // Which wedding functions this vendor can serve (docs/wedding-os/11-vivah-os-ux-architecture.md §15) —
   // deliberately not a backfill: an existing vendor with zero rows here just has no known capabilities yet,
   // not an error. Establishes the data only; nothing reads this for matching/assignment yet (a later step).
-  capabilities   VendorCapability[]
+  capabilities      VendorCapability[]
 
   // categoryId+city+status is every public listing query's exact where
   // clause (city/category page, sitemap, /api/vendors search); rating stays
@@ -586,8 +609,9 @@ model Consultation {
   message        String?
   cartItems      Json?
   totalBudget    Int?
+  budgetRange    String?
   status         ConsultationStatus @default(NEW)
-  // weddingStyle / budgetRange / consultationDate were written by the API but
+  // weddingStyle / consultationDate were written by the API but
   // absent from the Mongoose schema (drift). Live-data audit (2026-07-19,
   // 16/16 docs) found them 0% populated — dropped rather than carried forward
   // as permanently-empty columns. See docs/postgres-migration-plan.md §5.
@@ -616,6 +640,7 @@ model Consultation {
   // Consultation -> Enquiry bridge — inverse side of Enquiry.consultationId
   // above. One Consultation can produce multiple Enquiries.
   enquiries        Enquiry[]
+  vendorSelections ConsultationVendorSelection[]
 
   // Production-hardening audit (2026-09-01) — see Lead's identical indexes
   // for the reasoning.
@@ -623,6 +648,25 @@ model Consultation {
   @@index([assignedToId, pipelineStage])
   @@index([createdAt])
   @@map("consultations")
+}
+
+model ConsultationVendorSelection {
+  id             String       @id @default(uuid())
+  consultationId String
+  serviceKey     String
+  categoryId     String?
+  vendorId       String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  category       Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  vendor         Vendor       @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+
+  @@unique([consultationId, serviceKey])
+  @@index([vendorId])
+  @@index([categoryId])
+  @@map("consultation_vendor_selections")
 }
 
 model Booking {
@@ -1579,6 +1623,12 @@ model ApprovalRequest {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
+  // Resolves drift that's been silently re-excluded from three prior migrations (add_vendor_capability,
+  // add_vendor_prospect, add_vendor_area) — these two indexes were created live by migration
+  // 20260825000000_add_client_approvals but never declared here, so every unrelated schema change since
+  // has had Prisma propose dropping them. Declaring them for real instead of excluding a fourth time.
+  @@index([weddingId])
+  @@index([weddingEventId])
   @@map("approval_requests")
 }
 
@@ -1750,6 +1800,32 @@ model CommissionRate {
   createdAt     DateTime  @default(now())
 
   @@map("commission_rates")
+}
+
+// Route A (marketplace/commission) commercial relationship — which partner tier a vendor is
+// on. Versioned the same way CommissionRate is above: a tier change is a NEW row with a later
+// effectiveFrom, never an edit to an existing one. "Currently effective" is resolved at query
+// time (most recent row with effectiveFrom <= now, same shape as
+// commissionRateRepository.findCurrentRate), not a stored boolean — so there's no
+// isCurrent/isActive flag to keep in sync. Deliberately has NO relation to CommissionRate yet —
+// whether/how tier feeds commission resolution is a separate, explicitly undecided question
+// (see the 2026-09-23 business-model architecture audit); this model only establishes which
+// tier a vendor is on and its history, nothing downstream reads it yet.
+enum PartnerTier {
+  PARTNER
+  GROWTH_PARTNER
+  PREMIUM_PARTNER
+}
+
+model PartnerAgreement {
+  id            String      @id @default(uuid())
+  vendorId      String
+  vendor        Vendor      @relation(fields: [vendorId], references: [id])
+  tier          PartnerTier
+  effectiveFrom DateTime    @default(now())
+  createdAt     DateTime    @default(now())
+
+  @@map("partner_agreements")
 }
 
 // =====================================================================
