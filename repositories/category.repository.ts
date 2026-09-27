@@ -14,6 +14,13 @@ export interface FindManyParams {
 // Standard interface per docs/repository-contract.md. No business logic here —
 // callers (services) own validation and cross-repository composition.
 export const categoryRepository = {
+  async findOptions(tx: Tx | typeof prisma = prisma): Promise<Pick<Category, 'id' | 'name' | 'slug'>[]> {
+    return tx.category.findMany({
+      select: { id: true, name: true, slug: true },
+      orderBy: { name: 'asc' },
+    });
+  },
+
   async findById(id: string, tx: Tx | typeof prisma = prisma): Promise<Category | null> {
     return tx.category.findUnique({ where: { id } });
   },

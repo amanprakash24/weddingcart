@@ -58,10 +58,12 @@ export interface LeadWorkspace {
     type: string | null;
     guestCount: number | null;
     budget: number | null;
+    budgetRange: string | null;
     venueType: string | null;
     services: string[];
   };
   vendorInterest: { vendorId: string; vendorName: string; vendorCategory: string }[];
+  consultationVendorSelections: { serviceKey: string; vendorId: string }[];
   timeline: WorkspaceActivity[];
   tasks: WorkspaceTask[];
   insights: WorkspaceInsight[];

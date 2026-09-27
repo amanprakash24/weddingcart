@@ -190,12 +190,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
 
-    // weddingStyle/budgetRange/consultationDate are intentionally read from
-    // the raw `body` only for the WhatsApp messages below, never validated
-    // or persisted — they were never persisted even under the old Mongoose
-    // schema (silently dropped, confirmed 0% populated in the live-data
-    // audit — see prisma/schema.prisma's Consultation model comment), so
-    // they're not part of consultationCreateSchema.
+    // weddingStyle/consultationDate remain WhatsApp-only fields. budgetRange
+    // is validated and persisted separately from totalBudget.
     const data = consultationCreateSchema.parse(body);
 
     const consultation = await consultationService.create(data);

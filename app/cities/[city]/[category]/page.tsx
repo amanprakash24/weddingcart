@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MapPin, ChevronRight, Phone, MessageCircle } from 'lucide-react';
 import { vendorRepository } from '@/repositories/vendor.repository';
+import { vendorService } from '@/services/vendor.service';
 import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { JsonLd } from '@/components/JsonLd';
 import VendorCard from '@/components/VendorCard';
@@ -395,20 +396,19 @@ async function getVendors(
   isBihar: boolean,
 ): Promise<{ vendors: Vendor[]; fromNetwork: boolean }> {
   try {
-    const { data } = await vendorRepository.findMany({
-      where: { city: cityName, status: 'PUBLISHED', category: { slug: catSlug } },
-      orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
-    });
+    // Reuses vendorService.search() (same sortOrder -> isFeatured -> rating -> reviewCount priority as
+    // /api/vendors and the admin list) instead of this page's own hand-rolled orderBy, which only sorted
+    // by isFeatured/rating and silently ignored sortOrder — a real inconsistency between the two vendor-
+    // listing surfaces that made sortOrder meaningless everywhere Featured had no effect (e.g. once every
+    // published vendor ends up marked Featured).
+    const { data } = await vendorService.search({ city: cityName, status: 'PUBLISHED', category: catSlug });
     if (data.length > 0) {
       return { vendors: await toLegacyVendors(data), fromNetwork: false };
     }
     // Bihar cities without local listings: show the Patna network vendors that
     // serve them, so the page is never an empty soft-404.
     if (isBihar && cityName !== 'Patna') {
-      const { data: network } = await vendorRepository.findMany({
-        where: { city: 'Patna', status: 'PUBLISHED', category: { slug: catSlug } },
-        orderBy: [{ isFeatured: 'desc' }, { rating: 'desc' }],
-      });
+      const { data: network } = await vendorService.search({ city: 'Patna', status: 'PUBLISHED', category: catSlug });
       return { vendors: await toLegacyVendors(network), fromNetwork: network.length > 0 };
     }
     return { vendors: [], fromNetwork: false };

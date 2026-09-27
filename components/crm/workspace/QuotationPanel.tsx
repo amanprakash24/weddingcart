@@ -19,11 +19,8 @@ import QuotationHistory from './QuotationHistory';
 
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel' };
 
-export interface QuotationPrefillLine {
-  description: string;
-  category?: string;
-  vendorId?: string;
-}
+import type { QuotationPrefillLine } from './quotationPrefill';
+export type { QuotationPrefillLine } from './quotationPrefill';
 
 interface DraftLine {
   description: string;

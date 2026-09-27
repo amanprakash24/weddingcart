@@ -15,7 +15,7 @@ export interface LocalityVenue {
   capacityMax: number;
   vegPrice: number;
   nonVegPrice: number;
-  rooms: string;
+  rooms?: string;
   highlights: string[];
   href: string;
   image: string;
@@ -119,10 +119,12 @@ export function VenueFilterList({ venues }: { venues: LocalityVenue[] }) {
                           <p className="text-[9px] text-gray-400 uppercase tracking-[0.12em] mb-0.5">Non-Veg / plate</p>
                           <p className="text-[#8B1A4A] font-bold text-lg">₹{venue.nonVegPrice.toLocaleString('en-IN')}</p>
                         </div>
-                        <div className="bg-[#FAF5EE] border border-[#C5A46D]/20 rounded-xl px-4 py-3">
-                          <p className="text-[9px] text-gray-400 uppercase tracking-[0.12em] mb-0.5">Stay</p>
-                          <p className="text-[#2A1F1B] font-semibold text-sm mt-1">{venue.rooms}</p>
-                        </div>
+                        {venue.rooms && (
+                          <div className="bg-[#FAF5EE] border border-[#C5A46D]/20 rounded-xl px-4 py-3">
+                            <p className="text-[9px] text-gray-400 uppercase tracking-[0.12em] mb-0.5">Stay</p>
+                            <p className="text-[#2A1F1B] font-semibold text-sm mt-1">{venue.rooms}</p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap gap-1.5 mb-5">

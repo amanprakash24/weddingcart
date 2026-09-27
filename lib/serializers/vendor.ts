@@ -21,6 +21,7 @@ export function toLegacyVendor(vendor: VendorWithRelations, categorySlug: string
     city: vendor.city,
     priceMin: vendor.priceMin,
     priceMax: vendor.priceMax,
+    priceUnit: vendor.priceUnit || undefined,
     rating: vendor.rating,
     reviewCount: vendor.reviewCount,
     image: vendor.image,

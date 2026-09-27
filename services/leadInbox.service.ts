@@ -46,12 +46,12 @@ function dateRangeFilter(params: LeadInboxParams): Prisma.DateTimeFilter | undef
   return filter;
 }
 
-async function fetchLeads(params: LeadInboxParams): Promise<LeadInboxItem[]> {
+async function fetchLeads(params: LeadInboxParams): Promise<{ items: LeadInboxItem[]; total: number }> {
   // Lead has no city/name column — a city filter or name-only search can never
   // match a Lead row, so skip querying it entirely rather than building an
   // impossible where clause.
-  if (params.city) return [];
-  if (params.sourceType && params.sourceType !== 'LEAD') return [];
+  if (params.city) return { items: [], total: 0 };
+  if (params.sourceType && params.sourceType !== 'LEAD') return { items: [], total: 0 };
 
   const where: Prisma.LeadWhereInput = {};
   if (params.pipelineStage) where.pipelineStage = params.pipelineStage;
@@ -60,22 +60,26 @@ async function fetchLeads(params: LeadInboxParams): Promise<LeadInboxItem[]> {
   if (createdAt) where.createdAt = createdAt;
   if (params.search) where.phone = { contains: params.search, mode: 'insensitive' };
 
-  const { data } = await leadRepository.findMany({ where, orderBy: { createdAt: 'desc' } });
-  return data.map((lead) => ({
-    id: lead.id,
-    sourceType: 'LEAD' as const,
-    name: null,
-    phone: lead.phone,
-    city: null,
-    pipelineStage: lead.pipelineStage,
-    assignedToId: lead.assignedToId,
-    assignedToName: null,
-    createdAt: lead.createdAt,
-  }));
+  const fetchLimit = (params.skip ?? 0) + (params.take ?? 20);
+  const { data, total } = await leadRepository.findMany({ where, take: fetchLimit, orderBy: { createdAt: 'desc' } });
+  const items = await withAssignedNames(
+    data.map((lead) => ({
+      id: lead.id,
+      sourceType: 'LEAD' as const,
+      name: null,
+      phone: lead.phone,
+      city: null,
+      pipelineStage: lead.pipelineStage,
+      assignedToId: lead.assignedToId,
+      assignedToName: null,
+      createdAt: lead.createdAt,
+    }))
+  );
+  return { items, total };
 }
 
-async function fetchEnquiries(params: LeadInboxParams): Promise<LeadInboxItem[]> {
-  if (params.sourceType && params.sourceType !== 'ENQUIRY') return [];
+async function fetchEnquiries(params: LeadInboxParams): Promise<{ items: LeadInboxItem[]; total: number }> {
+  if (params.sourceType && params.sourceType !== 'ENQUIRY') return { items: [], total: 0 };
 
   const where: Prisma.EnquiryWhereInput = {};
   if (params.pipelineStage) where.pipelineStage = params.pipelineStage;
@@ -90,12 +94,14 @@ async function fetchEnquiries(params: LeadInboxParams): Promise<LeadInboxItem[]>
     ];
   }
 
-  const { data } = await enquiryRepository.findMany({
+  const fetchLimit = (params.skip ?? 0) + (params.take ?? 20);
+  const { data, total } = await enquiryRepository.findMany({
     where,
+    take: fetchLimit,
     orderBy: { createdAt: 'desc' },
     // assignedTo relation not needed on the where clause but is on the select below
   });
-  return withAssignedNames(
+  const items = await withAssignedNames(
     data.map((e) => ({
       id: e.id,
       sourceType: 'ENQUIRY' as const,
@@ -108,10 +114,11 @@ async function fetchEnquiries(params: LeadInboxParams): Promise<LeadInboxItem[]>
       createdAt: e.createdAt,
     }))
   );
+  return { items, total };
 }
 
-async function fetchConsultations(params: LeadInboxParams): Promise<LeadInboxItem[]> {
-  if (params.sourceType && params.sourceType !== 'CONSULTATION') return [];
+async function fetchConsultations(params: LeadInboxParams): Promise<{ items: LeadInboxItem[]; total: number }> {
+  if (params.sourceType && params.sourceType !== 'CONSULTATION') return { items: [], total: 0 };
 
   const where: Prisma.ConsultationWhereInput = {};
   if (params.pipelineStage) where.pipelineStage = params.pipelineStage;
@@ -126,21 +133,25 @@ async function fetchConsultations(params: LeadInboxParams): Promise<LeadInboxIte
     ];
   }
 
-  const { data } = await consultationRepository.findMany({ where, orderBy: { createdAt: 'desc' } });
-  return data.map((c) => ({
-    id: c.id,
-    sourceType: 'CONSULTATION' as const,
-    name: c.name,
-    phone: c.phone,
-    city: c.city,
-    pipelineStage: c.pipelineStage,
-    assignedToId: c.assignedToId,
-    assignedToName: null,
-    createdAt: c.createdAt,
-  }));
+  const fetchLimit = (params.skip ?? 0) + (params.take ?? 20);
+  const { data, total } = await consultationRepository.findMany({ where, take: fetchLimit, orderBy: { createdAt: 'desc' } });
+  const items = await withAssignedNames(
+    data.map((c) => ({
+      id: c.id,
+      sourceType: 'CONSULTATION' as const,
+      name: c.name,
+      phone: c.phone,
+      city: c.city,
+      pipelineStage: c.pipelineStage,
+      assignedToId: c.assignedToId,
+      assignedToName: null,
+      createdAt: c.createdAt,
+    }))
+  );
+  return { items, total };
 }
 
-// Enquiry/Consultation repositories return raw rows without the assignedTo
+// Lead/Enquiry/Consultation repositories return raw rows without the assignedTo
 // relation loaded — resolved here in one batched query rather than N+1s,
 // shared by both fetch functions.
 async function withAssignedNames(items: LeadInboxItem[]): Promise<LeadInboxItem[]> {
@@ -159,11 +170,13 @@ export const leadInboxService = {
       fetchConsultations(params),
     ]);
 
-    const merged = [...leads, ...enquiries, ...consultations].sort(
+    const merged = [...leads.items, ...enquiries.items, ...consultations.items].sort(
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
     );
 
-    const total = merged.length;
+    // Each source fetches only its newest skip+take rows (enough to fill this page after the merge),
+    // so the true total comes from the per-source counts, not the merged length.
+    const total = leads.total + enquiries.total + consultations.total;
     const skip = params.skip ?? 0;
     const take = params.take ?? 20;
     return { data: merged.slice(skip, skip + take), total };

@@ -1,6 +1,7 @@
 import { Phone, MessageCircle } from 'lucide-react';
 import { SOURCE_LABELS, type SourceType } from '@/components/crm/types';
 import { whatsappUrl } from '@/lib/crm/journeyMessage';
+import { BUDGET_LABELS } from '@/lib/planPreview';
 import type { LeadWorkspace } from './types';
 
 // Client and wedding facts in one card (it replaces the separate Customer and Wedding Details cards).
@@ -30,7 +31,8 @@ export default function ClientCard({ customer, details, sourceType }: { customer
         {details.type && <Row label="Type">{details.type}</Row>}
         <Row label="Guests">{details.guestCount != null ? details.guestCount : '—'}</Row>
         {details.venueType && <Row label="Venue type">{details.venueType}</Row>}
-        <Row label="Their budget">{money(details.budget) ?? '—'}</Row>
+        {details.budgetRange && <Row label="Customer budget">{BUDGET_LABELS[details.budgetRange] ?? details.budgetRange}</Row>}
+        <Row label="Planned/cart amount">{money(details.budget) ?? '—'}</Row>
         {details.services.length > 0 && (
           <Row label="Looking for">
             <span className="flex flex-wrap gap-1.5">

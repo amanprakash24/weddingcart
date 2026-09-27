@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
 import { JsonLd } from '@/components/JsonLd';
-import { LocalityGuidePage } from '@/components/venues/LocalityGuidePage';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { toLocalityVenues } from '@/lib/venues/localityVendors';
+import { LocalityVenuesPage } from '@/components/venues/LocalityVenuesPage';
+
+const AREA_LABEL = 'Kankarbagh';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 const PAGE_URL = `${BASE_URL}/venues/patna/kankarbagh`;
+const WHATSAPP_MESSAGE = 'Hi, I am planning a wedding near Kankarbagh, Patna. Please recommend verified venues.';
 
 export const metadata: Metadata = {
   title: 'Wedding Venues Near Kankarbagh, Patna — Area Guide | ShaadiShopping',
@@ -30,7 +35,7 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: 'Is there a verified wedding venue in Kankarbagh?',
-    a: 'Not yet — we\'re continuously onboarding verified venues in Kankarbagh. Meanwhile, our Wedding Expert can recommend nearby verified venues that match your budget.',
+    a: "Ask our Wedding Expert for the current list — we're continuously onboarding verified venues in Kankarbagh, so it changes. Nearby verified venues elsewhere in Patna are also worth comparing on budget and guest count.",
   },
   {
     q: 'What is a typical wedding budget in Patna?',
@@ -63,58 +68,87 @@ const faqSchema = {
   mainEntity: FAQS.map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
 };
 
-export default function KankarbaghVenuesPage() {
+function buildLocalBusinessSchema(venue: { name: string; image: string; href: string; rating: number; reviewCount: number }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: venue.name,
+    image: venue.image,
+    address: { '@type': 'PostalAddress', addressLocality: `${AREA_LABEL}, Patna`, addressRegion: 'Bihar', addressCountry: 'IN' },
+    aggregateRating: { '@type': 'AggregateRating', ratingValue: venue.rating, reviewCount: venue.reviewCount },
+    url: `${BASE_URL}${venue.href}`,
+  };
+}
+
+const NEARBY_AREAS = [
+  { name: 'All Patna Venues', href: '/venues/patna', desc: 'Compare every verified venue we list across Patna.' },
+  { name: 'Danapur', href: '/venues/patna/danapur', desc: 'Large-capacity halls built for big Bihari weddings.' },
+  { name: 'Saguna Mor', href: '/venues/patna/saguna-mor', desc: 'Newer venues with in-house DJ and rooftop options.' },
+];
+
+const CONTENT = (
+  <>
+    <p>
+      Kankarbagh is one of Patna&apos;s largest and most established residential localities — a densely
+      populated, well-connected part of the city with a long history of community halls and function spaces
+      used for local celebrations. Its central location relative to Patna Junction and the rest of the city
+      makes it a convenient reference point for many families when they start planning a wedding.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Average wedding budgets.</strong> Across Patna, banquet halls
+      typically charge ₹999–₹1,600 per plate all-inclusive, and total wedding budgets commonly range from ₹5
+      lakh to ₹50 lakh depending on guest count and the scale of décor and entertainment.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Best guest capacities.</strong> As a general rule across Patna,
+      intimate weddings under 250 guests suit smaller, modern venues well, while larger 400–600+ guest
+      celebrations are better served by the scale of halls found in corridors like Danapur or Saguna Mor.
+      Whichever venue you consider, always confirm its seated dinner capacity specifically — it is usually
+      lower than the advertised maximum.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Parking and accessibility.</strong> Kankarbagh is one of Patna&apos;s
+      most densely populated residential areas, and smaller local function spaces here often have limited
+      dedicated parking. If you&apos;re considering a venue in or near Kankarbagh, ask specifically about
+      on-site parking capacity rather than relying on street parking for your guests.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Nearby wedding shopping.</strong> Kankarbagh has its own local markets
+      for everyday shopping needs, but for wedding-specific essentials — bridal wear, jewellery, invitation
+      cards — most families travel to Boring Road or Bailey Road, Patna&apos;s two established
+      wedding-shopping corridors.
+    </p>
+  </>
+);
+
+const EMPTY_NOTE =
+  "We're continuously onboarding verified venues in Kankarbagh. Meanwhile, our Wedding Expert can recommend nearby verified venues that match your budget.";
+
+export default async function KankarbaghVenuesPage() {
+  const { data: vendors } = await vendorRepository.findMany({
+    where: { city: 'Patna', area: AREA_LABEL, status: 'PUBLISHED', category: { slug: 'venue' } },
+  });
+  const venues = toLocalityVenues(
+    vendors.map((v) => ({ name: v.name, slug: v.slug, rating: v.rating, guestCapacity: v.guestCapacity, venueType: v.venueType, priceMin: v.priceMin, priceMax: v.priceMax, features: v.features, image: v.image })),
+    AREA_LABEL
+  );
+
   return (
     <>
       <JsonLd data={breadcrumbSchema} />
       <JsonLd data={faqSchema} />
-      <LocalityGuidePage
-        localityName="Kankarbagh"
-        breadcrumbLabel="Kankarbagh"
-        tagline="One of Patna's largest residential localities — an honest guide to planning a wedding near Kankarbagh."
-        whatsappMessage="Hi, I am planning a wedding near Kankarbagh, Patna. Please recommend verified venues."
-        honestNote="We're continuously onboarding verified venues in Kankarbagh. Meanwhile, our Wedding Expert can recommend nearby verified venues that match your budget."
-        nearbyAreas={[
-          { name: 'All Patna Venues', href: '/venues/patna', desc: 'Compare every verified venue we list across Patna.' },
-          { name: 'Danapur', href: '/venues/patna/danapur', desc: 'Large-capacity halls built for big Bihari weddings.' },
-          { name: 'Saguna Mor', href: '/venues/patna/saguna-mor', desc: 'Newer venues with in-house DJ and rooftop options.' },
-        ]}
+      {venues[0] && <JsonLd data={buildLocalBusinessSchema({ ...venues[0], reviewCount: vendors[0].reviewCount })} />}
+
+      <LocalityVenuesPage
+        breadcrumbLabel={AREA_LABEL}
+        heroTitle={`Wedding Venues ${venues.length > 0 ? 'in' : 'Near'} Kankarbagh, Patna`}
+        heroTagline="One of Patna's largest residential localities — an honest guide to planning a wedding near Kankarbagh."
+        content={CONTENT}
+        venues={venues}
+        emptyNote={EMPTY_NOTE}
+        nearbyAreas={NEARBY_AREAS}
         faqs={FAQS}
-        content={
-          <>
-            <p>
-              Kankarbagh is one of Patna&apos;s largest and most established residential localities — a densely
-              populated, well-connected part of the city with a long history of community halls and function spaces
-              used for local celebrations. Its central location relative to Patna Junction and the rest of the city
-              makes it a convenient reference point for many families when they start planning a wedding.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Average wedding budgets.</strong> We don&apos;t yet have a verified
-              venue in Kankarbagh, so we won&apos;t quote Kankarbagh-specific pricing here. Across Patna more broadly,
-              banquet halls typically charge ₹999–₹1,600 per plate all-inclusive, and total wedding budgets commonly
-              range from ₹5 lakh to ₹50 lakh depending on guest count and the scale of décor and entertainment.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Best guest capacities.</strong> As a general rule across Patna,
-              intimate weddings under 250 guests suit smaller, modern venues well, while larger 400–600+ guest
-              celebrations are better served by the scale of halls found in corridors like Danapur or Saguna Mor.
-              Whichever venue you consider, always confirm its seated dinner capacity specifically — it is usually
-              lower than the advertised maximum.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Parking and accessibility.</strong> Kankarbagh is one of Patna&apos;s
-              most densely populated residential areas, and smaller local function spaces here often have limited
-              dedicated parking. If you&apos;re considering a venue in or near Kankarbagh, ask specifically about
-              on-site parking capacity rather than relying on street parking for your guests.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Nearby wedding shopping.</strong> Kankarbagh has its own local markets
-              for everyday shopping needs, but for wedding-specific essentials — bridal wear, jewellery, invitation
-              cards — most families travel to Boring Road or Bailey Road, Patna&apos;s two established
-              wedding-shopping corridors.
-            </p>
-          </>
-        }
+        whatsappMessage={WHATSAPP_MESSAGE}
       />
     </>
   );

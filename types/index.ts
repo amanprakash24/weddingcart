@@ -45,6 +45,7 @@ export interface Vendor {
   city: string;
   priceMin: number;
   priceMax: number;
+  priceUnit?: 'PER_PLATE' | 'PACKAGE';
   rating: number;
   reviewCount: number;
   image: string;
@@ -111,6 +112,7 @@ export interface Consultation {
   message?: string;
   cartItems?: CartItem[];
   totalBudget?: number;
+  budgetRange?: string;
   createdAt: string;
   status: 'new' | 'contacted' | 'closed';
 }

@@ -12,10 +12,9 @@ import { z } from 'zod';
 // no coercion at all; z.coerce.number() here mirrors the same defensive
 // pattern already used for Booking.guestCount.
 //
-// weddingStyle/budgetRange/consultationDate are deliberately NOT part of
-// this schema — see prisma/schema.prisma's Consultation model comment and
-// route.ts's own comment: they're read from the raw request body only for
-// the WhatsApp message builders, never persisted, and out of scope here.
+// weddingStyle/consultationDate are deliberately NOT part of this schema.
+// budgetRange is persisted separately from totalBudget, which remains the
+// actual cart/planning amount.
 export const consultationCreateSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200),
   phone: z.string().trim().min(1, 'Phone is required').max(200),
@@ -38,4 +37,5 @@ export const consultationCreateSchema = z.object({
   // deliberately not deep-validated (a flexible cart snapshot).
   cartItems: z.any().optional(),
   totalBudget: z.coerce.number().int().nonnegative().optional(),
+  budgetRange: z.string().trim().max(50).optional(),
 });

@@ -68,14 +68,11 @@ describe('consultationCreateSchema', () => {
     expect(() => consultationCreateSchema.parse(validBody({ services: [123] }))).toThrow();
   });
 
-  test('does not validate or strip weddingStyle/budgetRange/consultationDate — they are simply not part of this schema', () => {
-    // These fields are read from the raw request body by the route's
-    // WhatsApp message builders, never persisted — the schema doesn't
-    // reject extra keys (no .strict()), so parsing a body that still has
-    // them succeeds; the route is responsible for not persisting them.
+  test('persists budgetRange while leaving weddingStyle/consultationDate out of the create payload', () => {
     const parsed = consultationCreateSchema.parse(
       validBody({ weddingStyle: 'traditional', budgetRange: '10-20L', consultationDate: '2027-02-20' })
     );
+    expect(parsed.budgetRange).toBe('10-20L');
     expect(parsed).not.toHaveProperty('weddingStyle');
   });
 
@@ -84,5 +81,6 @@ describe('consultationCreateSchema', () => {
     expect(parsed.email).toBeUndefined();
     expect(parsed.city).toBeUndefined();
     expect(parsed.totalBudget).toBeUndefined();
+    expect(parsed.budgetRange).toBeUndefined();
   });
 });

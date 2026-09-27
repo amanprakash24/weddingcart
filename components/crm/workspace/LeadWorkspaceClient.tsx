@@ -15,6 +15,7 @@ import Timeline from './Timeline';
 import TaskPanel from './TaskPanel';
 import InsightsPanel from './InsightsPanel';
 import QuotationPanel, { type QuotationPanelHandle } from './QuotationPanel';
+import { consultationQuotationPrefill } from './quotationPrefill';
 import WhatsAppCard from './WhatsAppCard';
 import { JourneyStepper, NextActionCard } from './JourneyParts';
 import { AcceptDialog, BookingDialog, ConfirmBookingDialog, DeclineDialog, NotProceedingDialog } from './JourneyDialogs';
@@ -413,7 +414,9 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
             closedReason={closedReason}
             onChanged={load}
             prefill={
-              workspace.vendorInterest.length > 0
+              sourceType === 'CONSULTATION'
+                ? consultationQuotationPrefill(weddingDetails.services, workspace.consultationVendorSelections)
+                : workspace.vendorInterest.length > 0
                 ? workspace.vendorInterest.map((v) => ({
                     description: v.vendorName || v.vendorCategory,
                     category: v.vendorCategory,
@@ -432,7 +435,14 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
             <WhatsAppCard message={message} customerName={customerName} phone={customer.phone} canOpen={canOpenWhatsApp} busy={busy} onSend={sendJourneyMessage} onCopy={copyMessage} />
           </div>
           <div className="order-3">
-            <VendorInterestPanel vendorInterest={workspace.vendorInterest} />
+            <VendorInterestPanel
+              vendorInterest={workspace.vendorInterest}
+              sourceType={sourceType}
+              consultationId={id}
+              services={weddingDetails.services}
+              city={customer.city}
+              onSelectionChanged={load}
+            />
           </div>
         </div>
 

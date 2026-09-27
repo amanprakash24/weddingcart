@@ -16,6 +16,15 @@ interface FaqForm { question: string; answer: string; }
 const EMPTY_PACKAGE: PackageForm = { name: '', price: '', description: '', features: '', isPopular: false, image: '' };
 const EMPTY_FAQ: FaqForm = { question: '', answer: '' };
 const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
+// Drives the /venues/patna/{area} local-SEO pages — a dropdown, not free text, so a vendor's area
+// always matches one of those pages' own labels exactly (no "Danapur" vs "danapur" vs "Danapur, Patna"
+// mismatches). Add a page + a label here together if a new locality is ever built.
+const PATNA_AREAS = ['Danapur', 'Saguna Mor', 'Boring Road', 'Bailey Road', 'Kankarbagh'];
+const PRICE_UNITS: { value: string; label: string }[] = [
+  { value: '', label: 'Not set — no unit shown' },
+  { value: 'PER_PLATE', label: 'Per plate (catering included)' },
+  { value: 'PACKAGE', label: 'Flat package / rental' },
+];
 const STATUSES: { value: string; label: string; hint: string }[] = [
   { value: 'DRAFT', label: 'Draft', hint: 'Not visible to the public — you’re still working on it.' },
   { value: 'PENDING_VERIFICATION', label: 'Pending Verification', hint: 'Not yet publicly visible — awaiting your team’s review.' },
@@ -26,8 +35,8 @@ interface Category { id: string; name: string; slug: string; }
 
 const EMPTY_FORM = {
   name: '', ownerName: '', ownerPhone: '', ownerEmail: '',
-  category: '', city: 'Patna', address: '',
-  priceMin: '', priceMax: '', guestCapacity: '', venueType: '', defaultTerms: '',
+  category: '', city: 'Patna', address: '', area: '',
+  priceMin: '', priceMax: '', priceUnit: '', guestCapacity: '', venueType: '', defaultTerms: '',
   description: '', features: '', isFeatured: false, status: 'DRAFT',
   virtualTourVideo: '',
 };
@@ -53,8 +62,8 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
   const populateForm = (v: AnyRecord) => {
     setForm({
       name: v.name || '', ownerName: v.ownerName || '', ownerPhone: v.ownerPhone || '', ownerEmail: v.ownerEmail || '',
-      category: v.category || '', city: v.city || 'Patna', address: v.address || '',
-      priceMin: String(v.priceMin ?? ''), priceMax: String(v.priceMax ?? ''),
+      category: v.category || '', city: v.city || 'Patna', address: v.address || '', area: v.area || '',
+      priceMin: String(v.priceMin ?? ''), priceMax: String(v.priceMax ?? ''), priceUnit: v.priceUnit || '',
       guestCapacity: v.guestCapacity != null ? String(v.guestCapacity) : '', venueType: v.venueType || '', defaultTerms: v.defaultTerms || '',
       description: v.description || '', features: (v.features || []).join(', '),
       isFeatured: v.isFeatured || false, status: v.status || 'DRAFT',
@@ -73,10 +82,13 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
   };
 
   useEffect(() => {
-    fetch('/api/categories').then((r) => r.json()).then((d) => {
+    fetch('/api/categories?options=true').then((r) => r.json()).then((d) => {
       if (d.success) {
         setCategories(d.data);
-        setForm((f) => (f.category ? f : { ...f, category: d.data[0]?.slug || '' }));
+        setForm((f) => {
+          const selected = d.data.find((c: Category) => c.id === f.category || c.slug === f.category);
+          return selected ? { ...f, category: selected.id } : { ...f, category: d.data[0]?.id || '' };
+        });
       }
     });
   }, []);
@@ -131,8 +143,10 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
         ownerEmail: form.ownerEmail.trim(),
         city: form.city,
         address: form.address.trim(),
+        area: form.area || undefined,
         priceMin: Number(form.priceMin),
         priceMax: Number(form.priceMax),
+        priceUnit: form.priceUnit || undefined,
         guestCapacity: form.guestCapacity ? Number(form.guestCapacity) : undefined,
         defaultTerms: form.defaultTerms,
         venueType: form.venueType.trim() || undefined,
@@ -145,7 +159,9 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
         images: cleanImages,
         packages: builtPackages,
         faqs: builtFaqs,
-        ...(isEdit ? { category: form.category } : { categoryId: form.category }),
+        ...(isEdit
+          ? { category: categories.find((c) => c.id === form.category)?.slug || form.category }
+          : { categoryId: form.category }),
       };
 
       const res = await fetch(isEdit ? `/api/vendors/${vendorId}` : '/api/vendors', {
@@ -232,8 +248,9 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
               </div>
               <div>
                 <label className={labelCls}>Vendor Type / Category <span className="text-rose-500">*</span></label>
-                <select required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputCls}>
-                  {categories.map((c) => <option key={c.id} value={c.slug}>{c.name}</option>)}
+                <select required value={categories.find((c) => c.id === form.category || c.slug === form.category)?.id || form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputCls}>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
@@ -243,10 +260,19 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label className={labelCls}>Area / Locality &amp; Full Address <span className="text-gray-400 font-normal">(optional)</span></label>
+                <label className={labelCls}>Full Address <span className="text-gray-400 font-normal">(optional)</span></label>
                 <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
                   className={inputCls} placeholder="e.g. Gola Road, Adarsh Vihar Colony, near T Point, Patna" />
               </div>
+              {form.city === 'Patna' && (
+                <div>
+                  <label className={labelCls}>Patna Locality Page <span className="text-gray-400 font-normal">(optional — only pick this if the venue is actually in that locality)</span></label>
+                  <select value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} className={inputCls}>
+                    <option value="">Not set — won&apos;t appear on any locality page</option>
+                    {PATNA_AREAS.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className={labelCls}>Contact Person</label>
                 <input value={form.ownerName} onChange={(e) => setForm({ ...form, ownerName: e.target.value })}
@@ -288,6 +314,12 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
                 <label className={labelCls}>Maximum Price (₹) <span className="text-rose-500">*</span></label>
                 <input required type="number" value={form.priceMax} onChange={(e) => setForm({ ...form, priceMax: e.target.value })}
                   className={inputCls} placeholder="200000" />
+              </div>
+              <div>
+                <label className={labelCls}>Price Unit <span className="text-gray-400 font-normal">(so customers don&apos;t misread ₹1,00,000 flat as 100x more than ₹1,000/plate)</span></label>
+                <select value={form.priceUnit} onChange={(e) => setForm({ ...form, priceUnit: e.target.value })} className={inputCls}>
+                  {PRICE_UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                </select>
               </div>
               <div>
                 <label className={labelCls}>Guest Capacity <span className="text-gray-400 font-normal">(if applicable)</span></label>

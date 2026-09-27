@@ -9,11 +9,27 @@ import { leadInsightRepository } from '@/repositories/leadInsight.repository';
 import { subjectWhere, subjectCreateData } from '@/lib/crm/subject';
 import { canTransition, isSystemOnlyStage } from '@/lib/crm/pipeline';
 import { quotationRepository } from '@/repositories/quotation.repository';
+import { consultationVendorSelectionRepository } from '@/repositories/consultationVendorSelection.repository';
 import { STAGE_LABELS } from '@/components/crm/types';
-import { NotFoundError, InvalidTransitionError, ConversionLockedError } from '@/lib/errors';
+import {
+  NotFoundError,
+  InvalidTransitionError,
+  ConversionLockedError,
+  ValidationError,
+} from '@/lib/errors';
+import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { findWeddingForSource } from '@/services/weddingConversion.service';
 import type { SourceType } from '@/services/leadInbox.service';
-import type { Lead, Enquiry, Consultation, Task, ActivityLog, LeadInsight, Wedding, Prisma } from '@/generated/prisma/client';
+import type {
+  Lead,
+  Enquiry,
+  Consultation,
+  Task,
+  ActivityLog,
+  LeadInsight,
+  Wedding,
+  Prisma,
+} from '@/generated/prisma/client';
 import {
   TaskContext,
   ActivityType,
@@ -48,16 +64,30 @@ export interface LeadWorkspace {
     // Display hint for the stage control (offers Won from Quotation Sent); the server re-checks on every move.
     hasAcceptedQuotation: boolean;
   };
-  customer: { name: string | null; phone: string; email: string | null; city: string | null };
+  customer: {
+    name: string | null;
+    phone: string;
+    email: string | null;
+    city: string | null;
+  };
   weddingDetails: {
     date: string | null;
     type: string | null;
     guestCount: number | null;
     budget: number | null;
+    budgetRange: string | null;
     venueType: string | null;
     services: string[];
   };
-  vendorInterest: { vendorId: string; vendorName: string; vendorCategory: string }[];
+  vendorInterest: {
+    vendorId: string;
+    vendorName: string;
+    vendorCategory: string;
+  }[];
+  consultationVendorSelections: {
+    serviceKey: string;
+    vendorId: string;
+  }[];
   timeline: (ActivityLog & { performedByName: string | null })[];
   tasks: (Task & { assignedToName: string | null })[];
   insights: LeadInsight[];
@@ -104,49 +134,97 @@ async function updateSubject(
 function toCustomer(sourceType: SourceType, subject: Subject): LeadWorkspace['customer'] {
   if (sourceType === 'LEAD') {
     const lead = subject as Lead;
-    return { name: null, phone: lead.phone, email: null, city: null };
+    return {
+      name: null,
+      phone: lead.phone,
+      email: null,
+      city: null,
+    };
   }
+
   const entity = subject as Enquiry | Consultation;
-  return { name: entity.name, phone: entity.phone, email: entity.email || null, city: entity.city ?? null };
+
+  return {
+    name: entity.name,
+    phone: entity.phone,
+    email: entity.email || null,
+    city: entity.city ?? null,
+  };
 }
 
-function toWeddingDetails(sourceType: SourceType, subject: Subject): LeadWorkspace['weddingDetails'] {
+function toWeddingDetails(
+  sourceType: SourceType,
+  subject: Subject
+): LeadWorkspace['weddingDetails'] {
   if (sourceType === 'ENQUIRY') {
     const enquiry = subject as Enquiry;
+
     return {
       date: enquiry.eventDate,
       type: enquiry.eventType,
-      guestCount: enquiry.guestCount ? Number(enquiry.guestCount) || null : null,
+      guestCount: enquiry.guestCount
+        ? Number(enquiry.guestCount) || null
+        : null,
       budget: null,
+      budgetRange: null,
       venueType: null,
       services: [],
     };
   }
+
   if (sourceType === 'CONSULTATION') {
     const c = subject as Consultation;
+
     return {
       date: c.weddingDate,
       type: c.eventType,
       guestCount: c.guestCount,
       budget: c.totalBudget ?? null,
+      budgetRange: c.budgetRange ?? null,
       venueType: c.venueType || null,
       services: c.services,
     };
   }
-  return { date: null, type: null, guestCount: null, budget: null, venueType: null, services: [] };
+
+  return {
+    date: null,
+    type: null,
+    guestCount: null,
+    budget: null,
+    budgetRange: null,
+    venueType: null,
+    services: [],
+  };
 }
 
-function toVendorInterest(sourceType: SourceType, subject: Subject): LeadWorkspace['vendorInterest'] {
+function toVendorInterest(
+  sourceType: SourceType,
+  subject: Subject
+): LeadWorkspace['vendorInterest'] {
   if (sourceType === 'ENQUIRY') {
     const enquiry = subject as Enquiry;
-    return [{ vendorId: enquiry.vendorId, vendorName: enquiry.vendorName, vendorCategory: enquiry.vendorCategory }];
+
+    return [
+      {
+        vendorId: enquiry.vendorId,
+        vendorName: enquiry.vendorName,
+        vendorCategory: enquiry.vendorCategory,
+      },
+    ];
   }
+
   if (sourceType === 'CONSULTATION') {
     const c = subject as Consultation;
+
     // Consultation only stores category names it's interested in (planning
     // wizard), not specific vendors — no vendorId/vendorName to show yet.
-    return c.services.map((category) => ({ vendorId: '', vendorName: '', vendorCategory: category }));
+    return c.services.map((category) => ({
+      vendorId: '',
+      vendorName: '',
+      vendorCategory: category,
+    }));
   }
+
   return [];
 }
 
@@ -154,8 +232,12 @@ function toVendorInterest(sourceType: SourceType, subject: Subject): LeadWorkspa
 // subject has a Wedding on file rather than leaving it to each call site to
 // remember. Returns void; callers that already have the subject loaded don't
 // need the return value, this is purely a gate.
-async function assertNotConverted(sourceType: SourceType, id: string): Promise<void> {
+async function assertNotConverted(
+  sourceType: SourceType,
+  id: string
+): Promise<void> {
   const wedding = await findWeddingForSource(sourceType, id);
+
   if (wedding) {
     throw new ConversionLockedError(
       `This ${sourceType.toLowerCase()} converted to Wedding ${wedding.weddingNumber} and is read-only`
@@ -164,16 +246,81 @@ async function assertNotConverted(sourceType: SourceType, id: string): Promise<v
 }
 
 export const leadWorkspaceService = {
-  async getWorkspace(sourceType: SourceType, id: string): Promise<LeadWorkspace> {
+  async getWorkspace(
+    sourceType: SourceType,
+    id: string
+  ): Promise<LeadWorkspace> {
     const subject = await findSubject(sourceType, id);
     const where = subjectWhere(sourceType, id);
 
-    const [{ data: tasks }, { data: timeline }, { data: insights }, wedding, acceptedQuotations] = await Promise.all([
-      taskRepository.findMany({ where, orderBy: { createdAt: 'desc' } }),
-      activityLogRepository.findMany({ where }),
-      leadInsightRepository.findMany({ where }),
+    // Temporary runtime guards.
+    // These identify which imported repository is undefined inside the
+    // Next.js server runtime instead of producing the generic
+    // "Cannot read properties of undefined (reading 'findMany')" error.
+    if (!taskRepository) {
+      throw new Error(
+        'LeadWorkspace runtime error: taskRepository is undefined'
+      );
+    }
+
+    if (!activityLogRepository) {
+      throw new Error(
+        'LeadWorkspace runtime error: activityLogRepository is undefined'
+      );
+    }
+
+    if (!leadInsightRepository) {
+      throw new Error(
+        'LeadWorkspace runtime error: leadInsightRepository is undefined'
+      );
+    }
+
+    if (!quotationRepository) {
+      throw new Error(
+        'LeadWorkspace runtime error: quotationRepository is undefined'
+      );
+    }
+
+    if (
+      sourceType === 'CONSULTATION' &&
+      !consultationVendorSelectionRepository
+    ) {
+      throw new Error(
+        'LeadWorkspace runtime error: consultationVendorSelectionRepository is undefined'
+      );
+    }
+
+    const [
+      { data: tasks },
+      { data: timeline },
+      { data: insights },
+      wedding,
+      acceptedQuotations,
+      consultationSelections,
+    ] = await Promise.all([
+      taskRepository.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+      }),
+
+      activityLogRepository.findMany({
+        where,
+      }),
+
+      leadInsightRepository.findMany({
+        where,
+      }),
+
       findWeddingForSource(sourceType, id) as Promise<Wedding | null>,
-      quotationRepository.count({ ...where, status: 'ACCEPTED' }),
+
+      quotationRepository.count({
+        ...where,
+        status: 'ACCEPTED',
+      }),
+
+      sourceType === 'CONSULTATION'
+        ? consultationVendorSelectionRepository.findMany(id)
+        : Promise.resolve([]),
     ]);
 
     const nameById = await resolveUserNames([
@@ -182,8 +329,16 @@ export const leadWorkspaceService = {
       ...tasks.map((t) => t.assignedToId),
       ...timeline.map((a) => a.performedById),
     ]);
-    const nameOf = (userId: string | null): { id: string; name: string | null } | null =>
-      userId ? { id: userId, name: nameById.get(userId) ?? null } : null;
+
+    const nameOf = (
+      userId: string | null
+    ): { id: string; name: string | null } | null =>
+      userId
+        ? {
+            id: userId,
+            name: nameById.get(userId) ?? null,
+          }
+        : null;
 
     return {
       subject: {
@@ -197,14 +352,42 @@ export const leadWorkspaceService = {
         lostReasonDetail: subject.lostReasonDetail,
         holdReason: subject.holdReason,
         createdAt: subject.createdAt,
-        wedding: wedding ? { id: wedding.id, weddingNumber: wedding.weddingNumber } : null,
+        wedding: wedding
+          ? {
+              id: wedding.id,
+              weddingNumber: wedding.weddingNumber,
+            }
+          : null,
         hasAcceptedQuotation: acceptedQuotations > 0,
       },
+
       customer: toCustomer(sourceType, subject),
+
       weddingDetails: toWeddingDetails(sourceType, subject),
+
       vendorInterest: toVendorInterest(sourceType, subject),
-      timeline: timeline.map((a) => ({ ...a, performedByName: a.performedById ? (nameById.get(a.performedById) ?? null) : null })),
-      tasks: tasks.map((t) => ({ ...t, assignedToName: t.assignedToId ? (nameById.get(t.assignedToId) ?? null) : null })),
+
+      consultationVendorSelections: consultationSelections.map(
+        (selection) => ({
+          serviceKey: selection.serviceKey,
+          vendorId: selection.vendorId,
+        })
+      ),
+
+      timeline: timeline.map((a) => ({
+        ...a,
+        performedByName: a.performedById
+          ? nameById.get(a.performedById) ?? null
+          : null,
+      })),
+
+      tasks: tasks.map((t) => ({
+        ...t,
+        assignedToName: t.assignedToId
+          ? nameById.get(t.assignedToId) ?? null
+          : null,
+      })),
+
       insights,
     };
   },
@@ -212,14 +395,24 @@ export const leadWorkspaceService = {
   async addNote(
     sourceType: SourceType,
     id: string,
-    { detail, performedById }: { detail: string; performedById: string | null }
+    {
+      detail,
+      performedById,
+    }: {
+      detail: string;
+      performedById: string | null;
+    }
   ): Promise<ActivityLog> {
-    await findSubject(sourceType, id); // 404s if the subject doesn't exist
+    await findSubject(sourceType, id);
+
     return activityLogRepository.create({
       type: ActivityType.NOTE,
-      summary: detail.length > 80 ? `${detail.slice(0, 77)}...` : detail,
+      summary:
+        detail.length > 80 ? `${detail.slice(0, 77)}...` : detail,
       detail,
-      performedBy: performedById ? { connect: { id: performedById } } : undefined,
+      performedBy: performedById
+        ? { connect: { id: performedById } }
+        : undefined,
       ...subjectCreateData(sourceType, id),
     });
   },
@@ -238,23 +431,42 @@ export const leadWorkspaceService = {
   ): Promise<Task> {
     await findSubject(sourceType, id);
     await assertNotConverted(sourceType, id);
+
     return taskRepository.create({
       context: TaskContext.SALES_FOLLOWUP,
       title: input.title,
       description: input.description,
       dueAt: input.dueAt,
       priority: input.priority,
-      assignedTo: input.assignedToId ? { connect: { id: input.assignedToId } } : undefined,
-      createdBy: input.createdById ? { connect: { id: input.createdById } } : undefined,
+      assignedTo: input.assignedToId
+        ? { connect: { id: input.assignedToId } }
+        : undefined,
+      createdBy: input.createdById
+        ? { connect: { id: input.createdById } }
+        : undefined,
       ...subjectCreateData(sourceType, id),
     });
   },
 
-  async completeTask(sourceType: SourceType, id: string, taskId: string, status: TaskStatus): Promise<Task> {
+  async completeTask(
+    sourceType: SourceType,
+    id: string,
+    taskId: string,
+    status: TaskStatus
+  ): Promise<Task> {
     const task = await taskRepository.findById(taskId);
     const where = subjectWhere(sourceType, id);
-    const belongsToSubject = task && Object.entries(where).every(([key, value]) => (task as Record<string, unknown>)[key] === value);
-    if (!belongsToSubject) throw new NotFoundError('Task', taskId);
+
+    const belongsToSubject =
+      task &&
+      Object.entries(where).every(
+        ([key, value]) =>
+          (task as Record<string, unknown>)[key] === value
+      );
+
+    if (!belongsToSubject) {
+      throw new NotFoundError('Task', taskId);
+    }
 
     return taskRepository.update(taskId, {
       status,
@@ -279,6 +491,7 @@ export const leadWorkspaceService = {
   ): Promise<Subject> {
     const subject = await findSubject(sourceType, id);
     await assertNotConverted(sourceType, id);
+
     const fromStage = subject.pipelineStage;
 
     // Accepted and Booked follow the commercial facts (the recorded acceptance; the confirmed booking) and are never
@@ -290,14 +503,23 @@ export const leadWorkspaceService = {
           : 'Booked is set automatically when the booking is confirmed'
       );
     }
+
     if (!canTransition(fromStage, input.toStage)) {
-      throw new InvalidTransitionError(`Cannot move from ${STAGE_LABELS[fromStage]} to ${STAGE_LABELS[input.toStage]}`);
+      throw new InvalidTransitionError(
+        `Cannot move from ${STAGE_LABELS[fromStage]} → ${STAGE_LABELS[input.toStage]}`
+      );
     }
+
     if (input.toStage === 'LOST' && !input.reason) {
-      throw new InvalidTransitionError('A reason is required to mark a lead as Lost');
+      throw new InvalidTransitionError(
+        'A reason is required to mark a lead as Lost'
+      );
     }
+
     if (input.toStage === 'ON_HOLD' && !input.reason) {
-      throw new InvalidTransitionError('A reason is required to place a lead On Hold');
+      throw new InvalidTransitionError(
+        'A reason is required to place a lead On Hold'
+      );
     }
 
     return prisma.$transaction(async (tx) => {
@@ -306,9 +528,20 @@ export const leadWorkspaceService = {
         id,
         {
           pipelineStage: input.toStage,
-          lostReason: input.toStage === 'LOST' ? (input.reason as LostReason) : undefined,
-          lostReasonDetail: input.toStage === 'LOST' ? (input.reasonDetail ?? null) : undefined,
-          holdReason: input.toStage === 'ON_HOLD' ? input.reason : fromStage === 'ON_HOLD' ? null : undefined,
+          lostReason:
+            input.toStage === 'LOST'
+              ? (input.reason as LostReason)
+              : undefined,
+          lostReasonDetail:
+            input.toStage === 'LOST'
+              ? (input.reasonDetail ?? null)
+              : undefined,
+          holdReason:
+            input.toStage === 'ON_HOLD'
+              ? input.reason
+              : fromStage === 'ON_HOLD'
+                ? null
+                : undefined,
         },
         tx
       );
@@ -320,7 +553,9 @@ export const leadWorkspaceService = {
           detail: input.reason ?? null,
           fromStage,
           toStage: input.toStage,
-          performedBy: input.actorId ? { connect: { id: input.actorId } } : undefined,
+          performedBy: input.actorId
+            ? { connect: { id: input.actorId } }
+            : undefined,
           ...subjectCreateData(sourceType, id),
         },
         tx
@@ -333,7 +568,9 @@ export const leadWorkspaceService = {
             title: 'Review lead (on hold)',
             dueAt: input.reviewDate,
             priority: TaskPriority.MEDIUM,
-            createdBy: input.actorId ? { connect: { id: input.actorId } } : undefined,
+            createdBy: input.actorId
+              ? { connect: { id: input.actorId } }
+              : undefined,
             ...subjectCreateData(sourceType, id),
           },
           tx
@@ -347,29 +584,68 @@ export const leadWorkspaceService = {
   async assignLead(
     sourceType: SourceType,
     id: string,
-    { assignedToId, actorId }: { assignedToId: string | null; actorId: string | null }
+    {
+      assignedToId,
+      actorId,
+    }: {
+      assignedToId: string | null;
+      actorId: string | null;
+    }
   ): Promise<Subject> {
     await findSubject(sourceType, id);
     await assertNotConverted(sourceType, id);
 
     return prisma.$transaction(async (tx) => {
+      if (assignedToId) {
+        const assignee = await tx.user.findFirst({
+          where: {
+            id: assignedToId,
+            roles: {
+              some: {
+                role: {
+                  in: ADMIN_ROLES,
+                },
+              },
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!assignee) {
+          throw new ValidationError(
+            'Assigned user must have an admin role'
+          );
+        }
+      }
+
       const updated = await updateSubject(
         sourceType,
         id,
         {
-          assignedTo: assignedToId ? { connect: { id: assignedToId } } : { disconnect: true },
-          assignedBy: actorId ? { connect: { id: actorId } } : undefined,
-          assignedAt: new Date(),
+          assignedTo: assignedToId
+            ? { connect: { id: assignedToId } }
+            : { disconnect: true },
+          assignedBy: actorId
+            ? { connect: { id: actorId } }
+            : undefined,
+          assignedAt: assignedToId ? new Date() : null,
         },
         tx
       );
 
       const nameById = await resolveUserNames([assignedToId]);
+
       await activityLogRepository.create(
         {
           type: ActivityType.ASSIGNED,
-          summary: assignedToId ? `Assigned to ${nameById.get(assignedToId) ?? 'a sales rep'}` : 'Unassigned',
-          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+          summary: assignedToId
+            ? `Assigned to ${nameById.get(assignedToId) ?? 'a sales rep'}`
+            : 'Unassigned',
+          performedBy: actorId
+            ? { connect: { id: actorId } }
+            : undefined,
           ...subjectCreateData(sourceType, id),
         },
         tx

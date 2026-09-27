@@ -3,7 +3,7 @@ import { categoryRepository } from '@/repositories/category.repository';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError } from '@/lib/errors';
 import { generateUniqueVendorSlug } from '@/lib/slug';
-import type { Prisma, VendorStatus } from '@/generated/prisma/client';
+import type { Prisma, VendorStatus, VendorPriceUnit } from '@/generated/prisma/client';
 
 export interface VendorPackageInput {
   name: string;
@@ -44,9 +44,11 @@ export interface VendorCreateData {
   categoryId: string;
   city: string;
   address?: string;
+  area?: string;
   mapEmbedUrl?: string;
   priceMin: number;
   priceMax: number;
+  priceUnit?: VendorPriceUnit;
   guestCapacity?: number;
   venueType?: string;
   // The vendor's default Terms & Conditions — copied into a quotation at creation, never referenced live.
@@ -144,9 +146,11 @@ export const vendorService = {
       category: { connect: { id: data.categoryId } },
       city: data.city,
       address: data.address,
+      area: data.area,
       mapEmbedUrl: data.mapEmbedUrl,
       priceMin: data.priceMin,
       priceMax: data.priceMax,
+      priceUnit: data.priceUnit,
       guestCapacity: data.guestCapacity,
       venueType: data.venueType,
       defaultTerms: data.defaultTerms,

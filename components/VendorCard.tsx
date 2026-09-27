@@ -18,6 +18,14 @@ const CATEGORY_NAMES: Record<string, string> = {
   'photo-video': 'Photo & Video',
 };
 
+// A flat package price and a per-plate price can look 100x apart at a glance with no unit shown
+// (e.g. ₹1,00,000 next to ₹850) — only labeled when the vendor has this explicitly set (admin-set,
+// never guessed), so existing vendors without it keep today's plain "Starting from ₹X" unchanged.
+const PRICE_UNIT_SUFFIX: Record<string, string> = {
+  PER_PLATE: '/plate',
+  PACKAGE: ' package',
+};
+
 export default function VendorCard({ vendor }: Props) {
   const hasPerPlate = vendor.packages.some(
     (p) => p.isPerPlate === true || p.features.some((f) => f.toLowerCase().includes('per plate'))
@@ -111,7 +119,10 @@ export default function VendorCard({ vendor }: Props) {
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <div>
               <p className="text-[9px] text-gray-400 uppercase tracking-[0.15em] mb-0.5">Starting from</p>
-              <p className="text-[#8B1A4A] font-semibold text-base">₹{startingPrice.toLocaleString('en-IN')}</p>
+              <p className="text-[#8B1A4A] font-semibold text-base">
+                ₹{startingPrice.toLocaleString('en-IN')}
+                {vendor.priceUnit && <span className="text-xs font-normal text-gray-400">{PRICE_UNIT_SUFFIX[vendor.priceUnit]}</span>}
+              </p>
             </div>
             <div className="w-9 h-9 flex items-center justify-center rounded-full border border-[#C5A46D]/30 group-hover:bg-[#8B1A4A] group-hover:border-[#8B1A4A] transition-all duration-300">
               <ChevronRight className="w-4 h-4 text-[#C5A46D] group-hover:text-white transition-colors" />

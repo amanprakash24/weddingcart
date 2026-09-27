@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
 import { JsonLd } from '@/components/JsonLd';
-import { LocalityGuidePage } from '@/components/venues/LocalityGuidePage';
+import { vendorRepository } from '@/repositories/vendor.repository';
+import { toLocalityVenues } from '@/lib/venues/localityVendors';
+import { LocalityVenuesPage } from '@/components/venues/LocalityVenuesPage';
+
+const AREA_LABEL = 'Bailey Road';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 const PAGE_URL = `${BASE_URL}/venues/patna/bailey-road`;
+const WHATSAPP_MESSAGE = 'Hi, I am planning a wedding near Bailey Road, Patna. Please recommend verified venues.';
 
 export const metadata: Metadata = {
   title: 'Wedding Venues Near Bailey Road, Patna — Area Guide | ShaadiShopping',
@@ -30,7 +35,7 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: 'Is there a verified wedding venue on Bailey Road?',
-    a: 'Not yet — we\'re continuously onboarding verified venues on Bailey Road. In the meantime, our Wedding Expert can recommend nearby verified venues in Danapur, Saguna Mor, or elsewhere in Patna that match your budget and guest count.',
+    a: "Ask our Wedding Expert for the current list — we're continuously onboarding verified venues on Bailey Road, so it changes. Nearby verified venues in Danapur, Saguna Mor, or elsewhere in Patna are also worth comparing on budget and guest count.",
   },
   {
     q: 'What is a typical wedding budget in Patna?',
@@ -63,61 +68,90 @@ const faqSchema = {
   mainEntity: FAQS.map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
 };
 
-export default function BaileyRoadVenuesPage() {
+function buildLocalBusinessSchema(venue: { name: string; image: string; href: string; rating: number; reviewCount: number }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: venue.name,
+    image: venue.image,
+    address: { '@type': 'PostalAddress', addressLocality: `${AREA_LABEL}, Patna`, addressRegion: 'Bihar', addressCountry: 'IN' },
+    aggregateRating: { '@type': 'AggregateRating', ratingValue: venue.rating, reviewCount: venue.reviewCount },
+    url: `${BASE_URL}${venue.href}`,
+  };
+}
+
+const NEARBY_AREAS = [
+  { name: 'All Patna Venues', href: '/venues/patna', desc: 'Compare every verified venue we list across Patna.' },
+  { name: 'Danapur', href: '/venues/patna/danapur', desc: 'Large-capacity halls, roughly 20–30 minutes from Bailey Road.' },
+  { name: 'Saguna Mor', href: '/venues/patna/saguna-mor', desc: 'Newer venues with in-house DJ and rooftop options.' },
+];
+
+const CONTENT = (
+  <>
+    <p>
+      Bailey Road is one of Patna&apos;s most well-known and heavily used roads — a major commercial and
+      residential artery that runs through the heart of the city, historically significant for leading toward
+      the Chief Minister&apos;s residence and Raj Bhavan area, and today lined with malls, showrooms, restaurants,
+      and offices. Its central location and strong connectivity make it a natural reference point for families
+      across Patna when planning a wedding, even when the function itself ends up hosted elsewhere in the city.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Average wedding budgets.</strong> Across Patna, banquet halls typically
+      charge ₹999–₹1,600 per plate all-inclusive, and total wedding budgets commonly range from ₹5 lakh to ₹50
+      lakh depending on guest count and the scale of décor and entertainment. Central, high-footfall locations
+      in a city can sometimes carry a premium over suburban venues — worth keeping in mind while comparing
+      quotes.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Best guest capacities.</strong> As a general rule across Patna, intimate
+      weddings under 250 guests are well served by smaller, modern venues, while larger 400–600+ guest
+      celebrations need the scale of halls found in corridors like Danapur or Saguna Mor. Always confirm a
+      venue&apos;s seated dinner capacity specifically, since it is usually lower than the advertised maximum.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Parking and accessibility.</strong> Bailey Road is one of Patna&apos;s
+      busiest commercial stretches, which means traffic and street parking can be genuinely congested,
+      especially in the evenings and during peak shopping hours. If you&apos;re considering a venue anywhere
+      near this corridor, ask specifically about dedicated on-site parking rather than relying on the road
+      itself for guest vehicles.
+    </p>
+    <p>
+      <strong className="text-[#2A1F1B]">Nearby wedding shopping.</strong> This is where Bailey Road genuinely
+      shines — along with Boring Road, it&apos;s one of Patna&apos;s two most established wedding-shopping
+      corridors, well known for bridal wear, jewellery, and invitation card shops. Many families plan a shopping
+      trip here regardless of which locality they eventually choose for the venue itself.
+    </p>
+  </>
+);
+
+const EMPTY_NOTE =
+  "We're continuously onboarding verified venues on Bailey Road. Meanwhile, our Wedding Expert can recommend nearby verified venues that match your budget.";
+
+export default async function BaileyRoadVenuesPage() {
+  const { data: vendors } = await vendorRepository.findMany({
+    where: { city: 'Patna', area: AREA_LABEL, status: 'PUBLISHED', category: { slug: 'venue' } },
+  });
+  const venues = toLocalityVenues(
+    vendors.map((v) => ({ name: v.name, slug: v.slug, rating: v.rating, guestCapacity: v.guestCapacity, venueType: v.venueType, priceMin: v.priceMin, priceMax: v.priceMax, features: v.features, image: v.image })),
+    AREA_LABEL
+  );
+
   return (
     <>
       <JsonLd data={breadcrumbSchema} />
       <JsonLd data={faqSchema} />
-      <LocalityGuidePage
-        localityName="Bailey Road"
-        breadcrumbLabel="Bailey Road"
-        tagline="Patna's premier commercial corridor — an honest guide to planning a wedding near Bailey Road."
-        whatsappMessage="Hi, I am planning a wedding near Bailey Road, Patna. Please recommend verified venues."
-        honestNote="We're continuously onboarding verified venues on Bailey Road. Meanwhile, our Wedding Expert can recommend nearby verified venues that match your budget."
-        nearbyAreas={[
-          { name: 'All Patna Venues', href: '/venues/patna', desc: 'Compare every verified venue we list across Patna.' },
-          { name: 'Danapur', href: '/venues/patna/danapur', desc: 'Large-capacity halls, roughly 20–30 minutes from Bailey Road.' },
-          { name: 'Saguna Mor', href: '/venues/patna/saguna-mor', desc: 'Newer venues with in-house DJ and rooftop options.' },
-        ]}
+      {venues[0] && <JsonLd data={buildLocalBusinessSchema({ ...venues[0], reviewCount: vendors[0].reviewCount })} />}
+
+      <LocalityVenuesPage
+        breadcrumbLabel={AREA_LABEL}
+        heroTitle={`Wedding Venues ${venues.length > 0 ? 'in' : 'Near'} Bailey Road, Patna`}
+        heroTagline="Patna's premier commercial corridor — an honest guide to planning a wedding near Bailey Road."
+        content={CONTENT}
+        venues={venues}
+        emptyNote={EMPTY_NOTE}
+        nearbyAreas={NEARBY_AREAS}
         faqs={FAQS}
-        content={
-          <>
-            <p>
-              Bailey Road is one of Patna&apos;s most well-known and heavily used roads — a major commercial and
-              residential artery that runs through the heart of the city, historically significant for leading toward
-              the Chief Minister&apos;s residence and Raj Bhavan area, and today lined with malls, showrooms, restaurants,
-              and offices. Its central location and strong connectivity make it a natural reference point for families
-              across Patna when planning a wedding, even when the function itself ends up hosted elsewhere in the city.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Average wedding budgets.</strong> We don&apos;t yet have a verified
-              venue directly on Bailey Road, so we won&apos;t quote Bailey-Road-specific pricing here. Across Patna more
-              broadly, banquet halls typically charge ₹999–₹1,600 per plate all-inclusive, and total wedding budgets
-              commonly range from ₹5 lakh to ₹50 lakh depending on guest count and the scale of décor and entertainment.
-              Central, high-footfall locations in a city can sometimes carry a premium over suburban venues — worth
-              keeping in mind while comparing quotes.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Best guest capacities.</strong> As a general rule across Patna, intimate
-              weddings under 250 guests are well served by smaller, modern venues, while larger 400–600+ guest
-              celebrations need the scale of halls found in corridors like Danapur or Saguna Mor. Always confirm a
-              venue&apos;s seated dinner capacity specifically, since it is usually lower than the advertised maximum.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Parking and accessibility.</strong> Bailey Road is one of Patna&apos;s
-              busiest commercial stretches, which means traffic and street parking can be genuinely congested,
-              especially in the evenings and during peak shopping hours. If you&apos;re considering a venue anywhere
-              near this corridor, ask specifically about dedicated on-site parking rather than relying on the road
-              itself for guest vehicles.
-            </p>
-            <p>
-              <strong className="text-[#2A1F1B]">Nearby wedding shopping.</strong> This is where Bailey Road genuinely
-              shines — along with Boring Road, it&apos;s one of Patna&apos;s two most established wedding-shopping
-              corridors, well known for bridal wear, jewellery, and invitation card shops. Many families plan a shopping
-              trip here regardless of which locality they eventually choose for the venue itself.
-            </p>
-          </>
-        }
+        whatsappMessage={WHATSAPP_MESSAGE}
       />
     </>
   );
