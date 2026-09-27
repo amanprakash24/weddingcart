@@ -49,8 +49,13 @@ export async function POST(req: NextRequest) {
 
     const phoneId    = process.env.WHATSAPP_PHONE_NUMBER_ID;
     const token      = process.env.WHATSAPP_ACCESS_TOKEN;
+    // Meta only delivers free-form text inside a 24h customer-service window, which a first-time
+    // OTP user never has — so the code is sent through an approved AUTHENTICATION template
+    // (copy-code button). Name/language must match the template approved in WhatsApp Manager.
+    const template   = process.env.WHATSAPP_OTP_TEMPLATE;
+    const language   = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en_US';
 
-    if (phoneId && token) {
+    if (phoneId && token && template) {
       const res = await fetch(
         `https://graph.facebook.com/v22.0/${phoneId}/messages`,
         {
@@ -61,14 +66,17 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             messaging_product: 'whatsapp',
+            recipient_type: 'individual',
             to: `91${phone}`,           // India country code
-            type: 'text',
-            text: {
-              body:
-                `🔐 *WeddingCart Verification*\n\n` +
-                `Your OTP is: *${code}*\n\n` +
-                `Valid for 5 minutes. Do not share this code with anyone.\n\n` +
-                `_— WeddingCart Team_ 💍`,
+            type: 'template',
+            template: {
+              name: template,
+              language: { code: language },
+              // Authentication templates take the code twice: the body text and the copy-code button.
+              components: [
+                { type: 'body', parameters: [{ type: 'text', text: code }] },
+                { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
+              ],
             },
           }),
         }
