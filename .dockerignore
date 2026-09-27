@@ -1,0 +1,26 @@
+# Never send secrets into the build context — every .env file stays out, including .env.example.
+.env*
+.vercel
+
+# Rebuilt inside the image
+node_modules
+.next
+generated
+tsconfig.tsbuildinfo
+
+# Not needed to build or run the app
+.git
+.claude
+.mcp.json
+docs
+screenshots
+migration-reports
+tests-db
+supabase
+scripts
+messages.json
+skills-lock.json
+prisma.config.production.ts
+*.md
+!README.md
+C:*

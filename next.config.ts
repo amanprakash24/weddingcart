@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import { buildSecurityHeaders } from "./lib/securityHeaders";
 
 const nextConfig: NextConfig = {
+  // AWS migration (docs/deployment/aws-migration-plan.md, Phase 1) — the Docker image
+  // runs .next/standalone/server.js instead of `next start`, so it needs no node_modules.
+  output: 'standalone',
   poweredByHeader: false,
   // Security-hardening audit finding (P2) — no security headers were
   // configured anywhere (this file had no headers() block, proxy.ts only
