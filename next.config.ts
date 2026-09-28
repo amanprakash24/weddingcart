@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 import { buildSecurityHeaders } from "./lib/securityHeaders";
 
+// Metro cities whose listings were only ever demo vendors (unpublished 2026-09-28). Their pages were
+// already noindex and outside the sitemap; these TEMPORARY (307) redirects stop visitors landing on empty
+// pages. When real vendors exist in a city, remove it from this list and its pages come back as they were.
+export const NON_BIHAR_CITY_SLUGS = ['delhi', 'mumbai', 'jaipur', 'bangalore', 'chennai', 'hyderabad', 'kolkata', 'udaipur', 'goa'];
+const nonBiharCity = `:city(${NON_BIHAR_CITY_SLUGS.join('|')})`;
+
 const nextConfig: NextConfig = {
   // AWS migration (docs/deployment/aws-migration-plan.md, Phase 1) — the Docker image
   // runs .next/standalone/server.js instead of `next start`, so it needs no node_modules.
@@ -54,6 +60,8 @@ const nextConfig: NextConfig = {
         destination: '/vendors/7-vachan-patna',
         permanent: true,
       },
+      { source: `/cities/${nonBiharCity}`, destination: '/cities/patna', permanent: false },
+      { source: `/cities/${nonBiharCity}/:category`, destination: '/cities/patna/:category', permanent: false },
     ];
   },
   images: {
