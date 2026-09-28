@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Heart, Phone, Mail, MapPin, CheckCircle } from 'lucide-react';
+import { BIHAR_CITIES } from '@/data/biharCities';
 
 const services = [
   { label: 'Wedding Venues', href: '/categories/venue' },
@@ -29,15 +30,12 @@ const patnaLinks = [
   { label: 'Wedding Planners Patna', href: '/cities/patna/planning' },
 ];
 
+// Patna + the Bihar cities we serve from the Patna network (same order as the homepage grid).
 const cityLinks = [
   { label: 'Patna', href: '/cities/patna' },
-  { label: 'Delhi', href: '/cities/delhi' },
-  { label: 'Mumbai', href: '/cities/mumbai' },
-  { label: 'Jaipur', href: '/cities/jaipur' },
-  { label: 'Bangalore', href: '/cities/bangalore' },
-  { label: 'Goa', href: '/cities/goa' },
-  { label: 'Udaipur', href: '/cities/udaipur' },
-  { label: 'Kolkata', href: '/cities/kolkata' },
+  ...Object.entries(BIHAR_CITIES)
+    .slice(0, 7)
+    .map(([slug, city]) => ({ label: city.name, href: `/cities/${slug}` })),
 ];
 
 const company = [

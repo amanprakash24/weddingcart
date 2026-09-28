@@ -18,18 +18,13 @@ import {
   Music2,
 } from 'lucide-react';
 import { fadeUp, stagger } from './animations';
+import { BIHAR_CITIES } from '@/data/biharCities';
 
-const CITIES_GRID = [
-  { name: 'Delhi',     slug: 'delhi',     img: 'https://images.unsplash.com/photo-1587826080692-f439cd0b70da?w=600&q=80' },
-  { name: 'Mumbai',    slug: 'mumbai',    img: 'https://images.unsplash.com/photo-1502635385003-ee1e6a1a742d?w=600&q=80' },
-  { name: 'Jaipur',    slug: 'jaipur',    img: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&q=80' },
-  { name: 'Bangalore', slug: 'bangalore', img: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80' },
-  { name: 'Udaipur',   slug: 'udaipur',   img: 'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600&q=80' },
-  { name: 'Goa',       slug: 'goa',       img: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&q=80' },
-  { name: 'Hyderabad', slug: 'hyderabad', img: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80' },
-  { name: 'Chennai',   slug: 'chennai',   img: 'https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=600&q=80' },
-  { name: 'Kolkata',   slug: 'kolkata',   img: 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=600&q=80' },
-];
+// Bihar cities we actually serve (from the Patna vendor network) — the metro cities that used to be
+// here only ever had demo vendors, which were unpublished on 2026-09-28. First 9 fill the 3×3 grid.
+const CITIES_GRID = Object.entries(BIHAR_CITIES)
+  .slice(0, 9)
+  .map(([slug, city]) => ({ name: city.name, slug, img: city.heroImage.replace('w=1920', 'w=600') }));
 
 const PATNA_SERVICES = [
   { label: 'Wedding Venues in Patna',  href: '/cities/patna/venue',       Icon: Building2     },
@@ -63,7 +58,7 @@ export default function CitiesSection() {
               className="text-3xl sm:text-5xl font-semibold text-[#2A1F1B] leading-tight"
               style={{ fontFamily: 'var(--font-playfair, serif)' }}
             >
-              We Plan Weddings Across India
+              We Plan Weddings Across Bihar
             </motion.h2>
             <motion.p variants={fadeUp} className="text-[#6B5B4D] text-sm mt-4 max-w-xs mx-auto leading-relaxed">
               Expert coordination, verified vendors, and personal planning — wherever your celebration happens.
