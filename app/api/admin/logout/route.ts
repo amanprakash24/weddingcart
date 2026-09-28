@@ -1,13 +1,8 @@
-import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { logoutEverywhere } from '@/lib/auth/logout';
 
-// Clears the NextAuth JWT session cookie directly rather than using
-// next-auth/react's signOut() client helper, so AdminClient.tsx's existing
-// fetch('/api/admin/logout') call site doesn't need to change. Both possible
-// cookie names are cleared unconditionally (only one is ever set, depending
-// on NODE_ENV) — clearing an absent cookie is a harmless no-op.
-export async function POST() {
-  const res = NextResponse.json({ success: true });
-  res.cookies.set('next-auth.session-token', '', { maxAge: 0, path: '/' });
-  res.cookies.set('__Secure-next-auth.session-token', '', { maxAge: 0, path: '/' });
-  return res;
+// Admin "Log out" (AdminShell.tsx). Ends this user's sessions on every device, then clears this
+// browser's cookie — see lib/auth/logout.ts.
+export async function POST(req: NextRequest) {
+  return logoutEverywhere(req);
 }
