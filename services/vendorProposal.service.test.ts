@@ -5,8 +5,11 @@ import { NotFoundError } from '@/lib/errors';
 // Everything is faked through createVendorProposalService(deps) — no shared module is mocked except '@/lib/prisma'
 // (needed because importing the service loads the real modules). No real quotation, vendor or booking exists here.
 //
-// The fake database below applies the service's OWN where/select objects the way Postgres would (status, "has a line
-// of this vendor", closed booking, lost enquiry; only this vendor's lines; only functions this vendor is booked for).
+// The fake database below applies the service's OWN where/select objects the way Postgres would (id, status, "has a
+// line of this vendor"; only this vendor's lines; only functions this vendor is booked for). If the service ever sent
+// a filter this fake doesn't understand, matches() throws — so the rule tested here is exactly the rule sent.
+//
+// ACCEPTED = the couple accepted → vendor access begins. BOOKED = that accepted proposal has a booking → access continues.
 // So these tests check that the service asks the database the right question — not just that the UI hides things.
 mock.module('@/lib/prisma', () => ({ prisma: {} }));
 const { createVendorProposalService, vendorVisibleWhere, VendorProposalNotFoundError } = await import('./vendorProposal.service');
@@ -106,26 +109,24 @@ function seed() {
     quote(7, 'EXPIRED', [line('vendor-A', 'Expired decor', 1)]),
     quote(8, 'REJECTED', [line('vendor-A', 'Rejected decor', 1)]),
     quote(9, 'SUPERSEDED', [line('vendor-A', 'Superseded decor', 1)]),
-    // 10–11: accepted but the deal stopped
+    // 10–13: accepted, then something happened to the booking or the CRM record — access is NOT affected
     quote(10, 'ACCEPTED', [line('vendor-A', 'Closed-booking decor', 1)], { booking: { status: 'CLOSED', wedding: null } }),
-    quote(11, 'ACCEPTED', [line('vendor-A', 'Lost-deal decor', 1)], { sourceStage: 'LOST' }),
+    quote(11, 'ACCEPTED', [line('vendor-A', 'Lost-consultation decor', 1)], { sourceStage: 'LOST' }),
+    quote(12, 'ACCEPTED', [line('vendor-A', 'Lost-lead decor', 1)], { consultationId: null, leadId: 'lead-12', sourceStage: 'LOST' }),
+    quote(13, 'ACCEPTED', [line('vendor-A', 'Lost-enquiry decor', 1)], { consultationId: null, enquiryId: 'enquiry-13', sourceStage: 'LOST' }),
+    // 14: accepted with a booking that is not confirmed yet
+    quote(14, 'ACCEPTED', [line('vendor-A', 'New-booking decor', 1)], { booking: { status: 'NEW', wedding: null } }),
   ];
 }
 
 // ---- a tiny interpreter for exactly the where/select shapes the service sends -----------------------------------
 type Where = ReturnType<typeof vendorVisibleWhere>;
 function matches(q: Q, where: Where): boolean {
+  const unknown = Object.keys(where).filter((k) => !['id', 'status', 'items'].includes(k));
+  if (unknown.length) throw new Error(`fake database: unexpected filter ${unknown.join(', ')}`);
   if (where.id !== undefined && q.id !== where.id) return false;
   if (q.status !== where.status) return false;
-  if (!q.items.some((i) => i.vendorId === where.items.some.vendorId)) return false;
-  if (q.booking && q.booking.status === where.NOT.booking.is.status) return false;
-  for (const clause of where.AND) {
-    const [nullCheck, relCheck] = clause.OR as unknown as [Record<string, null>, Record<string, { is: { pipelineStage: { not: string } } }>];
-    const idKey = Object.keys(nullCheck)[0] as 'leadId' | 'enquiryId' | 'consultationId';
-    const rel = Object.values(relCheck)[0];
-    if (q[idKey] !== null && q.sourceStage === rel.is.pipelineStage.not) return false;
-  }
-  return true;
+  return q.items.some((i) => i.vendorId === where.items.some.vendorId);
 }
 // The select is honoured for items and events (row filtering), but the WHOLE row is returned otherwise — as if a
 // future query selected too much — so the projection's allow-list is what keeps the extra fields out.
@@ -164,52 +165,57 @@ beforeEach(() => {
   for (const m of [findMany, findFirst, vendorIdForUser, sourceFacts]) m.mockClear();
 });
 
-const NOT_VISIBLE = [4, 5, 6, 7, 8, 9, 10, 11];
+const NOT_VISIBLE = [4, 5, 6, 7, 8, 9];
 
-describe('visibility — only proposals the couple has accepted', () => {
-  test('vendor A lists exactly the accepted/booked proposals they are on — newest first', async () => {
-    const list = await service.listForVendor('user-A');
-    expect(list.map((p) => p.number)).toEqual(['QTN-202610-0002', 'QTN-202610-0001']);
-    expect(list.map((p) => p.status)).toEqual(['BOOKED', 'ACCEPTED']);
-  });
-
-  test('accepted proposal is visible', async () => {
+describe('visibility — ACCEPTED is the access gate; a booking only changes the label', () => {
+  test('1. ACCEPTED, no booking yet → vendor CAN view (label ACCEPTED)', async () => {
     expect((await service.getForVendor('user-A', uuid(1))).status).toBe('ACCEPTED');
   });
 
-  test('booked proposal is visible', async () => {
+  test('2. ACCEPTED with a booking → vendor CAN view (label BOOKED) — confirmed booking or not', async () => {
     expect((await service.getForVendor('user-A', uuid(2))).status).toBe('BOOKED');
+    expect((await service.getForVendor('user-A', uuid(14))).status).toBe('BOOKED');
+  });
+
+  test('3. ACCEPTED with the booking CLOSED → vendor still CAN view', async () => {
+    const p = await service.getForVendor('user-A', uuid(10));
+    expect(p.lines.map((l) => l.description)).toEqual(['Closed-booking decor']);
   });
 
   test.each([
-    [4, 'draft'],
-    [5, 'sent'],
-    [6, 'sent — in negotiation (changes requested)'],
-    [7, 'expired'],
-    [8, 'rejected'],
-    [9, 'superseded'],
-    [10, 'accepted, but the booking was closed'],
-    [11, 'accepted, but the deal was marked lost'],
-  ])('quotation %i (%s) is hidden — same generic not-found', async (n) => {
+    [11, 'consultation'],
+    [12, 'lead'],
+    [13, 'enquiry'],
+  ])('4. ACCEPTED quotation %i whose %s is marked LOST → vendor still CAN view', async (n) => {
+    expect((await service.getForVendor('user-A', uuid(n))).lines).toHaveLength(1);
+  });
+
+  test.each([
+    [5, '5. SENT'],
+    [6, '6. NEGOTIATION (sent; the couple asked for changes)'],
+    [7, '7. EXPIRED'],
+    [8, '8. REJECTED'],
+    [9, '9. SUPERSEDED'],
+    [4, 'DRAFT'],
+  ])('quotation %i — %s → vendor cannot view (same generic not-found)', async (n) => {
     await expect(service.getForVendor('user-A', uuid(n))).rejects.toBeInstanceOf(VendorProposalNotFoundError);
   });
 
-  test('none of the hidden proposals appear in the list', async () => {
-    const numbers = (await service.listForVendor('user-A')).map((p) => p.number);
-    for (const n of NOT_VISIBLE) expect(numbers).not.toContain(`QTN-202610-${String(n).padStart(4, '0')}`);
+  test('the list holds exactly the accepted proposals vendor A is on — newest acceptance first — and none of the hidden ones', async () => {
+    const list = await service.listForVendor('user-A');
+    expect(list.map((p) => Number(p.number.slice(-4)))).toEqual([14, 13, 12, 11, 10, 2, 1]);
+    expect(list.map((p) => p.status)).toEqual(['BOOKED', 'ACCEPTED', 'ACCEPTED', 'ACCEPTED', 'BOOKED', 'BOOKED', 'ACCEPTED']);
+    for (const n of NOT_VISIBLE) expect(list.map((p) => p.number)).not.toContain(`QTN-202610-${String(n).padStart(4, '0')}`);
   });
 
-  test('the rule is in the database query itself: ACCEPTED, has a line of THIS vendor, booking not closed, source not lost', () => {
-    const where = vendorVisibleWhere('vendor-A', uuid(1));
-    expect(where.status).toBe('ACCEPTED');
-    expect(where.items).toEqual({ some: { vendorId: 'vendor-A' } });
-    expect(where.id).toBe(uuid(1));
-    expect(where.NOT).toEqual({ booking: { is: { status: 'CLOSED' } } });
+  test('the rule sent to the database is exactly: this id (if given), status ACCEPTED, has a line of THIS vendor — nothing else', () => {
+    expect(vendorVisibleWhere('vendor-A', uuid(1))).toEqual({ id: uuid(1), status: 'ACCEPTED', items: { some: { vendorId: 'vendor-A' } } });
+    expect(vendorVisibleWhere('vendor-A')).toEqual({ status: 'ACCEPTED', items: { some: { vendorId: 'vendor-A' } } });
   });
 });
 
 describe('vendor isolation', () => {
-  test('vendor A sees only vendor A\'s lines, and a total from those lines only', async () => {
+  test('10. vendor A sees only vendor A\'s lines, and a total from those lines only', async () => {
     const p = await service.getForVendor('user-A', uuid(1));
     expect(p.lines.map((l) => l.description)).toEqual(['Stage decoration', 'Mandap flowers']);
     expect(p.total).toBe(80000 + 15000 * 2);

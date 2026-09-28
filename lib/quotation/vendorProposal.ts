@@ -8,8 +8,8 @@
 // can ever reach the vendor, even by accident.
 import type { BookingSource } from '@/lib/quotation/booking';
 
-// A vendor only ever sees a proposal the couple has accepted. BOOKED = the booking made from it is confirmed or the
-// wedding exists; otherwise ACCEPTED.
+// ACCEPTED = the couple accepted; this is when the vendor's access begins. BOOKED = that accepted proposal has
+// progressed to a booking; access simply continues. BOOKED is a label, never a condition for access.
 export type VendorProposalStatus = 'ACCEPTED' | 'BOOKED';
 
 // The vendor's own lines, as selected from the database (already filtered to this vendor).
@@ -69,7 +69,7 @@ export interface VendorProposal {
 export type VendorProposalSummary = Pick<VendorProposal, 'id' | 'number' | 'version' | 'status' | 'wedding' | 'total'> & { lineCount: number };
 
 export function vendorProposalStatus(booking: VendorProposalInput['booking']): VendorProposalStatus {
-  return booking && (booking.status === 'CONFIRMED' || booking.wedding) ? 'BOOKED' : 'ACCEPTED';
+  return booking ? 'BOOKED' : 'ACCEPTED';
 }
 
 // `vendorId` is the logged-in vendor (from the session, never from the request). The query already returns only their

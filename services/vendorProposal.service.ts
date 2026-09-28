@@ -4,8 +4,9 @@
 //  1. The vendor is always the logged-in user's own vendor (vendorForUser) — never an id from the URL, query or body.
 //  2. The database query itself only matches quotations that contain at least one line of that vendor, and only
 //     selects that vendor's lines — other vendors' lines are never read.
-//  3. Only ACCEPTED quotations (the couple said yes) whose deal is still going ahead; anything else — draft, sent,
-//     expired, rejected, superseded, unknown id, another vendor's quotation — is the same generic "not found".
+//  3. ACCEPTED is the access gate: the couple accepting turns the vendor's access on, and a booking made from it later
+//     only changes the label to BOOKED — it is not a second requirement. Anything else — draft, sent (incl. in
+//     negotiation), expired, rejected, superseded, unknown id, another vendor's quotation — is the same "not found".
 //  4. The view is built from an explicit allow-list (toVendorProposal) — no database object is passed through.
 // Nothing here writes to the database.
 import { prisma } from '@/lib/prisma';
@@ -25,20 +26,13 @@ export class VendorProposalNotFoundError extends NotFoundError {
 
 const MAX_LIST = 100;
 
-// Which quotations a vendor may see, as a database filter. Exported so the tests can assert the rule itself.
+// Which quotations a vendor may see, as a database filter: ACCEPTED, with at least one line of this vendor. Nothing
+// else — no booking, CRM-stage or other business-state condition. Exported so the tests can assert the rule itself.
 export function vendorVisibleWhere(vendorId: string, quotationId?: string) {
   return {
     ...(quotationId ? { id: quotationId } : {}),
     status: 'ACCEPTED' as const,
     items: { some: { vendorId } },
-    // A deal that stopped after acceptance (booking closed, or the enquiry marked lost / not proceeding) is no
-    // longer an accepted proposal for the vendor to work from.
-    NOT: { booking: { is: { status: 'CLOSED' as const } } },
-    AND: [
-      { OR: [{ leadId: null }, { lead: { is: { pipelineStage: { not: 'LOST' as const } } } }] },
-      { OR: [{ enquiryId: null }, { enquiry: { is: { pipelineStage: { not: 'LOST' as const } } } }] },
-      { OR: [{ consultationId: null }, { consultation: { is: { pipelineStage: { not: 'LOST' as const } } } }] },
-    ],
   };
 }
 

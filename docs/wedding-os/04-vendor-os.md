@@ -128,10 +128,18 @@ Read-only view, behind vendor login, of the part of an **accepted** quotation th
 `lib/quotation/vendorProposal.ts`). Pages: `/vendor/proposals` (list, linked from the portal nav) and
 `/vendor/proposals/[quotationId]`. No API route, no actions, no writes, no migration.
 
-**Visible only when** the quotation is `ACCEPTED` (shown as *Accepted by the couple*, or *Booked* once its booking is
-confirmed or the wedding exists) **and** has at least one line with this vendor **and** the deal is still going ahead
-(booking not `CLOSED`, source not `LOST`). Draft, sent (incl. in negotiation), expired, rejected, superseded, another
-vendor's or an unknown id → one generic 404 — the page never reveals whether a quotation exists.
+**ACCEPTED = vendor access begins. BOOKED = the accepted proposal has progressed to a booking; access continues.**
+Visible when the quotation is `ACCEPTED` **and** has at least one line with this vendor — nothing else is checked. A
+booking made from it only changes the label (*Accepted by the couple* → *Booked*); it is not a second requirement, and
+later changes to the booking or the CRM record (e.g. booking closed, enquiry lost) do not remove access.
+
+| Quotation | Vendor |
+|---|---|
+| DRAFT · SENT · SENT in negotiation · EXPIRED · REJECTED · SUPERSEDED | Hidden — one generic 404 |
+| ACCEPTED, no booking | Visible — *Accepted by the couple* |
+| ACCEPTED with a booking (any booking status) | Visible — *Booked* |
+
+Another vendor's quotation or an unknown/malformed id is the same 404 — the page never reveals whether a quotation exists.
 
 **Shown:** couple/wedding name, wedding date, guest count, city, event type · the vendor's own lines (category, function,
 description, quantity, unit price, line total) · the agreed amount = the sum of those lines · once a wedding exists, date,

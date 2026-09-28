@@ -76,10 +76,9 @@ describe('toVendorProposal — the vendor sees only their own work', () => {
     expect(JSON.stringify(p)).not.toContain('WED-2026-0003');
   });
 
-  test('status: a booking that is only NEW/CONTACTED is still ACCEPTED; CONFIRMED or a wedding makes it BOOKED', () => {
+  test('label: ACCEPTED until a booking is made from it, then BOOKED (whatever the booking status) — a label only', () => {
     expect(vendorProposalStatus(null)).toBe('ACCEPTED');
-    expect(vendorProposalStatus({ status: 'NEW', wedding: null })).toBe('ACCEPTED');
-    expect(vendorProposalStatus({ status: 'CONFIRMED', wedding: null })).toBe('BOOKED');
+    for (const status of ['NEW', 'CONTACTED', 'CONFIRMED', 'CLOSED']) expect(vendorProposalStatus({ status, wedding: null })).toBe('BOOKED');
   });
 
   test('the list summary carries no lines, only the vendor\'s total', () => {
