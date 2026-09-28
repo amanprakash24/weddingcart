@@ -16,15 +16,21 @@ How this repository is tested, what each layer proves, and how to run the real-d
 
 ```bash
 # bash
-export TEST_DATABASE_URL='postgresql://…'   # a staging/test database — see the safety rules below
+export TEST_DATABASE_URL='postgresql://…'           # a SEPARATE test database — never the live one
+export TEST_DATABASE_ALLOWED_REFS='<its project ref>' # required: there is no default test project
 bun run test:db
 ```
 
 ```powershell
 # PowerShell
 $env:TEST_DATABASE_URL = 'postgresql://…'
+$env:TEST_DATABASE_ALLOWED_REFS = '<its project ref>'
 bun run test:db
 ```
+
+> **2026-09-27:** the original production project was deleted and the live site now runs on the former
+> *staging* project (`xlrswgsadncosezfdgbm`). There is **no** staging/test database any more — create a separate
+> one before running this suite. Both refs are hard-refused by the guard.
 
 Expect roughly 4 minutes against a remote database: every step is a network round trip, and concurrency tests fan out. The script passes `--timeout 180000` (Bun's default is 5 s, far too short; a test that times out keeps running in the background and starves the next ones of connections).
 
@@ -35,8 +41,9 @@ Without `TEST_DATABASE_URL` the suite is skipped cleanly, not failed.
 The guard runs before anything imports Prisma. It **refuses** to run when:
 
 1. `TEST_DATABASE_URL` is unset — the suite never falls back to `DATABASE_URL`, so a developer's shell or `.env` cannot be hit by accident;
-2. the URL contains the **production** project ref, *even if someone adds it to the allow-list*;
-3. the project ref is not on the allow-list (`DEFAULT_ALLOWED_TEST_PROJECT_REFS`, extendable through the guard's `extraAllowed` argument).
+2. the URL contains any **production** project ref (`PRODUCTION_PROJECT_REFS`: the live database and the deleted original), *even if someone adds it to the allow-list*;
+3. the URL points at the same database (user, host, port, database name) as the app's own `DATABASE_URL`;
+4. the URL is not explicitly allowed through `TEST_DATABASE_ALLOWED_REFS` — `DEFAULT_ALLOWED_TEST_PROJECT_REFS` is empty on purpose, so using a test database is always a deliberate choice.
 
 `loadApp()` then sets `process.env.DATABASE_URL` to the checked URL before importing any service, so the app code can only bind to the test database. The guard has its own unit tests (`lib/testing/dbGuard.test.ts`, run by plain `bun test`).
 
