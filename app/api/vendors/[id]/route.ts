@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { vendorService } from '@/services/vendor.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
+
+// /vendors/[id] is ISR (revalidate = 3600) and prerendered at build. When a vendor is unpublished, the
+// hourly refresh ends in notFound() and the old page kept being served until the next deploy
+// (seen 2026-09-28). Marking the page stale on every admin write makes the next visit re-render it —
+// PUBLISHED → normal page, anything else → 404 + noindex — without a deploy. The public URL is the slug,
+// not this route's UUID. Best-effort: a cache failure must never turn a saved change into an error.
+function revalidateVendorPage(slug: string | null | undefined) {
+  if (!slug) return;
+  try {
+    revalidatePath(`/vendors/${slug}`);
+  } catch (err) {
+    console.error(`revalidatePath(/vendors/${slug}) failed:`, err);
+  }
+}
 
 // vendorService.getById returns the real Category relation (truthful
 // repository/service data) — the admin frontend contract expects a flat
@@ -107,6 +122,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // the admin form's post-save state matches what GET returns — the
     // transaction's own return value is a plain scalar Vendor row.
     const vendor = await vendorService.getById(id);
+    revalidateVendorPage(vendor?.slug);
     return NextResponse.json({ success: true, data: vendor ? toResponseShape(vendor) : null });
   } catch (err) {
     return handleApiError(err);
@@ -120,7 +136,10 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
   try {
     const { id } = await params;
+    // Read the slug first — after the delete there is nothing left to look it up from.
+    const existing = await vendorService.getById(id);
     await vendorService.delete(id);
+    revalidateVendorPage(existing?.slug);
     return NextResponse.json({ success: true });
   } catch (err) {
     return handleApiError(err);
