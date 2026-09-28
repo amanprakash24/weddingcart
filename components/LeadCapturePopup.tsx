@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { isProposalPath } from '@/lib/proposalPath';
 
 const STORAGE_KEY = 'ss_lead_dismissed_v2';
 const DISMISS_MS = 10 * 60 * 1000; // 10 minutes
@@ -24,7 +25,7 @@ export default function LeadCapturePopup() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (pathname.startsWith('/admin')) return;
+    if (pathname.startsWith('/admin') || isProposalPath(pathname)) return;
     const dismissed = localStorage.getItem(STORAGE_KEY);
     if (dismissed) {
       const until = Number(dismissed);

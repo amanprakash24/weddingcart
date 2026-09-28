@@ -20,6 +20,11 @@ export const quotationRepository = {
     return tx.quotation.findUnique({ where: { id }, include: withItems });
   },
 
+  // The proposal page's only lookup: by the SHA-256 of the link token (unique index), never by id or number.
+  async findByCustomerTokenHash(hash: string, tx: Tx | typeof prisma = prisma): Promise<QuotationWithItems | null> {
+    return tx.quotation.findUnique({ where: { customerTokenHash: hash }, include: withItems });
+  },
+
   async findMany(
     where: Prisma.QuotationWhereInput,
     tx: Tx | typeof prisma = prisma

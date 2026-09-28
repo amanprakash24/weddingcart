@@ -3,6 +3,7 @@ import { describe, test, expect } from 'bun:test';
 import { ConflictError, ConversionLockedError, NotFoundError, ValidationError } from '@/lib/errors';
 import {
   ACCEPTANCE_CHANNELS,
+  ONLINE_CHANNEL,
   evaluateAcceptable,
   evaluateDeletable,
   evaluateEditable,
@@ -156,6 +157,11 @@ describe('evaluateAcceptable / evaluateRejectable — only a SENT, still-valid q
 
   test('the recorded channels are exactly the four V1 options', () => {
     expect([...ACCEPTANCE_CHANNELS]).toEqual(['WHATSAPP', 'PHONE', 'IN_PERSON', 'OTHER']);
+  });
+
+  test('ONLINE is not a staff channel — only the proposal link can accept online', () => {
+    expect(ONLINE_CHANNEL).toBe('ONLINE');
+    expect((ACCEPTANCE_CHANNELS as readonly string[]).includes(ONLINE_CHANNEL)).toBe(false);
   });
 });
 

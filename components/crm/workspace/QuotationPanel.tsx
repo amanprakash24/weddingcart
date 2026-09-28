@@ -7,6 +7,7 @@ import { StatusChip } from './JourneyParts';
 import { errorMessage, type QuotationsApi } from './useQuotations';
 import type { WorkspaceQuotation } from './types';
 import QuotationHistory from './QuotationHistory';
+import CustomerLinkBox from './CustomerLinkBox';
 
 // The quotation card (docs/wedding-os/08-quotation.md). It shows the CURRENT quotation like a document you could hand to
 // a customer — services, quantity × price, total, advance, balance, validity — with the quotation's status and the
@@ -15,9 +16,10 @@ import QuotationHistory from './QuotationHistory';
 // What to DO next (send, follow up, record acceptance, create/confirm the booking, not proceeding) lives in the Next-action
 // card and its dialogs (LeadWorkspaceClient); this card keeps only the actions that belong to the document itself: edit or
 // discard a draft, revise a sent quote. Totals shown while typing are only a preview — the server recomputes and stores the
-// real ones. V1 has no customer login or link: staff record the customer's answer on their behalf.
+// real ones. No customer login: staff either record the customer's answer on their behalf, or share the proposal link
+// (CustomerLinkBox, §15) so the couple can accept or ask for changes themselves.
 
-const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel' };
+const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel', ONLINE: 'the proposal link (online)' };
 
 import type { QuotationPrefillLine } from './quotationPrefill';
 export type { QuotationPrefillLine } from './quotationPrefill';
@@ -39,6 +41,8 @@ interface Draft {
   advanceAmount: string;
   validUntil: string; // YYYY-MM-DD
   terms: string;
+  inclusions: string;
+  exclusions: string;
   notes: string;
 }
 
@@ -58,6 +62,8 @@ function draftFromPrefill(prefill: QuotationPrefillLine[]): Draft {
     advanceAmount: '',
     validUntil: '',
     terms: '',
+    inclusions: '',
+    exclusions: '',
     notes: '',
   };
 }
@@ -78,6 +84,8 @@ function draftFromQuotation(q: WorkspaceQuotation): Draft {
     advanceAmount: q.advanceAmount ? String(q.advanceAmount) : '',
     validUntil: q.validUntil ? q.validUntil.slice(0, 10) : '',
     terms: q.terms ?? '',
+    inclusions: q.inclusions ?? '',
+    exclusions: q.exclusions ?? '',
     notes: q.notes ?? '',
   };
 }
@@ -160,6 +168,8 @@ const QuotationPanel = forwardRef<
       advanceAmount: toNumber(d.advanceAmount),
       validUntil: d.validUntil || null,
       terms: d.terms || null,
+      inclusions: d.inclusions || null,
+      exclusions: d.exclusions || null,
       notes: d.notes || null,
     };
     try {
@@ -308,6 +318,14 @@ const QuotationPanel = forwardRef<
                 ))}
               </div>
             )}
+            {current.status === 'SENT' && current.changesRequestedAt && current.changesRequestNote && (
+              <div className="grid gap-0.5 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-3 text-sm text-sky-900">
+                <b className="font-bold">{customerName} asked for changes on {formatQuoteDate(current.changesRequestedAt)}</b>
+                <span className="whitespace-pre-line">{current.changesRequestNote}</span>
+                <span className="text-xs text-sky-800">Revise the quote to send an updated proposal — nothing was changed automatically.</span>
+              </div>
+            )}
+            {!readOnly && <CustomerLinkBox quotation={current} customerName={customerName} eventDate={eventDate} onChanged={() => { load(); onChanged(); }} />}
             {!readOnly && current.status === 'DRAFT' && (
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={busy} onClick={() => setEditing({ id: current.id, draft: draftFromQuotation(current) })} className="min-h-[40px] rounded-xl border border-gray-200 px-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
@@ -423,6 +441,22 @@ const QuotationPanel = forwardRef<
             value={editing.draft.terms}
             onChange={(e) => setDraft({ terms: e.target.value })}
           />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <textarea
+              className={inputClass}
+              rows={2}
+              placeholder="What's included — shown on the proposal (optional)"
+              value={editing.draft.inclusions}
+              onChange={(e) => setDraft({ inclusions: e.target.value })}
+            />
+            <textarea
+              className={inputClass}
+              rows={2}
+              placeholder="What's not included — shown on the proposal (optional)"
+              value={editing.draft.exclusions}
+              onChange={(e) => setDraft({ exclusions: e.target.value })}
+            />
+          </div>
           <textarea
             className={inputClass}
             rows={2}

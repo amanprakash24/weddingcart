@@ -11,6 +11,7 @@ import { calculateQuotationTotals } from '@/lib/quotation/totals';
 import { formatQuoteDate } from '@/lib/quotation/message';
 import { pickVenueTerms, type TermsVendor } from '@/lib/quotation/terms';
 import { planBookingFromQuotation, type BookingOverrides, type BookingSource } from '@/lib/quotation/booking';
+import { hashCustomerToken, newCustomerToken, proposalState } from '@/lib/quotation/proposal';
 import {
   evaluateAcceptable,
   evaluateBookable,
@@ -65,6 +66,8 @@ export interface QuotationInput {
   advanceAmount?: number;
   validUntil?: Date | null;
   terms?: string | null;
+  inclusions?: string | null;
+  exclusions?: string | null;
   notes?: string | null;
 }
 
@@ -74,13 +77,17 @@ const CHANNEL_LABEL: Record<AcceptanceChannel, string> = {
   PHONE: 'phone',
   IN_PERSON: 'in person',
   OTHER: 'another channel',
+  ONLINE: 'the proposal link (online)',
 };
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 // API shape: the stored row plus what is derived from it and must never be stored.
 export function toQuotationView(q: QuotationWithItems) {
+  // The link's hash never leaves the server — staff only need to know whether a live link exists.
+  const { customerTokenHash, ...rest } = q;
   return {
-    ...q,
+    ...rest,
+    hasCustomerLink: customerTokenHash !== null,
     balance: q.total - q.advanceAmount,
     items: q.items.map((item) => ({ ...item, lineTotal: item.unitPrice * item.quantity })),
   };
@@ -127,7 +134,7 @@ async function loadSource(sourceType: SourceType, id: string, tx: Tx | typeof pr
 
 // A SENT quotation past its valid-until date is EXPIRED. There is no scheduler in V1, so this is applied
 // lazily whenever quotations are read or acted on — which also frees the source's "open quotation" slot.
-async function expireOverdue(where: Prisma.QuotationWhereInput, tx: Tx | typeof prisma = prisma): Promise<void> {
+export async function expireOverdue(where: Prisma.QuotationWhereInput, tx: Tx | typeof prisma = prisma): Promise<void> {
   await tx.quotation.updateMany({
     where: { ...where, status: 'SENT', validUntil: { lt: new Date() } },
     data: { status: 'EXPIRED' },
@@ -200,7 +207,9 @@ function itemRows(items: QuotationItemInput[]) {
 
 // What a Booking needs from an Enquiry or Consultation. Both keep their date as free text, so the date
 // is handed over as text and only trusted by planBookingFromQuotation if it is a clear YYYY-MM-DD.
-async function bookingSourceFacts(sourceType: SourceType, sourceId: string, tx: Tx): Promise<BookingSource> {
+// Also used by the proposal page (services/proposal.service.ts) for the couple's header — the customer projection there
+// drops the phone number (lib/quotation/proposal.ts).
+export async function bookingSourceFacts(sourceType: SourceType, sourceId: string, tx: Tx | typeof prisma): Promise<BookingSource> {
   if (sourceType === 'ENQUIRY') {
     const e = await enquiryRepository.findById(sourceId, tx);
     if (!e) throw new NotFoundError('Enquiry', sourceId);
@@ -309,6 +318,8 @@ export const quotationService = {
             // Terms typed for this quotation win; otherwise the venue's default is COPIED in (lib/quotation/terms.ts). From here
             // on the quotation owns its terms — the venue's default can change without touching it.
             terms: input.terms?.trim() || pickVenueTerms(input.items, vendors),
+            inclusions: input.inclusions?.trim() || null,
+            exclusions: input.exclusions?.trim() || null,
             notes: input.notes?.trim() || null,
             createdBy: actorId ? { connect: { id: actorId } } : undefined,
             items: { create: itemRows(input.items) },
@@ -344,6 +355,8 @@ export const quotationService = {
           advanceAmount: totals.advanceAmount,
           validUntil: input.validUntil ?? null,
           terms: input.terms?.trim() || null,
+          inclusions: input.inclusions?.trim() || null,
+          exclusions: input.exclusions?.trim() || null,
           notes: input.notes?.trim() || null,
           items: { create: itemRows(input.items) },
         },
@@ -567,9 +580,13 @@ export const quotationService = {
         const quotationNumber = await nextQuotationNumber(tx);
         mark(`numbered ${quotationNumber}`);
         // Status first: the old SENT quotation must stop being "open" before the new draft is inserted.
+        // Its proposal link dies here, for good: discarding the new draft later restores the original's STATUS but not its
+        // link (decision D7) — staff create a fresh link explicitly. Applies to expired/rejected originals too.
         if (q.status === 'SENT') {
-          const replaced = await quotationRepository.update(id, { status: 'SUPERSEDED' }, tx);
+          const replaced = await quotationRepository.update(id, { status: 'SUPERSEDED', customerTokenHash: null }, tx);
           mark(`original now ${replaced.status}`);
+        } else if (q.customerTokenHash) {
+          await quotationRepository.update(id, { customerTokenHash: null }, tx);
         }
         mark('saving the draft');
         const revision = await quotationRepository.create(
@@ -587,6 +604,10 @@ export const quotationService = {
             advanceAmount: q.advanceAmount,
             validUntil: null, // a revision must be given a fresh valid-until date before it is sent
             terms: q.terms,
+            inclusions: q.inclusions,
+            exclusions: q.exclusions,
+            // Never copied: customerTokenHash / customerTokenCreatedAt / customerViewedAt / changesRequested* — a revision
+            // starts with no link, no view and no open request.
             notes: q.notes,
             createdBy: actorId ? { connect: { id: actorId } } : undefined,
             items: {
@@ -621,5 +642,41 @@ export const quotationService = {
       const first = err instanceof DuplicateError ? await quotationRepository.findById(id) : null;
       throw await explainSourceConflict(err, first ? sourceOf(first) : null, trace);
     }
+  },
+
+  // ----- Proposal link (08-quotation.md §15, decisions D2/D7) -----
+
+  // A NEW secret link for a SENT, still-valid quotation. Any previous link for it stops working at once (its hash is
+  // replaced). Only the hash is stored; the raw token is returned exactly once, to be shown to staff and never again.
+  async issueCustomerLink(id: string, actorId: string | null): Promise<{ token: string }> {
+    await expireOverdue({ id });
+    return prisma.$transaction(async (tx) => {
+      const { q, sourceType, sourceId } = await loadLocked(tx, id);
+      if (proposalState(q, new Date()) !== 'OPEN') {
+        throw new ConflictError('A customer link can only be created for a sent quotation that is still valid');
+      }
+      const token = newCustomerToken();
+      await quotationRepository.update(id, { customerTokenHash: hashCustomerToken(token), customerTokenCreatedAt: new Date() }, tx);
+      await logEvent(
+        tx,
+        sourceType,
+        sourceId,
+        ActivityType.NOTE,
+        `Proposal link created for ${q.quotationNumber} (revision ${q.revision})${q.customerTokenHash ? ' — the previous link no longer works' : ''}`,
+        null,
+        actorId
+      );
+      return { token };
+    });
+  },
+
+  // Stops the current link working (the couple then sees the generic "no longer valid" page).
+  async revokeCustomerLink(id: string, actorId: string | null): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      const { q, sourceType, sourceId } = await loadLocked(tx, id);
+      if (!q.customerTokenHash) return;
+      await quotationRepository.update(id, { customerTokenHash: null }, tx);
+      await logEvent(tx, sourceType, sourceId, ActivityType.NOTE, `Proposal link revoked for ${q.quotationNumber} (revision ${q.revision})`, null, actorId);
+    });
   },
 };

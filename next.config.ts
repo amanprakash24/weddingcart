@@ -17,7 +17,20 @@ const nextConfig: NextConfig = {
   // does auth redirects). Applied to every route via the catch-all source,
   // same as this app has no per-route header needs today.
   async headers() {
-    return [{ source: '/:path*', headers: buildSecurityHeaders(process.env.NODE_ENV) }];
+    return [
+      { source: '/:path*', headers: buildSecurityHeaders(process.env.NODE_ENV) },
+      // The couple's proposal page (docs/wedding-os/08-quotation.md §15): its URL is a secret link. Listed AFTER the
+      // catch-all so these values win (the last matching header key overrides). Never indexed, and the URL is never
+      // sent on as a Referer. (No-store caching comes from the page being force-dynamic — Next overrides Cache-Control
+      // set here for pages.)
+      {
+        source: '/proposal/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+        ],
+      },
+    ];
   },
   async redirects() {
     return [

@@ -151,6 +151,15 @@ describe('nextAction — exactly one primary action per state', () => {
     expect(sent.label).toContain('Follow up');
   });
 
+  test('SENT with changes requested on the proposal link → revise is the primary action (staff still record a yes/no)', () => {
+    const changes = nextAction('SENT', { ...ctx, changesRequestedOn: '28 Sep 2026' });
+    expect(changes.id).toBe('revise-quote');
+    expect(changes.title).toContain('asked for changes');
+    expect(changes.why).toContain('28 Sep 2026');
+    expect(changes.secondary.map((s) => s.id)).toEqual(['customer-accepted', 'customer-declined']);
+    expect(nextAction('SENT', { ...ctx, changesRequestedOn: null }).id).toBe('follow-up');
+  });
+
   test('only the two "deal is live but not yet a wedding" states offer Not proceeding', () => {
     for (const state of ['ACCEPTED', 'BOOKING_PENDING'] as const) {
       expect(nextAction(state, ctx).secondary.map((s) => s.id)).toContain('not-proceeding');

@@ -84,7 +84,15 @@ export interface WorkspaceQuotation {
   balance: number;
   validUntil: string | null;
   terms: string | null;
+  inclusions: string | null;
+  exclusions: string | null;
   notes: string | null;
+  // Proposal link (08-quotation.md §15). Only whether a link exists — the link itself is shown once, when created.
+  hasCustomerLink: boolean;
+  customerTokenCreatedAt: string | null;
+  customerViewedAt: string | null;
+  changesRequestedAt: string | null;
+  changesRequestNote: string | null;
   // The Booking created from this quotation, if any.
   booking: { id: string; status: 'NEW' | 'CONTACTED' | 'CONFIRMED' | 'CLOSED' } | null;
   // Created automatically when the booking/lead converted to a wedding (draft; no tax in V1).

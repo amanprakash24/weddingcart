@@ -40,7 +40,7 @@ async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = '
   if (!res.ok || !payload.success) throw new Error(payload.error ?? 'Request failed');
 }
 
-const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel' };
+const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel', ONLINE: 'the proposal link (online)' };
 type Dialog = 'accept' | 'decline' | 'booking' | 'confirm' | 'not-proceeding' | 'convert' | null;
 
 export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: SourceType; id: string }) {
@@ -161,6 +161,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
     weddingNumber,
     closedReason,
     followUps,
+    changesRequestedOn: current?.status === 'SENT' && current.changesRequestedAt ? formatQuoteDate(current.changesRequestedAt) : null,
     money: showAgreement && money ? { ready: money.state === 'CONFIRMED', remaining: money.remaining, required: money.confirmationAmount, percent: money.confirmationPercent } : null,
   });
   const steps = journeySteps(state, current, {

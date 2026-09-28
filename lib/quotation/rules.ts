@@ -68,9 +68,12 @@ export function quotationDeleteBlock(sourceLabel: string, quotationCount: number
 // S2 — lifecycle (docs/wedding-os/08-quotation.md §3): send, accept, reject, revise, expire.
 // ---------------------------------------------------------------------------
 
-// Staff record how the customer said yes (no customer login or link in V1 — decision Q1).
+// Staff record how the customer said yes. This list is also what the STAFF accept API validates against, so it
+// deliberately does not contain ONLINE — only the proposal link (the couple themselves) can accept online.
 export const ACCEPTANCE_CHANNELS = ['WHATSAPP', 'PHONE', 'IN_PERSON', 'OTHER'] as const;
-export type AcceptanceChannel = (typeof ACCEPTANCE_CHANNELS)[number];
+// The couple accepted on the proposal page (decision D1, 2026-09-29 — reverses Q1). Same accept logic underneath.
+export const ONLINE_CHANNEL = 'ONLINE' as const;
+export type AcceptanceChannel = (typeof ACCEPTANCE_CHANNELS)[number] | typeof ONLINE_CHANNEL;
 
 export function isPastValidity(validUntil: Date | null, now: Date): boolean {
   return validUntil !== null && validUntil.getTime() < now.getTime();

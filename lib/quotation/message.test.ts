@@ -109,6 +109,12 @@ describe('message wording for customers', () => {
     expect(buildQuotationMessage(base, 'A')).toContain('for your wedding. Here is');
   });
 
+  test('the proposal link line appears only when a link is given', () => {
+    const url = 'https://www.shaadishopping.com/proposal/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+    expect(buildQuotationMessage(base, 'Rahul', { proposalUrl: url })).toContain(url);
+    expect(buildQuotationMessage(base, 'Rahul')).not.toContain('/proposal/');
+  });
+
   test('the follow-up refers to the quote, its total and its validity, and asks for a call', () => {
     const text = buildFollowUpMessage(base, 'Rahul', '18 Sep 2026');
     expect(text).toContain('shared on 18 Sep 2026 (QTN-202609-0001)');

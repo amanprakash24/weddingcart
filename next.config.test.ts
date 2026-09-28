@@ -44,3 +44,38 @@ describe('non-Bihar city pages redirect to Patna (temporary)', () => {
     expect(NON_BIHAR_CITY_SLUGS.filter((c) => c === 'patna' || c in BIHAR_CITIES)).toEqual([]);
   });
 });
+
+type HeaderRule = { source: string; headers: { key: string; value: string }[] };
+
+// Mirrors Next.js: every matching rule applies in order, and a later value for the same key overrides an earlier one.
+async function headersFor(path: string): Promise<Record<string, string>> {
+  const rules = (await nextConfig.headers!()) as HeaderRule[];
+  const out: Record<string, string> = {};
+  for (const r of rules) {
+    if (!match(r.source, { decode: decodeURIComponent })(path)) continue;
+    for (const h of r.headers) out[h.key.toLowerCase()] = h.value;
+  }
+  return out;
+}
+
+describe('proposal pages carry a secret link — never indexed, never leaked as a Referer', () => {
+  const page = `/proposal/${'a'.repeat(43)}`;
+
+  test('noindex + no-referrer override the site-wide values', async () => {
+    const h = await headersFor(page);
+    expect(h['x-robots-tag']).toBe('noindex, nofollow');
+    expect(h['referrer-policy']).toBe('no-referrer');
+  });
+
+  test('the site-wide security headers still apply to the proposal page', async () => {
+    const h = await headersFor(page);
+    expect(h['x-frame-options']).toBe('DENY');
+    expect(h['x-content-type-options']).toBe('nosniff');
+  });
+
+  test('other pages keep the normal referrer policy and are indexable', async () => {
+    const h = await headersFor('/venues/patna');
+    expect(h['x-robots-tag']).toBeUndefined();
+    expect(h['referrer-policy']).toBe('strict-origin-when-cross-origin');
+  });
+});

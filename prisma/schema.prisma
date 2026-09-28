@@ -1053,8 +1053,17 @@ model Quotation {
   advanceAmount Int             @default(0) // 0 ≤ advance ≤ total; balance is derived, never stored
   validUntil    DateTime?
   terms         String?
+  inclusions    String? // "What's included" — shown to the couple on the proposal page
+  exclusions    String? // "What's not included" — shown to the couple on the proposal page
   notes         String? // internal, never shown to the customer
   pdfUrl        String? // reserved; no PDF generation in V1
+  // Proposal link (docs/wedding-os/08-quotation.md §15). Only the SHA-256 of the random token is stored; the raw
+  // link is shown to staff once. One link per revision; revising clears the original's hash so it can never revive.
+  customerTokenHash      String?   @unique
+  customerTokenCreatedAt DateTime?
+  customerViewedAt       DateTime? // first time the couple opened the proposal
+  changesRequestedAt     DateTime? // latest open "request changes" from the couple; never modifies the content
+  changesRequestNote     String?
 
   sentAt          DateTime?
   acceptedAt      DateTime?
@@ -1532,6 +1541,8 @@ enum ActivityType {
   QUOTATION_REJECTED
   QUOTATION_REVISED
   INVOICE_CREATED
+  QUOTATION_CHANGES_REQUESTED // the couple asked for changes on the proposal page
+  PROPOSAL_VIEWED // the couple opened the proposal link for the first time
 }
 
 model ActivityLog {
