@@ -294,7 +294,7 @@ client-sent total is never read.
 
 | # | Question | Decision | As built |
 |---|---|---|---|
-| Q1 | Who records acceptance in V1? | **Staff record it** on the customer's behalf (WhatsApp / phone / in person). **No customer login or accept link at this stage.** | `accept` with channel + note; §6.3 |
+| Q1 | Who records acceptance in V1? | **Staff record it** on the customer's behalf (WhatsApp / phone / in person). ~~No customer login or accept link at this stage.~~ **Reversed 29 Sep 2026 (Step 6, D1):** the couple can also accept through a secret proposal link; staff recording stays. Both go through the same `accept`. Still no customer login. | `accept` with channel + note; §6.3; §15 |
 | Q2 | Allow `QUOTATION_SENT → WON` when an `ACCEPTED` quote exists? | **Yes**, verified **server-side**. | §6.5; tested against the real database |
 | Q3 | Advance entered as fixed ₹ or %? | *Not asked; proceeded on the recommendation:* store the ₹ amount; the editor offers % shortcuts that fill it. Change on request. | 25 / 30 / 50 % buttons |
 | Q4 | Tax on the automatic advance invoice | **No tax in V1** — `gstEnabled = false`, `gstAmount = 0`. Revisit after accounting/CA confirmation. | §6.6 |
@@ -358,3 +358,79 @@ applied to `shaadishopping-prod` first** (20/20 → 21/21) — same order as PR 
 7. **Money limits** (§5) and "a draft needs at least one line; `validUntil` is required only to send" were not specified originally.
 8. **Booking creation** accepts optional overrides and refuses unclear source dates (§6.4) — the design only said the data comes from
    the source.
+
+## 15. Proposal link (Phase 2 Step 6, PR 1 — built 29 Sep 2026)
+
+The **Wedding Proposal** is the couple-facing presentation of the current Quotation behind a secret link. It is **not a new
+model**: it is a presentation / access / action layer over the existing Quotation, and it reuses `quotationService.accept`,
+`revise` and `createBooking` unchanged. Vendor view (Vendor OS) is PR 2 and not built here.
+
+### 15.1 What the couple can do
+
+| Quotation | Page shows | Actions |
+|---|---|---|
+| SENT, before valid-until | The proposal | **Accept** (after ticking "I agree to the terms") · **Request changes** (free-text note, max 1000) |
+| SENT past valid-until, or EXPIRED | The proposal + "This proposal has expired" | none — contact us |
+| ACCEPTED | The proposal + thank-you (no time limit) | none |
+| DRAFT / SUPERSEDED / REJECTED / revoked / unknown / malformed token | One generic "This link is no longer valid" page — it never says which | none |
+
+What the page shows is an explicit allow-list (`toCustomerProposal`, `lib/quotation/proposal.ts`): couple name, wedding
+date / guests / city / event type, lines (category, function, description, vendor **name**, qty × price), subtotal, discount,
+GST only when charged, total, advance, inclusions, exclusions, terms, validity, number + version. **Never** internal notes,
+ids, the token hash, or the customer's phone.
+
+### 15.2 Data (migration `20260929120000_add_quotation_proposal_link` — additive only)
+
+`Quotation`: `inclusions`, `exclusions` (shown on the proposal; copied into a revision), `customerTokenHash` (unique),
+`customerTokenCreatedAt`, `customerViewedAt`, `changesRequestedAt`, `changesRequestNote` (never copied into a revision).
+`ActivityType`: `QUOTATION_CHANGES_REQUESTED`, `PROPOSAL_VIEWED`.
+
+### 15.3 Decisions (approved 29 Sep 2026)
+
+| # | Decision |
+|---|---|
+| D1 | Online **and** staff acceptance, both through the same `accept` logic (reverses Q1 in §11). |
+| D2 | Token = 32 random bytes (43 URL-safe chars). Only its **SHA-256 hash** is stored. The URL is shown to staff **once**, when created; it cannot be retrieved — "Create a new link" replaces it (the old one stops working). |
+| D3 | Request changes moves the CRM stage `QUOTATION_SENT → NEGOTIATION` and **never modifies the quotation content**. Staff answer with a normal revision. |
+| D4 | The vendor view lives in Vendor OS — PR 2. |
+| D5 | States as in §15.1 (expired shows an explicit expired state; accepted stays viewable with no cut-off). |
+| D6 | Only the **first** view is tracked (`customerViewedAt` + one `PROPOSAL_VIEWED` activity). Link-preview bots (WhatsApp, Facebook, Telegram, Slack, crawlers) do not count. No other analytics. |
+| D7 | Discarding a revision draft restores the predecessor's status but **not** its link (the link was cleared at revision time). |
+| D8 | Inclusions / exclusions are quotation-level text fields. |
+| D9 | Two PRs: PR 1 = customer link (this section); PR 2 = vendor proposals. |
+
+### 15.4 Review resolutions
+
+| # | Resolution |
+|---|---|
+| C1 | `ONLINE` is a separate `ONLINE_CHANNEL`, not one of the four staff `ACCEPTANCE_CHANNELS` — staff cannot pick it, the staff accept schema is unchanged. |
+| C2 | Revising a SENT quotation clears the predecessor's `customerTokenHash` in the same update that marks it SUPERSEDED, so the old link can never revive (even if the draft is discarded — D7). |
+| C3 | `revise` copies inclusions/exclusions; token / view / change-request fields are never copied. |
+| C4 | Request changes uses the existing commercial-event machinery: new event `CHANGES_REQUESTED` (same stage move as `QUOTE_REVISED`). |
+| C5 | Expired SENT proposals show the explicit expired state (the lazy `expireOverdue` flip runs first). |
+| C6 | Google Analytics is not loaded on `/proposal` (`components/GoogleAnalytics.tsx`), so the URL is never reported as a page address. `Referrer-Policy: no-referrer` (header + page metadata). |
+| C7 | The lead-capture popup never opens on `/proposal`. |
+| C8 | Acceptance is committed first. If the automatic booking cannot be created (e.g. no clear wedding date), the couple still sees *Accepted*; staff use the existing *Create booking* action. |
+| C9 | Online accept is idempotent: an already-accepted proposal returns "accepted" without calling `accept` or `createBooking` again; a racing request that loses the lock is treated as already accepted. `Booking.quotationId` stays unique, so a duplicate booking is impossible. |
+| C10 | Couple/wedding facts come from the exported `bookingSourceFacts`; the phone is dropped by the allow-list. |
+
+### 15.5 Protection
+
+- Token checked for shape before any lookup; unknown tokens get the same generic page as revoked ones.
+- Rate limits (existing `login_attempts` limiter): page views 30 / 15 min per IP; accept + request changes 10 / 15 min per IP.
+- `noindex, nofollow` (header + metadata), `robots.txt` disallow, `no-referrer`, page is `force-dynamic` (never cached);
+  API responses `Cache-Control: no-store`.
+- Accept requires `agreeToTerms: true` in the request body.
+- Online acceptance and change requests have no staff actor (`actorId = null`); the activity text says it came from the proposal link.
+
+### 15.6 Staff side
+
+On the quotation card (SENT and still valid): **Create proposal link** → the URL is shown once with *Copy* and *Copy WhatsApp
+message with link* (nothing is sent automatically) · **Create a new link** · **Turn off link**. The card shows "Opened by the
+couple on …" and, when the couple asked for changes, their note; the Next action becomes **Revise quote**. Editor has
+*What's included* / *What's not included*.
+
+### 15.7 Not built (by decision)
+
+Payment gateway / UPI proof, automatic WhatsApp or email, customer login, PDF, AI, vendor approval workflow, e-signature, a
+separate Proposal table, line-by-line counter-offers, analytics beyond the first view.

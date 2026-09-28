@@ -150,6 +150,8 @@ export interface NextActionContext {
   weddingNumber: string | null;
   closedReason: string | null;
   followUps: number; // follow-ups already logged this session
+  // The couple asked for changes through the proposal link ("18 Sep 2026"), not yet answered with a revision.
+  changesRequestedOn?: string | null;
   // Money v1: where the accepted quotation's confirmation payment stands (null when there is no agreement to look at). Until the
   // required amount (25% of the accepted total) is received the booking cannot be confirmed, so the next action is to record payment.
   money?: { ready: boolean; remaining: number; required: number; percent: number } | null;
@@ -180,6 +182,19 @@ export function nextAction(state: JourneyState, c: NextActionContext): NextActio
         ? { id: 'send-quote', title: 'Send the quote', why: 'The quote is ready. This marks it as sent and opens WhatsApp with the message prepared — you press send there.', label: 'Send quote on WhatsApp', quiet: false, secondary: [] }
         : { id: 'finish-quote', title: 'Finish the quote', why: 'Add at least one service and a valid-until date, then it can be sent.', label: 'Edit quote', quiet: false, secondary: [] };
     case 'SENT':
+      if (c.changesRequestedOn) {
+        return {
+          id: 'revise-quote',
+          title: `${name} asked for changes`,
+          why: `Requested on ${c.changesRequestedOn} through the proposal link — their note is on the quote below. Revise the quote, then send the new version.`,
+          label: 'Revise quote',
+          quiet: false,
+          secondary: [
+            { id: 'customer-accepted', label: 'Customer said yes' },
+            { id: 'customer-declined', label: 'Customer declined', danger: true },
+          ],
+        };
+      }
       return {
         id: 'follow-up',
         title: `Follow up with ${name}`,

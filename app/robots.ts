@@ -13,6 +13,8 @@ export default function robots(): MetadataRoute.Robots {
         '/api',
         '/api/*',
         '/cart',
+        '/proposal',
+        '/proposal/*',
         '/customer$',
         '/customer/*',
         '/vendor$',

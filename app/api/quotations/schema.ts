@@ -42,6 +42,8 @@ const quotationFields = {
   advanceAmount: z.coerce.number().int().min(0).default(0),
   validUntil: validUntilSchema,
   terms: optionalText(4000),
+  inclusions: optionalText(4000), // "What's included" — shown to the couple on the proposal page
+  exclusions: optionalText(4000), // "What's not included" — shown to the couple on the proposal page
   notes: optionalText(4000),
 };
 

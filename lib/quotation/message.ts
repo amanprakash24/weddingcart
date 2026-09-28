@@ -24,6 +24,8 @@ export interface QuotationMessageInput {
 export interface MessageExtras {
   // The wedding date, already in words ("5 Dec 2026"), when it is known and trustworthy. Omitted from the text otherwise.
   eventDate?: string | null;
+  // The couple's proposal link (§15), when staff created one — they can view, accept or ask for changes there.
+  proposalUrl?: string | null;
 }
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -74,6 +76,10 @@ export function buildQuotationMessage(q: QuotationMessageInput, customerName?: s
   if (q.terms?.trim()) {
     lines.push('');
     lines.push(q.terms.trim());
+  }
+  if (extras.proposalUrl) {
+    lines.push('');
+    lines.push(`View your full proposal — and accept it or ask for changes — here: ${extras.proposalUrl}`);
   }
   lines.push('');
   lines.push(`Reply here or call us on ${SHAADI_PHONE_DISPLAY} — we are happy to adjust anything.`);
