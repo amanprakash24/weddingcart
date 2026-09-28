@@ -118,3 +118,26 @@ describe('stale tokens are rejected', () => {
     expect((await proxy(req('/cities/patna'))).headers.get('location')).toBeNull();
   });
 });
+
+describe('Vendor OS pages (incl. the Vendor Proposal View) only let vendors in', () => {
+  const vendorPath = '/vendor/proposals/00000000-0000-4000-8000-000000000001';
+  const redirectOf = async (token: { sub?: string; sv?: number; roles: string[] } | null) => {
+    currentToken = token;
+    return (await proxy(req(vendorPath))).headers.get('location');
+  };
+
+  test('logged out → vendor login', async () => {
+    expect(await redirectOf(null)).toBe('https://www.shaadishopping.com/vendor/login');
+  });
+
+  test('an admin or a customer is not a vendor → vendor login', async () => {
+    expect(await redirectOf(laptop)).toBe('https://www.shaadishopping.com/vendor/login');
+    users.set('customer-1', 0);
+    expect(await redirectOf({ sub: 'customer-1', sv: 0, roles: ['CUSTOMER'] })).toBe('https://www.shaadishopping.com/vendor/login');
+  });
+
+  test('a signed-in vendor gets through (the page itself then checks their vendor profile)', async () => {
+    users.set('vendor-user-1', 0);
+    expect(await redirectOf({ sub: 'vendor-user-1', sv: 0, roles: ['VENDOR'] })).toBeNull();
+  });
+});

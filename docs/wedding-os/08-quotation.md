@@ -392,7 +392,7 @@ ids, the token hash, or the customer's phone.
 | D1 | Online **and** staff acceptance, both through the same `accept` logic (reverses Q1 in §11). |
 | D2 | Token = 32 random bytes (43 URL-safe chars). Only its **SHA-256 hash** is stored. The URL is shown to staff **once**, when created; it cannot be retrieved — "Create a new link" replaces it (the old one stops working). |
 | D3 | Request changes moves the CRM stage `QUOTATION_SENT → NEGOTIATION` and **never modifies the quotation content**. Staff answer with a normal revision. |
-| D4 | The vendor view lives in Vendor OS — PR 2. |
+| D4 | The vendor view lives in Vendor OS — PR 2. **Built (PR #135):** read-only, accepted proposals only — see 04-vendor-os.md §8. |
 | D5 | States as in §15.1 (expired shows an explicit expired state; accepted stays viewable with no cut-off). |
 | D6 | Only the **first** view is tracked (`customerViewedAt` + one `PROPOSAL_VIEWED` activity). Link-preview bots (WhatsApp, Facebook, Telegram, Slack, crawlers) do not count. No other analytics. |
 | D7 | Discarding a revision draft restores the predecessor's status but **not** its link (the link was cleared at revision time). |
