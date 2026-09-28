@@ -55,7 +55,7 @@ export const authOptions: AuthOptions = {
         await recordLoginAttempt(credentials.email, valid);
         if (!valid) return null;
 
-        return { id: user.id, email: user.email, name: user.name, roles };
+        return { id: user.id, email: user.email, name: user.name, roles, sessionVersion: user.sessionVersion };
       },
     }),
     // Vendor / Customer — phone + OTP. Structurally complete against the
@@ -115,6 +115,7 @@ export const authOptions: AuthOptions = {
           name: user.name,
           roles: user.roles.map((r) => r.role),
           vendorId: user.vendorProfile?.vendorId ?? undefined,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -124,6 +125,7 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.roles = user.roles;
         token.vendorId = user.vendorId;
+        token.sv = user.sessionVersion; // checked on every request — see lib/auth/sessionVersion.ts
       }
       return token;
     },
@@ -134,6 +136,7 @@ export const authOptions: AuthOptions = {
         session.user.id = token.sub ?? undefined;
         session.user.roles = token.roles;
         session.user.vendorId = token.vendorId;
+        session.user.sessionVersion = token.sv;
       }
       return session;
     },
