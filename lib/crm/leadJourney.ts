@@ -127,7 +127,8 @@ export type NextActionId =
   | 'create-wedding'
   | 'view-reason';
 
-export type SecondaryActionId = 'customer-accepted' | 'customer-declined' | 'revise-quote' | 'not-proceeding';
+// 'mark-sent': the operator already sent the quote themselves (e.g. reloaded before confirming) — records it as sent.
+export type SecondaryActionId = 'customer-accepted' | 'customer-declined' | 'revise-quote' | 'not-proceeding' | 'mark-sent';
 
 export interface NextAction {
   id: NextActionId;
@@ -179,7 +180,14 @@ export function nextAction(state: JourneyState, c: NextActionContext): NextActio
       return { id: 'create-quote', title: 'Make a quote', why: `Nothing has been quoted for ${name} yet.`, label: 'Create quote', quiet: false, secondary: [] };
     case 'DRAFT':
       return c.canSend
-        ? { id: 'send-quote', title: 'Send the quote', why: 'The quote is ready. This marks it as sent and opens WhatsApp with the message prepared — you press send there.', label: 'Send quote on WhatsApp', quiet: false, secondary: [] }
+        ? {
+            id: 'send-quote',
+            title: 'Send the quote',
+            why: 'The quote is ready. This opens WhatsApp with the message prepared. After you press Send there, confirm here — only then is the quote marked as sent.',
+            label: 'Open WhatsApp with the quote',
+            quiet: false,
+            secondary: [{ id: 'mark-sent', label: 'Already sent it? Mark as sent' }],
+          }
         : { id: 'finish-quote', title: 'Finish the quote', why: 'Add at least one service and a valid-until date, then it can be sent.', label: 'Edit quote', quiet: false, secondary: [] };
     case 'SENT':
       if (c.changesRequestedOn) {

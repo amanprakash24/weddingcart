@@ -169,6 +169,21 @@ number**, never a venue's, and never uses the word "marketplace". After the send
 **only if the pipeline state machine allows it from its current stage**; the response reports `stageAdvanced`, and a refusal
 never fails the send.
 
+**Open, then confirm (29 Sep 2026).** Opening WhatsApp is not sending: the browser can block the tab, WhatsApp may not
+be logged in, or nobody presses Send — yet the quote used to be marked SENT the moment WhatsApp opened (found on
+QTN-202609-0002: "sent" in the CRM, never received). Now the workspace works in two steps (`lib/crm/whatsappConfirm.ts`):
+1. **Open WhatsApp with the quote** opens WhatsApp with the message (or copies it when WhatsApp can't be opened) and
+   records **nothing**.
+2. A bar asks **"Did you press Send in WhatsApp?"** — **Yes, it's sent** calls `/send` (the send above, unchanged);
+   **Not yet** leaves the quote a draft. Editing the draft after opening WhatsApp cancels the question (the message no
+   longer matches what was opened), so a changed quote can't be marked sent by mistake.
+3. **Already sent it? Mark as sent** (on a ready draft, with a confirm prompt) covers a page reload before confirming.
+
+Follow-ups work the same way: only "Yes" logs *"Follow-up sent on WhatsApp (confirmed by staff)"* and counts it. The
+activity now reads *"Quotation … sent (confirmed by staff) — …"*; older entries (from before this change) are shown as
+*"Quotation marked as sent (WhatsApp opened — delivery not confirmed)"* — the stored history is not rewritten. Delivery
+itself still can't be known without the WhatsApp Business API; the operator's confirmation is the signal.
+
 ### 6.3 Accept / reject (decided — §11 Q1: staff-recorded in V1)
 Staff record the customer's answer **on their behalf**: channel (WhatsApp / phone / in person / other) and an optional
 note for an acceptance, a reason for a rejection; the system stores who and when. Acceptance is refused once

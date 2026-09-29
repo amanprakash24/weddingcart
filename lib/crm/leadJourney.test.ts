@@ -143,6 +143,15 @@ describe('nextAction — exactly one primary action per state', () => {
 
   test('a draft that cannot be sent yet asks to finish it instead', () => {
     expect(nextAction('DRAFT', { ...ctx, canSend: false }).id).toBe('finish-quote');
+    expect(nextAction('DRAFT', { ...ctx, canSend: false }).secondary).toEqual([]);
+  });
+
+  test('a ready draft only OPENS WhatsApp — it is marked sent after the operator confirms; "Mark as sent" is the fallback', () => {
+    const draft = nextAction('DRAFT', ctx);
+    expect(draft.label).toBe('Open WhatsApp with the quote');
+    expect(draft.why).toContain('confirm here');
+    expect(draft.why).not.toContain('marks it as sent');
+    expect(draft.secondary).toEqual([{ id: 'mark-sent', label: 'Already sent it? Mark as sent' }]);
   });
 
   test('a sent quote offers the customer’s answer as secondary actions, not as a second primary', () => {
