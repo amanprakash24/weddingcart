@@ -193,7 +193,7 @@ export default function AdminBlogEditorClient({ blogId }: Props) {
             placeholder="Blog post title..."
             value={form.title}
             onChange={e => set('title', e.target.value)}
-            className="w-full text-2xl font-bold font-[Playfair_Display,serif] text-gray-900 bg-transparent border-0 border-b-2 border-gray-200 focus:border-amber-400 outline-none pb-2 placeholder-gray-300 transition-colors"
+            className="w-full text-2xl font-bold font-playfair text-gray-900 bg-transparent border-0 border-b-2 border-gray-200 focus:border-amber-400 outline-none pb-2 placeholder-gray-300 transition-colors"
           />
         </div>
 

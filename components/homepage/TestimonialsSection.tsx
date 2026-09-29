@@ -42,7 +42,7 @@ export default function TestimonialsSection() {
         <p className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.28em] mb-3">Kind Words</p>
         <h2
           className="font-bold text-3xl sm:text-4xl lg:text-5xl text-[#1C0A12] mb-8"
-          style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '-0.01em' }}
+          style={{ fontFamily: 'var(--font-playfair), serif', letterSpacing: '-0.01em' }}
         >
           What Couples Say
         </h2>

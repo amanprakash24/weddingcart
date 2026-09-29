@@ -73,7 +73,7 @@ export default function OtpLoginClient({
             <Sparkles className="w-4 h-4" />
             ShaadiShopping
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 font-[Playfair_Display,serif]">{portalName} Login</h1>
+          <h1 className="text-3xl font-bold text-gray-900 font-playfair">{portalName} Login</h1>
           <p className="text-gray-500 text-sm mt-1">
             {stage === 'phone' ? "We'll text you a verification code" : `Enter the code sent to +91 ${phone}`}
           </p>

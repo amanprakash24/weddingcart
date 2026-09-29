@@ -160,7 +160,7 @@ export default function PlanPageClient() {
           <div className="inline-flex items-center gap-2 bg-white/20 text-white px-4 py-1.5 rounded-full text-sm font-medium mb-4">
             <Sparkles className="w-4 h-4" /> Free Wedding Planning Wizard
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white font-[Playfair_Display,serif] mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white font-playfair mb-3">
             Plan Your Dream Wedding
           </h1>
           <p className="text-white/80 text-sm">Complete the wizard in 5 simple steps. Our expert planners will do the rest.</p>
@@ -203,7 +203,7 @@ export default function PlanPageClient() {
             {step === 0 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Let&apos;s Begin Planning Your {eventLabel}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">Let&apos;s Begin Planning Your {eventLabel}</h2>
                   <p className="text-gray-500 text-sm">Tell us about yourself and your celebration</p>
                 </div>
 
@@ -439,7 +439,7 @@ export default function PlanPageClient() {
             {step === 1 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">What Would You Like Help With?</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">What Would You Like Help With?</h2>
                   <p className="text-gray-500 text-sm">Choose the services you need — we&apos;ll coordinate everything for you</p>
                 </div>
                 <div className="flex items-center justify-between mb-2">
@@ -500,7 +500,7 @@ export default function PlanPageClient() {
             {step === 2 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Wedding Hospitality Planning</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">Wedding Hospitality Planning</h2>
                   <p className="text-gray-500 text-sm">Select meal requirements for each wedding event</p>
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2">
                     💡 We use this information to estimate catering and hospitality requirements for your wedding.
@@ -546,7 +546,7 @@ export default function PlanPageClient() {
             {step === 3 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">What Kind Of Celebration Do You Envision?</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">What Kind Of Celebration Do You Envision?</h2>
                   <p className="text-gray-500 text-sm">Choose a venue style that matches your dream wedding</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -608,7 +608,7 @@ export default function PlanPageClient() {
             {step === 4 && (
               <div className="animate-fade-in space-y-5">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">Speak With Your Wedding Expert</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">Speak With Your Wedding Expert</h2>
                   <p className="text-gray-500 text-sm">Book your free 30-minute strategy call — we&apos;ll coordinate your entire wedding</p>
                 </div>
 

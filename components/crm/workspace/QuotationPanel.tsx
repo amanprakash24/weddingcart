@@ -269,7 +269,7 @@ const QuotationPanel = forwardRef<
                 Quotation {current.quotationNumber}
                 {current.revision > 1 && <span className="font-medium normal-case tracking-normal text-gray-400"> · revision {current.revision}</span>}
               </div>
-              <h2 className="mt-1 text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">{customerName}{eventDate ? ` · ${eventDate}` : ''}</h2>
+              <h2 className="mt-1 text-xl font-bold text-gray-900 font-playfair">{customerName}{eventDate ? ` · ${eventDate}` : ''}</h2>
               {guestCount != null && <div className="mt-0.5 text-sm text-gray-600">{guestCount} guests</div>}
             </div>
             <div className="grid gap-1.5 sm:justify-items-end">
@@ -313,7 +313,7 @@ const QuotationPanel = forwardRef<
             {current.gstEnabled && current.gstAmount > 0 && (
               <div className="flex w-full max-w-[320px] justify-between"><span>Tax</span><span>{rupees(current.gstAmount)}</span></div>
             )}
-            <div className="mt-1 flex w-full max-w-[320px] justify-between border-t border-gray-200 pt-2 text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">
+            <div className="mt-1 flex w-full max-w-[320px] justify-between border-t border-gray-200 pt-2 text-xl font-bold text-gray-900 font-playfair">
               <span>Total</span><span>{rupees(current.total)}</span>
             </div>
             {current.advanceAmount > 0 && (

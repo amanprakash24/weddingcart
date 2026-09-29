@@ -40,7 +40,7 @@ export default function AdminLoginClient() {
             <Sparkles className="w-4 h-4" />
             ShaadiShopping
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 font-[Playfair_Display,serif]">Admin Panel</h1>
+          <h1 className="text-3xl font-bold text-gray-900 font-playfair">Admin Panel</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to manage your wedding planning platform</p>
         </div>
 

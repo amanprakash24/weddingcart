@@ -17,7 +17,7 @@ export default function TodaysWork({ stats, loading }: { stats: LeadInboxStats |
 
   return (
     <div>
-      <h2 className="text-lg font-bold text-gray-900 font-[Playfair_Display,serif] mb-3">Today&apos;s Work</h2>
+      <h2 className="text-lg font-bold text-gray-900 font-playfair mb-3">Today&apos;s Work</h2>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cards.map(({ icon: Icon, label, value, color }) => (
           <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3">

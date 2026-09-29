@@ -94,7 +94,7 @@ export function NextActionCard({
     <section aria-label="Next action" className={`grid gap-3 rounded-2xl border p-5 ${surface}`}>
       <div>
         <div className="mb-1 text-[11px] font-bold uppercase tracking-widest text-gray-400">{action.id === 'view-reason' ? 'Status' : 'Next action'}</div>
-        <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">{action.title}</h2>
+        <h2 className="text-xl font-bold text-gray-900 font-playfair">{action.title}</h2>
       </div>
       <p className="text-sm text-gray-700">{action.why}</p>
       <button

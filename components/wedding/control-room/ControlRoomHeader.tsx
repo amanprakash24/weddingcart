@@ -102,7 +102,7 @@ export default function ControlRoomHeader({
         )}
       </div>
 
-      <h1 className="mt-3 break-words font-[Playfair_Display,serif] text-3xl font-bold leading-tight text-gray-900 sm:text-4xl">{view.title}</h1>
+      <h1 className="mt-3 break-words font-playfair text-3xl font-bold leading-tight text-gray-900 sm:text-4xl">{view.title}</h1>
 
       <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700 sm:text-base">
         {view.facts.map((fact, i) => (

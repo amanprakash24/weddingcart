@@ -17,7 +17,7 @@ export default function PortalHomeClient({ portalName }: { portalName: string })
           <Sparkles className="w-4 h-4" />
           ShaadiShopping
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-2">
+        <h1 className="text-2xl font-bold text-gray-900 font-playfair mb-2">
           {portalName} Portal
         </h1>
         <p className="text-gray-500 text-sm mb-1">

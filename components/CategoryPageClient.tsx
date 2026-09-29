@@ -115,7 +115,7 @@ export default function CategoryPageClient({ slug, initialCoverImage, initialNam
             <ChevronRight className="w-4 h-4" />
             <span className="text-white">{initialName || category?.name || info.name}</span>
           </nav>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white font-[Playfair_Display,serif]">{initialName || category?.name || info.name}</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white font-playfair">{initialName || category?.name || info.name}</h1>
           <p className="text-white/80 text-sm mt-1">{initialDescription || category?.description || info.desc}</p>
           {(category || !slug) && (
             <div className="flex items-center gap-4 mt-3">
@@ -252,7 +252,7 @@ export default function CategoryPageClient({ slug, initialCoverImage, initialNam
       {faqs.length > 0 && (
         <section className="bg-gray-50 border-t border-gray-100">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 font-playfair mb-2">
               Frequently Asked Questions
             </h2>
             <p className="text-gray-500 text-sm mb-8">

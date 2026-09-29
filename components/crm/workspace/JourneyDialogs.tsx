@@ -28,7 +28,7 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center md:p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" aria-label={title} className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 pb-8 shadow-2xl md:max-w-lg md:rounded-2xl md:pb-5">
         <div className="mb-3 flex items-start justify-between gap-3">
-          <h3 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">{title}</h3>
+          <h3 className="text-xl font-bold text-gray-900 font-playfair">{title}</h3>
           <button type="button" aria-label="Close" onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:text-gray-700">
             <X className="h-5 w-5" />
           </button>
