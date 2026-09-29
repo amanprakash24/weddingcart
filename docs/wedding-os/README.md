@@ -21,6 +21,7 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 - **`09-wedding-v1-model.md`** — the V1 product model for the Wedding Workspace: one Wedding with role-specific views, two separate lifecycles (sales vs. wedding operations), computed stages (Planning → Final week → Wedding day → Completed), vocabulary, and implementation order. Extends `03` and `05`.
 - **`10-commercial-flow-v1.md`** — the V1 commercial flow (quotation → negotiation → acceptance → booking → invoice): lead stages that follow the commercial facts, T&C copying, invoice lifecycle, Wedding → Money workflow. Read with `09-wedding-v1-model.md`.
 - **`12-vendor-prospects.md`** — sales outreach tracker (`VendorProspect`) for venues not yet on ShaadiShopping, seeded from a competitor-site lead list. Contact/factual info only — the source's descriptions and photos are never copied in; a prospect becomes a real vendor only by actually going through `/vendor-onboarding`.
+- **`13-roadmap-v2.md`** — the master blueprint v2.0 compared against the code (30 Sep 2026, verified against schema and usage) and the approved roadmap order. Daily progress is recorded in `docs/worklog/`.
 - **`user-journeys.md`** — three end-to-end journeys (Customer, Venue Owner, Founder), each grounded in real entities/gaps from the docs above. Not a new design pass — evidence for *why* Role-Based Experience matters, not a restatement of it.
 
 ## Phase B: domain model → schema
