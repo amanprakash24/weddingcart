@@ -6,8 +6,7 @@ import Link from 'next/link';
 import { Vendor } from '@/types';
 import {
   CheckCircle, Calendar, Users, MapPin, Phone, Star,
-  ChevronRight, Heart, Sparkles, Clock, Utensils, Building2,
-  Camera, Music, Flower2, Crown
+  ChevronRight, Heart, Sparkles, Building2, Crown
 } from 'lucide-react';
 import {
   PlanFormData, EVENT_LABELS, SERVICE_ICONS, SERVICE_LABELS, EST_RANGES,

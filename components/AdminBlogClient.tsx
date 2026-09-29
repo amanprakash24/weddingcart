@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Plus, Edit, Trash2, Eye, EyeOff, RefreshCw, Calendar, BookOpen } from 'lucide-react';
 
 interface Blog {
@@ -22,7 +21,6 @@ function formatDate(d: string | null) {
 }
 
 export default function AdminBlogClient() {
-  const router = useRouter();
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);

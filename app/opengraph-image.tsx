@@ -60,6 +60,7 @@ export default async function Image() {
         />
 
         {/* Actual logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- next/og renders plain HTML into an image; next/image is not supported here */}
         <img
           src={logoSrc}
           alt="ShaadiShopping"

@@ -32,7 +32,7 @@ export function interpretBookingResponse(
 }
 
 export default function CartPageClient() {
-  const { items, total, removeItem, updateQty, clearCart } = useCart();
+  const { items, removeItem, updateQty, clearCart } = useCart();
   const [categories, setCategories] = useState<Category[]>([]);
   const [showBooking, setShowBooking] = useState(false);
   const [bookingForm, setBookingForm] = useState({ name: '', phone: '', city: 'Patna' });

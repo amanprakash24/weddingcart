@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { User, Phone, Mail, Calendar, Users, UtensilsCrossed, Building2, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Heart, Clock, X, MapPin } from 'lucide-react';
+import { User, Phone, Mail, Calendar, Users, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Clock, MapPin } from 'lucide-react';
 import WeddingDashboardClient from '@/components/WeddingDashboardClient';
 import { trackConsultationLeadConversion } from '@/lib/analytics/googleAds';
 import { PlanFormData, EVENT_LABELS } from '@/lib/planPreview';
@@ -59,8 +58,6 @@ const VENUE_TYPES = [
   { id: 'garden', label: 'Garden / Lawn', icon: '🌿', desc: 'Natural & fresh' },
   { id: 'own-home', label: 'Own Home', icon: '🏠', desc: 'Personal & intimate' },
 ];
-
-const TIMES = ['9:00 AM', '11:00 AM', '1:00 PM', '3:00 PM', '5:00 PM', '7:00 PM'];
 
 // Maps the homepage budget-picker slugs (?budget=...) to the nearest existing budgetRange tier below.
 const BUDGET_QUERY_MAP: Record<string, string> = {
