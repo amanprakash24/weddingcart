@@ -31,6 +31,12 @@ function makeLoginAttemptStore() {
       rows.push(row);
       return row;
     }),
+    deleteMany: mock(async (args: { where: { createdAt: { lt: Date } } }) => {
+      const keep = rows.filter((r) => r.createdAt.getTime() >= args.where.createdAt.lt.getTime());
+      const count = rows.length - keep.length;
+      rows.splice(0, rows.length, ...keep);
+      return { count };
+    }),
   };
 }
 
@@ -105,5 +111,68 @@ describe('isRequestRateLimited / recordRequest — general request-volume thrott
     await recordRequest('consultation:1.2.3.4');
     expect(store.rows).toHaveLength(1);
     expect(store.rows[0]).toMatchObject({ identifier: 'consultation:1.2.3.4', success: true });
+  });
+});
+
+describe('retention — rows older than 30 days are tidied up as the table is used', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const NOW = new Date('2026-09-30T12:00:00Z');
+  const seed = (store: ReturnType<typeof makeLoginAttemptStore>) => {
+    store.rows.push(
+      { identifier: 'admin@example.com', success: false, createdAt: new Date(NOW.getTime() - 45 * DAY) }, // old → removed
+      { identifier: 'consultation:1.2.3.4', success: true, createdAt: new Date(NOW.getTime() - 31 * DAY) }, // old → removed
+      { identifier: 'otp-send:1.2.3.4', success: true, createdAt: new Date(NOW.getTime() - 29 * DAY) }, // kept
+      { identifier: 'proposal-miss:1.2.3.4', success: true, createdAt: new Date(NOW.getTime() - 5 * 60 * 1000) } // in a live window → kept
+    );
+  };
+
+  test('pruneOldAttempts deletes only rows older than 30 days — never anything a limiter can still read', async () => {
+    const store = makeLoginAttemptStore();
+    const { pruneOldAttempts, RETENTION_DAYS } = await loadRateLimitWith(store);
+    seed(store);
+    expect(RETENTION_DAYS).toBe(30);
+    expect(await pruneOldAttempts(NOW)).toBe(2);
+    expect(store.rows.map((r) => r.identifier)).toEqual(['otp-send:1.2.3.4', 'proposal-miss:1.2.3.4']);
+    const cutoff = (store.deleteMany.mock.calls.at(-1) as unknown as [{ where: { createdAt: { lt: Date } } }])[0].where.createdAt.lt;
+    expect(cutoff.toISOString()).toBe(new Date(NOW.getTime() - 30 * DAY).toISOString());
+  });
+
+  test('it runs about one write in fifty: exactly when the dice say so', async () => {
+    const store = makeLoginAttemptStore();
+    const { maybePruneOldAttempts, PRUNE_CHANCE } = await loadRateLimitWith(store);
+    seed(store);
+    expect(PRUNE_CHANCE).toBe(1 / 50);
+    expect(await maybePruneOldAttempts(() => 0.5, NOW)).toBe(false);
+    expect(store.rows).toHaveLength(4);
+    expect(await maybePruneOldAttempts(() => 0.001, NOW)).toBe(true);
+    expect(store.rows).toHaveLength(2);
+  });
+
+  test('a failing tidy-up never throws — the request that triggered it is unaffected', async () => {
+    const store = makeLoginAttemptStore();
+    store.deleteMany.mockImplementation(async () => {
+      throw new Error('db down');
+    });
+    const { pruneOldAttempts, maybePruneOldAttempts } = await loadRateLimitWith(store);
+    expect(await pruneOldAttempts(NOW)).toBe(0);
+    expect(await maybePruneOldAttempts(() => 0, NOW)).toBe(true);
+  });
+
+  test('recordRequest and recordLoginAttempt still write their row even when the tidy-up fails', async () => {
+    const store = makeLoginAttemptStore();
+    store.deleteMany.mockImplementation(async () => {
+      throw new Error('db down');
+    });
+    const { recordRequest, recordLoginAttempt } = await loadRateLimitWith(store);
+    const realRandom = Math.random;
+    Math.random = () => 0; // force the tidy-up to run on these writes
+    try {
+      await recordRequest('consultation:9.9.9.9');
+      await recordLoginAttempt('admin@example.com', false);
+    } finally {
+      Math.random = realRandom;
+    }
+    expect(store.rows.map((r) => r.identifier)).toEqual(['consultation:9.9.9.9', 'admin@example.com']);
+    expect(store.deleteMany).toHaveBeenCalledTimes(2);
   });
 });
