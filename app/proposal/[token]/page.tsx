@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { proposalService } from '@/services/proposal.service';
 import { isPreviewBot } from '@/lib/quotation/proposal';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
+import { gateProposalView } from '@/lib/quotation/proposalViewGate';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import ProposalClient from '@/components/proposal/ProposalClient';
 
@@ -16,8 +17,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
   referrer: 'no-referrer',
 };
-
-const VIEW_LIMIT = { max: 30, windowMinutes: 15 } as const;
 
 function Notice({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -35,17 +34,17 @@ function Notice({ title, children }: { title: string; children: React.ReactNode 
 
 export default async function ProposalPage({ params }: { params: Promise<{ token: string }> }) {
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  const limiterId = `proposal-view:${ip}`;
-  if (await isRequestRateLimited(limiterId, VIEW_LIMIT)) {
+  const { token } = await params;
+  // Only a link that doesn't work is recorded for rate limiting — opening a valid link writes nothing (§15.5).
+  const result = await gateProposalView(
+    { ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown', token, isPreviewBot: isPreviewBot(h.get('user-agent')) },
+    { isLimited: isRequestRateLimited, recordMiss: recordRequest, view: (t, options) => proposalService.view(t, options) }
+  );
+  if (result.kind === 'limited') {
     return <Notice title="Please try again shortly">Too many requests from this connection. Please wait a few minutes and open the link again.</Notice>;
   }
-  await recordRequest(limiterId);
-
-  const { token } = await params;
-  const proposal = await proposalService.view(token, { trackView: !isPreviewBot(h.get('user-agent')) });
-  if (!proposal) {
+  if (result.kind === 'invalid') {
     return <Notice title="This link is no longer valid">It may have been replaced by a newer proposal. Please contact us and we will send you the latest one.</Notice>;
   }
-  return <ProposalClient token={token} initial={proposal} />;
+  return <ProposalClient token={token} initial={result.proposal} />;
 }
