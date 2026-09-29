@@ -33,6 +33,16 @@ import { describeLostReason, toStageReason, type NotProceedingKey } from '@/lib/
 import { eventDateWords } from '@/lib/crm/eventDate';
 import { journeyMessage, whatsappUrl } from '@/lib/crm/journeyMessage';
 import { buildFollowUpMessage, buildQuotationMessage, formatQuoteDate } from '@/lib/quotation/message';
+import {
+  CONFIRMED_NOTICE,
+  FOLLOW_UP_SENT_NOTE,
+  NOT_YET_NOTICE,
+  pendingPrompt,
+  pendingStillValid,
+  startPending,
+  type PendingSend,
+} from '@/lib/crm/whatsappConfirm';
+import SendConfirmBar from './SendConfirmBar';
 
 async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = 'POST') {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -51,6 +61,8 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   const [dialog, setDialog] = useState<Dialog>(null);
   const [showReason, setShowReason] = useState(false);
   const [followUps, setFollowUps] = useState(0);
+  // WhatsApp was opened (or the message copied) and we are waiting for the operator to say they pressed Send.
+  const [pendingSend, setPendingSend] = useState<PendingSend | null>(null);
   // Money v1: where the accepted quotation's confirmation payment stands, reported by the agreement card; and a counter that reopens
   // the card with its payment form open when the Next action is "Record payment".
   const [money, setMoney] = useState<AgreementMoneyView | null>(null);
@@ -178,49 +190,75 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
 
   // ---- what the buttons do (each one only calls an existing route) ----------------------------------------------------
 
-  const sendQuote = async () => {
-    if (!current) return;
-    const text = buildQuotationMessage(current, customerName, { eventDate });
+  // Sending is two steps (lib/crm/whatsappConfirm.ts): open WhatsApp — which records NOTHING — then the operator confirms
+  // they pressed Send. Only that confirmation marks the quote as sent (or logs the follow-up).
+  const quoteText = current ? buildQuotationMessage(current, customerName, { eventDate }) : null;
+  const followUpText = current ? buildFollowUpMessage(current, customerName, sentOn) : null;
+  const activePending = pendingStillValid(pendingSend, current, pendingSend?.kind === 'quote' ? quoteText : followUpText) ? pendingSend : null;
+
+  // Opens WhatsApp with the text (synchronously, before any await, so the browser allows the tab); if that isn't possible,
+  // copies the text instead. Returns how the message went out to the operator, or null if neither worked.
+  const openOrCopy = async (text: string): Promise<PendingSend['via'] | null> => {
     const url = whatsappUrl(customer.phone, text);
-    // Open the WhatsApp tab straight away (a popup opened after an await is blocked), then point it at the message once the
-    // quote has been marked as sent — or close it if the server refused.
     const win = url ? window.open('about:blank', '_blank') : null;
-    if (win) win.opener = null;
-    const sent = await quotesApi.act(current.id, '/send', undefined, 'Quote marked as sent.');
-    if (sent && win && url) {
+    if (win && url) {
+      win.opener = null;
       win.location.href = url;
-    } else {
-      win?.close();
-      if (sent) {
-        try {
-          await navigator.clipboard.writeText(text);
-          quotesApi.setNotice(url ? 'Quote marked as sent. Your browser blocked WhatsApp, so the message is copied — paste it into WhatsApp.' : 'Quote marked as sent. This number can’t be opened in WhatsApp, so the message is copied — send it yourself.');
-        } catch {
-          quotesApi.setNotice('Quote marked as sent, but the message could not be copied automatically.');
-        }
-      }
+      return 'whatsapp';
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      return 'copied';
+    } catch {
+      return null;
     }
   };
 
-  const followUp = async () => {
-    if (!current) return;
-    const text = buildFollowUpMessage(current, customerName, sentOn);
-    const url = whatsappUrl(customer.phone, text);
-    if (url) window.open(url, '_blank', 'noopener');
-    else {
-      try {
-        await navigator.clipboard.writeText(text);
-        quotesApi.setNotice('Follow-up message copied — send it yourself.');
-      } catch {
-        /* nothing more to do */
-      }
+  const openForConfirmation = async (kind: PendingSend['kind'], text: string | null) => {
+    if (!current || !text) return;
+    const via = await openOrCopy(text);
+    if (!via) {
+      quotesApi.setNotice('Could not open WhatsApp or copy the message — select the message text and copy it yourself. Nothing was marked as sent.');
+      return;
     }
-    setFollowUps((n) => n + 1);
+    const pending = startPending(kind, current.id, text, via);
+    setPendingSend(pending);
+    quotesApi.setNotice(pendingPrompt(pending).opened);
+  };
+
+  const sendQuote = () => openForConfirmation('quote', quoteText);
+
+  // "Yes, it's sent": only now is anything recorded.
+  const confirmPending = async () => {
+    if (!activePending || !current) return;
+    if (activePending.kind === 'quote') {
+      const done = await quotesApi.act(current.id, '/send', undefined, CONFIRMED_NOTICE.quote);
+      if (done) setPendingSend(null);
+      return;
+    }
     try {
-      await addNote('Follow-up message sent on WhatsApp');
+      await addNote(FOLLOW_UP_SENT_NOTE);
+      setFollowUps((n) => n + 1);
+      setPendingSend(null);
+      quotesApi.setNotice(CONFIRMED_NOTICE['follow-up']);
     } catch (e) {
       quotesApi.setLoadError((e as Error).message);
     }
+  };
+  const notYet = () => {
+    if (activePending) quotesApi.setNotice(NOT_YET_NOTICE[activePending.kind]);
+    setPendingSend(null);
+  };
+  // Fallback when the operator already sent the quote but the confirm bar is gone (e.g. the page was reloaded).
+  const markSent = async () => {
+    if (!current || current.status !== 'DRAFT') return;
+    if (!window.confirm('Mark this quote as sent? Only do this if you have already sent it to the customer yourself.')) return;
+    const done = await quotesApi.act(current.id, '/send', undefined, CONFIRMED_NOTICE.quote);
+    if (done) setPendingSend(null);
+  };
+
+  const followUp = async () => {
+    await openForConfirmation('follow-up', followUpText);
   };
 
   // Revise = make an editable copy of the quote, then open it so the prices can be changed straight away.
@@ -299,6 +337,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   };
   const onSecondary = (secondary: SecondaryActionId) => {
     if (secondary === 'revise-quote') return void reviseQuote();
+    if (secondary === 'mark-sent') return void markSent();
     setDialog(secondary === 'customer-accepted' ? 'accept' : secondary === 'customer-declined' ? 'decline' : 'not-proceeding');
   };
 
@@ -379,7 +418,16 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
         chips={{ quotation: quotationChip(current, state), booking: bookingChip(current, state) }}
         onTransition={transitionStage}
         onAssign={assign}
-        nextAction={<NextActionCard action={action} busy={busy} onPrimary={onPrimary} onSecondary={onSecondary} reasonPanel={reasonPanel} />}
+        nextAction={
+          <div className="grid gap-3">
+            {activePending && (
+              <div className="hidden md:block">
+                <SendConfirmBar prompt={pendingPrompt(activePending)} busy={busy} onYes={confirmPending} onNotYet={notYet} />
+              </div>
+            )}
+            <NextActionCard action={action} busy={busy} onPrimary={onPrimary} onSecondary={onSecondary} reasonPanel={reasonPanel} />
+          </div>
+        }
       />
 
       <JourneyStepper steps={steps} />
@@ -462,17 +510,23 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
       </div>
 
       {/* Phone: the one Next action stays within thumb reach, just above the admin's bottom navigation. */}
+      {/* While a "did you press Send?" answer is pending, that question takes this spot — coming back from WhatsApp on a
+          phone, it is the first thing within reach. */}
       <div className="fixed inset-x-0 bottom-[54px] z-30 border-t border-gray-200 bg-white px-3.5 py-2.5 shadow-[0_-6px_18px_rgba(17,24,39,0.06)] md:hidden">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onPrimary}
-          className={`flex min-h-[52px] w-full items-center justify-center rounded-xl px-5 text-base font-semibold text-white disabled:opacity-50 ${
-            action.quiet ? 'bg-gray-900' : 'bg-gradient-to-r from-amber-500 to-rose-500 shadow-md'
-          }`}
-        >
-          {busy ? 'Working…' : action.label}
-        </button>
+        {activePending ? (
+          <SendConfirmBar prompt={pendingPrompt(activePending)} busy={busy} onYes={confirmPending} onNotYet={notYet} />
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onPrimary}
+            className={`flex min-h-[52px] w-full items-center justify-center rounded-xl px-5 text-base font-semibold text-white disabled:opacity-50 ${
+              action.quiet ? 'bg-gray-900' : 'bg-gradient-to-r from-amber-500 to-rose-500 shadow-md'
+            }`}
+          >
+            {busy ? 'Working…' : action.label}
+          </button>
+        )}
       </div>
 
       {dialog === 'accept' && <AcceptDialog customerName={customerName} onSave={saveAcceptance} onClose={() => setDialog(null)} />}

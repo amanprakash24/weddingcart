@@ -22,7 +22,7 @@ export interface JourneyMessage {
   kind: 'quote' | 'follow-up' | 'thanks' | 'confirmed';
   label: string; // "Quote message"
   text: string;
-  cta: string; // "Send quote on WhatsApp"
+  cta: string; // "Open WhatsApp with the quote"
   hint: string; // one calm line under the preview
 }
 
@@ -43,8 +43,8 @@ export function journeyMessage(state: JourneyState, i: JourneyMessageInput): Jou
         kind: 'quote',
         label: 'Quote message',
         text: buildQuotationMessage(q, i.customerName, { eventDate: i.eventDate }),
-        cta: 'Send quote on WhatsApp',
-        hint: 'Ready to send. This only opens WhatsApp — you press send there.',
+        cta: 'Open WhatsApp with the quote',
+        hint: 'This only opens WhatsApp. After you press Send there, confirm here — only then is the quote marked as sent.',
       };
     case 'SENT':
       if (!q) return null;
@@ -52,7 +52,7 @@ export function journeyMessage(state: JourneyState, i: JourneyMessageInput): Jou
         kind: 'follow-up',
         label: 'Follow-up message',
         text: buildFollowUpMessage(q, i.customerName, i.sentOn),
-        cta: 'Send follow-up on WhatsApp',
+        cta: 'Open WhatsApp with the follow-up',
         hint: `The quote itself went out${i.sentOn ? ` on ${i.sentOn}` : ''}. A friendly nudge, no pressure.`,
       };
     case 'ACCEPTED':

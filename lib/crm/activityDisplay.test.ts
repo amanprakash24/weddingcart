@@ -5,12 +5,20 @@ import { activityView, type ActivityLike } from './activityDisplay';
 const row = (over: Partial<ActivityLike>): ActivityLike => ({ type: 'STATUS_CHANGED', summary: '', detail: null, performedByName: null, aiGenerated: false, ...over });
 
 describe('activityView — the stored sentence is the headline, the event code is audit-only', () => {
-  test('quotation sent', () => {
-    const v = activityView(row({ type: 'QUOTATION_SENT', summary: 'Quotation QTN-202609-0001 sent — total ₹5,00,000, advance ₹2,00,000, valid until 27 Sep 2026', performedByName: 'Gaurav' }));
-    expect(v.headline).toBe('Quotation sent to customer');
+  test('quotation sent — confirmed by the operator (the only way a quote is marked sent now)', () => {
+    const v = activityView(row({ type: 'QUOTATION_SENT', summary: 'Quotation QTN-202609-0001 sent (confirmed by staff) — total ₹5,00,000, advance ₹2,00,000, valid until 27 Sep 2026', performedByName: 'Gaurav' }));
+    expect(v.headline).toBe('Quotation sent to customer (confirmed by staff)');
     expect(v.body).toBe('QTN-202609-0001 · Total ₹5,00,000, advance ₹2,00,000, valid until 27 Sep 2026');
     expect(v.by).toBe('Gaurav');
     expect(v.auditCode).toBe('QUOTATION_SENT');
+    expect(v.tone).toBe('key');
+  });
+
+  test('an older "sent" entry (recorded when WhatsApp was opened) no longer claims the customer got it', () => {
+    const v = activityView(row({ type: 'QUOTATION_SENT', summary: 'Quotation QTN-202609-0002 sent — total ₹2,37,346, advance ₹0, valid until 29 Sept 2026' }));
+    expect(v.headline).toBe('Quotation marked as sent (WhatsApp opened — delivery not confirmed)');
+    expect(v.headline).not.toContain('sent to customer');
+    expect(v.body).toBe('QTN-202609-0002 · Total ₹2,37,346, advance ₹0, valid until 29 Sept 2026');
     expect(v.tone).toBe('key');
   });
 

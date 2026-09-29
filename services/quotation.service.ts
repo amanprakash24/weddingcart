@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
-import type { PipelineStage } from '@/generated/prisma/enums';
 import { ConflictError, DuplicateError, NotFoundError, ValidationError } from '@/lib/errors';
 import { describeSourceConflict } from '@/lib/quotation/conflict';
 import { isSourceKeyRule } from '@/lib/duplicateConstraint';
@@ -423,7 +422,8 @@ export const quotationService = {
         sourceType,
         sourceId,
         ActivityType.QUOTATION_SENT,
-        `Quotation ${q.quotationNumber} sent — total ${rupees(q.total)}, advance ${rupees(q.advanceAmount)}, valid until ${formatQuoteDate(q.validUntil) ?? '—'}`,
+        // "/send" is only called once the operator confirms they pressed Send (lib/crm/whatsappConfirm.ts), so say so.
+        `Quotation ${q.quotationNumber} sent (confirmed by staff) — total ${rupees(q.total)}, advance ${rupees(q.advanceAmount)}, valid until ${formatQuoteDate(q.validUntil) ?? '—'}`,
         null,
         actorId
       );

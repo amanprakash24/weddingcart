@@ -50,8 +50,13 @@ export function activityView(a: ActivityLike, opts: { lostReasonText?: string | 
   if ((m = summary.match(/^Assigned to (.+)$/))) return { ...base, headline: `Lead assigned to ${m[1]}`, body: null, tone: 'plain' };
   if (summary === 'Unassigned') return { ...base, headline: 'Lead unassigned', body: null, tone: 'plain' };
 
+  if ((m = summary.match(/^Quotation (\S+) sent \(confirmed by staff\) — (.+)$/))) {
+    return { ...base, headline: 'Quotation sent to customer (confirmed by staff)', body: `${m[1]} · ${capitalize(m[2])}`, tone: 'key' };
+  }
+  // Entries from before the confirm step: "sent" was recorded when WhatsApp was opened, not when the operator pressed
+  // Send — shown honestly, without rewriting the stored history.
   if ((m = summary.match(/^Quotation (\S+) sent — (.+)$/))) {
-    return { ...base, headline: 'Quotation sent to customer', body: `${m[1]} · ${capitalize(m[2])}`, tone: 'key' };
+    return { ...base, headline: 'Quotation marked as sent (WhatsApp opened — delivery not confirmed)', body: `${m[1]} · ${capitalize(m[2])}`, tone: 'key' };
   }
   if ((m = summary.match(/^Quotation (\S+) accepted by the customer via (.+?) — (.+)$/))) {
     return { ...base, headline: 'Customer accepted the quotation', body: [`${m[1]} · recorded via ${m[2]} · ${m[3]}`, a.detail && `“${a.detail}”`].filter(Boolean).join(' — '), tone: 'key' };
