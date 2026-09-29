@@ -13,7 +13,7 @@ export interface AvailabilityEntry {
   note?: string;
 }
 
-async function vendorForUser(userId: string) {
+export async function vendorForUser(userId: string) {
   const profile = await prisma.vendorProfile.findUnique({
     where: { userId },
     select: { vendorId: true, vendor: { select: { id: true, name: true, city: true, address: true, category: { select: { name: true } } } } },

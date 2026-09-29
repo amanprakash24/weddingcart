@@ -121,6 +121,43 @@ owned by the not-yet-written AI Assistant doc).
 
 ---
 
+## 8. Proposal view ("See my accepted work") — built 29 Sep 2026 (PR #135)
+
+Read-only view, behind vendor login, of the part of an **accepted** quotation that belongs to this vendor
+(08-quotation.md §15 D4). Not a new model: a projection of the existing Quotation (`services/vendorProposal.service.ts`,
+`lib/quotation/vendorProposal.ts`). Pages: `/vendor/proposals` (list, linked from the portal nav) and
+`/vendor/proposals/[quotationId]`. No API route, no actions, no writes, no migration.
+
+**ACCEPTED = vendor access begins. BOOKED = the accepted proposal has progressed to a booking; access continues.**
+Visible when the quotation is `ACCEPTED` **and** has at least one line with this vendor — nothing else is checked. A
+booking made from it only changes the label (*Accepted by the couple* → *Booked*); it is not a second requirement, and
+later changes to the booking or the CRM record (e.g. booking closed, enquiry lost) do not remove access.
+
+| Quotation | Vendor |
+|---|---|
+| DRAFT · SENT · SENT in negotiation · EXPIRED · REJECTED · SUPERSEDED | Hidden — one generic 404 |
+| ACCEPTED, no booking | Visible — *Accepted by the couple* |
+| ACCEPTED with a booking (any booking status) | Visible — *Booked* |
+
+Another vendor's quotation or an unknown/malformed id is the same 404 — the page never reveals whether a quotation exists.
+
+**Shown:** couple/wedding name, wedding date, guest count, city, event type · the vendor's own lines (category, function,
+description, quantity, unit price, line total) · the agreed amount = the sum of those lines · once a wedding exists, date,
+time and venue of only the functions this vendor is booked for (same rule as the existing portal).
+
+**Never shown:** other vendors (names, ids, categories, lines, prices), quotation subtotal/total, discount, GST, advance,
+balance, terms, inclusions/exclusions, internal notes, proposal link/token/hash, couple's view time, change requests,
+acceptance channel/note/date/who, customer phone/email/id, CRM stage/owner/lost reason, lead/consultation/enquiry ids,
+agreement snapshot, invoices, internal wedding number.
+
+**Isolation (server-side):** the vendor is always the logged-in user's own vendor (`vendorForUser`), never an id from the
+request · the database query only matches quotations with a line of that vendor and only selects that vendor's lines ·
+the projection re-checks each line's vendor and outputs an explicit allow-list · `proxy.ts` admits only the VENDOR role
+to `/vendor/*`, and each page checks it again.
+
+**Amount:** the agreed amount for the vendor's quoted items (price × quantity), as quoted. Commission tiers are a
+separate, later feature and are not applied here.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |
