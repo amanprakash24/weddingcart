@@ -24,6 +24,7 @@ export async function isRateLimited(identifier: string): Promise<boolean> {
 // a separate reset step).
 export async function recordLoginAttempt(identifier: string, success: boolean): Promise<void> {
   await prisma.loginAttempt.create({ data: { identifier, success } });
+  await maybePruneOldAttempts();
 }
 
 // General request-volume throttle — same Postgres-backed LoginAttempt table
@@ -81,4 +82,31 @@ export async function recordRequest(identifier: string): Promise<void> {
   } catch (err) {
     console.error('recordRequest: DB error, request left uncounted:', err);
   }
+  await maybePruneOldAttempts();
+}
+
+// ---- retention -------------------------------------------------------------------------------------------------
+// Every limiter above looks back at most 15 minutes, so older rows are never read — yet nothing removed them, and
+// login rows carry an email or phone. Rows older than RETENTION_DAYS are deleted as the table is used: roughly one
+// write in PRUNE_CHANCE also runs the delete (no scheduler, no secret, no extra infrastructure). 30 days keeps a month
+// of history for looking into login abuse. Never throws — a failed tidy-up must not affect the request that
+// triggered it.
+export const RETENTION_DAYS = 30;
+export const PRUNE_CHANCE = 1 / 50;
+
+export async function pruneOldAttempts(now: Date = new Date()): Promise<number> {
+  try {
+    const cutoff = new Date(now.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const { count } = await prisma.loginAttempt.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    return count;
+  } catch (err) {
+    console.error('pruneOldAttempts: DB error, old rows left for next time:', err);
+    return 0;
+  }
+}
+
+export async function maybePruneOldAttempts(random: () => number = Math.random, now?: Date): Promise<boolean> {
+  if (random() >= PRUNE_CHANCE) return false;
+  await pruneOldAttempts(now);
+  return true;
 }
