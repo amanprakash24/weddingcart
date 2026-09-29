@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { Playfair_Display, Cormorant_Garamond, DM_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import { CartProvider } from '@/context/CartContext';
 import AuthSessionProvider from '@/components/AuthSessionProvider';
@@ -13,25 +13,31 @@ import ScrollToTop from '@/components/ScrollToTop';
 import LeadCapturePopup from '@/components/LeadCapturePopup';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 
-const playfair = Playfair_Display({
-  subsets: ['latin'],
+// Self-hosted (app/fonts/, SIL Open Font License — see the OFL-*.txt files there): the same Latin variable-font files
+// Google Fonts served, so a build never downloads fonts. next/font/google did, and a failed download failed the whole
+// build. Same CSS variables and weights as before, so nothing else on the site changes.
+const playfair = localFont({
+  src: [{ path: './fonts/PlayfairDisplay-latin-variable.woff2', weight: '400 800', style: 'normal' }],
   variable: '--font-playfair',
   display: 'swap',
-  weight: ['400', '500', '600', '700', '800'],
+  adjustFontFallback: 'Times New Roman',
 });
 
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
+const cormorant = localFont({
+  src: [
+    { path: './fonts/CormorantGaramond-latin-variable.woff2', weight: '300 700', style: 'normal' },
+    { path: './fonts/CormorantGaramond-Italic-latin-variable.woff2', weight: '300 700', style: 'italic' },
+  ],
   variable: '--font-cormorant',
   display: 'swap',
-  weight: ['300', '400', '500', '600', '700'],
-  style: ['normal', 'italic'],
+  adjustFontFallback: 'Times New Roman',
 });
 
-const dmSans = DM_Sans({
-  subsets: ['latin'],
+const dmSans = localFont({
+  src: [{ path: './fonts/DMSans-latin-variable.woff2', weight: '100 1000', style: 'normal' }],
   variable: '--font-dm-sans',
   display: 'swap',
+  adjustFontFallback: 'Arial',
 });
 
 const DEFAULT_SITE_URL = 'https://www.shaadishopping.com';
