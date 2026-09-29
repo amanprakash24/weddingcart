@@ -31,6 +31,7 @@ import {
 } from '@/lib/crm/leadJourney';
 import { describeLostReason, toStageReason, type NotProceedingKey } from '@/lib/crm/notProceeding';
 import { eventDateWords } from '@/lib/crm/eventDate';
+import { serviceLabel } from '@/lib/serviceLabels';
 import { journeyMessage, whatsappUrl } from '@/lib/crm/journeyMessage';
 import { buildFollowUpMessage, buildQuotationMessage, formatQuoteDate } from '@/lib/quotation/message';
 import {
@@ -462,6 +463,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
             weddingNumber={weddingNumber}
             closedReason={closedReason}
             onChanged={load}
+            vendorSuggestions={sourceType === 'CONSULTATION' ? workspace.consultationVendorSelections : []}
             prefill={
               sourceType === 'CONSULTATION'
                 ? consultationQuotationPrefill(weddingDetails.services, workspace.consultationVendorSelections)
@@ -471,7 +473,10 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
                     category: v.vendorCategory,
                     vendorId: v.vendorId || undefined,
                   }))
-                : weddingDetails.services.map((service) => ({ description: service, category: service }))
+                : weddingDetails.services.map((service) => {
+                    const label = serviceLabel(service) ?? service;
+                    return { description: label, category: label };
+                  })
             }
           />
         </div>

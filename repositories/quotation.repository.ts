@@ -7,7 +7,8 @@ type Tx = Prisma.TransactionClient;
 // Every read includes the line items in their saved order — a quotation is never
 // meaningful without them.
 const withItems = {
-  items: { orderBy: { sortOrder: 'asc' } },
+  // Each line's vendor — only its name and category, so staff see who a line is for (the quote editor and card).
+  items: { orderBy: { sortOrder: 'asc' }, include: { vendor: { select: { id: true, name: true, city: true, category: { select: { name: true } } } } } },
   // The Booking created from this quotation, if any (Booking.quotationId is unique).
   booking: { select: { id: true, status: true } },
   // The advance invoice created automatically when the booking/lead converted to a wedding, if any.

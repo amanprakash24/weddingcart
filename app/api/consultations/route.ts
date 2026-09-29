@@ -6,6 +6,7 @@ import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { handleApiError } from '@/lib/errors';
 import { consultationCreateSchema } from './schema';
 import type { Consultation, ConsultationStatus } from '@/generated/prisma/client';
+import { SERVICE_LABELS } from '@/lib/serviceLabels';
 
 // Public, unauthenticated POST that sends a WhatsApp message to the admin's
 // own phone on every submission — unthrottled, this is spammable for real
@@ -55,18 +56,6 @@ export async function GET(req: NextRequest) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-const SERVICE_LABELS: Record<string, string> = {
-  venue: 'Venue', makeup: 'Makeup Artists', mehndi: 'Mehndi Artists',
-  decorator: 'Decorators', band: 'Band & Music', dj: 'DJ Services',
-  catering: 'Catering', 'photo-video': 'Photography & Video',
-  accommodation: 'Accommodation', gifts: 'Gifts', invitations: 'Invitations',
-  transport: 'Transportation', legal: 'Legal & Documentation',
-  hospitality: 'Hospitality', planning: 'Wedding Planning',
-  'bridal-lehenga': 'Bridal Lehenga', 'bridal-jewellery': 'Bridal Jewellery',
-  sherwani: 'Sherwani / Groom Wear', trousseau: 'Trousseau Packing',
-  sfx: 'SFX Effects', security: 'Security Guards & Bouncers',
-};
 
 const BUDGET_LABELS: Record<string, string> = {
   'under-5L': 'Under ₹5 Lakh', '5-10L': '₹5–10 Lakh',

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { isProposalPath } from '@/lib/proposalPath';
 import { Menu, X, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText, Phone, Search, ArrowRight, Gem, MapPin as MapPinIcon } from 'lucide-react';
 
 const VENDOR_OPTIONS = [
@@ -155,7 +156,8 @@ export default function Navbar() {
 
   const isTransparent = isHome && !scrolled && !mobileOpen;
 
-  if (isAdmin) return null;
+  // The admin has its own shell; the couple's private proposal page (/proposal/…) is a focused page of its own.
+  if (isAdmin || isProposalPath(pathname)) return null;
 
   return (
     <>
