@@ -449,3 +449,38 @@ couple on …" and, when the couple asked for changes, their note; the Next acti
 
 Payment gateway / UPI proof, automatic WhatsApp or email, customer login, PDF, AI, vendor approval workflow, e-signature, a
 separate Proposal table, line-by-line counter-offers, analytics beyond the first view.
+
+## 16. Customer Wedding Proposal (Step 7 — 29 Sep 2026)
+
+The proposal page (§15) used to read like a basic quotation viewer: lines such as "venue — 1 × ₹50,000". Inspection
+showed the page was faithful to the data — the lines themselves carried only raw service keys, no vendor and no
+function, because (a) pre-fill copied the consultation's service keys as descriptions, (b) a vendor chosen on the
+consultation *after* the draft was made never reached it, (c) the editor had no vendor field. Step 7 fixes both sides,
+**without a migration** (the line already has `vendorId` and `functionLabel`).
+
+**Data side (staff):**
+- One shared label map, `lib/serviceLabels.ts` (moved from the consultation route, which now imports it). Pre-fill
+  writes "Venue", "Photography & Video" … instead of `venue`, `photo-video`; unknown text is kept as written.
+- The quote editor has a **vendor picker per line** (the existing admin vendor search) and offers the consultation's
+  choice for that service as a one-click suggestion ("Use 7 Vachan — selected on the consultation").
+- The function field is labelled "Function (e.g. Wedding, Mehndi)"; the card shows each line's vendor and function.
+
+**Couple side (`/proposal/[token]`):**
+- Top: couple, date, guests, city, **Venue** (only when exactly one venue line names a vendor — never a generic
+  "venue"), number, version, valid-until, and a status in plain words (Awaiting your response / Changes requested /
+  Accepted / Booked / Expired), then the next step in one sentence.
+- One card per service: the service, **who provides it**, the function, quantity × price and line total. Older lines
+  stored with a raw key are displayed by their label; stored data is not changed.
+- For a linked **PUBLISHED** vendor: their public profile only — area and city, category, main photo, description
+  (shortened), features under "About [vendor]" (never under "Included"), guest capacity and venue type (venues only),
+  rating (only with reviews) and a "View profile" link. A vendor not published shows its name only.
+- Grouped by function only when **every** line has one; otherwise one list in the quote's order.
+- "What's included / not included / terms": the quotation's own fields, only when filled in.
+- **Your confirmed vendors**: once accepted and the booking became a wedding — CONFIRMED vendor bookings on that
+  wedding only (name, category, function, date, venue); **no prices** are read or shown.
+- The site's Navbar, Footer, contact banner and cart button are not shown on `/proposal` (a path check in each,
+  like `/admin`); `app/layout.tsx` is unchanged. The page has its own small Shaadi Shopping bar.
+
+**Never shown:** vendor owner name/phone/email, bank details, the vendor's agreed price, payouts, commission,
+declined/pending/cancelled vendor bookings, internal notes, CRM data, acceptance details, the token hash, the
+customer's phone. Not in Step 7 (no migration): package link, per-line inclusions, per-guest vs package pricing.

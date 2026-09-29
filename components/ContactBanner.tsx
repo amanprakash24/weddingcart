@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { isProposalPath } from '@/lib/proposalPath';
 import { X, Phone, Mail } from 'lucide-react';
 
 const WhatsAppIcon = () => (
@@ -20,7 +21,7 @@ export default function ContactBanner() {
     return () => clearTimeout(t);
   }, []);
 
-  if (pathname.startsWith('/admin') || !visible) return null;
+  if (pathname.startsWith('/admin') || isProposalPath(pathname) || !visible) return null;
 
   return (
     <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 flex flex-col items-end gap-2.5">

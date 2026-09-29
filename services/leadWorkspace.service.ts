@@ -87,6 +87,10 @@ export interface LeadWorkspace {
   consultationVendorSelections: {
     serviceKey: string;
     vendorId: string;
+    // Shown in the quote editor as the suggested vendor for that service's line.
+    vendorName: string;
+    vendorCity: string;
+    vendorCategory: string;
   }[];
   timeline: (ActivityLog & { performedByName: string | null })[];
   tasks: (Task & { assignedToName: string | null })[];
@@ -371,6 +375,9 @@ export const leadWorkspaceService = {
         (selection) => ({
           serviceKey: selection.serviceKey,
           vendorId: selection.vendorId,
+          vendorName: selection.vendor.name,
+          vendorCity: selection.vendor.city,
+          vendorCategory: selection.vendor.category.name,
         })
       ),
 

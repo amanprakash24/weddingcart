@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { isProposalPath } from '@/lib/proposalPath';
 import { Heart, Phone, Mail, MapPin, CheckCircle } from 'lucide-react';
 import { BIHAR_CITIES } from '@/data/biharCities';
 
@@ -93,7 +94,7 @@ export default function Footer() {
   };
 
   // The admin has its own navigation shell (like Navbar, CartFAB and ContactBanner, the public footer stays out of it).
-  if (pathname.startsWith('/admin')) return null;
+  if (pathname.startsWith('/admin') || isProposalPath(pathname)) return null;
 
   return (
     <footer style={{ background: '#2A1F1B' }} className="text-gray-400">

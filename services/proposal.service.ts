@@ -41,7 +41,7 @@ function sourceOf(q: { enquiryId: string | null; consultationId: string | null; 
 // (defaultDeps); tests pass fakes — so no test ever mocks shared modules process-wide (Bun's mock.module would leak
 // into other test files).
 export interface ProposalDeps {
-  db: Pick<typeof prisma, '$transaction'> & { vendor: Pick<typeof prisma.vendor, 'findMany'> };
+  db: Pick<typeof prisma, '$transaction'> & { vendor: Pick<typeof prisma.vendor, 'findMany'>; vendorBooking: Pick<typeof prisma.vendorBooking, 'findMany'> };
   findByTokenHash: typeof quotationRepository.findByCustomerTokenHash;
   findById: typeof quotationRepository.findById;
   expireOverdue: typeof expireOverdue;
@@ -78,9 +78,44 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
   async function customerView(q: QuotationWithItems, now: Date): Promise<CustomerProposal> {
     const { sourceType, sourceId } = sourceOf(q);
     const source = sourceType === 'LEAD' ? null : await deps.sourceFacts(sourceType, sourceId, prisma);
+    // Linked vendors: only their PUBLIC profile fields (what their public page already shows) — never the owner's
+    // contact details, bank details or anything commercial. toCustomerProposal then keeps profile details for
+    // PUBLISHED vendors only.
     const vendorIds = [...new Set(q.items.map((i) => i.vendorId).filter((v): v is string => !!v))];
-    const vendors = vendorIds.length ? await deps.db.vendor.findMany({ where: { id: { in: vendorIds } }, select: { id: true, name: true } }) : [];
-    return toCustomerProposal(q, source, new Map(vendors.map((v) => [v.id, v.name])), now);
+    const vendors = vendorIds.length
+      ? await deps.db.vendor.findMany({
+          where: { id: { in: vendorIds } },
+          select: {
+            id: true, name: true, slug: true, status: true, city: true, area: true, image: true, description: true, features: true,
+            guestCapacity: true, venueType: true, rating: true, reviewCount: true, category: { select: { name: true } },
+          },
+        })
+      : [];
+    const vendorMap = new Map(vendors.map((v) => [v.id, { ...v, category: v.category.name }]));
+
+    // "Your confirmed vendors" (Step 7): once the couple accepted and the booking became a wedding — the CONFIRMED
+    // vendor bookings on that wedding only; no prices are read.
+    const bookingId = q.status === 'ACCEPTED' ? q.booking?.id : undefined;
+    const confirmed = bookingId
+      ? await deps.db.vendorBooking.findMany({
+          where: { status: 'CONFIRMED', weddingEvent: { wedding: { sourceBookingId: bookingId } } },
+          select: {
+            vendor: { select: { name: true, category: { select: { name: true } } } },
+            weddingEvent: { select: { type: true, label: true, date: true, venueName: true } },
+          },
+        })
+      : [];
+    return toCustomerProposal(q, source, vendorMap, now, {
+      booked: q.booking?.status === 'CONFIRMED',
+      confirmedVendors: confirmed.map((c) => ({
+        vendorName: c.vendor.name,
+        category: c.vendor.category.name,
+        eventType: c.weddingEvent.type,
+        eventLabel: c.weddingEvent.label,
+        date: c.weddingEvent.date,
+        venueName: c.weddingEvent.venueName,
+      })),
+    });
   }
 
   return {

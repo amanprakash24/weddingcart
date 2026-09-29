@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { QuotationStatus } from '@/generated/prisma/enums';
 import { ValidationError } from '@/lib/errors';
 import type { BookingSource } from '@/lib/quotation/booking';
+import { serviceLabel } from '@/lib/serviceLabels';
 
 // ---- the secret link ----
 
@@ -84,6 +85,49 @@ export interface ProposalQuotationInput {
   items: { sortOrder: number; description: string; category: string | null; functionLabel: string | null; vendorId: string | null; unitPrice: number; quantity: number }[];
 }
 
+// A linked vendor's PUBLIC profile — only what already shows on their public page on the site (Step 7, §16). Never the
+// owner's name/phone/email, bank details or anything commercial.
+export interface ProposalVendorInput {
+  name: string;
+  slug: string;
+  status: string; // only PUBLISHED vendors show profile details; others show their name only
+  city: string;
+  area: string | null;
+  category: string;
+  image: string;
+  description: string;
+  features: string[];
+  guestCapacity: number | null;
+  venueType: string | null;
+  rating: number;
+  reviewCount: number;
+}
+
+export interface ProposalVendor {
+  name: string;
+  profile: {
+    category: string;
+    location: string | null;
+    image: string | null;
+    about: string | null;
+    features: string[];
+    guestCapacity: number | null; // venues only
+    venueType: string | null; // venues only
+    rating: { value: number; reviews: number } | null; // only when there are reviews
+    url: string; // the vendor's public page
+  } | null;
+}
+
+// A vendor booking on the wedding made from this (accepted) quotation — CONFIRMED only, never a price.
+export interface ConfirmedVendorInput {
+  vendorName: string;
+  category: string;
+  eventType: string;
+  eventLabel: string | null;
+  date: Date;
+  venueName: string | null;
+}
+
 export interface CustomerProposal {
   number: string;
   version: number;
@@ -91,9 +135,12 @@ export interface CustomerProposal {
   validUntil: string | null;
   acceptedAt: string | null;
   changesRequested: boolean;
+  booked: boolean; // the booking made from this proposal is confirmed
   couple: { name: string | null };
   wedding: { date: string | null; guestCount: number | null; city: string | null; eventType: string | null };
-  items: { category: string | null; functionLabel: string | null; description: string; vendorName: string | null; quantity: number; unitPrice: number; lineTotal: number }[];
+  venueName: string | null; // only when exactly one venue line names a vendor
+  items: { service: string | null; functionLabel: string | null; description: string; vendor: ProposalVendor | null; quantity: number; unitPrice: number; lineTotal: number }[];
+  confirmedVendors: { name: string; category: string; function: string; date: string; venueName: string | null }[];
   subtotal: number;
   discount: number;
   gstAmount: number | null; // null when GST is not charged
@@ -104,19 +151,78 @@ export interface CustomerProposal {
   terms: string | null;
 }
 
+const ABOUT_MAX = 280;
+const FEATURES_MAX = 6;
+
+function shorten(text: string, max: number): string | null {
+  const t = text.trim();
+  if (!t) return null;
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), max - 20)).trimEnd()}…`;
+}
+
+const isVenueCategory = (value: string | null | undefined) => /^venues?$/i.test((value ?? '').trim());
+
+export function toProposalVendor(v: ProposalVendorInput): ProposalVendor {
+  if (v.status !== 'PUBLISHED') return { name: v.name, profile: null };
+  const venue = isVenueCategory(v.category);
+  return {
+    name: v.name,
+    profile: {
+      category: v.category,
+      location: [v.area, v.city].filter((x) => x && x.trim()).join(', ') || null,
+      image: v.image?.trim() || null,
+      about: shorten(v.description ?? '', ABOUT_MAX),
+      features: (v.features ?? []).map((f) => f.trim()).filter(Boolean).slice(0, FEATURES_MAX),
+      guestCapacity: venue ? v.guestCapacity : null,
+      venueType: venue ? v.venueType : null,
+      rating: v.reviewCount > 0 ? { value: v.rating, reviews: v.reviewCount } : null,
+      url: `/vendors/${v.slug}`,
+    },
+  };
+}
+
 export function toCustomerProposal(
   q: ProposalQuotationInput,
   source: Pick<BookingSource, 'name' | 'city' | 'dateText' | 'guestCount' | 'eventType'> | null,
-  vendorNames: Map<string, string>,
-  now: Date
+  vendors: Map<string, ProposalVendorInput>,
+  now: Date,
+  after: { booked: boolean; confirmedVendors: ConfirmedVendorInput[] } = { booked: false, confirmedVendors: [] }
 ): CustomerProposal {
+  const items = [...q.items]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((i) => {
+      const v = i.vendorId ? vendors.get(i.vendorId) : undefined;
+      return {
+        // Older lines stored the raw service key ("venue") — shown by its name ("Venue"); stored data is unchanged.
+        service: serviceLabel(i.category),
+        functionLabel: i.functionLabel,
+        description: serviceLabel(i.description) ?? i.description,
+        vendor: v ? toProposalVendor(v) : null,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        lineTotal: i.unitPrice * i.quantity,
+      };
+    });
+  // A venue line: its service is "Venue", or its linked vendor is in the Venues category.
+  const venueNames = [
+    ...new Set(
+      q.items
+        .map((i) => ({ service: serviceLabel(i.category), v: i.vendorId ? vendors.get(i.vendorId) : undefined }))
+        .filter((x) => x.v && (isVenueCategory(x.service) || isVenueCategory(x.v.category)))
+        .map((x) => x.v!.name)
+    ),
+  ];
+  const state = proposalState(q, now);
   return {
     number: q.quotationNumber,
     version: q.revision,
-    state: proposalState(q, now),
+    state,
     validUntil: q.validUntil ? q.validUntil.toISOString() : null,
     acceptedAt: q.acceptedAt ? q.acceptedAt.toISOString() : null,
     changesRequested: q.changesRequestedAt !== null,
+    booked: state === 'ACCEPTED' && after.booked,
     couple: { name: source?.name ?? null },
     wedding: {
       date: source?.dateText ?? null,
@@ -124,17 +230,14 @@ export function toCustomerProposal(
       city: source?.city ?? null,
       eventType: source?.eventType ?? null,
     },
-    items: [...q.items]
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((i) => ({
-        category: i.category,
-        functionLabel: i.functionLabel,
-        description: i.description,
-        vendorName: i.vendorId ? vendorNames.get(i.vendorId) ?? null : null,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        lineTotal: i.unitPrice * i.quantity,
-      })),
+    venueName: venueNames.length === 1 ? venueNames[0] : null,
+    items,
+    confirmedVendors:
+      state === 'ACCEPTED'
+        ? [...after.confirmedVendors]
+            .sort((a, b) => a.date.getTime() - b.date.getTime())
+            .map((c) => ({ name: c.vendorName, category: c.category, function: c.eventLabel || c.eventType, date: c.date.toISOString(), venueName: c.venueName }))
+        : [],
     subtotal: q.subtotal,
     discount: q.discount,
     gstAmount: q.gstEnabled ? q.gstAmount : null,

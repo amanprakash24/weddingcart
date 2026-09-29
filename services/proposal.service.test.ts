@@ -47,7 +47,17 @@ const tx = { quotation: { updateMany, findUnique: mock(async () => ({ changesReq
 
 mock.module('@/lib/prisma', () => ({ prisma: {} }));
 const { createProposalService, ProposalNotFoundError } = await import('./proposal.service');
-const db = { ...tx, vendor: { findMany: mock(async () => [{ id: 'v1', name: 'Swayamvar Hall' }]) }, $transaction: mock(async (fn: (t: typeof tx) => unknown) => fn(tx)) };
+// The linked vendor as the database would return it for the public-profile select (owner contact fields are not selected).
+const hallRow = {
+  id: 'v1', name: 'Swayamvar Hall', slug: 'swayamvar-hall-patna', status: 'PUBLISHED', city: 'Patna', area: 'Boring Road', image: '', description: 'Grand hall',
+  features: ['AC'], guestCapacity: 500, venueType: 'indoor', rating: 0, reviewCount: 0, category: { name: 'Venues' },
+};
+const vendorFindMany = mock(async (args?: unknown) => (void args, [hallRow]));
+const confirmedRows = [
+  { vendor: { name: 'Artistic Mehndi Studio', category: { name: 'Mehndi' } }, weddingEvent: { type: 'WEDDING', label: null, date: new Date('2026-11-18T12:00:00Z'), venueName: null } },
+];
+const vendorBookingFindMany = mock(async (args?: unknown) => (void args, confirmedRows));
+const db = { ...tx, vendor: { findMany: vendorFindMany }, vendorBooking: { findMany: vendorBookingFindMany }, $transaction: mock(async (fn: (t: typeof tx) => unknown) => fn(tx)) };
 const proposalService = createProposalService({
   db: db as never,
   findByTokenHash: findByCustomerTokenHash as never,
@@ -62,7 +72,7 @@ const proposalService = createProposalService({
 
 beforeEach(() => {
   row = baseRow();
-  for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany]) m.mockClear();
+  for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany]) m.mockClear();
   accept.mockImplementation(async () => { row.status = 'ACCEPTED'; return {}; });
   createBooking.mockImplementation(async () => ({ id: 'b1' }));
 });
@@ -87,7 +97,8 @@ describe('view', () => {
     const p = await proposalService.view(TOKEN);
     expect(p?.state).toBe('OPEN');
     expect(p?.couple.name).toBe('Rahul & Priya');
-    expect(p?.items[0].vendorName).toBe('Swayamvar Hall');
+    expect(p?.items[0].vendor?.name).toBe('Swayamvar Hall');
+    expect(p?.items[0].vendor?.profile?.url).toBe('/vendors/swayamvar-hall-patna');
     expect(JSON.stringify(p)).not.toContain('internal');
     expect(JSON.stringify(p)).not.toContain('9876543210');
     expect(row.customerViewedAt).toBeInstanceOf(Date);
@@ -112,6 +123,40 @@ describe('view', () => {
   test('ACCEPTED stays viewable (thank-you state)', async () => {
     row.status = 'ACCEPTED';
     expect((await proposalService.view(TOKEN))?.state).toBe('ACCEPTED');
+  });
+});
+
+describe('view — Step 7: vendor public profile and confirmed vendors', () => {
+  test('the vendor query selects public profile fields only — never owner contact or bank details', async () => {
+    await proposalService.view(TOKEN);
+    const select = (vendorFindMany.mock.calls[0][0] as { select: Record<string, unknown> }).select;
+    for (const hidden of ['ownerName', 'ownerPhone', 'ownerEmail', 'paymentDetails', 'defaultTerms', 'priceMin', 'priceMax']) expect(select).not.toHaveProperty(hidden);
+  });
+
+  test('an open proposal never reads vendor bookings', async () => {
+    const p = await proposalService.view(TOKEN);
+    expect(vendorBookingFindMany).not.toHaveBeenCalled();
+    expect(p?.confirmedVendors).toEqual([]);
+    expect(p?.booked).toBe(false);
+  });
+
+  test('accepted + booked: confirmed vendors of the wedding made from THIS booking only, CONFIRMED only, no prices read', async () => {
+    row.status = 'ACCEPTED';
+    row.booking = { id: 'booking-1', status: 'CONFIRMED' };
+    const p = await proposalService.view(TOKEN);
+    const args = vendorBookingFindMany.mock.calls[0][0] as { where: unknown; select: Record<string, unknown> };
+    expect(args.where).toEqual({ status: 'CONFIRMED', weddingEvent: { wedding: { sourceBookingId: 'booking-1' } } });
+    expect(args.select).not.toHaveProperty('agreedPrice');
+    expect(p?.booked).toBe(true);
+    expect(p?.confirmedVendors).toEqual([{ name: 'Artistic Mehndi Studio', category: 'Mehndi', function: 'WEDDING', date: '2026-11-18T12:00:00.000Z', venueName: null }]);
+  });
+
+  test('accepted without a booking: no vendor bookings are read', async () => {
+    row.status = 'ACCEPTED';
+    row.booking = null;
+    const p = await proposalService.view(TOKEN);
+    expect(vendorBookingFindMany).not.toHaveBeenCalled();
+    expect(p?.booked).toBe(false);
   });
 });
 

@@ -88,7 +88,12 @@ export function toQuotationView(q: QuotationWithItems) {
     ...rest,
     hasCustomerLink: customerTokenHash !== null,
     balance: q.total - q.advanceAmount,
-    items: q.items.map((item) => ({ ...item, lineTotal: item.unitPrice * item.quantity })),
+    items: q.items.map(({ vendor, ...item }) => ({
+      ...item,
+      lineTotal: item.unitPrice * item.quantity,
+      // Staff-facing only (who the line is for); the couple's page builds its own allow-listed view (lib/quotation/proposal.ts).
+      vendor: vendor ? { id: vendor.id, name: vendor.name, city: vendor.city, category: vendor.category.name } : null,
+    })),
   };
 }
 export type QuotationView = ReturnType<typeof toQuotationView>;

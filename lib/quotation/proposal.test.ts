@@ -10,7 +10,9 @@ import {
   validateChangeNote,
   appendChangeNote,
   toCustomerProposal,
+  toProposalVendor,
   type ProposalQuotationInput,
+  type ProposalVendorInput,
 } from './proposal';
 
 const NOW = new Date('2026-10-01T10:00:00Z');
@@ -111,33 +113,111 @@ describe('toCustomerProposal — allow-list only', () => {
     items: [
       { sortOrder: 2, description: 'Catering — 350 plates', category: 'Catering', functionLabel: 'Wedding', vendorId: 'v2', unitPrice: 500, quantity: 350 },
       { sortOrder: 1, description: 'Banquet hall', category: 'Venue', functionLabel: null, vendorId: 'v1', unitPrice: 120000, quantity: 1 },
+      { sortOrder: 3, description: 'mehndi', category: 'mehndi', functionLabel: null, vendorId: null, unitPrice: 7000, quantity: 1 },
     ],
   } as unknown as ProposalQuotationInput;
   const source = { name: 'Rahul & Priya', phone: '9876543210', city: 'Patna', dateText: '2026-11-18', guestCount: 350, eventType: 'wedding' };
-  const vendors = new Map([['v1', 'Swayamvar Hall'], ['v2', 'ABC Caterers']]);
+  const vendor = (over: Partial<ProposalVendorInput>): ProposalVendorInput => ({
+    name: 'X', slug: 'x', status: 'PUBLISHED', city: 'Patna', area: null, category: 'Venues', image: '', description: '', features: [],
+    guestCapacity: null, venueType: null, rating: 0, reviewCount: 0, ...over,
+  });
+  // Dirty inputs: owner contact details etc. must never come out even if a query returned them.
+  const hall = {
+    ...vendor({ name: 'Swayamvar Hall', slug: 'swayamvar-hall-patna', area: 'Boring Road', image: 'https://img/hall.jpg', description: 'A grand hall.', features: ['AC hall', 'Parking'], guestCapacity: 500, venueType: 'indoor', rating: 4.5, reviewCount: 12 }),
+    ownerPhone: '9999999999',
+    ownerEmail: 'owner@hall.in',
+  } as ProposalVendorInput;
+  const caterer = vendor({ name: 'ABC Caterers', slug: 'abc-caterers', status: 'DRAFT', category: 'Catering', description: 'Unverified text', guestCapacity: 900 });
+  const vendors = new Map([['v1', hall], ['v2', caterer]]);
 
-  test('shows what the couple needs', () => {
+  test('shows what the couple needs — service, who provides it, function, quantity, price', () => {
     const p = toCustomerProposal(quotation, source, vendors, NOW);
     expect(p.number).toBe('QTN-202610-0007');
     expect(p.version).toBe(2);
     expect(p.state).toBe('OPEN');
     expect(p.couple.name).toBe('Rahul & Priya');
     expect(p.wedding).toEqual({ date: '2026-11-18', guestCount: 350, city: 'Patna', eventType: 'wedding' });
-    expect(p.items.map((i) => i.vendorName)).toEqual(['Swayamvar Hall', 'ABC Caterers']); // sorted by sortOrder
-    expect(p.items[1].lineTotal).toBe(175000);
+    expect(p.items.map((i) => i.vendor?.name ?? null)).toEqual(['Swayamvar Hall', 'ABC Caterers', null]); // sorted by sortOrder
+    expect(p.items[1]).toMatchObject({ service: 'Catering', functionLabel: 'Wedding', quantity: 350, unitPrice: 500, lineTotal: 175000 });
     expect(p.total).toBe(400000);
     expect(p.advanceAmount).toBe(100000);
     expect(p.gstAmount).toBeNull(); // GST not charged → not shown
   });
 
-  test('never contains internal notes, ids, token hash or the customer phone', () => {
-    const json = JSON.stringify(toCustomerProposal(quotation, source, vendors, NOW));
-    for (const secret of ['INTERNAL', 'margin', 'q-uuid-secret', 'deadbeef', 'consultation-uuid', 'staff-uuid', '9876543210', '"v1"', '"v2"']) {
+  test('an older line stored with the raw service key is shown by its name — the stored data is not changed', () => {
+    const p = toCustomerProposal(quotation, source, vendors, NOW);
+    expect(p.items[2]).toMatchObject({ service: 'Mehndi Artists', description: 'Mehndi Artists', vendor: null });
+  });
+
+  test('a PUBLISHED vendor shows its public profile; a vendor not published shows its name only', () => {
+    const p = toCustomerProposal(quotation, source, vendors, NOW);
+    expect(p.items[0].vendor).toEqual({
+      name: 'Swayamvar Hall',
+      profile: {
+        category: 'Venues',
+        location: 'Boring Road, Patna',
+        image: 'https://img/hall.jpg',
+        about: 'A grand hall.',
+        features: ['AC hall', 'Parking'],
+        guestCapacity: 500,
+        venueType: 'indoor',
+        rating: { value: 4.5, reviews: 12 },
+        url: '/vendors/swayamvar-hall-patna',
+      },
+    });
+    expect(p.items[1].vendor).toEqual({ name: 'ABC Caterers', profile: null });
+  });
+
+  test('profile details: capacity/venue type only for venues, rating only with reviews, long text shortened, at most 6 features', () => {
+    const photographer = toProposalVendor(
+      vendor({ category: 'Photographers', guestCapacity: 300, venueType: 'x', description: 'word '.repeat(100), features: ['1', '2', '3', '4', '5', '6', '7'] })
+    );
+    expect(photographer.profile?.guestCapacity).toBeNull();
+    expect(photographer.profile?.venueType).toBeNull();
+    expect(photographer.profile?.rating).toBeNull();
+    expect(photographer.profile?.about?.length).toBeLessThanOrEqual(281);
+    expect(photographer.profile?.about?.endsWith('…')).toBe(true);
+    expect(photographer.profile?.features).toHaveLength(6);
+  });
+
+  test('venue at the top: only when exactly one venue line names a vendor — never a generic "venue"', () => {
+    expect(toCustomerProposal(quotation, source, vendors, NOW).venueName).toBe('Swayamvar Hall');
+    const noVendor = { ...quotation, items: quotation.items.map((i) => ({ ...i, vendorId: null })) } as ProposalQuotationInput;
+    expect(toCustomerProposal(noVendor, source, vendors, NOW).venueName).toBeNull();
+    const two = {
+      ...quotation,
+      items: [...quotation.items, { sortOrder: 9, description: 'Lawn', category: 'Venue', functionLabel: 'Reception', vendorId: 'v3', unitPrice: 1, quantity: 1 }],
+    } as ProposalQuotationInput;
+    expect(toCustomerProposal(two, source, new Map([...vendors, ['v3', vendor({ name: 'Green Lawn' })]]), NOW).venueName).toBeNull();
+  });
+
+  test('confirmed vendors and "booked" only for an accepted proposal — names, function, date, venue; never a price', () => {
+    const accepted = { ...quotation, status: 'ACCEPTED', acceptedAt: NOW } as ProposalQuotationInput;
+    const confirmedVendors = [
+      { vendorName: 'Mehak Bridal Makeup', category: 'Makeup Artists', eventType: 'WEDDING', eventLabel: null, date: new Date('2026-11-18T12:00:00Z'), venueName: null },
+      { vendorName: 'Artistic Mehndi Studio', category: 'Mehndi', eventType: 'MEHNDI', eventLabel: 'Mehndi night', date: new Date('2026-11-17T12:00:00Z'), venueName: 'Home' },
+    ];
+    const p = toCustomerProposal(accepted, source, vendors, NOW, { booked: true, confirmedVendors });
+    expect(p.booked).toBe(true);
+    expect(p.confirmedVendors).toEqual([
+      { name: 'Artistic Mehndi Studio', category: 'Mehndi', function: 'Mehndi night', date: '2026-11-17T12:00:00.000Z', venueName: 'Home' },
+      { name: 'Mehak Bridal Makeup', category: 'Makeup Artists', function: 'WEDDING', date: '2026-11-18T12:00:00.000Z', venueName: null },
+    ]);
+    const open = toCustomerProposal(quotation, source, vendors, NOW, { booked: true, confirmedVendors });
+    expect(open.booked).toBe(false);
+    expect(open.confirmedVendors).toEqual([]);
+  });
+
+  test('never contains internal notes, ids, token hash, the customer phone or vendor owner details', () => {
+    const accepted = { ...quotation, status: 'ACCEPTED', acceptedAt: NOW } as ProposalQuotationInput;
+    const json = JSON.stringify(toCustomerProposal(accepted, source, vendors, NOW, { booked: true, confirmedVendors: [] }));
+    for (const secret of ['INTERNAL', 'margin', 'q-uuid-secret', 'deadbeef', 'consultation-uuid', 'staff-uuid', '9876543210', '9999999999', 'owner@hall.in', 'Unverified text', '"v1"', '"v2"']) {
       expect(json).not.toContain(secret);
     }
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW)).sort()).toEqual(
-      ['acceptedAt', 'advanceAmount', 'changesRequested', 'couple', 'discount', 'exclusions', 'gstAmount', 'inclusions', 'items', 'number', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'version', 'wedding'].sort()
+      ['acceptedAt', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'inclusions', 'items', 'number', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
     );
+    expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'lineTotal', 'quantity', 'service', 'unitPrice', 'vendor']);
   });
 
   test('GST is shown when charged', () => {

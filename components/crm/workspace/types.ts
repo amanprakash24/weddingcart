@@ -63,7 +63,7 @@ export interface LeadWorkspace {
     services: string[];
   };
   vendorInterest: { vendorId: string; vendorName: string; vendorCategory: string }[];
-  consultationVendorSelections: { serviceKey: string; vendorId: string }[];
+  consultationVendorSelections: { serviceKey: string; vendorId: string; vendorName: string; vendorCity: string; vendorCategory: string }[];
   timeline: WorkspaceActivity[];
   tasks: WorkspaceTask[];
   insights: WorkspaceInsight[];
@@ -111,6 +111,7 @@ export interface WorkspaceQuotation {
     category: string | null;
     functionLabel: string | null;
     vendorId: string | null;
+    vendor: { id: string; name: string; city: string; category: string } | null;
     unitPrice: number;
     quantity: number;
     lineTotal: number;
