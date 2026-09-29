@@ -3,28 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { isProposalPath } from '@/lib/proposalPath';
-import { Menu, X, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Music, Car, Gift, Mail, Star, Sparkles, FileText, Phone, Search, ArrowRight, Gem, MapPin as MapPinIcon } from 'lucide-react';
-
-const VENDOR_OPTIONS = [
-  { label: 'Wedding Venues',         slug: 'venue' },
-  { label: 'Bridal Makeup Artists',  slug: 'makeup' },
-  { label: 'Mehndi Artists',         slug: 'mehndi' },
-  { label: 'Wedding Decorators',     slug: 'decorator' },
-  { label: 'Wedding Photographers',  slug: 'photo-video' },
-  { label: 'Wedding Caterers',       slug: 'catering' },
-  { label: 'Wedding DJ',             slug: 'dj' },
-  { label: 'Wedding Band & Music',   slug: 'band' },
-  { label: 'Wedding Planners',       slug: 'planning' },
-  { label: 'Bridal Lehenga',         slug: 'bridal-lehenga' },
-  { label: 'Bridal Jewellery',       slug: 'bridal-jewellery' },
-  { label: 'Sherwani & Groom Wear',  slug: 'sherwani' },
-  { label: 'Wedding Transport',      slug: 'transport' },
-  { label: 'Wedding Gifts',          slug: 'gifts' },
-  { label: 'SFX Effects', slug: 'sfx' },
-  { label: 'Security Guards & Bouncers',    slug: 'security' },
-];
+import { Menu, X, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Star, Sparkles, FileText, Phone, ArrowRight } from 'lucide-react';
 
 const MEGA_MENU = [
   {
@@ -121,12 +102,8 @@ export default function Navbar() {
   const [megaOpen, setMegaOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(0);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [selectedVendor, setSelectedVendor] = useState('venue');
   const megaRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  const router = useRouter();
   const isAdmin = pathname.startsWith('/admin');
   const isHome = pathname === '/';
 
@@ -140,9 +117,6 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       if (megaRef.current && !megaRef.current.contains(e.target as Node)) {
         setMegaOpen(false);
-      }
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setSearchOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);

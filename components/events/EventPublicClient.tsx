@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 
 interface PassType {
   id: string;
@@ -92,7 +93,7 @@ export default function EventPublicClient({ event }: { event: EventData }) {
         <div>
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             {event.coverImage ? (
-              <img src={event.coverImage} alt={event.name} className="h-72 w-full object-cover" />
+              <Image src={event.coverImage} alt={event.name} width={1200} height={288} unoptimized className="h-72 w-full object-cover" />
             ) : null}
             <div className="p-6">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#8B1A4A]">Event</p>
