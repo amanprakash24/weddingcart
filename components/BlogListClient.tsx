@@ -111,7 +111,7 @@ function FeaturedCard({ blog }: { blog: Blog }) {
             <h2
               className="font-bold text-[#FFFCF7] leading-[1.18] mb-5 group-hover:text-[#E8D4A0] transition-colors duration-400"
               style={{
-                fontFamily: 'Playfair Display, serif',
+                fontFamily: 'var(--font-playfair), serif',
                 fontSize: 'clamp(1.45rem, 3vw, 2.15rem)',
               }}
             >
@@ -222,7 +222,7 @@ function BlogCard({ blog }: { blog: Blog }) {
           <span className="text-[#C5A46D] text-[10px] font-bold uppercase tracking-[0.18em]">{blog.category}</span>
         </div>
 
-        <h3 className="font-[Playfair_Display,serif] font-bold text-[#1C0A12] text-[15px] leading-snug mb-3 line-clamp-2 group-hover:text-[#8B1A4A] transition-colors duration-200 flex-1">
+        <h3 className="font-playfair font-bold text-[#1C0A12] text-[15px] leading-snug mb-3 line-clamp-2 group-hover:text-[#8B1A4A] transition-colors duration-200 flex-1">
           {blog.title}
         </h3>
 
@@ -270,7 +270,7 @@ function VendorSearchWidget() {
 
           <div className="mt-8 mb-3">
             <p className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.3em] mb-4">Discover</p>
-            <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl lg:text-4xl font-bold text-[#E8D4A0] leading-snug">
+            <h2 className="font-playfair text-2xl sm:text-3xl lg:text-4xl font-bold text-[#E8D4A0] leading-snug">
               Find the Best Wedding Vendors<br className="hidden sm:block" />
               <span className="italic text-[#C5A46D]"> with Trusted Reviews</span>
             </h2>
@@ -355,7 +355,7 @@ function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
           <p className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.28em] mb-2">Explore</p>
           <h2
             className="text-3xl sm:text-4xl font-bold text-[#1C0A12]"
-            style={{ fontFamily: 'Playfair Display, serif' }}
+            style={{ fontFamily: 'var(--font-playfair), serif' }}
           >
             Browse our Guides
           </h2>
@@ -407,7 +407,7 @@ function BrowseGuides({ onSelect }: { onSelect: (cat: string) => void }) {
               <h3
                 className="text-3xl sm:text-4xl font-bold italic leading-none mb-1 text-center"
                 style={{
-                  fontFamily: 'Playfair Display, serif',
+                  fontFamily: 'var(--font-playfair), serif',
                   color: '#FFFCF7',
                   textShadow: '0 2px 24px rgba(0,0,0,0.7)',
                 }}
@@ -464,7 +464,7 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
         <GoldDivider />
         <div className="mt-6">
           <p className="text-[#C5A46D] text-[11px] font-bold uppercase tracking-[0.25em] mb-2">Explore</p>
-          <h2 className="font-[Playfair_Display,serif] text-2xl sm:text-3xl font-bold text-[#1C0A12]">Browse by Category</h2>
+          <h2 className="font-playfair text-2xl sm:text-3xl font-bold text-[#1C0A12]">Browse by Category</h2>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5">
@@ -506,7 +506,7 @@ function BrowseByCategory({ onSelect }: { onSelect: (cat: string) => void }) {
                   <p
                     className="text-[#FFFCF7] font-bold italic leading-tight text-center transition-colors duration-300 group-hover:text-[#E8D4A0]"
                     style={{
-                      fontFamily: 'Playfair Display, serif',
+                      fontFamily: 'var(--font-playfair), serif',
                       fontSize: 'clamp(0.9rem, 1.9vw, 1.15rem)',
                       textShadow: '0 1px 8px rgba(0,0,0,0.6)',
                     }}
@@ -601,7 +601,7 @@ export default function BlogListClient() {
           </div>
 
           {/* Heading */}
-          <h1 className="font-[Playfair_Display,serif] font-bold text-[#FFFCF7] leading-[1.08] mb-6">
+          <h1 className="font-playfair font-bold text-[#FFFCF7] leading-[1.08] mb-6">
             <span className="block text-5xl sm:text-6xl lg:text-7xl">Wedding</span>
             <span
               className="block text-5xl sm:text-6xl lg:text-7xl italic"
@@ -620,7 +620,7 @@ export default function BlogListClient() {
           <div className="flex items-center gap-8 sm:gap-12">
             {[['500+', 'Articles'], ['10', 'Categories'], ['Daily', 'Updates']].map(([v, l]) => (
               <div key={l}>
-                <p className="font-[Playfair_Display,serif] font-bold text-[#C5A46D] text-xl">{v}</p>
+                <p className="font-playfair font-bold text-[#C5A46D] text-xl">{v}</p>
                 <p className="text-[#6B5B4D] text-[10px] uppercase tracking-[0.2em] mt-0.5">{l}</p>
               </div>
             ))}
@@ -669,7 +669,7 @@ export default function BlogListClient() {
         ) : blogs.length === 0 ? (
           <div className="text-center py-32">
             <BookOpen className="w-14 h-14 text-[#C5A46D]/30 mx-auto mb-5" />
-            <h3 className="font-[Playfair_Display,serif] text-xl font-bold text-[#1C0A12] mb-2">No posts yet</h3>
+            <h3 className="font-playfair text-xl font-bold text-[#1C0A12] mb-2">No posts yet</h3>
             <p className="text-[#9B8B7D] text-sm">
               {category !== 'All' ? `No posts in "${category}" yet.` : 'Check back soon for wedding inspiration.'}
             </p>

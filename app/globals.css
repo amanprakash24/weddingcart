@@ -52,6 +52,12 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-playfair, 'Playfair Display', serif);
 }
 
+/* Playfair Display utility — use this, never the literal name: the font is registered under its own name
+   (next/font, app/layout.tsx), so 'Playfair Display' alone never matches and shows a fallback serif. */
+.font-playfair {
+  font-family: var(--font-playfair, 'Playfair Display', serif);
+}
+
 /* Cormorant Garamond utility */
 .font-cormorant {
   font-family: var(--font-cormorant, 'Cormorant Garamond', Georgia, serif);
@@ -512,7 +518,7 @@ input[type="checkbox"], input[type="radio"] {
   line-height: 1.8;
 }
 .blog-prose h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-playfair, 'Playfair Display', serif);
   font-size: 1.5rem;
   font-weight: 700;
   color: #111827;
@@ -520,7 +526,7 @@ input[type="checkbox"], input[type="radio"] {
   line-height: 1.3;
 }
 .blog-prose h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-playfair, 'Playfair Display', serif);
   font-size: 1.2rem;
   font-weight: 600;
   color: #1f2937;
@@ -584,14 +590,14 @@ input[type="checkbox"], input[type="radio"] {
   height: 0;
 }
 .prose-editor .ProseMirror h2 {
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-playfair, 'Playfair Display', serif);
   font-size: 1.4rem;
   font-weight: 700;
   color: #111827;
   margin: 1.25rem 0 0.5rem;
 }
 .prose-editor .ProseMirror h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: var(--font-playfair, 'Playfair Display', serif);
   font-size: 1.15rem;
   font-weight: 600;
   color: #1f2937;

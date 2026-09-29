@@ -44,7 +44,7 @@ export default function CartDrawer() {
               <ShoppingCart className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-white font-bold text-lg font-[Playfair_Display,serif]">Wedding Plan</h2>
+              <h2 className="text-white font-bold text-lg font-playfair">Wedding Plan</h2>
               <p className="text-white/80 text-xs">{items.length} service{items.length !== 1 ? 's' : ''} selected</p>
             </div>
           </div>

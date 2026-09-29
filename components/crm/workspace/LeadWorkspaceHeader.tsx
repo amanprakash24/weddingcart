@@ -48,7 +48,7 @@ export default function LeadWorkspaceHeader({
         </button>
 
         <div>
-          <h1 className="text-[26px] font-bold leading-tight text-gray-900 font-[Playfair_Display,serif] sm:text-3xl">{customerName}</h1>
+          <h1 className="text-[26px] font-bold leading-tight text-gray-900 font-playfair sm:text-3xl">{customerName}</h1>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
             {weddingDate && (
               <span className="inline-flex items-center gap-1.5">

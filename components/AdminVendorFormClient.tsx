@@ -224,7 +224,7 @@ export default function AdminVendorFormClient({ vendorId }: { vendorId?: string 
           )}
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif] mb-1">
+        <h1 className="text-2xl font-bold text-gray-900 font-playfair mb-1">
           {isEdit ? `Edit ${vendor?.name || 'Vendor'}` : 'Add Vendor'}
         </h1>
         <p className="text-gray-500 text-sm mb-6">Fill in the details below — SEO metadata, schema, and internal links are generated automatically.</p>

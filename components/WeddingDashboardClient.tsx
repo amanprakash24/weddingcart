@@ -55,7 +55,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             </div>
             <div>
               <p className="text-white/80 text-sm font-medium mb-1">Your {eventLabel.toLowerCase()} plan is ready</p>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white font-[Playfair_Display,serif]">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white font-playfair">
                 Congratulations, {form.name.split(' ')[0]}! 🎉
               </h1>
             </div>
@@ -138,7 +138,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Recommended Venues for Your {eventLabel} in {form.city}</h2>
+              <h2 className="text-xl font-bold text-gray-900 font-playfair">Recommended Venues for Your {eventLabel} in {form.city}</h2>
               <p className="text-gray-500 text-sm mt-0.5">Shortlisted for {form.guestCount} guests · {form.days} day{form.days > 1 ? 's' : ''}</p>
             </div>
             <Link href="/categories/venue" className="text-sm text-rose-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all">
@@ -201,7 +201,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
               {catering.icon}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Catering Estimate</h2>
+              <h2 className="text-xl font-bold text-gray-900 font-playfair">Catering Estimate</h2>
               <p className="text-gray-500 text-sm">{catering.label} for {form.guestCount} guests</p>
             </div>
           </div>
@@ -235,7 +235,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Services You&apos;ve Selected</h2>
+                <h2 className="text-xl font-bold text-gray-900 font-playfair">Services You&apos;ve Selected</h2>
                 <p className="text-gray-500 text-sm mt-0.5">We&apos;ll find top-rated vendors in {form.city} for your {eventLabel.toLowerCase()}</p>
               </div>
               <span className="text-xs font-semibold bg-rose-100 text-rose-700 px-3 py-1 rounded-full">{selectedServices.length} services</span>
@@ -269,7 +269,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Your Wedding Checklist</h2>
+                <h2 className="text-xl font-bold text-gray-900 font-playfair">Your Wedding Checklist</h2>
                 <p className="text-gray-500 text-sm mt-0.5">
                   {checklist.filter((c) => !c.done).length} tasks remaining · {daysLeft ? `${daysLeft} days to wedding` : 'Date not set'}
                 </p>
@@ -315,7 +315,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-xl">💰</div>
               <div>
-                <h3 className="font-bold text-gray-900 text-lg font-[Playfair_Display,serif]">Budget Overview</h3>
+                <h3 className="font-bold text-gray-900 text-lg font-playfair">Budget Overview</h3>
                 {form.budgetRange && (
                   <p className="text-amber-700 font-semibold text-sm">{BUDGET_LABELS[form.budgetRange]}</p>
                 )}

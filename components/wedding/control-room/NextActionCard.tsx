@@ -37,7 +37,7 @@ export default function NextActionCard({
       className={`rounded-2xl border p-4 sm:p-6 ${calm ? 'border-emerald-100 bg-emerald-50/60' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-rose-50'}`}
     >
       <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Next action</p>
-      <h2 className="mt-1 font-[Playfair_Display,serif] text-2xl font-bold leading-snug text-gray-900 sm:text-3xl">{next.title}</h2>
+      <h2 className="mt-1 font-playfair text-2xl font-bold leading-snug text-gray-900 sm:text-3xl">{next.title}</h2>
       {next.detail && <p className="mt-1 text-sm text-gray-600">{next.detail}</p>}
       {more > 0 && <p className="mt-2 text-xs text-gray-500">{more} more {more === 1 ? 'thing needs' : 'things need'} attention — see below.</p>}
       {next.kind === 'MISSING_COORDINATOR' && (

@@ -163,7 +163,7 @@ export default function AdminCategoryDetailClient({ categoryId }: { categoryId: 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-4 left-5 flex items-center gap-3">
                   <span className="text-4xl">{category.icon}</span>
-                  <h1 className="text-2xl font-bold text-white font-[Playfair_Display,serif]">{category.name}</h1>
+                  <h1 className="text-2xl font-bold text-white font-playfair">{category.name}</h1>
                 </div>
               </div>
             )}
@@ -171,7 +171,7 @@ export default function AdminCategoryDetailClient({ categoryId }: { categoryId: 
               {!category.image && (
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-4xl">{category.icon}</span>
-                  <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif]">{category.name}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900 font-playfair">{category.name}</h1>
                 </div>
               )}
               <div className="flex flex-wrap gap-3">

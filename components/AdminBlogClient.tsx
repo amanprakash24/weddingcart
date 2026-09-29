@@ -68,7 +68,7 @@ export default function AdminBlogClient() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 font-[Playfair_Display,serif]">Blog Posts</h1>
+            <h1 className="text-2xl font-bold text-gray-900 font-playfair">Blog Posts</h1>
             <p className="text-gray-500 text-sm mt-0.5">
               {published} published · {drafts} draft{drafts !== 1 ? 's' : ''}
             </p>

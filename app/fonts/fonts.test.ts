@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 // The site's fonts are self-hosted (app/layout.tsx → next/font/local). A build that downloads fonts from Google fails
@@ -38,5 +38,31 @@ describe('self-hosted fonts', () => {
       expect(existsSync(file)).toBe(true);
       expect(readFileSync(file, 'utf8')).toContain('SIL OPEN FONT LICENSE Version 1.1');
     }
+  });
+});
+
+// The Playfair font is registered under its own name (next/font), so the literal family name "Playfair Display" never
+// matches — anything styled with it shows a fallback serif. Use the .font-playfair class or var(--font-playfair).
+describe('Playfair is always referenced through its CSS variable', () => {
+  const ROOT = join(APP, '..');
+  const walk = (dir: string): string[] =>
+    readdirSync(dir).flatMap((name) => {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) return name === 'node_modules' || name.startsWith('.') ? [] : walk(full);
+      return /\.(tsx?|css)$/.test(name) && !name.endsWith('.test.ts') ? [full] : [];
+    });
+  const sources = ['app', 'components', 'lib'].flatMap((d) => walk(join(ROOT, d)));
+
+  test('no literal Playfair font names in classes, inline styles or CSS rules', () => {
+    const offenders = sources.filter((file) => {
+      const text = readFileSync(file, 'utf8');
+      return /font-\[Playfair_Display/.test(text) || /['"]Playfair Display, serif['"]/.test(text) || /font-family:\s*'Playfair Display'/.test(text);
+    });
+    expect(offenders).toEqual([]);
+  });
+
+  test('the .font-playfair helper uses the variable', () => {
+    const css = readFileSync(join(APP, 'globals.css'), 'utf8');
+    expect(css).toMatch(/\.font-playfair\s*\{\s*font-family:\s*var\(--font-playfair/);
   });
 });

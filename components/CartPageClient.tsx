@@ -141,7 +141,7 @@ export default function CartPageClient() {
               <ShoppingCart className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white font-[Playfair_Display,serif]">Your Wedding Plan</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white font-playfair">Your Wedding Plan</h1>
               <p className="text-white/80 text-sm">{items.length} service{items.length !== 1 ? 's' : ''} selected · Review and consult our wedding expert</p>
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function CartPageClient() {
             <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
               <ShoppingCart className="w-10 h-10 text-amber-300" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2 font-[Playfair_Display,serif]">Your plan is empty</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2 font-playfair">Your plan is empty</h2>
             <p className="text-gray-500 text-sm mb-6">Start browsing vendors and add packages to build your dream wedding.</p>
             <Link href="/" className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-6 py-3 rounded-full font-semibold text-sm hover:opacity-90 transition-all">
               Browse Vendors <ArrowRight className="w-4 h-4" />
@@ -263,7 +263,7 @@ export default function CartPageClient() {
             {/* ── Right: Summary ── */}
             <div className="space-y-4">
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-24">
-                <h3 className="font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">Order Summary</h3>
+                <h3 className="font-bold text-gray-900 mb-4 font-playfair">Order Summary</h3>
 
                 <div className="space-y-4 mb-4">
                   {items.map((item) => {
@@ -336,7 +336,7 @@ export default function CartPageClient() {
           <div className="mt-14">
             <div className="flex items-center gap-3 mb-2">
               <CheckCircle className="w-5 h-5 text-amber-500" />
-              <h2 className="font-bold text-gray-900 text-xl font-[Playfair_Display,serif]">Complete Your Wedding</h2>
+              <h2 className="font-bold text-gray-900 text-xl font-playfair">Complete Your Wedding</h2>
             </div>
             <p className="text-gray-500 text-sm mb-6 ml-8">
               You haven&apos;t added these yet — explore vendors and add to your plan.
@@ -388,7 +388,7 @@ export default function CartPageClient() {
               >
                 <X className="w-4 h-4" />
               </button>
-              <h2 className="text-xl font-bold text-white font-[Playfair_Display,serif]">Consult a Wedding Expert</h2>
+              <h2 className="text-xl font-bold text-white font-playfair">Consult a Wedding Expert</h2>
               <p className="text-white/80 text-sm mt-1">Share your details — our expert will call you shortly.</p>
             </div>
 
@@ -481,7 +481,7 @@ export default function CartPageClient() {
               <div className="bg-white rounded-2xl px-5 py-3 inline-flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Image src="/logo.png" alt="ShaadiShopping" width={120} height={75} className="object-contain h-12 w-auto" />
               </div>
-              <h2 className="text-2xl font-bold text-white font-[Playfair_Display,serif]">Enquiry Received!</h2>
+              <h2 className="text-2xl font-bold text-white font-playfair">Enquiry Received!</h2>
               <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mt-1">We&apos;ll reach out shortly</p>
             </div>
 

@@ -202,7 +202,7 @@ export default function VendorOnboardingClient() {
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-emerald-500" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3 font-[Playfair_Display,serif]">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3 font-playfair">
             Application Submitted!
           </h2>
           <p className="text-gray-500 text-sm leading-relaxed mb-6">
@@ -235,7 +235,7 @@ export default function VendorOnboardingClient() {
           <motion.div variants={fadeUp} className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white px-4 py-1.5 rounded-full text-sm mb-4">
             <Sparkles className="w-4 h-4 text-amber-300" /> Vendor Partnership
           </motion.div>
-          <motion.h1 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-3 font-[Playfair_Display,serif]">
+          <motion.h1 variants={fadeUp} className="text-3xl sm:text-4xl font-bold text-white mb-3 font-playfair">
             Grow Your Business with <span className="text-amber-400">ShaadiShopping</span>
           </motion.h1>
           <motion.p variants={fadeUp} className="text-white/70 text-sm">

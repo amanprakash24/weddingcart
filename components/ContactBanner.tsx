@@ -41,7 +41,7 @@ export default function ContactBanner() {
               <p className="text-[0.6rem] text-[#C5A46D] font-semibold tracking-[0.24em] uppercase mb-1.5">
                 Wedding Concierge
               </p>
-              <h3 className="font-[Playfair_Display,serif] font-semibold text-[#2A1F1B] text-[1.05rem] leading-snug">
+              <h3 className="font-playfair font-semibold text-[#2A1F1B] text-[1.05rem] leading-snug">
                 Need Wedding Guidance?
               </h3>
               <p className="text-[#9A8A7A] text-[0.78rem] leading-relaxed mt-1.5">

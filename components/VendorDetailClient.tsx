@@ -196,7 +196,7 @@ export default function VendorDetailClient({ id }: Props) {
         <div className="absolute bottom-6 left-4 right-4 z-10">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white font-[Playfair_Display,serif] mb-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white font-playfair mb-1">
                 {vendor.name}
                 <span className="block text-sm sm:text-base font-normal text-white/80 mt-1">{categoryLabel} in {vendor.city}</span>
               </h1>
@@ -244,7 +244,7 @@ export default function VendorDetailClient({ id }: Props) {
 
             {/* Description */}
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-3 font-[Playfair_Display,serif]">About {vendor.name}</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-3 font-playfair">About {vendor.name}</h2>
               <p className="text-gray-600 leading-relaxed">{vendor.description}</p>
               {vendor.address && (
                 <p className="text-gray-500 text-sm mt-3 flex items-start gap-1.5">
@@ -256,7 +256,7 @@ export default function VendorDetailClient({ id }: Props) {
 
             {/* Amenities/Features */}
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">Services & Amenities</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 font-playfair">Services & Amenities</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {vendor.features.map((f) => (
                   <div key={f} className="flex items-center gap-2.5">
@@ -270,7 +270,7 @@ export default function VendorDetailClient({ id }: Props) {
             {/* Photo Gallery */}
             {images.length > 1 && (
               <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">Photo Gallery</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4 font-playfair">Photo Gallery</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {images.map((src, i) => (
                     <button
@@ -292,7 +292,7 @@ export default function VendorDetailClient({ id }: Props) {
             {vendor.mapEmbedUrl && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-6 pt-5 pb-3 flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900 font-[Playfair_Display,serif]">Location</h2>
+                  <h2 className="text-xl font-bold text-gray-900 font-playfair">Location</h2>
                   <a
                     href={`https://www.google.com/maps/search/${encodeURIComponent(vendor.name + ' ' + vendor.city)}`}
                     target="_blank"
@@ -390,7 +390,7 @@ export default function VendorDetailClient({ id }: Props) {
 
               return (
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                  <h2 className="text-xl font-bold text-gray-900 mb-5 font-[Playfair_Display,serif]">Packages & Pricing</h2>
+                  <h2 className="text-xl font-bold text-gray-900 mb-5 font-playfair">Packages & Pricing</h2>
                   {isGrouped ? (
                     <div className="space-y-6">
                       <div>
@@ -425,7 +425,7 @@ export default function VendorDetailClient({ id }: Props) {
             <div className="sticky top-24">
               {/* Quick actions */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-                <h3 className="font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">Quick Actions</h3>
+                <h3 className="font-bold text-gray-900 mb-4 font-playfair">Quick Actions</h3>
 
                 {/* WhatsApp — primary CTA */}
                 <a
@@ -495,7 +495,7 @@ export default function VendorDetailClient({ id }: Props) {
           crawlable answers actually appear on the page, not just in schema. */}
       {vendor.faqs && vendor.faqs.length > 0 && (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 font-playfair">
             Frequently Asked Questions
           </h2>
           <div className="space-y-3">
@@ -517,7 +517,7 @@ export default function VendorDetailClient({ id }: Props) {
       {/* Related categories for same city */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 font-[Playfair_Display,serif]">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 font-playfair">
             Other Wedding Services in {vendor.city}
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -613,7 +613,7 @@ export default function VendorDetailClient({ id }: Props) {
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-scale-in" onClick={(e) => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-amber-500 to-rose-500 px-6 py-4 rounded-t-2xl flex items-center justify-between">
               <div>
-                <h3 className="text-white font-bold text-lg font-[Playfair_Display,serif]">Send Enquiry</h3>
+                <h3 className="text-white font-bold text-lg font-playfair">Send Enquiry</h3>
                 <p className="text-white/80 text-xs">{vendor.name}</p>
               </div>
               <button onClick={() => setShowEnquiry(false)} className="text-white hover:text-white/80">

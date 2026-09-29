@@ -529,7 +529,7 @@ export default async function CityCategoryPage({
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3"
-              style={{ fontFamily: 'Playfair Display, serif' }}>
+              style={{ fontFamily: 'var(--font-playfair), serif' }}>
               {cat.plural} in {city.name}
             </h1>
             <p className="text-white/60 text-base max-w-2xl mb-6">
@@ -595,7 +595,7 @@ export default async function CityCategoryPage({
         {/* Editorial content */}
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="rounded-2xl p-8 border border-amber-100" style={{ background: 'rgba(197,164,109,0.05)' }}>
-            <h2 className="text-2xl font-bold mb-4" style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}>
+            <h2 className="text-2xl font-bold mb-4" style={{ fontFamily: 'var(--font-playfair), serif', color: '#1C0A12' }}>
               {cat.plural} in {city.name} — Complete Guide
             </h2>
             <p className="text-gray-600 leading-relaxed text-base">
@@ -620,7 +620,7 @@ export default async function CityCategoryPage({
 
         {/* FAQs */}
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <h2 className="text-2xl font-bold mb-8" style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}>
+          <h2 className="text-2xl font-bold mb-8" style={{ fontFamily: 'var(--font-playfair), serif', color: '#1C0A12' }}>
             Frequently Asked Questions
           </h2>
           <div className="space-y-4">
@@ -643,7 +643,7 @@ export default async function CityCategoryPage({
 
         {/* Other categories in same city */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 border-t border-gray-100">
-          <h2 className="text-xl font-bold mb-6" style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}>
+          <h2 className="text-xl font-bold mb-6" style={{ fontFamily: 'var(--font-playfair), serif', color: '#1C0A12' }}>
             Other Wedding Services in {city.name}
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -666,7 +666,7 @@ export default async function CityCategoryPage({
         {/* CTA */}
         <section className="bg-gradient-to-r from-amber-500 to-rose-500 py-12">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3" style={{ fontFamily: 'var(--font-playfair), serif' }}>
               Need help choosing the right {cat.name.toLowerCase()}?
             </h2>
             <p className="text-white/80 mb-6">

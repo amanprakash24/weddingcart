@@ -48,7 +48,7 @@ export default function Timeline({
   return (
     <section className="rounded-2xl border border-gray-100 bg-white" aria-label="Activity and notes">
       <div className="flex flex-wrap items-center justify-between gap-2 px-5 pb-1.5 pt-5">
-        <h2 className="text-lg font-bold text-gray-900 font-[Playfair_Display,serif]">Activity &amp; notes</h2>
+        <h2 className="text-lg font-bold text-gray-900 font-playfair">Activity &amp; notes</h2>
         <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500">
           <input type="checkbox" checked={audit} onChange={(e) => setAudit(e.target.checked)} className="h-4 w-4" />
           Audit details

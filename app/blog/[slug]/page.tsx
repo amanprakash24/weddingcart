@@ -262,7 +262,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             {/* Title */}
             <h1
               className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-5"
-              style={{ fontFamily: 'Playfair Display, serif', color: '#FFFCF7', letterSpacing: '-0.01em' }}
+              style={{ fontFamily: 'var(--font-playfair), serif', color: '#FFFCF7', letterSpacing: '-0.01em' }}
             >
               {blog.title}
             </h1>
@@ -387,7 +387,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             </span>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: '#C5A46D' }}>Written by</p>
-              <p className="font-bold text-lg mb-1" style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}>{blog.author}</p>
+              <p className="font-bold text-lg mb-1" style={{ fontFamily: 'var(--font-playfair), serif', color: '#1C0A12' }}>{blog.author}</p>
               <p className="text-sm leading-relaxed" style={{ color: '#6B5B4D' }}>
                 Wedding planning expert at ShaadiShopping — helping couples plan their dream weddings across India.
               </p>
@@ -421,7 +421,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                   </p>
                   <h2
                     className="text-2xl sm:text-3xl font-bold"
-                    style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}
+                    style={{ fontFamily: 'var(--font-playfair), serif', color: '#1C0A12' }}
                   >
                     More in {blog.category}
                   </h2>
@@ -491,7 +491,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                         </div>
                         <h3
                           className="font-bold text-sm leading-snug mb-3 line-clamp-2 transition-colors duration-300"
-                          style={{ fontFamily: 'Playfair Display, serif', color: '#1C0A12' }}
+                          style={{ fontFamily: 'var(--font-playfair), serif', color: '#1C0A12' }}
                         >
                           {post.title}
                         </h3>
