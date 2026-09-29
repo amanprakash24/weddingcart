@@ -432,7 +432,10 @@ ids, the token hash, or the customer's phone.
 ### 15.5 Protection
 
 - Token checked for shape before any lookup; unknown tokens get the same generic page as revoked ones.
-- Rate limits (existing `login_attempts` limiter): page views 30 / 15 min per IP; accept + request changes 10 / 15 min per IP.
+- Rate limits (existing `login_attempts` limiter): accept + request changes 10 / 15 min per IP. The page itself counts
+  only **failed lookups** (malformed / unknown / revoked link): 30 / 15 min per IP, checked before the lookup. Opening a
+  valid link writes no rate-limit row (30 Sep 2026, `lib/quotation/proposalViewGate.ts`) — its only write is the one-time
+  first view (D6).
 - `noindex, nofollow` (header + metadata), `robots.txt` disallow, `no-referrer`, page is `force-dynamic` (never cached);
   API responses `Cache-Control: no-store`.
 - Accept requires `agreeToTerms: true` in the request body.
