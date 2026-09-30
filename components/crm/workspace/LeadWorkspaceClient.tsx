@@ -44,6 +44,7 @@ import {
   type PendingSend,
 } from '@/lib/crm/whatsappConfirm';
 import SendConfirmBar from './SendConfirmBar';
+import VendorEnquiriesPanel from './VendorEnquiriesPanel';
 
 async function postJson(url: string, body: unknown, method: 'POST' | 'PATCH' = 'POST') {
   const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -186,6 +187,11 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   });
   const message = journeyMessage(state, { quotation: current, customerName, eventDate, sentOn, weddingNumber });
   const canOpenWhatsApp = whatsappUrl(customer.phone, '') !== null;
+  // Changes whenever the linked vendors may have changed, so the vendor-availability card reloads (04-vendor-os.md §9).
+  const vendorLinkKey = [
+    ...(quotesApi.quotations ?? []).map((q) => `${q.id}:${q.status}:${q.items.map((i) => i.vendorId ?? '-').join(',')}`),
+    ...workspace.consultationVendorSelections.map((s) => `${s.serviceKey}=${s.vendorId}`),
+  ].join('|');
 
   const scrollToQuote = () => quoteAnchor.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -479,6 +485,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
                   })
             }
           />
+          <VendorEnquiriesPanel sourceType={sourceType} sourceId={id} refreshKey={vendorLinkKey} readOnly={!!subject.wedding || state === 'NOT_PROCEEDING'} />
         </div>
 
         <div className="flex flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">

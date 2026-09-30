@@ -147,6 +147,7 @@ model User {
   timelineMilestonesOwned   TimelineMilestone[]
   documentsUploaded         Document[]
   quotationsCreated         Quotation[]         @relation("QuotationCreatedBy")
+  vendorEnquiriesAnswered   VendorEnquiry[]     @relation("VendorEnquiryAnsweredBy")
   quotationsAccepted        Quotation[]         @relation("QuotationAcceptedBy")
   aiConversations           AiConversation[]
   notifications             Notification[]
@@ -348,6 +349,7 @@ model Vendor {
   paymentDetails    VendorPaymentDetails?
   quotationItems    QuotationItem[]
   consultationSelections ConsultationVendorSelection[]
+  vendorEnquiries        VendorEnquiry[] @relation("VendorEnquiries")
   // Which wedding functions this vendor can serve (docs/wedding-os/11-vivah-os-ux-architecture.md §15) —
   // deliberately not a backfill: an existing vendor with zero rows here just has no known capabilities yet,
   // not an error. Establishes the data only; nothing reads this for matching/assignment yet (a later step).
@@ -519,6 +521,7 @@ model Lead {
   tasks            Task[]
   activities       ActivityLog[]
   quotations       Quotation[]
+  vendorEnquiries  VendorEnquiry[]
   insights         LeadInsight[]
   wedding          Wedding?
 
@@ -567,6 +570,7 @@ model Enquiry {
   tasks            Task[]
   activities       ActivityLog[]
   quotations       Quotation[]
+  vendorEnquiries  VendorEnquiry[]
   insights         LeadInsight[]
   wedding          Wedding?
   // Duplicate-Wedding guard (production-integrity fix) — lets a Booking
@@ -644,6 +648,7 @@ model Consultation {
   // above. One Consultation can produce multiple Enquiries.
   enquiries        Enquiry[]
   vendorSelections ConsultationVendorSelection[]
+  vendorEnquiries  VendorEnquiry[]
 
   // Production-hardening audit (2026-09-01) — see Lead's identical indexes
   // for the reasoning.
@@ -1094,6 +1099,8 @@ model Quotation {
   @@index([enquiryId])
   @@index([consultationId])
   @@index([status, validUntil])
+  vendorEnquiries VendorEnquiry[]
+
   @@map("quotations")
 }
 
@@ -1321,6 +1328,62 @@ model GuestFunctionResponse {
   @@map("guest_function_responses")
 }
 
+// Vendor enquiry (blueprint §43, docs/wedding-os/04-vendor-os.md §9): when staff link a vendor to a customer — on
+// the consultation or on a quote line — the vendor is asked, asynchronously, whether they can take it. Never blocks
+// sales; the customer never sees it. Created before any booking or wedding exists (a VendorBooking comes later).
+enum VendorEnquiryStatus {
+  PENDING // asked, no answer yet
+  AVAILABLE
+  AVAILABLE_WITH_CONDITIONS
+  NOT_AVAILABLE
+  ALTERNATE_DATE // vendor suggests another date
+  QUOTED // vendor sent their package / quote
+  WITHDRAWN // the vendor is no longer linked to this customer — nothing more is needed from them
+}
+
+model VendorEnquiry {
+  id        String @id @default(uuid())
+  vendorId  String
+  vendor    Vendor @relation("VendorEnquiries", fields: [vendorId], references: [id], onDelete: Restrict)
+  // "CONSULTATION:<id>" / "ENQUIRY:<id>" / "LEAD:<id>" — one enquiry per vendor per customer record (unique below;
+  // the three nullable source columns alone could not enforce it).
+  sourceKey String
+
+  leadId         String?
+  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  enquiryId      String?
+  enquiry        Enquiry?      @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  quotationId    String? // the quote that last linked this vendor, if any
+  quotation      Quotation?    @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+
+  // What the vendor is asked — operational facts only, never the couple's identity or the customer price.
+  services   String // "Venue, Decoration"
+  functions  String? // "Wedding, Reception"
+  eventDate  String? // as the customer gave it
+  guestCount Int?
+  city       String?
+  eventType  String?
+
+  status          VendorEnquiryStatus @default(PENDING)
+  responseNote    String?
+  suggestedDate   String?
+  quotedAmount    Int?
+  responseChannel String? // VENDOR_OS, or how staff heard it: PHONE / WHATSAPP / IN_PERSON / OTHER
+  respondedAt     DateTime?
+  respondedById   String?
+  respondedBy     User?     @relation("VendorEnquiryAnsweredBy", fields: [respondedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendorId, sourceKey])
+  @@index([vendorId, status])
+  @@index([sourceKey])
+  @@map("vendor_enquiries")
+}
+
 enum VendorBookingStatus {
   PENDING_VENDOR_CONFIRMATION
   CONFIRMED
@@ -1543,6 +1606,8 @@ enum ActivityType {
   INVOICE_CREATED
   QUOTATION_CHANGES_REQUESTED // the couple asked for changes on the proposal page
   PROPOSAL_VIEWED // the couple opened the proposal link for the first time
+  VENDOR_ENQUIRY_SENT // a vendor linked to this customer was asked for availability (04-vendor-os.md §9)
+  VENDOR_ENQUIRY_ANSWERED // the vendor answered (in Vendor OS, or recorded by staff)
 }
 
 model ActivityLog {

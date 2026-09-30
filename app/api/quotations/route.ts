@@ -4,6 +4,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
 import { quotationService } from '@/services/quotation.service';
+import { afterVendorLinkChange, sourceOfQuotation } from '@/lib/vendorEnquiry/hook';
 import { createQuotationSchema } from './schema';
 
 // Staff-only in V1 (docs/wedding-os/08-quotation.md §10): quotations carry pricing, so there is
@@ -36,6 +37,9 @@ export async function POST(req: NextRequest) {
   try {
     const { sourceType, sourceId, ...input } = createQuotationSchema.parse(await req.json());
     const created = await quotationService.create(sourceType, sourceId, input, session.user.id ?? null);
+    // Vendors linked on the quote are asked for availability (04-vendor-os.md §9) — best-effort, never fails the save.
+    const source = sourceOfQuotation(created);
+    if (source) await afterVendorLinkChange(source.sourceType, source.sourceId, session.user.id ?? null);
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (err) {
     return handleApiError(err);

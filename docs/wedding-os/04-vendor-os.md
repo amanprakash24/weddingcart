@@ -158,6 +158,27 @@ to `/vendor/*`, and each page checks it again.
 **Amount:** the agreed amount for the vendor's quoted items (price × quantity), as quoted. Commission tiers are a
 separate, later feature and are not applied here.
 
+## 9. Vendor enquiry & response ("Can you take this wedding?") — built 30 Sep 2026 (blueprint §43, Roadmap 1.1)
+
+When staff link a vendor to a customer — choosing them on the consultation, or on a quote line when a draft is saved
+— the vendor is **asked automatically** (`VendorEnquiry`, one per vendor per customer record; migration
+`20260930120000_add_vendor_enquiry`). A revision or re-save refreshes a still-pending enquiry (never a duplicate);
+removing the vendor from both the consultation and the quote **withdraws** it; linking them again asks again. An
+answered enquiry is never changed by a later save.
+
+**What the vendor sees before acceptance:** date, city, guests, event type, the service(s) and function(s) — never the
+couple's name or contact details, other vendors or the customer price (`toVendorEnquiryView` allow-list).
+
+**Answers:** Available · Available with conditions (conditions required) · Not available · Suggest another date (date
+required) · Sent a quote (amount or note). Given by the vendor in Vendor OS (`/vendor/enquiries`), or recorded by
+staff on the vendor's behalf with the channel (phone / WhatsApp / in person / other) — same validation either way.
+Only 1 vendor has a login today, so staff recording is the main path until more vendors onboard.
+
+**Never blocks sales:** saving, sending, accepting and booking a quote never read enquiries (guard test); the sync runs
+after the save, best-effort (`lib/vendorEnquiry/hook.ts`). **Staff alerts** (in-app until Block 3 notifications): the
+lead's "Vendor availability" card warns on *Not available* and *another date*; the timeline records "Enquiry sent" and
+"<vendor> answered …". **The customer never sees any of it** (guard test on the proposal page and its data).
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |
