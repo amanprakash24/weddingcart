@@ -1,4 +1,3 @@
-◇ injected env (16) from .env.local // tip: ⌘ suppress logs { quiet: true }
 -- CreateEnum
 CREATE TYPE "VendorEnquiryStatus" AS ENUM ('PENDING', 'AVAILABLE', 'AVAILABLE_WITH_CONDITIONS', 'NOT_AVAILABLE', 'ALTERNATE_DATE', 'QUOTED', 'WITHDRAWN');
 
