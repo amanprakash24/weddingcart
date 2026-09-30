@@ -3,7 +3,7 @@ import GrowthPartnerPageClient from '@/components/growthPartner/GrowthPartnerPag
 
 // Public page for the Shaadi Shopping Growth Partner Program (docs/wedding-os/14-growth-partner.md).
 export const metadata: Metadata = {
-  title: 'Growth Partner Program — Connect. Refer. Earn. | ShaadiShopping',
+  title: 'Growth Partner Program — Connect. Refer. Earn.',
   description:
     'Have wedding-related contacts? Refer venues, vendors, clients or events to Shaadi Shopping and earn an agreed referral payout when the business is completed. Part-time, flexible, no joining fee.',
   alternates: { canonical: '/growth-partner' },
