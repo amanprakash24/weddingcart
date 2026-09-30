@@ -40,7 +40,7 @@ Decision 18 (work log) started 30 Sep 2026.
 **0 · Stabilise** — merge lint PRs (#142, then PR B), real walkthrough (8B-A), onboard 2–3 vendor logins, staff brief.
 
 **1 · Close the MVP flow**
-1. Vendor enquiry & response (§43): vendors on a proposal get the request in Vendor OS and answer Available / Not
+1. **Built 30 Sep 2026 — see 04-vendor-os.md §9.** Vendor enquiry & response (§43): vendors on a proposal get the request in Vendor OS and answer Available / Not
    available / With conditions / Another date; never blocks sales; staff alerted on "not available".
 2. Proposal vs. detailed quotation as separate experiences (Decision 10).
 3. Customer payment: UPI/QR + payment proof; receipts.

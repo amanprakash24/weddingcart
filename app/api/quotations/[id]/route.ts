@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { quotationService } from '@/services/quotation.service';
+import { afterVendorLinkChange, sourceOfQuotation } from '@/lib/vendorEnquiry/hook';
 import { updateQuotationSchema } from '../schema';
 
 type Params = { params: Promise<{ id: string }> };
@@ -23,7 +24,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
     const input = updateQuotationSchema.parse(await req.json());
-    return NextResponse.json({ success: true, data: await quotationService.update((await params).id, input) });
+    const updated = await quotationService.update((await params).id, input);
+    // Vendors linked on the quote are asked for availability (04-vendor-os.md §9) — best-effort, never fails the save.
+    const source = sourceOfQuotation(updated);
+    if (source) await afterVendorLinkChange(source.sourceType, source.sourceId, null);
+    return NextResponse.json({ success: true, data: updated });
   } catch (err) {
     return handleApiError(err);
   }
@@ -33,7 +38,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
-    await quotationService.deleteDraft((await params).id);
+    const id = (await params).id;
+    // Read first: after the delete, the draft (and so its customer record) is gone.
+    let draft: Awaited<ReturnType<typeof quotationService.getById>> | null = null;
+    try {
+      draft = await quotationService.getById(id);
+    } catch {
+      draft = null; // not found here → deleteDraft below reports it properly
+    }
+    await quotationService.deleteDraft(id);
+    // A discarded draft may drop vendors (or bring back the predecessor's) — the enquiries follow. Best-effort.
+    const source = draft ? sourceOfQuotation(draft) : null;
+    if (source) await afterVendorLinkChange(source.sourceType, source.sourceId, null);
     return NextResponse.json({ success: true });
   } catch (err) {
     return handleApiError(err);
