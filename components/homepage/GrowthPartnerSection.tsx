@@ -1,64 +1,65 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
-import { Building2, Camera, Heart, PartyPopper, Handshake } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { trackEvent } from '@/lib/analytics/events';
 
-// Homepage entry to the Growth Partner Program (docs/wedding-os/14-growth-partner.md). Introduces the program and
-// sends visitors to /growth-partner — no form here, so the homepage doesn't read like a recruitment site.
-const MAROON = '#8B1A4A';
+// Homepage entry to the Growth Partner Program (docs/wedding-os/14-growth-partner.md). Introduces the program in the
+// homepage's own luxury language and sends visitors to /growth-partner — no form here, so the homepage never reads
+// like a recruitment site.
 const serif = { fontFamily: 'var(--font-playfair), serif' };
+const script = { fontFamily: 'var(--font-cormorant), Georgia, serif' };
 
 export default function GrowthPartnerSection() {
   return (
-    <section aria-labelledby="growth-partner-home" className="bg-[#FFFAF5] px-4 py-14 sm:py-20">
-      <div className="mx-auto grid max-w-6xl items-center gap-8 overflow-hidden rounded-3xl border border-[#C5A46D]/25 bg-white p-6 sm:p-10 lg:grid-cols-[1.2fr_1fr]">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#C5A46D]">Have wedding industry contacts?</p>
-          <h2 id="growth-partner-home" className="mt-2 text-3xl font-semibold text-[#2A1F1B] sm:text-4xl" style={serif}>
+    <section aria-labelledby="growth-partner-home" className="bg-[#FFFAF5] px-4 py-16 sm:px-6 sm:py-24">
+      <motion.div
+        initial={{ opacity: 0, y: 28 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-60px' }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="mx-auto grid max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-[0_30px_80px_rgba(42,6,20,0.12)] lg:grid-cols-2"
+      >
+        <div className="relative min-h-[300px] lg:min-h-[520px]">
+          <Image src="/cat-real-weddings.jpg" alt="" fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover object-center" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#1E0510]/85 via-[#1E0510]/30 to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-[#1E0510]/10" />
+          <p className="absolute inset-x-6 bottom-6 text-2xl italic leading-snug text-white lg:hidden" style={script}>
+            Your network → Shaadi Shopping → shared growth
+          </p>
+        </div>
+        <div className="flex flex-col justify-center p-8 sm:p-12">
+          <p className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#B08D55]">
+            <span className="h-px w-8 bg-[#C5A46D]" />
+            Have wedding industry contacts?
+          </p>
+          <h2 id="growth-partner-home" className="mt-5 text-4xl leading-tight text-[#2A1F1B] sm:text-[44px]" style={serif}>
             Become a Shaadi Shopping Growth Partner
           </h2>
-          <p className="mt-2 text-xl font-semibold" style={{ ...serif, color: MAROON }}>Connect. Refer. Earn.</p>
-          <p className="mt-3 max-w-xl text-[#4A3F38]">
+          <p className="mt-3 text-3xl italic text-[#8B1A4A]" style={script}>Connect. Refer. Earn.</p>
+          <p className="mt-5 text-[15px] leading-relaxed text-[#5A4A40]">
             Refer venues, vendors, clients or events to Shaadi Shopping and earn an agreed referral payout when your referral successfully converts into business.
           </p>
-          <p className="mt-3 text-sm font-medium text-[#6B5B4D]">Part-time • Flexible • No joining fee</p>
-          <div className="mt-6 flex flex-wrap items-center gap-4">
+          <span className="mt-6 block h-px w-24 bg-gradient-to-r from-[#C5A46D] to-transparent" />
+          <p className="mt-4 text-[12px] font-medium uppercase tracking-[0.18em] text-[#7A6556]">Part-time · Flexible · No joining fee</p>
+          <div className="mt-8 flex flex-wrap items-center gap-5">
             <Link
               href="/growth-partner"
               onClick={() => trackEvent('growth_partner_cta_click', { location: 'homepage' })}
-              className="inline-flex min-h-[48px] items-center rounded-xl px-6 text-base font-semibold text-white shadow-md"
-              style={{ background: MAROON }}
+              className="inline-flex min-h-[52px] items-center rounded-full bg-gradient-to-r from-[#8B1A4A] via-[#9E2A55] to-[#C5A46D] px-8 text-[15px] font-semibold tracking-wide text-white shadow-[0_12px_32px_rgba(139,26,74,0.3)]"
             >
               Become a Growth Partner →
             </Link>
-            <Link href="/growth-partner#how" onClick={() => trackEvent('growth_partner_cta_click', { location: 'homepage-how' })} className="text-sm font-medium underline underline-offset-4" style={{ color: MAROON }}>
+            <Link
+              href="/growth-partner#how"
+              onClick={() => trackEvent('growth_partner_cta_click', { location: 'homepage-how' })}
+              className="text-sm font-medium text-[#8B1A4A] underline decoration-[#C5A46D] underline-offset-4"
+            >
               Learn how it works
             </Link>
           </div>
         </div>
-
-        {/* A simple "network" illustration: the partner in the middle, connecting the four kinds of referral. */}
-        <div aria-hidden="true" className="relative mx-auto aspect-square w-full max-w-[320px]">
-          <div className="absolute inset-[18%] rounded-full border-2 border-dashed border-[#C5A46D]/50" />
-          <div className="absolute left-1/2 top-1/2 flex h-24 w-24 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-white shadow-lg" style={{ background: MAROON }}>
-            <Handshake className="h-10 w-10" />
-          </div>
-          {[
-            { Icon: Building2, pos: 'left-1/2 top-0 -translate-x-1/2', label: 'Venues' },
-            { Icon: Camera, pos: 'right-0 top-1/2 -translate-y-1/2', label: 'Vendors' },
-            { Icon: Heart, pos: 'left-1/2 bottom-0 -translate-x-1/2', label: 'Clients' },
-            { Icon: PartyPopper, pos: 'left-0 top-1/2 -translate-y-1/2', label: 'Events' },
-          ].map(({ Icon, pos, label }) => (
-            <div key={label} className={`absolute ${pos} flex flex-col items-center`}>
-              <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#C5A46D]/40 bg-[#FFF3E6]">
-                <Icon className="h-7 w-7" style={{ color: MAROON }} />
-              </span>
-              <span className="mt-1 text-xs font-medium text-[#6B5B4D]">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

@@ -128,7 +128,8 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
 
-  const isTransparent = isHome && !scrolled && !mobileOpen;
+  // Pages that open on a full-screen photo hero get the homepage's transparent navbar until scrolled.
+  const isTransparent = (isHome || pathname === '/growth-partner') && !scrolled && !mobileOpen;
 
   // The admin has its own shell; the couple's private proposal page (/proposal/…) is a focused page of its own.
   if (isAdmin || isProposalPath(pathname)) return null;

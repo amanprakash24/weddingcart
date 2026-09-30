@@ -1,27 +1,30 @@
 'use client';
 
 import { useState } from 'react';
-import { Building2, Camera, Heart, PartyPopper, Handshake, Send, Briefcase, CheckCircle2, IndianRupee, ChevronDown, Users, Clock, BadgeCheck, Phone, MessageCircle } from 'lucide-react';
-import { PARTNER_CATEGORIES, NETWORK_TYPES, REFERRAL_TYPES, REFERRAL_TYPE_LABEL, type ReferralType } from '@/lib/growthPartner/labels';
+import Image from 'next/image';
+import { motion, MotionConfig } from 'framer-motion';
+import { IndianRupee, Clock, Handshake, BadgeCheck, Phone, MessageCircle, Plus, Minus } from 'lucide-react';
+import GrowthPartnerForms from './GrowthPartnerForms';
 import { trackEvent } from '@/lib/analytics/events';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
 
-// Growth Partner Program page (docs/wedding-os/14-growth-partner.md). Mobile-first, brand maroon + gold + ivory.
-// No fixed payout amounts anywhere — payout depends on category, business value and agreed terms.
+// Growth Partner Program page (docs/wedding-os/14-growth-partner.md), in the same luxury language as the homepage:
+// cinematic imagery with deep maroon overlays, Playfair headlines, gold Cormorant italics, gold hairlines, generous
+// space. Our own wedding photography only. No fixed payout amounts anywhere — payout depends on agreed terms.
 
-const MAROON = '#8B1A4A';
 const serif = { fontFamily: 'var(--font-playfair), serif' };
+const script = { fontFamily: 'var(--font-cormorant), Georgia, serif' };
 
 const WHO = [
-  'Event Planners / Coordinators', 'Wedding Professionals', 'Photographers', 'Decorators', 'Caterers', 'Makeup Artists',
-  'DJs / Entertainment', 'Banquet / Hotel / Resort Staff', 'Venue Managers / Sales Executives', 'Freelancers', 'Students',
-  'Part-time workers', 'Local networkers', 'Anyone with genuine wedding contacts',
+  'Event Planners & Coordinators', 'Wedding Professionals', 'Photographers', 'Decorators', 'Caterers', 'Makeup Artists',
+  'DJs & Entertainment', 'Banquet, Hotel & Resort Staff', 'Venue Managers & Sales Executives', 'Freelancers', 'Students',
+  'Part-time Workers', 'Local Networkers', 'Anyone with genuine wedding contacts',
 ];
 const REFER = [
-  { icon: Building2, title: 'Venue', text: 'Banquet halls, hotels, resorts and wedding venues.' },
-  { icon: Camera, title: 'Vendor', text: 'Photographers, decorators, caterers, makeup artists, DJs, mehendi and other wedding services.' },
-  { icon: Heart, title: 'Client', text: 'Couples, families, bride/groom or anyone planning a wedding.' },
-  { icon: PartyPopper, title: 'Event', text: 'Wedding, engagement, reception, corporate or other events.' },
+  { title: 'Venue', text: 'Banquet halls, hotels, resorts and wedding venues.', img: '/cat-venue-guides.jpg', pos: 'object-center' },
+  { title: 'Vendor', text: 'Photographers, decorators, caterers, makeup artists, DJs, mehendi and other wedding services.', img: '/guide-photography.jpg', pos: 'object-center' },
+  { title: 'Client', text: 'Couples, families, bride/groom or anyone planning a wedding.', img: '/cat-real-weddings.jpg', pos: 'object-center' },
+  { title: 'Event', text: 'Wedding, engagement, reception, corporate or other events.', img: '/cat-destination.jpg', pos: 'object-center' },
 ];
 const STEPS = [
   { title: 'Connect', text: 'Find a genuine wedding-related opportunity.' },
@@ -31,10 +34,10 @@ const STEPS = [
   { title: 'Earn', text: 'You receive the agreed referral payout.' },
 ];
 const WHY = [
-  { icon: IndianRupee, text: 'No joining fee, no investment' },
-  { icon: Clock, text: 'Part-time and flexible' },
-  { icon: Handshake, text: 'You introduce — we handle the business' },
-  { icon: BadgeCheck, text: 'Performance-based payout after completion' },
+  { icon: IndianRupee, title: 'No joining fee', text: 'No investment, ever.' },
+  { icon: Clock, title: 'Part-time & flexible', text: 'Refer whenever an opportunity comes your way.' },
+  { icon: Handshake, title: 'You introduce, we deliver', text: 'Our team handles the entire business process.' },
+  { icon: BadgeCheck, title: 'Performance-based', text: 'Payout after successful business completion.' },
 ];
 const FAQ = [
   ['Who can become a Growth Partner?', 'Anyone with genuine wedding-related contacts or a useful network.'],
@@ -48,327 +51,260 @@ const FAQ = [
   ['What if two people refer the same business?', 'Referral ownership is decided by the verified referral / first valid introduction rules.'],
 ];
 
-const input = 'w-full rounded-xl border border-[#C5A46D]/40 bg-white px-3 py-2.5 text-sm outline-none focus:border-[#8B1A4A]';
-const label = 'grid gap-1 text-sm font-medium text-[#2A1F1B]';
-
-async function postJson(url: string, body: unknown) {
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok || !payload.success) throw new Error(payload.issues?.[0]?.message ?? payload.error ?? 'Something went wrong — please try again');
-  return payload.data;
-}
-
-function RegisterForm() {
-  const [form, setForm] = useState({ name: '', phone: '', whatsapp: '', email: '', city: '', category: '', networkNote: '' });
-  const [types, setTypes] = useState<string[]>([]);
-  const [consent, setConsent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ status: string; code?: string; firstName?: string } | null>(null);
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const data = await postJson('/api/growth-partner/register', { ...form, referralTypes: types, consent });
-      setDone(data);
-      if (data.status === 'registered') trackEvent('growth_partner_registered', { category: form.category });
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (done?.status === 'registered') {
-    return (
-      <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-        <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
-        <h3 className="mt-2 text-xl font-semibold text-[#2A1F1B]" style={serif}>Welcome, {done.firstName}!</h3>
-        <p className="mt-2 text-sm text-[#4A3F38]">Your Partner code is</p>
-        <p className="mt-1 text-3xl font-bold tracking-wider" style={{ color: MAROON }}>{done.code}</p>
-        <p className="mt-3 text-sm text-[#4A3F38]">
-          <b>Save this code.</b> You’ll need it with your mobile number to submit referrals. Our team will review your
-          registration and get in touch.
-        </p>
-        <a href="#refer" className="mt-4 inline-block text-sm font-semibold underline underline-offset-4" style={{ color: MAROON }}>Submit a referral now →</a>
-      </div>
-    );
-  }
-  if (done?.status === 'already-registered') {
-    return (
-      <div role="status" className="rounded-2xl border border-[#C5A46D]/40 bg-white p-6 text-center">
-        <h3 className="text-lg font-semibold text-[#2A1F1B]" style={serif}>You’re already registered</h3>
-        <p className="mt-2 text-sm text-[#4A3F38]">This mobile number is already a Growth Partner. Our team will contact you. Lost your Partner code? Call or WhatsApp us.</p>
-      </div>
-    );
-  }
-
+function Eyebrow({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
   return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className={label}>Full name *<input className={input} value={form.name} onChange={set('name')} required maxLength={100} autoComplete="name" /></label>
-        <label className={label}>Mobile number *<input className={input} value={form.phone} onChange={set('phone')} required inputMode="tel" autoComplete="tel" placeholder="10-digit mobile" /></label>
-        <label className={label}>WhatsApp number<input className={input} value={form.whatsapp} onChange={set('whatsapp')} inputMode="tel" placeholder="If different" /></label>
-        <label className={label}>Email<input className={input} type="email" value={form.email} onChange={set('email')} autoComplete="email" /></label>
-        <label className={label}>City *<input className={input} value={form.city} onChange={set('city')} required maxLength={80} autoComplete="address-level2" /></label>
-        <label className={label}>
-          What best describes you? *
-          <select className={input} value={form.category} onChange={set('category')} required>
-            <option value="">Choose…</option>
-            {PARTNER_CATEGORIES.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium text-[#2A1F1B]">What type of referrals can you provide? *</legend>
-        <div className="flex flex-wrap gap-2">
-          {NETWORK_TYPES.map((t) => {
-            const on = types.includes(t);
-            return (
-              <button
-                key={t}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setTypes((cur) => (on ? cur.filter((x) => x !== t) : [...cur, t]))}
-                className={`min-h-[40px] rounded-full border px-4 text-sm ${on ? 'border-transparent text-white' : 'border-[#C5A46D]/50 bg-white text-[#2A1F1B]'}`}
-                style={on ? { background: MAROON } : undefined}
-              >
-                {t}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-      <label className={label}>
-        Tell us briefly about your network
-        <textarea className={input} rows={3} maxLength={1000} value={form.networkNote} onChange={set('networkNote')} placeholder="I know around 10 banquet owners in Patna and regularly work with wedding vendors." />
-      </label>
-      <label className="flex items-start gap-3 text-sm text-[#2A1F1B]">
-        <input type="checkbox" className="mt-0.5 h-5 w-5 accent-[#8B1A4A]" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-        <span>I agree to be contacted by Shaadi Shopping regarding the Growth Partner Program and referral opportunities.</span>
-      </label>
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      <button type="submit" disabled={busy} className="min-h-[48px] rounded-xl text-base font-semibold text-white disabled:opacity-50" style={{ background: MAROON }}>
-        {busy ? 'Submitting…' : 'Join as Growth Partner'}
-      </button>
-    </form>
+    <p className={`flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] ${light ? 'text-[#E9C98E]' : 'text-[#B08D55]'}`}>
+      <span className={`h-px w-8 ${light ? 'bg-[#E9C98E]/70' : 'bg-[#C5A46D]'}`} />
+      {children}
+    </p>
   );
 }
 
-function ReferralForm() {
-  const [form, setForm] = useState({ partnerPhone: '', partnerCode: '', name: '', phone: '', city: '', requirement: '', notes: '' });
-  const [type, setType] = useState<ReferralType | ''>('');
-  const [consent, setConsent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await postJson('/api/growth-partner/referrals', { ...form, type, consent });
-      setDone(true);
-      trackEvent('growth_partner_referral_submitted', { type });
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (done) {
-    return (
-      <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-        <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
-        <h3 className="mt-2 text-xl font-semibold text-[#2A1F1B]" style={serif}>Referral received!</h3>
-        <p className="mt-2 text-sm text-[#4A3F38]">Thank you for connecting this opportunity with Shaadi Shopping. Our team will review the details and contact the referral.</p>
-        <button type="button" onClick={() => { setDone(false); setForm((f) => ({ ...f, name: '', phone: '', city: '', requirement: '', notes: '' })); setType(''); setConsent(false); }} className="mt-4 text-sm font-semibold underline underline-offset-4" style={{ color: MAROON }}>
-          Submit another referral
-        </button>
-      </div>
-    );
-  }
-
+function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
   return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
-      <div className="grid gap-4 rounded-xl bg-[#FFFAF5] p-3 sm:grid-cols-2">
-        <label className={label}>Your registered mobile *<input className={input} value={form.partnerPhone} onChange={set('partnerPhone')} inputMode="tel" autoComplete="tel" /></label>
-        <label className={label}>Your Partner code *<input className={input} value={form.partnerCode} onChange={set('partnerCode')} placeholder="GP-1001" autoCapitalize="characters" /></label>
-      </div>
-      <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium text-[#2A1F1B]">What are you referring? *</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {REFERRAL_TYPES.map((t) => (
-            <button key={t} type="button" aria-pressed={type === t} onClick={() => setType(t)} className={`min-h-[44px] rounded-xl border text-sm font-medium ${type === t ? 'border-transparent text-white' : 'border-[#C5A46D]/50 bg-white text-[#2A1F1B]'}`} style={type === t ? { background: MAROON } : undefined}>
-              {REFERRAL_TYPE_LABEL[t]}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className={label}>Name / business name *<input className={input} value={form.name} onChange={set('name')} maxLength={120} /></label>
-        <label className={label}>Their contact number *<input className={input} value={form.phone} onChange={set('phone')} inputMode="tel" /></label>
-        <label className={`${label} sm:col-span-2`}>City / location *<input className={input} value={form.city} onChange={set('city')} maxLength={80} /></label>
-      </div>
-      <label className={label}>Requirement / basic details<textarea className={input} rows={2} maxLength={1000} value={form.requirement} onChange={set('requirement')} /></label>
-      <label className={label}>Additional notes<textarea className={input} rows={2} maxLength={1000} value={form.notes} onChange={set('notes')} /></label>
-      <label className="flex items-start gap-3 text-sm text-[#2A1F1B]">
-        <input type="checkbox" className="mt-0.5 h-5 w-5 accent-[#8B1A4A]" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-        <span>I confirm this person / business agreed to be contacted by Shaadi Shopping.</span>
-      </label>
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-      <button type="submit" disabled={busy} className="min-h-[48px] rounded-xl text-base font-semibold text-white disabled:opacity-50" style={{ background: MAROON }}>
-        {busy ? 'Submitting…' : 'Submit Referral'}
-      </button>
-    </form>
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+    >
+      {children}
+    </motion.div>
   );
 }
+
+const primaryBtn =
+  'inline-flex min-h-[54px] items-center justify-center rounded-full bg-gradient-to-r from-[#8B1A4A] via-[#9E2A55] to-[#C5A46D] px-8 text-[15px] font-semibold tracking-wide text-white shadow-[0_12px_32px_rgba(139,26,74,0.35)] transition hover:shadow-[0_16px_40px_rgba(139,26,74,0.45)]';
+const ghostBtn = 'inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/40 px-7 text-[15px] font-medium text-white backdrop-blur-sm transition hover:bg-white/10';
 
 export default function GrowthPartnerPageClient() {
   const [open, setOpen] = useState<number | null>(0);
+
   return (
-    <div className="bg-[#FFFAF5] text-[#2A1F1B]">
-      {/* Hero */}
-      <section className="px-4 pb-14 pt-24 sm:pt-28" style={{ background: 'linear-gradient(160deg, #5E0F30 0%, #8B1A4A 60%, #A8325E 100%)' }}>
-        <div className="mx-auto max-w-4xl text-center text-white">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#F3D9A4]">Shaadi Shopping</p>
-          <h1 className="mt-3 text-4xl font-semibold sm:text-5xl" style={serif}>Growth Partner Program</h1>
-          <p className="mt-3 text-2xl font-semibold text-[#F3D9A4]" style={serif}>Connect. Refer. Earn.</p>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-white/90">Have wedding-related contacts? Turn your network into opportunities with Shaadi Shopping.</p>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-white/75">
-            Refer venues, vendors, clients or events. We handle the business process. Successful business completion earns you an agreed referral payout.
-          </p>
-          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <a href="#register" onClick={() => trackEvent('growth_partner_cta_click', { location: 'hero' })} className="inline-flex min-h-[48px] items-center rounded-xl bg-white px-6 text-base font-semibold" style={{ color: MAROON }}>
-              Become a Growth Partner
-            </a>
-            <a href="#how" className="text-sm font-medium text-white/90 underline underline-offset-4">How it works ↓</a>
-          </div>
-          <p className="mt-5 text-xs text-white/70">No joining fee • Part-time • Flexible • Performance-based</p>
-        </div>
-      </section>
+    <MotionConfig reducedMotion="user">
+      <div className="bg-[#FFFAF5] text-[#2A1F1B]">
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        <section className="relative flex min-h-[100svh] items-center overflow-hidden bg-[#1E0510]">
+          <motion.div className="absolute inset-0" initial={{ scale: 1.12 }} animate={{ scale: 1 }} transition={{ duration: 14, ease: 'easeOut' }}>
+            <Image src="/images/hero-bg.jpg" alt="" fill priority sizes="100vw" className="object-cover object-center" />
+          </motion.div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#1E0510]/95 via-[#3A0A1E]/80 to-[#3A0A1E]/35" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#1E0510]/80 to-transparent" />
 
-      <div className="mx-auto max-w-5xl space-y-16 px-4 py-14">
-        {/* Who can join */}
-        <section aria-labelledby="who">
-          <h2 id="who" className="text-center text-3xl font-semibold" style={serif}>Who can join?</h2>
-          <p className="mx-auto mt-2 max-w-2xl text-center text-[#4A3F38]">
-            <b>You don’t need to be a wedding expert.</b> You need a genuine network and the ability to make introductions.
-          </p>
-          <ul className="mt-6 flex flex-wrap justify-center gap-2">
-            {WHO.map((w) => (
-              <li key={w} className="rounded-full border border-[#C5A46D]/40 bg-white px-3 py-1.5 text-sm">{w}</li>
-            ))}
-          </ul>
-        </section>
-
-        {/* What can you refer */}
-        <section aria-labelledby="refer-what">
-          <h2 id="refer-what" className="text-center text-3xl font-semibold" style={serif}>What can you refer?</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {REFER.map(({ icon: Icon, title, text }) => (
-              <div key={title} className="rounded-2xl border border-[#C5A46D]/25 bg-white p-5">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF3E6]"><Icon className="h-6 w-6" style={{ color: MAROON }} /></span>
-                <h3 className="mt-3 text-lg font-semibold" style={serif}>{title}</h3>
-                <p className="mt-1 text-sm text-[#4A3F38]">{text}</p>
+          <div className="relative mx-auto w-full max-w-6xl px-5 pb-20 pt-40 sm:px-8">
+            <Reveal>
+              <Eyebrow light>Shaadi Shopping</Eyebrow>
+              <h1 className="mt-6 max-w-3xl text-[44px] leading-[1.05] text-white sm:text-6xl lg:text-7xl" style={serif}>
+                Growth Partner
+                <br />
+                Program
+              </h1>
+              <p className="mt-4 text-3xl italic text-[#E9C98E] sm:text-4xl" style={script}>
+                Connect. Refer. Earn.
+              </p>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/90">Have wedding-related contacts? Turn your network into opportunities with Shaadi Shopping.</p>
+              <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-white/70">
+                Refer venues, vendors, clients or events. We handle the business process. Successful business completion earns you an agreed referral payout.
+              </p>
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <a href="#register" onClick={() => trackEvent('growth_partner_cta_click', { location: 'hero' })} className={primaryBtn}>
+                  Become a Growth Partner
+                </a>
+                <a href="#how" className={ghostBtn}>How it works ↓</a>
               </div>
-            ))}
+              <div className="mt-10 flex max-w-xl items-center gap-4">
+                <span className="h-px flex-1 bg-gradient-to-r from-[#E9C98E]/70 to-transparent" />
+              </div>
+              <p className="mt-4 text-[13px] tracking-[0.12em] text-white/75">NO JOINING FEE · PART-TIME · FLEXIBLE · PERFORMANCE-BASED</p>
+            </Reveal>
           </div>
         </section>
 
-        {/* How it works */}
-        <section id="how" aria-labelledby="how-h" className="scroll-mt-24">
-          <h2 id="how-h" className="text-center text-3xl font-semibold" style={serif}>How it works</h2>
-          <p className="mt-2 text-center font-semibold" style={{ color: MAROON }}>You bring the opportunity. We handle the business.</p>
-          <ol className="mt-6 grid gap-3 sm:grid-cols-5">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="rounded-2xl border border-[#C5A46D]/25 bg-white p-4">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: MAROON }}>{i + 1}</span>
-                <h3 className="mt-2 font-semibold uppercase tracking-wide">{s.title}</h3>
-                <p className="mt-1 text-sm text-[#4A3F38]">{s.text}</p>
-              </li>
-            ))}
-          </ol>
+        {/* ── Who can join ─────────────────────────────────────────────────── */}
+        <section className="px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-20">
+            <Reveal>
+              <Eyebrow>Who can join</Eyebrow>
+              <h2 className="mt-5 text-4xl leading-tight sm:text-5xl" style={serif}>
+                For people who know
+                <br />
+                the wedding world
+              </h2>
+              <p className="mt-8 border-l-2 border-[#C5A46D] pl-5 text-2xl italic leading-snug text-[#8B1A4A]" style={script}>
+                “You don’t need to be a wedding expert. You need a genuine network and the ability to make introductions.”
+              </p>
+            </Reveal>
+            <Reveal delay={0.1}>
+              <ul className="grid gap-x-8 sm:grid-cols-2">
+                {WHO.map((w) => (
+                  <li key={w} className="flex items-center gap-3 border-b border-[#E8DCC8] py-3.5 text-[15px] text-[#3D322B]">
+                    <span className="h-1.5 w-1.5 shrink-0 rotate-45 bg-[#C5A46D]" />
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+          </div>
         </section>
 
-        {/* Why + payment */}
-        <section className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-[#C5A46D]/25 bg-white p-6">
-            <h2 className="text-2xl font-semibold" style={serif}>Why become a partner</h2>
-            <ul className="mt-4 grid gap-3">
-              {WHY.map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-3 text-sm"><Icon className="h-5 w-5 shrink-0" style={{ color: MAROON }} />{text}</li>
+        {/* ── What you can refer ───────────────────────────────────────────── */}
+        <section className="bg-white px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mx-auto max-w-6xl">
+            <Reveal className="text-center">
+              <div className="flex justify-center"><Eyebrow>Four ways to refer</Eyebrow></div>
+              <h2 className="mt-5 text-4xl sm:text-5xl" style={serif}>What can you refer?</h2>
+            </Reveal>
+            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {REFER.map((r, i) => (
+                <Reveal key={r.title} delay={i * 0.08}>
+                  <article className="group relative aspect-[4/5] overflow-hidden rounded-[22px] shadow-[0_18px_40px_rgba(42,6,20,0.12)] sm:aspect-[3/4]">
+                    <Image src={r.img} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" className={`object-cover ${r.pos} transition duration-700 group-hover:scale-105`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1E0510]/95 via-[#1E0510]/45 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-6">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#E9C98E]">Refer a</p>
+                      <h3 className="mt-1 text-3xl text-white" style={serif}>{r.title}</h3>
+                      <span className="mt-3 block h-px w-10 bg-[#E9C98E] transition-all duration-500 group-hover:w-20" />
+                      <p className="mt-3 text-sm leading-relaxed text-white/85">{r.text}</p>
+                    </div>
+                  </article>
+                </Reveal>
               ))}
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-[#C5A46D]/25 bg-white p-6">
-            <h2 className="text-2xl font-semibold" style={serif}>How payment works</h2>
-            <p className="mt-3 text-sm text-[#4A3F38]">
-              Referral payout is based on the referral category, business value and agreed terms. Payment is made after successful business completion.
-            </p>
-            <p className="mt-3 text-sm text-[#4A3F38]">Genuine referrals only — every referral is verified by our team.</p>
+            </div>
           </div>
         </section>
 
-        {/* Register + refer */}
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div id="register" className="scroll-mt-24 rounded-2xl border border-[#C5A46D]/30 bg-white p-5 sm:p-6">
-            <div className="flex items-center gap-2"><Users className="h-5 w-5" style={{ color: MAROON }} /><h2 className="text-2xl font-semibold" style={serif}>Become a Growth Partner</h2></div>
-            <p className="mb-4 mt-1 text-sm text-[#6B5B4D]">It takes a minute. No joining fee.</p>
-            <RegisterForm />
-          </div>
-          <div id="refer" className="scroll-mt-24 rounded-2xl border border-[#C5A46D]/30 bg-white p-5 sm:p-6">
-            <div className="flex items-center gap-2"><Send className="h-5 w-5" style={{ color: MAROON }} /><h2 className="text-2xl font-semibold" style={serif}>Refer an Opportunity</h2></div>
-            <p className="mb-4 mt-1 text-sm text-[#6B5B4D]">Already a partner? Use your registered mobile and Partner code.</p>
-            <ReferralForm />
+        {/* ── How it works ─────────────────────────────────────────────────── */}
+        <section id="how" className="scroll-mt-32 px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mx-auto max-w-6xl">
+            <Reveal className="text-center">
+              <div className="flex justify-center"><Eyebrow>How it works</Eyebrow></div>
+              <h2 className="mt-5 text-4xl sm:text-5xl" style={serif}>Five simple steps</h2>
+              <p className="mt-4 text-2xl italic text-[#8B1A4A]" style={script}>You bring the opportunity. We handle the business.</p>
+            </Reveal>
+            <ol className="relative mt-16 grid gap-10 lg:grid-cols-5 lg:gap-6">
+              <span aria-hidden="true" className="absolute left-[27px] top-2 h-[calc(100%-1rem)] w-px bg-gradient-to-b from-[#C5A46D] via-[#C5A46D]/60 to-transparent lg:left-[10%] lg:right-[10%] lg:top-[27px] lg:h-px lg:w-auto lg:bg-gradient-to-r lg:from-transparent lg:via-[#C5A46D] lg:to-transparent" />
+              {STEPS.map((s, i) => (
+                <Reveal key={s.title} delay={i * 0.1}>
+                  <li className="relative flex gap-5 lg:flex-col lg:items-center lg:text-center">
+                    <span className="relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[#C5A46D] bg-[#FFFAF5] text-xl italic text-[#8B1A4A] shadow-[0_0_0_6px_#FFFAF5]" style={script}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.25em] text-[#2A1F1B] lg:mt-5">{s.title}</h3>
+                      <p className="mt-2 text-[15px] leading-relaxed text-[#5A4A40]">{s.text}</p>
+                    </div>
+                  </li>
+                </Reveal>
+              ))}
+            </ol>
           </div>
         </section>
 
-        {/* FAQ */}
-        <section aria-labelledby="faq">
-          <h2 id="faq" className="text-center text-3xl font-semibold" style={serif}>Questions</h2>
-          <div className="mx-auto mt-6 max-w-3xl divide-y divide-[#C5A46D]/25 rounded-2xl border border-[#C5A46D]/25 bg-white">
-            {FAQ.map(([q, a], i) => (
-              <div key={q}>
-                <button type="button" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)} className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left font-medium">
-                  {q}
-                  <ChevronDown className={`h-5 w-5 shrink-0 transition-transform ${open === i ? 'rotate-180' : ''}`} />
-                </button>
-                {open === i && <p className="px-5 pb-4 text-sm text-[#4A3F38]">{a}</p>}
+        {/* ── Why partner + how payment works ──────────────────────────────── */}
+        <section className="relative overflow-hidden bg-[#2A0614] px-5 py-20 text-white sm:px-8 sm:py-28">
+          <div aria-hidden="true" className="absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full bg-[#C5A46D]/10 blur-3xl" />
+          <div aria-hidden="true" className="absolute -bottom-48 -left-40 h-[520px] w-[520px] rounded-full bg-[#8B1A4A]/40 blur-3xl" />
+          <div className="relative mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1.15fr_1fr] lg:items-center">
+            <Reveal>
+              <Eyebrow light>Why partner with us</Eyebrow>
+              <h2 className="mt-5 text-4xl leading-tight sm:text-5xl" style={serif}>
+                Your network,
+                <br />
+                <span className="italic text-[#E9C98E]" style={script}>shared growth</span>
+              </h2>
+              <ul className="mt-10 grid gap-7 sm:grid-cols-2">
+                {WHY.map(({ icon: Icon, title, text }) => (
+                  <li key={title} className="flex gap-4">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#E9C98E]/50">
+                      <Icon className="h-5 w-5 text-[#E9C98E]" />
+                    </span>
+                    <div>
+                      <p className="font-semibold">{title}</p>
+                      <p className="mt-1 text-sm leading-relaxed text-white/70">{text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal delay={0.15}>
+              <div className="rounded-[26px] border border-[#E9C98E]/30 bg-white/[0.04] p-8 backdrop-blur-sm sm:p-10">
+                <Eyebrow light>How payment works</Eyebrow>
+                <p className="mt-6 text-2xl italic leading-snug text-white" style={script}>
+                  Referral payout is based on the referral category, business value and agreed terms. Payment is made after successful business completion.
+                </p>
+                <span className="mt-8 block h-px bg-gradient-to-r from-[#E9C98E]/70 to-transparent" />
+                <p className="mt-6 text-sm leading-relaxed text-white/70">Genuine referrals only — every referral is verified by our team before any business begins.</p>
               </div>
-            ))}
+            </Reveal>
           </div>
         </section>
 
-        {/* Final CTA */}
-        <section className="rounded-3xl p-8 text-center text-white" style={{ background: MAROON }}>
-          <Briefcase className="mx-auto h-8 w-8 text-[#F3D9A4]" />
-          <h2 className="mt-3 text-3xl font-semibold" style={serif}>Have the network?</h2>
-          <p className="mt-1 text-xl text-[#F3D9A4]" style={serif}>Grow with Shaadi Shopping.</p>
-          <p className="mt-2 font-semibold">Connect. Refer. Earn.</p>
-          <div className="mt-5">
-            <a href="#register" onClick={() => trackEvent('growth_partner_cta_click', { location: 'final' })} className="inline-flex min-h-[48px] items-center rounded-xl bg-white px-6 text-base font-semibold" style={{ color: MAROON }}>
-              Become a Growth Partner
-            </a>
+        {/* ── Join / refer ─────────────────────────────────────────────────── */}
+        <section id="register" className="scroll-mt-32 px-5 py-20 sm:px-8 sm:py-28">
+          <span id="refer" className="block scroll-mt-32" />
+          <div className="mx-auto max-w-3xl">
+            <Reveal className="text-center">
+              <div className="flex justify-center"><Eyebrow>Join the circle</Eyebrow></div>
+              <h2 className="mt-5 text-4xl sm:text-5xl" style={serif}>Become a Growth Partner</h2>
+              <p className="mt-4 text-2xl italic text-[#8B1A4A]" style={script}>A minute to join. A lifetime of introductions.</p>
+            </Reveal>
+            <Reveal delay={0.1} className="mt-12">
+              <GrowthPartnerForms />
+            </Reveal>
           </div>
-          <p className="mt-4 text-xs text-white/75">No joining fee • Part-time • Flexible • Performance-based</p>
-          <div className="mt-5 flex flex-wrap justify-center gap-4 text-sm">
-            <a href={`tel:${SHAADI_PHONE}`} className="inline-flex items-center gap-1.5 underline underline-offset-4"><Phone className="h-4 w-4" />{SHAADI_PHONE_DISPLAY}</a>
-            <a href={shaadiWhatsAppLink('Hi, I want to know more about the Shaadi Shopping Growth Partner Program.')} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 underline underline-offset-4"><MessageCircle className="h-4 w-4" />WhatsApp us</a>
+        </section>
+
+        {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+        <section className="bg-white px-5 py-20 sm:px-8 sm:py-28">
+          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+            <Reveal>
+              <Eyebrow>Questions</Eyebrow>
+              <h2 className="mt-5 text-4xl leading-tight sm:text-5xl" style={serif}>Everything you’d like to know</h2>
+              <p className="mt-6 text-[15px] leading-relaxed text-[#5A4A40]">Still have a question? Our team is happy to help.</p>
+              <div className="mt-6 flex flex-col gap-3 text-[15px]">
+                <a href={`tel:${SHAADI_PHONE}`} className="inline-flex items-center gap-2 text-[#8B1A4A]"><Phone className="h-4 w-4" />{SHAADI_PHONE_DISPLAY}</a>
+                <a href={shaadiWhatsAppLink('Hi, I want to know more about the Shaadi Shopping Growth Partner Program.')} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[#8B1A4A]">
+                  <MessageCircle className="h-4 w-4" />WhatsApp us
+                </a>
+              </div>
+            </Reveal>
+            <Reveal delay={0.1}>
+              <div className="border-t border-[#E8DCC8]">
+                {FAQ.map(([q, a], i) => (
+                  <div key={q} className="border-b border-[#E8DCC8]">
+                    <button type="button" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)} className="flex w-full items-center justify-between gap-6 py-5 text-left">
+                      <span className="text-lg text-[#2A1F1B]" style={serif}>{q}</span>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#C5A46D]/60 text-[#B08D55]">
+                        {open === i ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      </span>
+                    </button>
+                    {open === i && <p className="-mt-1 pb-6 pr-12 text-[15px] leading-relaxed text-[#5A4A40]">{a}</p>}
+                  </div>
+                ))}
+              </div>
+            </Reveal>
           </div>
+        </section>
+
+        {/* ── Final CTA ────────────────────────────────────────────────────── */}
+        <section className="relative overflow-hidden px-5 py-28 text-center sm:px-8 sm:py-36">
+          <Image src="/cat-decor-flowers.jpg" alt="" fill sizes="100vw" className="object-cover object-center" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#1E0510]/85 via-[#2A0614]/80 to-[#1E0510]/90" />
+          <Reveal className="relative mx-auto max-w-3xl text-white">
+            <div className="flex justify-center"><Eyebrow light>Grow with us</Eyebrow></div>
+            <h2 className="mt-6 text-5xl leading-tight sm:text-6xl" style={serif}>Have the network?</h2>
+            <p className="mt-3 text-3xl italic text-[#E9C98E]" style={script}>Grow with Shaadi Shopping.</p>
+            <p className="mt-4 text-sm font-semibold uppercase tracking-[0.35em] text-white/85">Connect. Refer. Earn.</p>
+            <div className="mt-10">
+              <a href="#register" onClick={() => trackEvent('growth_partner_cta_click', { location: 'final' })} className={primaryBtn}>
+                Become a Growth Partner
+              </a>
+            </div>
+            <p className="mt-6 text-[13px] tracking-[0.12em] text-white/70">NO JOINING FEE · PART-TIME · FLEXIBLE · PERFORMANCE-BASED</p>
+          </Reveal>
         </section>
       </div>
-    </div>
+    </MotionConfig>
   );
 }
-

@@ -25,7 +25,8 @@ export default function LeadCapturePopup() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (pathname.startsWith('/admin') || isProposalPath(pathname)) return;
+    // Not for couples-only prompts: the admin, the private proposal, and the Growth Partner sign-up page.
+    if (pathname.startsWith('/admin') || isProposalPath(pathname) || pathname.startsWith('/growth-partner')) return;
     const dismissed = localStorage.getItem(STORAGE_KEY);
     if (dismissed) {
       const until = Number(dismissed);
