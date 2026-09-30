@@ -1,4 +1,4 @@
-import { Briefcase, CalendarDays, Database, FileText, Heart, LayoutDashboard, ListChecks, Receipt, Sparkles, Tag, Users, UsersRound } from 'lucide-react';
+import { Briefcase, CalendarDays, Handshake, Database, FileText, Heart, LayoutDashboard, ListChecks, Receipt, Sparkles, Tag, Users, UsersRound } from 'lucide-react';
 
 // The one admin navigation. Product structure: Today / Leads & Quotes / Weddings / Vendors / Invoices, with everything
 // else under More. Every /admin page renders inside this shell (app/admin/layout.tsx), so the same sidebar (desktop) or
@@ -57,6 +57,13 @@ export const MORE: NavItem[] = [
     href: '/admin/vendor-prospects',
     icon: ListChecks,
     isActive: ({ pathname }) => pathname.startsWith('/admin/vendor-prospects'),
+  },
+  {
+    key: 'growth-partners',
+    label: 'Growth partners',
+    href: '/admin/growth-partners',
+    icon: Handshake,
+    isActive: ({ pathname }) => pathname.startsWith('/admin/growth-partners'),
   },
   { key: 'events', label: 'Public events', href: '/admin/events', icon: CalendarDays, isActive: ({ pathname }) => pathname.startsWith('/admin/events') },
   { key: 'blog', label: 'Blog', href: '/admin/blogs', icon: FileText, isActive: ({ pathname }) => pathname.startsWith('/admin/blogs') },

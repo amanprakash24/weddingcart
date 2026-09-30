@@ -46,6 +46,10 @@ Decision 18 (work log) started 30 Sep 2026.
 3. Customer payment: UPI/QR + payment proof; receipts.
 4. Completion & review: wedding completed → review request tied to the booking → reviews on vendor profiles.
 
+**Growth track (added 30 Sep 2026, before 1.2 at the founder's request)** — Growth Partner Program V1: referral partners
+bring venues, vendors, clients and events (14-growth-partner.md). A third, referral-driven acquisition channel alongside
+the two revenue engines below.
+
 **2 · Two revenue engines** (§10–13, 51–52, 92)
 1. Vendor commercial status: Commission Partner / SaaS / Both / Marketplace only / Inactive — using the existing
    `PartnerAgreement` (Partner 10 %, Growth 12 %, Premium 15 %).

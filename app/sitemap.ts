@@ -47,6 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/about`,             lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/plan`,              lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/vendor-onboarding`,      lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE_URL}/growth-partner`,         lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.6 },
     // Patna city landing page (other Bihar cities added via biharCityRoutes above)
     { url: `${BASE_URL}/cities/patna`,            lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.95 },
     // Venue landing pages — indexed per robots.ts and each page's own metadata

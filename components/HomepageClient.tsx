@@ -15,6 +15,7 @@ import TestimonialsSection from './homepage/TestimonialsSection';
 import CitiesSection from './homepage/CitiesSection';
 import ExpertSection from './homepage/ExpertSection';
 import FeaturedVendorsSection from './homepage/FeaturedVendorsSection';
+import GrowthPartnerSection from './homepage/GrowthPartnerSection';
 import FinalCtaSection from './homepage/FinalCtaSection';
 import AboutBrandSection from './homepage/AboutBrandSection';
 import BlogHighlightsSection, { type BlogHighlight } from './homepage/BlogHighlightsSection';
@@ -86,6 +87,7 @@ export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: B
         <CitiesSection />
         <ExpertSection />
         <FeaturedVendorsSection />
+        <GrowthPartnerSection />
 
         {/* Trust Badges */}
         <div className="bg-[#FAF5EE] border-y border-[#C5A46D]/8 py-8 overflow-hidden">
