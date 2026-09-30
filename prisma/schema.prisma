@@ -147,6 +147,7 @@ model User {
   timelineMilestonesOwned   TimelineMilestone[]
   documentsUploaded         Document[]
   quotationsCreated         Quotation[]         @relation("QuotationCreatedBy")
+  partnerReferralsAssigned  PartnerReferral[]   @relation("PartnerReferralAssignedTo")
   vendorEnquiriesAnswered   VendorEnquiry[]     @relation("VendorEnquiryAnsweredBy")
   quotationsAccepted        Quotation[]         @relation("QuotationAcceptedBy")
   aiConversations           AiConversation[]
@@ -2038,4 +2039,92 @@ model Notification {
   createdAt DateTime            @default(now())
 
   @@map("notifications")
+}
+
+// ---- Growth Partner Program (docs/wedding-os/14-growth-partner.md) -----------------------------------------------
+// People with wedding-industry contacts register as Growth Partners and refer venues, vendors, clients or events.
+// V1 is operationally simple: staff verify every partner and referral by hand, and enter any payout themselves.
+
+enum GrowthPartnerStatus {
+  NEW
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  INACTIVE
+}
+
+enum PartnerReferralType {
+  VENUE
+  VENDOR
+  CLIENT
+  EVENT
+}
+
+enum PartnerReferralStatus {
+  SUBMITTED
+  VERIFIED
+  CONTACTED
+  IN_DISCUSSION
+  CONVERTED
+  COMPLETED
+  PAID
+  REJECTED
+}
+
+enum PartnerPayoutStatus {
+  NOT_DUE
+  DUE
+  PAID
+}
+
+model GrowthPartner {
+  id            String              @id @default(uuid())
+  code          String              @unique // "GP-1001" — shown once on registration; with the mobile it identifies the partner on referrals
+  name          String
+  phone         String              @unique // 10-digit Indian mobile
+  whatsapp      String?
+  email         String?
+  city          String
+  category      String // "Event Planner / Coordinator", … (what best describes them)
+  referralTypes String[] // venues / vendors / clients / events / multiple
+  networkNote   String?
+  consentAt     DateTime // agreed to be contacted about the program
+  status        GrowthPartnerStatus @default(NEW)
+  staffNotes    String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  referrals PartnerReferral[]
+
+  @@index([status])
+  @@index([city])
+  @@map("growth_partners")
+}
+
+model PartnerReferral {
+  id            String                @id @default(uuid())
+  partnerId     String
+  partner       GrowthPartner         @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  type          PartnerReferralType
+  name          String // person or business name
+  phone         String
+  city          String
+  requirement   String?
+  notes         String? // from the partner
+  consentAt     DateTime // the partner confirmed the referral agreed to be contacted
+  status        PartnerReferralStatus @default(SUBMITTED)
+  assignedToId  String?
+  assignedTo    User?                 @relation("PartnerReferralAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  completedAt   DateTime?
+  payoutStatus  PartnerPayoutStatus   @default(NOT_DUE)
+  payoutAmount  Int? // rupees, entered by staff — no automatic rates in V1
+  paidAt        DateTime?
+  staffNotes    String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([partnerId])
+  @@index([status])
+  @@index([type])
+  @@map("partner_referrals")
 }
