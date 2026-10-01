@@ -86,7 +86,7 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
       ? await deps.db.vendor.findMany({
           where: { id: { in: vendorIds } },
           select: {
-            id: true, name: true, slug: true, status: true, city: true, area: true, image: true, description: true, features: true,
+            id: true, name: true, slug: true, status: true, city: true, area: true, image: true, images: true, virtualTourVideo: true, description: true, features: true,
             guestCapacity: true, venueType: true, rating: true, reviewCount: true, category: { select: { name: true } },
           },
         })

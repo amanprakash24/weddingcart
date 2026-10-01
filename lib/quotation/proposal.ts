@@ -95,6 +95,8 @@ export interface ProposalVendorInput {
   area: string | null;
   category: string;
   image: string;
+  images: string[]; // the public gallery on the vendor's page
+  virtualTourVideo: string; // the public video on the vendor's page ('' = none)
   description: string;
   features: string[];
   guestCapacity: number | null;
@@ -109,6 +111,8 @@ export interface ProposalVendor {
     category: string;
     location: string | null;
     image: string | null;
+    gallery: string[]; // up to GALLERY_MAX more public photos (https only, the main image not repeated)
+    video: string | null; // https only
     about: string | null;
     features: string[];
     guestCapacity: number | null; // venues only
@@ -153,6 +157,12 @@ export interface CustomerProposal {
 
 const ABOUT_MAX = 280;
 const FEATURES_MAX = 6;
+const GALLERY_MAX = 6;
+
+const httpsUrl = (value: string | null | undefined) => {
+  const t = (value ?? '').trim();
+  return /^https:\/\/\S+$/i.test(t) ? t : null;
+};
 
 function shorten(text: string, max: number): string | null {
   const t = text.trim();
@@ -173,6 +183,8 @@ export function toProposalVendor(v: ProposalVendorInput): ProposalVendor {
       category: v.category,
       location: [v.area, v.city].filter((x) => x && x.trim()).join(', ') || null,
       image: v.image?.trim() || null,
+      gallery: [...new Set((v.images ?? []).map(httpsUrl).filter((u): u is string => !!u && u !== v.image?.trim()))].slice(0, GALLERY_MAX),
+      video: httpsUrl(v.virtualTourVideo),
       about: shorten(v.description ?? '', ABOUT_MAX),
       features: (v.features ?? []).map((f) => f.trim()).filter(Boolean).slice(0, FEATURES_MAX),
       guestCapacity: venue ? v.guestCapacity : null,
