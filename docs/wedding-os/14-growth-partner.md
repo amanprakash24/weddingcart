@@ -43,3 +43,16 @@ Paid (or Rejected); payout: Not due · Due · Paid.
 ## Not in V1 (brief's V2)
 Partner login/dashboard, referral links/codes, leaderboard, automated payout calculation, WhatsApp notifications,
 analytics, AI qualification, and turning referrals into CRM leads / vendor prospects automatically.
+
+## Referral → CRM (4 Oct 2026, MASTER-GAP-ANALYSIS §2.4.3)
+A referral is no longer a separate list. On the referral row staff press **Add to CRM** once:
+- a **couple** (CLIENT) becomes a CRM **consultation** (name, phone, city; the wedding date and guests are optional and asked for
+  then; the message carries the Partner code, the requirement and the partner's note);
+- a **venue / vendor** becomes a **vendor prospect** (source `growth-partner:<code>`).
+
+If an open consultation (or a vendor prospect) with the same mobile already exists, it is **linked** instead of duplicated. From then
+on the row shows the real place and stage ("In CRM · Quotation Sent", "Booked · WED-2026-0002", "Vendor prospect · Interested")
+with a link. Sending twice changes nothing. Event referrals stay on the list (nothing matches them yet). The referral status and
+payout are still set by hand — linking does not change them. Columns `partner_referrals.consultationId / vendorProspectId`
+(unique). Code: `lib/growthPartner/crmLink.ts`, `services/referralLink.service.ts`,
+`POST /api/admin/growth-partner-referrals/[id]/crm`.

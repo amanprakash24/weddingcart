@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { Role, ADMIN_ROLES } from '@/lib/auth/roles';
 import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
+import { linkWeddingsOnLogin } from '@/lib/customer/weddingLink';
 
 // Auth.js v4 (stable/GA), not v5 — see docs/postgres-migration-plan.md for why
 // v5 (beta-only as of this migration) was rejected for production auth.
@@ -109,6 +110,9 @@ export const authOptions: AuthOptions = {
             include: { roles: true, vendorProfile: true },
           });
         }
+
+        // The couple's wedding(s) with this mobile become theirs (MASTER-GAP-ANALYSIS §2.4.1). Never fails the login.
+        await linkWeddingsOnLogin(user.id, credentials.phone);
 
         return {
           id: user.id,

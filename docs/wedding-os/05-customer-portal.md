@@ -106,6 +106,19 @@ field, not a new auth flow. A customer could plausibly have more than one weddin
 over time (unlikely but shouldn't be hardcoded as impossible) — worth a
 one-to-many relationship, not a single `weddingId` foreign key on `User`.
 
+## 5b. Linking the couple's login, and what they may see (4 Oct 2026)
+
+**Linking.** Until 4 Oct 2026 nothing set `Wedding.customerId`, so this portal was empty for every wedding (MASTER-GAP-ANALYSIS
+§2.4.1). Now every new wedding stores the couple's mobile (`Wedding.customerPhone`, 10 digits, from the booking / enquiry /
+consultation it came from). If a CUSTOMER login with that mobile exists it is linked at once; otherwise the couple is linked the
+first time they log in with an OTP to that number. Only CUSTOMER logins are linked; a linked wedding is never re-pointed
+(`lib/customer/weddingLink.ts`).
+
+**What they see of the timeline.** Staff timeline text is never shown: it can carry vendor prices, commission and internal notes
+(payouts and price changes are logged as STATUS_CHANGED). The couple sees only an allow-list of events, each as one fixed sentence
+— payment received, vendor confirmed, vendor could not take the booking, document added (`lib/customer/activityText.ts`).
+Planning tasks (WEDDING_TASK) are still shown by their title — staff should keep internal reminders as sales follow-ups.
+
 ## 6. Data model gaps
 
 | Concept | Detail |

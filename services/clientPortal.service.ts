@@ -1,11 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { approvalService } from '@/services/approval.service';
+import { customerActivityText } from '@/lib/customer/activityText';
 
-const CLIENT_ACTIVITY_TYPES = new Set([
-  'STATUS_CHANGED', 'VENDOR_CONFIRMED', 'VENDOR_DECLINED', 'PAYMENT_RECEIVED',
-  'TASK_COMPLETED', 'DOCUMENT_UPLOADED',
-]);
 
 export interface ClientPortalEvent {
   id: string;
@@ -127,9 +124,11 @@ export const clientPortalService = {
         documents: documents
           .filter((document) => document.visibility === 'CUSTOMER_VISIBLE')
           .map((document) => ({ id: document.id, fileName: document.fileName, category: document.category, url: document.url, createdAt: document.createdAt.toISOString() })),
+        // Fixed customer-safe sentences only — staff summaries can carry prices and commission (lib/customer/activityText.ts).
         activity: activity
-          .filter((entry) => CLIENT_ACTIVITY_TYPES.has(entry.type))
-          .map((entry) => ({ id: entry.id, type: entry.type, summary: entry.type === 'PAYMENT_RECEIVED' ? entry.summary : entry.summary, createdAt: entry.createdAt.toISOString() })),
+          .map((entry) => ({ entry, text: customerActivityText(entry.type) }))
+          .filter((x): x is { entry: (typeof activity)[number]; text: string } => x.text !== null)
+          .map(({ entry, text }) => ({ id: entry.id, type: entry.type, summary: text, createdAt: entry.createdAt.toISOString() })),
         approvals: approvals.filter((approval) => approval.weddingId === wedding.id).map((approval) => ({
           id: approval.id,
           type: approval.subjectType,

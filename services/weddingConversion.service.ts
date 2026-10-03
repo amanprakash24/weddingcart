@@ -20,6 +20,7 @@ import { DEFAULT_MILESTONE_SEQUENCE } from '@/lib/wedding/timeline';
 import { InvalidTransitionError, NotFoundError, ConversionLockedError } from '@/lib/errors';
 import type { SourceType } from '@/services/leadInbox.service';
 import { Prisma, type Wedding, type Lead, type Enquiry, type Consultation } from '@/generated/prisma/client';
+import { weddingCustomerFields } from '@/lib/customer/weddingLink';
 
 type Tx = Prisma.TransactionClient;
 type ConvertibleSubject = Lead | Enquiry | Consultation;
@@ -182,6 +183,7 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
         weddingType: booking.weddingType,
         totalBudget: booking.total,
         sourceBooking: { connect: { id: booking.id } },
+        ...(await weddingCustomerFields(tx, booking.phone)), // the couple's login (MASTER-GAP-ANALYSIS §2.4.1)
       },
       tx
     );
@@ -452,6 +454,7 @@ export async function convertLeadToWedding(
         totalBudget: carryOver.totalBudget,
         coordinator: input.coordinatorId ? { connect: { id: input.coordinatorId } } : undefined,
         ...sourceLink,
+        ...(await weddingCustomerFields(tx, (subject as { phone: string }).phone)), // the couple's login (MASTER-GAP-ANALYSIS §2.4.1)
       },
       tx
     );

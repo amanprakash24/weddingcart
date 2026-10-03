@@ -15,9 +15,12 @@ import {
   type ReferralStatus,
   type ReferralType,
 } from '@/lib/growthPartner/labels';
+import { referralCrmView, referralTarget } from '@/lib/growthPartner/crmLink';
+import { STAGE_LABELS, type PipelineStage } from '@/components/crm/types';
 
 // Staff view of the Growth Partner Program (docs/wedding-os/14-growth-partner.md): who is the partner, what did they
-// refer, did it convert, what payout is due. Everything is verified and updated by hand in V1.
+// refer, did it convert, what payout is due. A referral is sent once to the CRM (couple) or vendor prospects (venue / vendor) and
+// then shows its real stage there; the status and payout are still set by hand.
 
 interface Partner {
   id: string;
@@ -50,6 +53,68 @@ interface Referral {
   createdAt: string;
   partner: { id: string; code: string; name: string; phone: string };
   assignedTo: { id: string; name: string | null } | null;
+  consultation: { id: string; pipelineStage: string; wedding: { weddingNumber: string } | null } | null;
+  vendorProspect: { id: string; status: string } | null;
+}
+
+const stageLabel = (s: string) => STAGE_LABELS[s as PipelineStage] ?? s;
+
+// Where the referral is worked (MASTER-GAP-ANALYSIS §2.4.3): a link to it with its real stage, or the button that sends it there.
+function CrmLink({ r, onSaved }: { r: Referral; onSaved: () => void }) {
+  const view = referralCrmView(r, stageLabel);
+  const target = referralTarget(r.type);
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState('');
+  const [guests, setGuests] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (view) {
+    return (
+      <a href={view.href} className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100">
+        {view.label} →
+      </a>
+    );
+  }
+  if (!target || r.status === 'REJECTED') return null;
+
+  const go = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/growth-partner-referrals/${r.id}/crm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(target === 'CONSULTATION' ? { weddingDate: date, guestCount: guests } : {}) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.success) throw new Error(body.error ?? 'Could not add it — please try again');
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  if (target === 'VENDOR_PROSPECT') {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-2">
+        <button type="button" disabled={busy} onClick={go} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-40">
+          {busy ? 'Adding…' : 'Add to vendor prospects'}
+        </button>
+        {error && <span role="alert" className="text-xs text-red-600">{error}</span>}
+      </span>
+    );
+  }
+  return open ? (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <input type="date" aria-label="Wedding date (optional)" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs" />
+      <input inputMode="numeric" aria-label="Guests (optional)" placeholder="Guests" value={guests} onChange={(e) => setGuests(e.target.value)} className="w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-xs" />
+      <button type="button" disabled={busy} onClick={go} className="rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">{busy ? 'Adding…' : 'Add to CRM'}</button>
+      <button type="button" disabled={busy} onClick={() => setOpen(false)} className="text-xs text-gray-500">Cancel</button>
+      {error && <span role="alert" className="text-xs text-red-600">{error}</span>}
+    </span>
+  ) : (
+    <button type="button" onClick={() => setOpen(true)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50">
+      Add to CRM
+    </button>
+  );
 }
 interface Stats {
   partners: number;
@@ -108,6 +173,7 @@ function ReferralRow({ r, reps, onSaved }: { r: Referral; reps: { id: string; na
           </p>
           {(r.requirement || r.notes) && <p className="mt-1 text-gray-600">{[r.requirement, r.notes].filter(Boolean).join(' — ')}</p>}
         </div>
+        <CrmLink r={r} onSaved={onSaved} />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <select className={sel} value={status} onChange={(e) => setStatus(e.target.value as ReferralStatus)} aria-label="Referral status">
