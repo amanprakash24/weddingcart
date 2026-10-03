@@ -29,7 +29,7 @@ describe('CI workflow', () => {
   });
 
   test('runs the type check, lint, unit tests, every migration and the database tests', () => {
-    for (const step of ['bun install --frozen-lockfile', 'bunx tsc --noEmit', 'bun run lint', 'bun test', 'bunx prisma migrate deploy', 'bun run test:db']) {
+    for (const step of ['bun install --frozen-lockfile', 'bunx tsc --noEmit', 'bun run lint', 'bun test', 'bunx prisma migrate deploy', 'bun tests-db/helpers/seedCi.ts', 'bun run test:db']) {
       expect(workflow).toContain(step);
     }
   });

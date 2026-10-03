@@ -75,5 +75,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Apply every migration to an empty database
         run: bunx prisma migrate deploy
+      - name: Seed fictional reference data (vendors, categories, one staff user)
+        run: bun tests-db/helpers/seedCi.ts
       - name: Database tests
         run: bun run test:db
