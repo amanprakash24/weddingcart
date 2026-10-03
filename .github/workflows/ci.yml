@@ -1,0 +1,79 @@
+# CI (Roadmap step 2, MASTER-GAP-ANALYSIS blocker 4): every pull request and every push to main runs the same checks a developer
+# runs by hand — type check, lint, unit tests — and the real-database tests against a throwaway Postgres that exists only for
+# this run. Nothing here can reach production: no secrets are used, and the database tests' guard (lib/testing/dbGuard.ts)
+# refuses every production project and any URL that is not the explicitly allowed CI database.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # prisma.config.ts needs DIRECT_URL even for `prisma generate` (run by postinstall); generate never connects.
+  DIRECT_URL: postgresql://ci:ci@localhost:5432/unused
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/unused
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  checks:
+    name: Type check, lint, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Install (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Type check
+        run: bunx tsc --noEmit -p .
+      - name: Lint
+        run: bun run lint
+      - name: Unit tests
+        run: bun test
+
+  database:
+    name: Migrations + database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: vivah_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d vivah_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/vivah_ci
+      TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/vivah_ci
+      # The guard needs the test database allowed explicitly; this matches only the throwaway CI database.
+      TEST_DATABASE_ALLOWED_REFS: localhost:5432/vivah_ci
+      # Must differ from TEST_DATABASE_URL (the guard refuses the app's own database).
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/unused
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Install (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: Apply every migration to an empty database
+        run: bunx prisma migrate deploy
+      - name: Database tests
+        run: bun run test:db
