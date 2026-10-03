@@ -5,6 +5,7 @@ import type { QuotationStatus } from '@/generated/prisma/enums';
 import { ValidationError } from '@/lib/errors';
 import type { BookingSource } from '@/lib/quotation/booking';
 import { serviceLabel } from '@/lib/serviceLabels';
+import type { ProposalPayments } from '@/lib/payments/customerPayment';
 
 // ---- the secret link ----
 
@@ -153,6 +154,8 @@ export interface CustomerProposal {
   inclusions: string | null;
   exclusions: string | null;
   terms: string | null;
+  // Roadmap 1.3 (§18): only once the couple has accepted — totals, receipts, their own "I have paid" claims, and the UPI payee.
+  payments: ProposalPayments | null;
 }
 
 const ABOUT_MAX = 280;
@@ -258,5 +261,6 @@ export function toCustomerProposal(
     inclusions: q.inclusions,
     exclusions: q.exclusions,
     terms: q.terms,
+    payments: null, // added by proposal.service for an accepted proposal
   };
 }
