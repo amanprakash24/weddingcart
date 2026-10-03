@@ -61,6 +61,9 @@ const db = { ...tx, vendor: { findMany: vendorFindMany }, vendorBooking: { findM
 const paymentsView = { state: 'NOT_STARTED', received: 0, receipts: [], submissions: [], canSubmit: true };
 const paymentsForProposal = mock(async (id: string) => (void id, paymentsView));
 const paymentSubmit = mock(async () => ({ submitted: true as const }));
+const reviewsView = { defaultName: 'Rahul & Priya', items: [] };
+const reviewsForProposal = mock(async (bookingId: unknown, name: unknown) => (void bookingId, void name, reviewsView));
+const reviewSubmit = mock(async (bookingId: unknown, vendorBookingId: unknown, raw: unknown) => (void bookingId, void vendorBookingId, void raw, { submitted: true as const }));
 const proposalService = createProposalService({
   db: db as never,
   findByTokenHash: findByCustomerTokenHash as never,
@@ -72,11 +75,12 @@ const proposalService = createProposalService({
   logActivity: activityCreate as never,
   applyEvent: applyCommercialEvent as never,
   payments: { forProposal: paymentsForProposal as never, submit: paymentSubmit as never },
+  reviews: { forProposal: reviewsForProposal as never, submit: reviewSubmit as never },
 });
 
 beforeEach(() => {
   row = baseRow();
-  for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany, paymentsForProposal, paymentSubmit]) m.mockClear();
+  for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany, paymentsForProposal, paymentSubmit, reviewsForProposal, reviewSubmit]) m.mockClear();
   accept.mockImplementation(async () => { row.status = 'ACCEPTED'; return {}; });
   createBooking.mockImplementation(async () => ({ id: 'b1' }));
 });
@@ -280,5 +284,39 @@ describe('payments (Roadmap 1.3)', () => {
     row.status = 'ACCEPTED';
     await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).resolves.toEqual({ submitted: true, payments: paymentsView as never });
     expect((paymentSubmit.mock.calls.at(-1) as unknown as [{ id: string }])[0].id).toBe('q1');
+  });
+});
+
+describe('reviews (Roadmap 1.4)', () => {
+  test('an open proposal never reads reviews', async () => {
+    const view = await proposalService.view(TOKEN);
+    expect(view?.reviews).toBeNull();
+    expect(reviewsForProposal).not.toHaveBeenCalled();
+  });
+
+  test('an accepted proposal asks for reviews of the booking it became', async () => {
+    row.status = 'ACCEPTED';
+    row.booking = { id: 'b1', status: 'CONFIRMED' };
+    const view = await proposalService.view(TOKEN);
+    expect(reviewsForProposal).toHaveBeenCalledWith('b1', 'Rahul & Priya');
+    expect(view?.reviews).toEqual(reviewsView as never);
+  });
+
+  test('a reviews failure never hides the proposal', async () => {
+    row.status = 'ACCEPTED';
+    reviewsForProposal.mockImplementationOnce(async () => { throw new Error('db down'); });
+    const view = await proposalService.view(TOKEN);
+    expect(view?.number).toBe('QTN-202610-0001');
+    expect(view?.reviews).toBeNull();
+  });
+
+  test('a review is only accepted on an accepted proposal, for its own booking', async () => {
+    await expect(proposalService.submitReview(TOKEN, 'vb1', { rating: 5 })).rejects.toBeInstanceOf(ConflictError);
+    await expect(proposalService.submitReview(newCustomerToken(), 'vb1', { rating: 5 })).rejects.toBeInstanceOf(ProposalNotFoundError);
+    expect(reviewSubmit).not.toHaveBeenCalled();
+    row.status = 'ACCEPTED';
+    row.booking = { id: 'b1', status: 'CONFIRMED' };
+    await expect(proposalService.submitReview(TOKEN, 'vb1', { rating: 5, authorName: 'Priya' })).resolves.toEqual({ submitted: true, reviews: reviewsView as never });
+    expect(reviewSubmit).toHaveBeenCalledWith('b1', 'vb1', { rating: 5, authorName: 'Priya' });
   });
 });

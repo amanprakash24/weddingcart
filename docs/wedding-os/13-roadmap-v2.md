@@ -46,7 +46,8 @@ Decision 18 (work log) started 30 Sep 2026.
    one link, a visual proposal view (photos, key prices) and a detailed quotation view (line items, taxes, terms, Accept, print).
 3. **Built 3 Oct 2026 — see 08-quotation.md §18.** Customer payment: UPI/QR + payment proof (UTR, optional screenshot) verified by
    staff through Money v1; receipts on the proposal link.
-4. Completion & review: wedding completed → review request tied to the booking → reviews on vendor profiles.
+4. **Built 3 Oct 2026 — see 08-quotation.md §19.** Completion & review: wedding completed → the couple reviews each booked vendor on
+   their link → staff publish → "Reviews from Shaadi Shopping couples" on vendor pages (kept apart from the online rating).
 
 **Growth track (added 30 Sep 2026, before 1.2 at the founder's request)** — Growth Partner Program V1: referral partners
 bring venues, vendors, clients and events (14-growth-partner.md). A third, referral-driven acquisition channel alongside

@@ -15,7 +15,9 @@ export default function CustomerLinkBox({ quotation, customerName, eventDate, on
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'link' | 'message' | null>(null);
 
-  const open = quotation.status === 'SENT' && quotation.validUntil !== null && new Date(quotation.validUntil).getTime() > new Date().getTime();
+  const sentAndValid = quotation.status === 'SENT' && quotation.validUntil !== null && new Date(quotation.validUntil).getTime() > new Date().getTime();
+  // Roadmap 1.4: an accepted quotation keeps its link (payments §18, reviews §19), so a lost one can be replaced too.
+  const open = sentAndValid || quotation.status === 'ACCEPTED';
   if (!open && !quotation.hasCustomerLink && !quotation.customerViewedAt) return null;
 
   const call = async (method: 'POST' | 'DELETE') => {
