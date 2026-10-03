@@ -23,6 +23,7 @@ None of this depends on Milestone 3 finishing. It also isn't blocked on it.
 - **`12-vendor-prospects.md`** — sales outreach tracker (`VendorProspect`) for venues not yet on ShaadiShopping, seeded from a competitor-site lead list. Contact/factual info only — the source's descriptions and photos are never copied in; a prospect becomes a real vendor only by actually going through `/vendor-onboarding`.
 - **`13-roadmap-v2.md`** — the master blueprint v2.0 compared against the code (30 Sep 2026, verified against schema and usage) and the approved roadmap order. Daily progress is recorded in `docs/worklog/`.
 - **`14-growth-partner.md`** — Growth Partner Program V1 (30 Sep 2026): public `/growth-partner` page, partner registration with a Partner code, referral submission, staff tracking of referral status and payouts. Run by hand; not an affiliate platform.
+- **`MASTER-SYSTEM-FLOW.md`**, **`MASTER-PIPELINE-MATRIX.md`**, **`MASTER-GAP-ANALYSIS.md`** — the 3 Oct 2026 master audit: what the code actually does today (traced UI → API → service → database, checked read-only against live data), every business transition with its API and test, and the gap scorecard with the recommended implementation order.
 - **`user-journeys.md`** — three end-to-end journeys (Customer, Venue Owner, Founder), each grounded in real entities/gaps from the docs above. Not a new design pass — evidence for *why* Role-Based Experience matters, not a restatement of it.
 
 ## Phase B: domain model → schema
