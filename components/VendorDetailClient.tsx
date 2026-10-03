@@ -11,6 +11,7 @@ const GUEST_COUNT_CATEGORIES = new Set(['venue', 'catering', 'accommodation', 'h
 import { Vendor, Package } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { getShaadiPhone } from '@/lib/shaadiPhone';
+import { ONLINE_RATING_LABEL, VERIFIED_REVIEWS_LABEL, type PublicReview } from '@/lib/reviews/reviewView';
 
 function whatsappUrl(vendorId: string, vendorName: string) {
   const number = `91${getShaadiPhone(vendorId)}`;
@@ -24,9 +25,11 @@ function formatCategory(category: string) {
   return category.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-interface Props { id: string }
+// verified: published reviews from Shaadi Shopping couples (Roadmap 1.4), read on the server. Never blended with the vendor's
+// hand-entered online rating (vendor.rating / reviewCount), which is shown only when it has a count, and labelled.
+interface Props { id: string; verified?: { summary: { average: number; count: number } | null; reviews: PublicReview[] } | null }
 
-export default function VendorDetailClient({ id }: Props) {
+export default function VendorDetailClient({ id, verified = null }: Props) {
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [loading, setLoading] = useState(true);
   const [imgIdx, setImgIdx] = useState(0);
@@ -205,11 +208,20 @@ export default function VendorDetailClient({ id }: Props) {
                   <MapPin className="w-4 h-4 text-rose-300" />
                   {vendor.city}
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
-                  <span className="font-bold text-white">{vendor.rating}</span>
-                  <span>({vendor.reviewCount} reviews)</span>
-                </div>
+                {vendor.reviewCount > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
+                    <span className="font-bold text-white">{vendor.rating}</span>
+                    <span>({vendor.reviewCount}) · {ONLINE_RATING_LABEL}</span>
+                  </div>
+                )}
+                {verified?.summary && (
+                  <a href="#couple-reviews" className="flex items-center gap-1.5 hover:text-white">
+                    <Star className="w-4 h-4 fill-rose-300 text-rose-300" />
+                    <span className="font-bold text-white">{verified.summary.average}</span>
+                    <span>· {verified.summary.count} couple {verified.summary.count === 1 ? 'review' : 'reviews'}</span>
+                  </a>
+                )}
               </div>
             </div>
             <div className="text-right">
@@ -228,8 +240,8 @@ export default function VendorDetailClient({ id }: Props) {
             {/* Quick stats */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { icon: Star, label: 'Rating', value: `${vendor.rating}/5` },
-                { icon: Users, label: 'Reviews', value: vendor.reviewCount.toString() },
+                { icon: Star, label: ONLINE_RATING_LABEL, value: vendor.reviewCount > 0 ? `${vendor.rating}/5 (${vendor.reviewCount})` : '—' },
+                { icon: Users, label: 'Couple reviews', value: verified?.summary ? `${verified.summary.average}/5 (${verified.summary.count})` : '—' },
                 { icon: ShoppingCart, label: 'Packages', value: vendor.packages.length.toString() },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
@@ -477,19 +489,49 @@ export default function VendorDetailClient({ id }: Props) {
                     <span>Location</span>
                     <span className="font-semibold text-gray-900">{vendor.city}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>Rating</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span className="font-semibold text-gray-900">{vendor.rating}</span>
+                  {vendor.reviewCount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span>{ONLINE_RATING_LABEL}</span>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                        <span className="font-semibold text-gray-900">{vendor.rating}</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Roadmap 1.4 — published reviews from couples who booked through Shaadi Shopping. */}
+      {verified && verified.reviews.length > 0 && (
+        <section id="couple-reviews" aria-label={VERIFIED_REVIEWS_LABEL} className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 scroll-mt-24">
+          <h2 className="text-xl font-bold text-gray-900 mb-1 font-playfair">{VERIFIED_REVIEWS_LABEL}</h2>
+          {verified.summary && (
+            <p className="mb-4 text-sm text-gray-500">
+              {verified.summary.average}/5 from {verified.summary.count} {verified.summary.count === 1 ? 'couple' : 'couples'} who booked {vendor.name} for their wedding
+            </p>
+          )}
+          <ul className="space-y-3">
+            {verified.reviews.map((r, i) => (
+              <li key={i} className="rounded-2xl border border-gray-100 bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-0.5" aria-label={`${r.rating} of 5 stars`}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star key={n} className={`w-4 h-4 ${n <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
+                    ))}
+                  </span>
+                  <span className="text-xs text-gray-400">{new Date(r.date).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })}</span>
+                </div>
+                {r.comment && <p className="mt-2 whitespace-pre-line text-sm text-gray-700">{r.comment}</p>}
+                <p className="mt-2 text-xs font-semibold text-gray-600">— {r.authorName} <span className="font-normal text-emerald-700">· booked through Shaadi Shopping</span></p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* FAQs — mirrors the JSON-LD FAQPage block in app/vendors/[id]/page.tsx so
           crawlable answers actually appear on the page, not just in schema. */}

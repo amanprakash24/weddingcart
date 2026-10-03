@@ -6,6 +6,7 @@ import { ValidationError } from '@/lib/errors';
 import type { BookingSource } from '@/lib/quotation/booking';
 import { serviceLabel } from '@/lib/serviceLabels';
 import type { ProposalPayments } from '@/lib/payments/customerPayment';
+import type { ProposalReviews } from '@/lib/reviews/reviewView';
 
 // ---- the secret link ----
 
@@ -49,6 +50,10 @@ export function proposalState(q: { status: QuotationStatus; validUntil: Date | n
   }
   return 'INVALID';
 }
+
+// Staff may issue a (new) link while the quotation is open, and after acceptance — the link then carries payments (§18) and
+// reviews (§19). Never for a draft, rejected, superseded or expired one.
+export const canIssueCustomerLink = (state: ProposalState) => state === 'OPEN' || state === 'ACCEPTED';
 
 export const CHANGE_NOTE_MAX = 1000;
 
@@ -156,6 +161,8 @@ export interface CustomerProposal {
   terms: string | null;
   // Roadmap 1.3 (§18): only once the couple has accepted — totals, receipts, their own "I have paid" claims, and the UPI payee.
   payments: ProposalPayments | null;
+  // Roadmap 1.4 (§19): only once the wedding made from this proposal is COMPLETED — the vendors they booked, to review.
+  reviews: ProposalReviews | null;
 }
 
 const ABOUT_MAX = 280;
@@ -262,5 +269,6 @@ export function toCustomerProposal(
     exclusions: q.exclusions,
     terms: q.terms,
     payments: null, // added by proposal.service for an accepted proposal
+    reviews: null, // added by proposal.service once the wedding is completed
   };
 }

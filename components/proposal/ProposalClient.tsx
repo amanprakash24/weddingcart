@@ -16,6 +16,7 @@ import {
 } from '@/lib/quotation/proposalView';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
 import PaymentsPanel from '@/components/proposal/PaymentsPanel';
+import ReviewsPanel from '@/components/proposal/ReviewsPanel';
 
 // The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–17). One link, two separate experiences
 // (Decision 10): the visual, curated PROPOSAL, and the commercially detailed QUOTATION where the couple accepts.
@@ -302,7 +303,8 @@ export default function ProposalClient({
       () => window.location.hash,
       () => ''
     ),
-    !!p.payments
+    !!p.payments,
+    !!p.reviews
   );
 
   function open(next: ProposalTab) {
@@ -479,12 +481,13 @@ export default function ProposalClient({
         id="views"
         className="sticky top-0 z-20 scroll-mt-0 border-b border-[#E8DCC8] bg-[#FFFAF5]/95 backdrop-blur print:hidden"
       >
-        <div role="tablist" aria-label="Proposal views" className="mx-auto flex max-w-3xl px-5">
+        <div role="tablist" aria-label="Proposal views" className="mx-auto flex max-w-3xl overflow-x-auto px-5 [scrollbar-width:none]">
           {(
             [
               ['proposal', 'Your proposal'],
               ['quotation', 'Detailed quotation'],
               ...(p.payments ? [['payments', 'Payments']] : []),
+              ...(p.reviews ? [['reviews', 'Reviews']] : []),
             ] as [ProposalTab, string][]
           ).map(([key, label]) => (
             <button
@@ -493,7 +496,7 @@ export default function ProposalClient({
               role="tab"
               aria-selected={tab === key}
               onClick={() => open(key)}
-              className={`relative flex-1 py-4 text-sm font-medium transition ${tab === key ? 'text-[#8B1A4A]' : 'text-[#7A6556] hover:text-[#2A1F1B]'}`}
+              className={`relative flex-1 shrink-0 whitespace-nowrap px-3 py-4 text-sm font-medium transition ${tab === key ? 'text-[#8B1A4A]' : 'text-[#7A6556] hover:text-[#2A1F1B]'}`}
               style={serif}
             >
               {label}
@@ -581,10 +584,21 @@ export default function ProposalClient({
                   {p.payments.outstanding > 0 && !p.payments.bookingConfirmed ? 'Pay & confirm your booking' : 'Payments & receipts'}
                 </button>
               )}
+              {p.reviews && (
+                <button
+                  type="button"
+                  onClick={() => open('reviews')}
+                  className="mt-3 min-h-[48px] w-full rounded-full border border-[#E8C98A]/60 px-6 text-sm font-semibold text-[#F3D9A4]"
+                >
+                  Review your vendors
+                </button>
+              )}
             </section>
 
             {requestChangesBlock}
           </div>
+        ) : tab === 'reviews' && p.reviews ? (
+          <ReviewsPanel token={token} initial={p.reviews} />
         ) : tab === 'payments' && p.payments ? (
           <PaymentsPanel token={token} number={p.number} coupleName={p.couple.name} weddingDate={p.wedding.date} initial={p.payments} />
         ) : (

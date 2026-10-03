@@ -18,11 +18,13 @@ mock.module('@/lib/prisma', () => ({
 const accept = mock(async () => ({ state: 'ACCEPTED' as const, bookingCreated: true, alreadyAccepted: false }));
 const requestChanges = mock(async () => ({ recorded: true as const }));
 const submitPayment = mock(async (token: string, raw: unknown, proof: unknown) => (void token, void raw, void proof, { submitted: true as const, payments: { received: 0 } }));
-mock.module('@/services/proposal.service', () => ({ proposalService: { accept, requestChanges, submitPayment } }));
+const submitReview = mock(async (token: string, bookingId: unknown, raw: unknown) => (void token, void bookingId, void raw, { submitted: true as const, reviews: { items: [] } }));
+mock.module('@/services/proposal.service', () => ({ proposalService: { accept, requestChanges, submitPayment, submitReview } }));
 
 const { POST: acceptRoute } = await import('./accept/route');
 const { POST: changesRoute } = await import('./request-changes/route');
 const { POST: paymentsRoute } = await import('./payments/route');
+const { POST: reviewsRoute } = await import('./reviews/route');
 
 const TOKEN = 'A'.repeat(43);
 const ctx = { params: Promise.resolve({ token: TOKEN }) };
@@ -161,5 +163,30 @@ describe('POST /api/proposal/[token]/payments (Roadmap 1.3)', () => {
   test('shares the per-IP limit with the other proposal actions', async () => {
     for (let i = 0; i < 10; i++) await paymentsRoute(form({ amount: '1', utr: 'x' }, '10.9.9.9'), ctx);
     expect((await paymentsRoute(form({ amount: '1', utr: 'x' }, '10.9.9.9'), ctx)).status).toBe(429);
+  });
+});
+
+describe('POST /api/proposal/[token]/reviews (Roadmap 1.4)', () => {
+  test('passes the booking and the review to the service; answers with the fresh reviews view', async () => {
+    const res = await reviewsRoute(post({ bookingId: 'vb1', rating: 5, comment: 'Lovely', authorName: 'Riya', extra: 'ignored' }), ctx);
+    expect(res.status).toBe(201);
+    expect((await res.json()).data).toEqual({ reviews: { items: [] } });
+    expect(submitReview).toHaveBeenLastCalledWith(TOKEN, 'vb1', { rating: 5, comment: 'Lovely', authorName: 'Riya' });
+  });
+
+  test('refusals keep their message; invalid links get the generic 404', async () => {
+    submitReview.mockImplementationOnce(async () => { throw new ConflictError('Reviews open once your wedding is completed'); });
+    const res = await reviewsRoute(post({ bookingId: 'vb1', rating: 5 }), ctx);
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('Reviews open once your wedding is completed');
+    submitReview.mockImplementationOnce(async () => { throw new NotFoundError('Vendor booking', 'vb9'); });
+    const nf = await reviewsRoute(post({ bookingId: 'vb9', rating: 5 }), ctx);
+    expect(nf.status).toBe(404);
+    expect((await nf.json()).error).toBe('This link is no longer valid');
+  });
+
+  test('shares the per-IP limit', async () => {
+    for (let i = 0; i < 10; i++) await reviewsRoute(post({ bookingId: 'vb1', rating: 5 }, '10.8.8.8'), ctx);
+    expect((await reviewsRoute(post({ bookingId: 'vb1', rating: 5 }, '10.8.8.8'), ctx)).status).toBe(429);
   });
 });

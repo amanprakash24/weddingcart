@@ -230,12 +230,22 @@ describe('toCustomerProposal — allow-list only', () => {
       expect(json).not.toContain(secret);
     }
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW)).sort()).toEqual(
-      ['acceptedAt', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'inclusions', 'items', 'number', 'payments', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
+      ['acceptedAt', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'inclusions', 'items', 'number', 'payments', 'reviews', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
     );
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'lineTotal', 'quantity', 'service', 'unitPrice', 'vendor']);
   });
 
   test('GST is shown when charged', () => {
     expect(toCustomerProposal({ ...quotation, gstEnabled: true }, source, vendors, NOW).gstAmount).toBe(999);
+  });
+});
+
+describe('canIssueCustomerLink (Roadmap 1.4)', () => {
+  test('open and accepted quotations can get a (new) link; nothing else', async () => {
+    const { canIssueCustomerLink } = await import('./proposal');
+    expect(canIssueCustomerLink('OPEN')).toBe(true);
+    expect(canIssueCustomerLink('ACCEPTED')).toBe(true);
+    expect(canIssueCustomerLink('EXPIRED')).toBe(false);
+    expect(canIssueCustomerLink('INVALID')).toBe(false);
   });
 });

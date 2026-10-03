@@ -10,7 +10,7 @@ import { calculateQuotationTotals } from '@/lib/quotation/totals';
 import { formatQuoteDate } from '@/lib/quotation/message';
 import { pickVenueTerms, type TermsVendor } from '@/lib/quotation/terms';
 import { planBookingFromQuotation, type BookingOverrides, type BookingSource } from '@/lib/quotation/booking';
-import { hashCustomerToken, newCustomerToken, proposalState } from '@/lib/quotation/proposal';
+import { canIssueCustomerLink, hashCustomerToken, newCustomerToken, proposalState } from '@/lib/quotation/proposal';
 import {
   evaluateAcceptable,
   evaluateBookable,
@@ -651,14 +651,15 @@ export const quotationService = {
 
   // ----- Proposal link (08-quotation.md §15, decisions D2/D7) -----
 
-  // A NEW secret link for a SENT, still-valid quotation. Any previous link for it stops working at once (its hash is
-  // replaced). Only the hash is stored; the raw token is returned exactly once, to be shown to staff and never again.
+  // A NEW secret link for a SENT, still-valid quotation — or an ACCEPTED one (Roadmap 1.4: the link carries payments §18 and reviews
+  // §19, so a couple who lost it needs a new one). Any previous link for it stops working at once (its hash is replaced). Only the
+  // hash is stored; the raw token is returned exactly once, to be shown to staff and never again.
   async issueCustomerLink(id: string, actorId: string | null): Promise<{ token: string }> {
     await expireOverdue({ id });
     return prisma.$transaction(async (tx) => {
       const { q, sourceType, sourceId } = await loadLocked(tx, id);
-      if (proposalState(q, new Date()) !== 'OPEN') {
-        throw new ConflictError('A customer link can only be created for a sent quotation that is still valid');
+      if (!canIssueCustomerLink(proposalState(q, new Date()))) {
+        throw new ConflictError('A customer link can only be created for a sent quotation that is still valid, or an accepted one');
       }
       const token = newCustomerToken();
       await quotationRepository.update(id, { customerTokenHash: hashCustomerToken(token), customerTokenCreatedAt: new Date() }, tx);

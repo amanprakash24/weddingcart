@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import VendorDetailClient from '@/components/VendorDetailClient';
+import { reviewService } from '@/services/review.service';
 import { JsonLd } from '@/components/JsonLd';
 import { vendorRepository } from '@/repositories/vendor.repository';
 import { categoryRepository } from '@/repositories/category.repository';
@@ -37,6 +38,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 interface VendorMeta {
   id: string;
+  dbId: string; // the vendor row id (verified reviews are keyed on it)
   name: string;
   city: string;
   address?: string;
@@ -95,6 +97,7 @@ async function getVendorMeta(id: string): Promise<VendorMeta | null> {
     const category = await categoryRepository.findById(vendor.categoryId);
     return {
       id: vendor.slug,
+      dbId: vendor.id,
       name: vendor.name,
       city: vendor.city,
       address: vendor.address || undefined,
@@ -175,6 +178,8 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
   const vendor = await getVendorMeta(id);
 
   if (!vendor) notFound();
+  // Roadmap 1.4: published couple reviews only. A failure here never breaks the vendor page.
+  const verified = await reviewService.publicForVendor(vendor.dbId).catch(() => null);
 
   const jsonLd = vendor
     ? {
@@ -237,7 +242,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
       {breadcrumbJsonLd && <JsonLd data={breadcrumbJsonLd} />}
       {faqJsonLd && <JsonLd data={faqJsonLd} />}
       <Suspense>
-        <VendorDetailClient id={id} />
+        <VendorDetailClient id={id} verified={verified} />
       </Suspense>
     </>
   );
