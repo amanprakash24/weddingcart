@@ -102,7 +102,7 @@ describe('POST /api/quotations', () => {
     const res = await POST(post({ ...VALID, items: [{ ...ITEM, unitPrice: -5 }] }));
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe('Invalid request');
+    expect(body.error).toBe('Some details are missing or not valid — please check and try again.');
     expect(body.issues.some((i: { path: (string | number)[] }) => i.path[0] === 'items')).toBe(true);
     expect(service.create).not.toHaveBeenCalled();
   });
