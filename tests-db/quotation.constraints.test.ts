@@ -23,7 +23,9 @@ dbDescribe('quotation database constraints (real database, rolled back)', () => 
     await fx.purge();
     consultationId = (await fx.consultation()).id;
     otherConsultationId = (await fx.consultation()).id;
-    db = new Client({ connectionString: app.url, ssl: { rejectUnauthorized: false } });
+    // SSL for a hosted test database (Supabase); none for the local throwaway Postgres in CI, which does not offer it.
+    const local = ['localhost', '127.0.0.1', '::1'].includes(new URL(app.url).hostname);
+    db = new Client({ connectionString: app.url, ssl: local ? false : { rejectUnauthorized: false } });
     await db.connect();
     await db.query('begin');
   });
