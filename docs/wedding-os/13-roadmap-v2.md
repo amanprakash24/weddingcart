@@ -32,7 +32,7 @@ Not yet run end-to-end with a real customer (worklog: Step 8B-A).
 | 9 Analytics | founder dashboard (basic) | — | vendor / sales / finance / SaaS analytics (§80) |
 | 10 AI | — | schema only | copilots (§76–79) |
 
-Blueprint decisions (§99) not yet met: 5–6 (commission or SaaS), 10 (separate proposal & detailed quotation);
+Blueprint decisions (§99) not yet met: 5–6 (commission or SaaS); Decision 10 met 30 Sep 2026 (08-quotation.md §17);
 Decision 18 (work log) started 30 Sep 2026.
 
 ## 3. Approved roadmap order
@@ -42,7 +42,8 @@ Decision 18 (work log) started 30 Sep 2026.
 **1 · Close the MVP flow**
 1. **Built 30 Sep 2026 — see 04-vendor-os.md §9.** Vendor enquiry & response (§43): vendors on a proposal get the request in Vendor OS and answer Available / Not
    available / With conditions / Another date; never blocks sales; staff alerted on "not available".
-2. Proposal vs. detailed quotation as separate experiences (Decision 10).
+2. **Built 30 Sep 2026 — see 08-quotation.md §17.** Proposal vs. detailed quotation as separate experiences (Decision 10):
+   one link, a visual proposal view (photos, key prices) and a detailed quotation view (line items, taxes, terms, Accept, print).
 3. Customer payment: UPI/QR + payment proof; receipts.
 4. Completion & review: wedding completed → review request tied to the booking → reviews on vendor profiles.
 

@@ -49,7 +49,7 @@ mock.module('@/lib/prisma', () => ({ prisma: {} }));
 const { createProposalService, ProposalNotFoundError } = await import('./proposal.service');
 // The linked vendor as the database would return it for the public-profile select (owner contact fields are not selected).
 const hallRow = {
-  id: 'v1', name: 'Swayamvar Hall', slug: 'swayamvar-hall-patna', status: 'PUBLISHED', city: 'Patna', area: 'Boring Road', image: '', description: 'Grand hall',
+  id: 'v1', name: 'Swayamvar Hall', slug: 'swayamvar-hall-patna', status: 'PUBLISHED', city: 'Patna', area: 'Boring Road', image: '', images: [], virtualTourVideo: '', description: 'Grand hall',
   features: ['AC'], guestCapacity: 500, venueType: 'indoor', rating: 0, reviewCount: 0, category: { name: 'Venues' },
 };
 const vendorFindMany = mock(async (args?: unknown) => (void args, [hallRow]));

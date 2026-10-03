@@ -487,3 +487,47 @@ consultation *after* the draft was made never reached it, (c) the editor had no 
 **Never shown:** vendor owner name/phone/email, bank details, the vendor's agreed price, payouts, commission,
 declined/pending/cancelled vendor bookings, internal notes, CRM data, acceptance details, the token hash, the
 customer's phone. Not in Step 7 (no migration): package link, per-line inclusions, per-guest vs package pricing.
+
+## 17. Proposal vs detailed quotation (Roadmap 1.2 — 30 Sep 2026)
+
+Master doc §16, §45 and Decision 10: the proposal and the detailed quotation are **separate experiences**. The first
+view must be visual and curated and must not overwhelm the couple with accounting. Built on the same link, **without
+a migration** and without API changes.
+
+**One link, two views** (`/proposal/[token]`, tabs "Your proposal" / "Detailed quotation"). The view lives in the URL
+hash: `#quotation` opens the detailed quotation directly, so staff can send that link when a couple asks for the
+numbers. Switching views makes no request, and opening a valid link still writes nothing (§15.5).
+
+**Your proposal** (the default view):
+- A hero with the couple, date, guests, city, venue, status, number, version and valid-until.
+- One large card per service with the vendor's public photos (main photo plus up to 6 gallery photos, as a
+  thumbnail strip), the video tour link, the about text, features, rating and "View full profile".
+- **Key commercial information only**: the price for each service ("For this service"), plus an "At a glance" card with
+  the total and the advance. No quantity × unit price, subtotal, discount or GST.
+- "Your confirmed vendors" (unchanged from §16).
+- "Review quotation & accept", and "Request changes or another option" with three quick starts ("Show me another
+  option", "I have a question", "Change something else"). These only start the note; the couple's own words are sent
+  to the existing request-changes endpoint.
+
+**Detailed quotation:**
+- A table of every line: name, service, description, function, quantity, unit price and amount. On a phone the
+  quantity and unit price fold under the name.
+- Subtotal, discount, GST, total, advance and **balance** (total − advance, computed on the page, never stored).
+- Inclusions, exclusions and terms, then **Accept**. The tick box reads "I have read this quotation and agree to its
+  terms". Accept appears only here, after the terms.
+- **Download / print**: the browser's print dialog (Save as PDF on a phone). The print layout has a plain header
+  (Shaadi Shopping, quotation number, couple, date, guests, venue, version, validity, phone) and hides the hero,
+  tabs and buttons.
+
+**Data added to the allow-list** (`toProposalVendor`): `gallery` and `video`, for **PUBLISHED** vendors only, the
+same media their public page already shows. Only https links are allowed; the main photo is not repeated; at most 6
+photos. Nothing commercial or private is added.
+
+**Tests:** `lib/quotation/proposalView.test.ts` (the proposal view carries only the total and advance; the quotation
+adds up: subtotal − discount + GST = total and balance = total − advance; `#quotation` tab choice; quick starts),
+`lib/quotation/proposal.test.ts` (gallery and video: https only, deduplicated, capped, published only), and
+`lib/quotation/proposalPage.test.ts` (on the page source: the proposal panel has no breakdown and no Accept; Accept
+appears once, in the quotation, after the terms; the quotation has the table, summary, inclusions and print).
+
+**Not in 1.2:** vendor package lists on the proposal (their listed prices would differ from the quoted price), a
+server-generated PDF, "show interest" per vendor, and readiness checks before sending (§46).

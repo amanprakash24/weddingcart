@@ -118,7 +118,7 @@ describe('toCustomerProposal — allow-list only', () => {
   } as unknown as ProposalQuotationInput;
   const source = { name: 'Rahul & Priya', phone: '9876543210', city: 'Patna', dateText: '2026-11-18', guestCount: 350, eventType: 'wedding' };
   const vendor = (over: Partial<ProposalVendorInput>): ProposalVendorInput => ({
-    name: 'X', slug: 'x', status: 'PUBLISHED', city: 'Patna', area: null, category: 'Venues', image: '', description: '', features: [],
+    name: 'X', slug: 'x', status: 'PUBLISHED', city: 'Patna', area: null, category: 'Venues', image: '', images: [], virtualTourVideo: '', description: '', features: [],
     guestCapacity: null, venueType: null, rating: 0, reviewCount: 0, ...over,
   });
   // Dirty inputs: owner contact details etc. must never come out even if a query returned them.
@@ -157,6 +157,8 @@ describe('toCustomerProposal — allow-list only', () => {
         category: 'Venues',
         location: 'Boring Road, Patna',
         image: 'https://img/hall.jpg',
+        gallery: [],
+        video: null,
         about: 'A grand hall.',
         features: ['AC hall', 'Parking'],
         guestCapacity: 500,
@@ -178,6 +180,19 @@ describe('toCustomerProposal — allow-list only', () => {
     expect(photographer.profile?.about?.length).toBeLessThanOrEqual(281);
     expect(photographer.profile?.about?.endsWith('…')).toBe(true);
     expect(photographer.profile?.features).toHaveLength(6);
+  });
+
+  test('gallery and video: the vendor’s own public media — https only, main image not repeated, at most 6, published only', () => {
+    const media = {
+      image: 'https://img/main.jpg',
+      images: ['https://img/main.jpg', 'https://img/1.jpg', ' https://img/2.jpg ', 'http://img/insecure.jpg', 'javascript:alert(1)', '', 'https://img/1.jpg', 'https://img/3.jpg', 'https://img/4.jpg', 'https://img/5.jpg', 'https://img/6.jpg', 'https://img/7.jpg'],
+      virtualTourVideo: 'https://video/tour.mp4',
+    };
+    const v = toProposalVendor(vendor(media));
+    expect(v.profile?.gallery).toEqual(['https://img/1.jpg', 'https://img/2.jpg', 'https://img/3.jpg', 'https://img/4.jpg', 'https://img/5.jpg', 'https://img/6.jpg']);
+    expect(v.profile?.video).toBe('https://video/tour.mp4');
+    expect(toProposalVendor(vendor({ virtualTourVideo: 'http://video/tour.mp4' })).profile?.video).toBeNull();
+    expect(toProposalVendor(vendor({ ...media, status: 'DRAFT' })).profile).toBeNull();
   });
 
   test('venue at the top: only when exactly one venue line names a vendor — never a generic "venue"', () => {

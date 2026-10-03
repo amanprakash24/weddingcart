@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { groupByFunction, nextStep, proposalStatus } from './proposalView';
+import { groupByFunction, nextStep, proposalHighlights, proposalStatus, quotationSummary, REQUEST_CHOICES, tabFromHash } from './proposalView';
 
 const item = (functionLabel: string | null, description = 'x') => ({ service: null, functionLabel, description, vendor: null, quantity: 1, unitPrice: 1, lineTotal: 1 });
 
@@ -39,6 +39,40 @@ describe('nextStep', () => {
     expect(nextStep({ state: 'ACCEPTED', changesRequested: false, booked: true, advanceAmount: 59337 })).toContain('booking is confirmed');
     expect(nextStep({ state: 'EXPIRED', changesRequested: false, booked: false, advanceAmount: 0 })).toContain('expired');
     expect(nextStep({ state: 'OPEN', changesRequested: true, booked: false, advanceAmount: 0 })).toContain('request for changes');
-    expect(nextStep({ state: 'OPEN', changesRequested: false, booked: false, advanceAmount: 0 })).toContain('accept it below');
+    expect(nextStep({ state: 'OPEN', changesRequested: false, booked: false, advanceAmount: 0 })).toContain('review the detailed quotation and accept it there');
+  });
+});
+
+describe('proposal vs detailed quotation (Decision 10)', () => {
+  const money = { subtotal: 300000, discount: 10000, gstAmount: 52200, total: 342200, advanceAmount: 85550 };
+
+  test('the proposal view carries only the total and the advance — no subtotal, discount or GST', () => {
+    const rows = proposalHighlights(money);
+    expect(rows).toEqual([{ label: 'Total for your wedding', amount: 342200 }, { label: 'Advance to confirm', amount: 85550 }]);
+    expect(JSON.stringify(rows)).not.toMatch(/subtotal|discount|gst/i);
+    expect(proposalHighlights({ total: 1000, advanceAmount: 0 })).toHaveLength(1);
+  });
+
+  test('the detailed quotation adds up: subtotal − discount + GST = total; balance = total − advance', () => {
+    const rows = quotationSummary(money);
+    const get = (label: string) => rows.find((r) => r.label === label)?.amount;
+    expect(rows.map((r) => r.label)).toEqual(['Subtotal', 'Discount', 'GST', 'Total', 'Advance to confirm', 'Balance']);
+    expect(get('Subtotal')! - get('Discount')! + get('GST')!).toBe(get('Total')!);
+    expect(get('Balance')).toBe(342200 - 85550);
+  });
+
+  test('no discount, no GST, no advance → those rows are simply not there', () => {
+    expect(quotationSummary({ subtotal: 5000, discount: 0, gstAmount: null, total: 5000, advanceAmount: 0 }).map((r) => r.label)).toEqual(['Subtotal', 'Total']);
+  });
+
+  test('#quotation opens the detailed quotation; anything else is the proposal', () => {
+    expect(tabFromHash('#quotation')).toBe('quotation');
+    expect(tabFromHash('#Quotation')).toBe('quotation');
+    for (const h of ['', '#', '#proposal', '#register']) expect(tabFromHash(h)).toBe('proposal');
+  });
+
+  test('request-change quick choices only start the note', () => {
+    expect(REQUEST_CHOICES.map((c) => c.label)).toEqual(['Show me another option', 'I have a question', 'Change something else']);
+    for (const c of REQUEST_CHOICES) expect(c.start.length).toBeGreaterThan(5);
   });
 });

@@ -1,14 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import type { CustomerProposal } from '@/lib/quotation/proposal';
-import { groupByFunction, nextStep, proposalStatus, type StatusTone } from '@/lib/quotation/proposalView';
-import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
+import {
+  groupByFunction,
+  nextStep,
+  proposalHighlights,
+  proposalStatus,
+  quotationSummary,
+  REQUEST_CHOICES,
+  tabFromHash,
+  type ProposalTab,
+  type StatusTone,
+} from '@/lib/quotation/proposalView';
+import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
 
-// The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–16). Everything shown comes from the server-side
-// allow-list (toCustomerProposal) — this component never receives internal notes, ids, contact details or vendor
-// prices. It adds no data of its own: a missing vendor, function or inclusion is simply not shown.
+// The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–17). One link, two separate experiences
+// (Decision 10): the visual, curated PROPOSAL, and the commercially detailed QUOTATION where the couple accepts.
+// Everything shown comes from the server-side allow-list (toCustomerProposal) — this component never receives
+// internal notes, ids, contact details or vendor prices. It adds no data of its own: a missing vendor, photo,
+// function or inclusion is simply not shown.
 
 type Item = CustomerProposal['items'][number];
 
@@ -16,89 +28,265 @@ const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const formatDate = (value: string | null) => {
   if (!value) return null;
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? value : new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(d);
+  return Number.isNaN(d.getTime())
+    ? value
+    : new Intl.DateTimeFormat('en-IN', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Asia/Kolkata',
+      }).format(d);
 };
-const serif = { fontFamily: 'var(--font-playfair, serif)' };
+const serif = { fontFamily: 'var(--font-playfair), serif' };
+const script = { fontFamily: 'var(--font-cormorant), Georgia, serif' };
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
 const TONE: Record<StatusTone, string> = {
-  open: 'bg-white/15 text-white',
-  changes: 'bg-sky-100 text-sky-900',
-  accepted: 'bg-amber-100 text-amber-900',
-  booked: 'bg-emerald-100 text-emerald-900',
-  expired: 'bg-white/20 text-white/80',
+  open: 'border-[#E8C98A]/50 text-[#F3D9A4]',
+  changes: 'border-sky-200/60 bg-sky-100 text-sky-900',
+  accepted: 'border-amber-200 bg-amber-100 text-amber-900',
+  booked: 'border-emerald-200 bg-emerald-100 text-emerald-900',
+  expired: 'border-white/30 text-white/80',
 };
+
+function Eyebrow({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
+  return (
+    <p
+      className={`flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] ${light ? 'text-[#E8C98A]' : 'text-[#B08D55]'}`}
+    >
+      <span className={`h-px w-8 ${light ? 'bg-[#E8C98A]/70' : 'bg-[#C5A46D]'}`} />
+      {children}
+    </p>
+  );
+}
 
 function TextBlock({ title, text }: { title: string; text: string | null }) {
   if (!text?.trim()) return null;
   return (
-    <section className="rounded-2xl border border-[#C5A46D]/20 bg-white p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-[#8B1A4A]">{title}</h2>
+    <section className="rounded-2xl border border-[#E8DCC8] bg-white p-5 sm:p-6 print:rounded-none print:border-0 print:border-t print:px-0">
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#8B1A4A]">
+        {title}
+      </h3>
       <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#4A3F38]">{text}</p>
     </section>
   );
 }
 
-function ServiceCard({ item }: { item: Item }) {
+// ── The proposal: who, what it looks like, and what it costs for each service ──────────────────────────────────
+
+function ServiceShowcase({ item, grouped }: { item: Item; grouped: boolean }) {
   const profile = item.vendor?.profile ?? null;
   // The headline is who provides it; without a linked vendor, what the line says.
   const title = item.vendor?.name ?? item.description;
   const detail = item.vendor && item.description !== item.service ? item.description : null;
+  const photos = [profile?.image, ...(profile?.gallery ?? [])].filter((x): x is string => !!x);
+  const [active, setActive] = useState(0);
+  const meta = profile
+    ? [
+        profile.location,
+        profile.guestCapacity
+          ? `Up to ${profile.guestCapacity.toLocaleString('en-IN')} guests`
+          : null,
+        profile.venueType ? capitalize(profile.venueType) : null,
+        profile.rating
+          ? `★ ${profile.rating.value.toFixed(1)} (${profile.rating.reviews} ${profile.rating.reviews === 1 ? 'review' : 'reviews'})`
+          : null,
+      ].filter(Boolean)
+    : [];
+
   return (
-    <article className="rounded-2xl border border-[#C5A46D]/20 bg-white p-5">
-      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#8B1A4A]">
-        {item.service && <span>{item.service}</span>}
-        {item.functionLabel && <span className="rounded-full bg-[#FFFAF5] px-2 py-0.5 normal-case tracking-normal text-[#6B5B4D]">{item.functionLabel}</span>}
-      </div>
-
-      <div className="mt-2 flex gap-4">
-        {profile?.image && (
-          <Image src={profile.image} alt={title} width={96} height={96} unoptimized className="h-20 w-20 shrink-0 rounded-xl object-cover sm:h-24 sm:w-24" />
-        )}
-        <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-semibold text-[#2A1F1B]" style={serif}>{title}</h3>
-          {detail && <p className="text-sm text-[#4A3F38]">{detail}</p>}
-          {profile && (
-            <p className="mt-1 text-sm text-[#6B5B4D]">
-              {[
-                profile.location,
-                profile.guestCapacity ? `Up to ${profile.guestCapacity.toLocaleString('en-IN')} guests` : null,
-                profile.venueType ? capitalize(profile.venueType) : null,
-                profile.rating ? `★ ${profile.rating.value.toFixed(1)} (${profile.rating.reviews} ${profile.rating.reviews === 1 ? 'review' : 'reviews'})` : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {profile && (profile.about || profile.features.length > 0) && (
-        <div className="mt-3 rounded-xl bg-[#FFFAF5] p-3 text-sm text-[#4A3F38]">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#6B5B4D]">About {item.vendor!.name}</p>
-          {profile.about && <p className="mt-1 leading-relaxed">{profile.about}</p>}
-          {profile.features.length > 0 && (
-            <ul className="mt-2 flex flex-wrap gap-1.5">
-              {profile.features.map((f) => (
-                <li key={f} className="rounded-full border border-[#C5A46D]/30 bg-white px-2 py-0.5 text-xs">{f}</li>
+    <article className="overflow-hidden rounded-[24px] bg-white shadow-[0_20px_60px_rgba(42,6,20,0.08)] ring-1 ring-[#E8DCC8]/70">
+      {photos.length > 0 && (
+        <div>
+          <div className="relative aspect-[16/10] bg-[#F5EDE3]">
+            <Image
+              src={photos[active]}
+              alt={title}
+              fill
+              unoptimized
+              sizes="(min-width: 768px) 720px, 100vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#1E0510]/60 via-transparent to-transparent" />
+            {item.service && (
+              <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8B1A4A] backdrop-blur">
+                {item.service}
+              </span>
+            )}
+          </div>
+          {photos.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto px-4 pt-3 [scrollbar-width:none]">
+              {photos.map((src, i) => (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setActive(i)}
+                  aria-label={`Photo ${i + 1} of ${title}`}
+                  aria-pressed={i === active}
+                  className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-lg ring-2 transition ${i === active ? 'ring-[#C5A46D]' : 'ring-transparent opacity-70 hover:opacity-100'}`}
+                >
+                  <Image src={src} alt="" fill unoptimized sizes="80px" className="object-cover" />
+                </button>
               ))}
-            </ul>
+            </div>
           )}
-          <a href={profile.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-semibold text-[#8B1A4A] underline underline-offset-2">
-            View profile
-          </a>
         </div>
       )}
 
-      <div className="mt-3 flex items-baseline justify-between border-t border-gray-100 pt-3 text-sm">
-        <span className="text-[#6B5B4D]">{item.quantity} × {rupees(item.unitPrice)}</span>
-        <span className="text-base font-semibold text-[#2A1F1B]">{rupees(item.lineTotal)}</span>
+      <div className="p-5 sm:p-7">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#B08D55]">
+          {photos.length === 0 && item.service && item.service !== title && (
+            <span>{item.service}</span>
+          )}
+          {/* Under a function heading the chip would only repeat it. */}
+          {!grouped && item.functionLabel && (
+            <span className="rounded-full border border-[#E8DCC8] px-2.5 py-0.5 normal-case tracking-normal text-[#7A6556]">
+              {item.functionLabel}
+            </span>
+          )}
+        </div>
+        <h3 className="mt-2 text-2xl leading-snug text-[#2A1F1B] sm:text-[28px]" style={serif}>
+          {title}
+        </h3>
+        {detail && (
+          <p className="mt-1 text-[15px] italic text-[#8B1A4A]" style={script}>
+            {detail}
+          </p>
+        )}
+        {meta.length > 0 && <p className="mt-2 text-sm text-[#7A6556]">{meta.join(' · ')}</p>}
+
+        {profile?.about && (
+          <p className="mt-4 text-[15px] leading-relaxed text-[#4A3F38]">{profile.about}</p>
+        )}
+        {profile && profile.features.length > 0 && (
+          <ul className="mt-4 grid gap-x-6 gap-y-2 text-sm text-[#4A3F38] sm:grid-cols-2">
+            {profile.features.map((f) => (
+              <li key={f} className="flex items-start gap-2">
+                <span
+                  aria-hidden
+                  className="mt-[7px] h-1.5 w-1.5 shrink-0 rotate-45 bg-[#C5A46D]"
+                />
+                {f}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {profile && (
+          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium">
+            {profile.video && (
+              <a
+                href={profile.video}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#8B1A4A] underline decoration-[#C5A46D] underline-offset-4"
+              >
+                Watch the video tour
+              </a>
+            )}
+            <a
+              href={profile.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#8B1A4A] underline decoration-[#C5A46D] underline-offset-4"
+            >
+              View full profile
+            </a>
+          </div>
+        )}
+
+        <div className="mt-6 flex items-baseline justify-between border-t border-[#F0E6D6] pt-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7A6556]">
+            For this service
+          </span>
+          <span className="text-xl text-[#2A1F1B]" style={serif}>
+            {rupees(item.lineTotal)}
+          </span>
+        </div>
       </div>
     </article>
   );
 }
 
-export default function ProposalClient({ token, initial }: { token: string; initial: CustomerProposal }) {
+// ── The detailed quotation: every line, every rupee, the terms ───────────────────────────────────────────────────
+
+function QuotationTable({ items }: { items: Item[] }) {
+  const groups = groupByFunction(items);
+  return (
+    <table className="w-full text-left text-sm">
+      <thead>
+        <tr className="border-b border-[#E8DCC8] text-[10px] font-semibold uppercase tracking-[0.2em] text-[#7A6556]">
+          <th className="py-3 pr-3 font-semibold">Item</th>
+          <th className="hidden py-3 pr-3 text-right font-semibold sm:table-cell print:table-cell">
+            Qty
+          </th>
+          <th className="hidden py-3 pr-3 text-right font-semibold sm:table-cell print:table-cell">
+            Unit price
+          </th>
+          <th className="py-3 text-right font-semibold">Amount</th>
+        </tr>
+      </thead>
+      {groups.map((group, gi) => (
+        <tbody key={group.title ?? gi}>
+          {group.title && (
+            <tr>
+              <td
+                colSpan={4}
+                className="pb-1 pt-5 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#8B1A4A]"
+              >
+                {group.title}
+              </td>
+            </tr>
+          )}
+          {group.items.map((item, i) => {
+            const name = item.vendor?.name ?? item.description;
+            // Nothing that only repeats the name (a line without a vendor is already named by its description).
+            const sub = [
+              ...new Set([
+                item.service,
+                item.vendor ? item.description : null,
+                !group.title ? item.functionLabel : null,
+              ]),
+            ].filter((x) => x && x !== name);
+            return (
+              <tr key={i} className="border-b border-[#F0E6D6] align-top">
+                <td className="py-3 pr-3">
+                  <p className="font-medium text-[#2A1F1B]">{name}</p>
+                  {sub.length > 0 && <p className="text-xs text-[#7A6556]">{sub.join(' · ')}</p>}
+                  <p className="mt-0.5 text-xs text-[#7A6556] sm:hidden print:hidden">
+                    {item.quantity} × {rupees(item.unitPrice)}
+                  </p>
+                </td>
+                <td className="hidden py-3 pr-3 text-right tabular-nums text-[#4A3F38] sm:table-cell print:table-cell">
+                  {item.quantity}
+                </td>
+                <td className="hidden py-3 pr-3 text-right tabular-nums text-[#4A3F38] sm:table-cell print:table-cell">
+                  {rupees(item.unitPrice)}
+                </td>
+                <td className="py-3 text-right font-medium tabular-nums text-[#2A1F1B]">
+                  {rupees(item.lineTotal)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      ))}
+    </table>
+  );
+}
+
+function subscribeHash(onChange: () => void) {
+  window.addEventListener('hashchange', onChange);
+  return () => window.removeEventListener('hashchange', onChange);
+}
+
+export default function ProposalClient({
+  token,
+  initial,
+}: {
+  token: string;
+  initial: CustomerProposal;
+}) {
   const [p, setP] = useState(initial);
   const [agree, setAgree] = useState(false);
   const [note, setNote] = useState('');
@@ -106,10 +294,34 @@ export default function ProposalClient({ token, initial }: { token: string; init
   const [error, setError] = useState<string | null>(null);
   const [showChanges, setShowChanges] = useState(false);
 
+  // The view lives in the URL hash, so "#quotation" opens the detailed quotation directly (the server renders the proposal).
+  const tab = tabFromHash(
+    useSyncExternalStore(
+      subscribeHash,
+      () => window.location.hash,
+      () => ''
+    )
+  );
+
+  function open(next: ProposalTab) {
+    // replaceState keeps the token URL as it is and adds no history entry; no request is made.
+    window.history.replaceState(
+      null,
+      '',
+      next === 'quotation' ? '#quotation' : window.location.pathname
+    );
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    document.getElementById('views')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   async function post(path: 'accept' | 'request-changes', body: unknown): Promise<boolean> {
     setError(null);
     try {
-      const res = await fetch(`/api/proposal/${token}/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const res = await fetch(`/api/proposal/${token}/${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) {
         setError(json.error ?? 'Something went wrong — please try again');
@@ -125,7 +337,12 @@ export default function ProposalClient({ token, initial }: { token: string; init
   async function accept() {
     if (!agree || busy) return;
     setBusy('accept');
-    if (await post('accept', { agreeToTerms: true })) setP((cur) => ({ ...cur, state: 'ACCEPTED', acceptedAt: cur.acceptedAt ?? new Date().toISOString() }));
+    if (await post('accept', { agreeToTerms: true }))
+      setP((cur) => ({
+        ...cur,
+        state: 'ACCEPTED',
+        acceptedAt: cur.acceptedAt ?? new Date().toISOString(),
+      }));
     setBusy(null);
   }
 
@@ -143,124 +360,331 @@ export default function ProposalClient({ token, initial }: { token: string; init
   const status = proposalStatus(p);
   const groups = groupByFunction(p.items);
   const weddingDate = formatDate(p.wedding.date);
+  const validUntil = p.validUntil && p.state === 'OPEN' ? formatDate(p.validUntil) : null;
+  const facts = [
+    weddingDate,
+    p.wedding.guestCount != null ? `${p.wedding.guestCount.toLocaleString('en-IN')} guests` : null,
+    p.wedding.city,
+  ].filter(Boolean);
+
+  const requestChangesBlock = p.state === 'OPEN' && (
+    <div className="space-y-3">
+      {!showChanges ? (
+        <button
+          type="button"
+          onClick={() => setShowChanges(true)}
+          className="min-h-[48px] w-full rounded-full border border-[#8B1A4A]/40 px-6 text-sm font-semibold text-[#8B1A4A] transition hover:bg-[#8B1A4A]/5"
+        >
+          Request changes or another option
+        </button>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {REQUEST_CHOICES.map((c) => (
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => setNote((cur) => (cur.trim() ? cur : c.start))}
+                className="rounded-full border border-[#E8DCC8] bg-[#FFFCF7] px-3.5 py-1.5 text-xs font-medium text-[#5A4A40] hover:border-[#C5A46D]"
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={1000}
+            rows={4}
+            aria-label="What would you like to change?"
+            placeholder="For example: Can you show me another decorator? Or: Please change catering from 350 to 300 guests."
+            className="w-full rounded-xl border border-[#E8DCC8] bg-[#FFFCF7] p-3.5 text-sm outline-none focus:border-[#C5A46D] focus:ring-2 focus:ring-[#C5A46D]/25"
+          />
+          <button
+            type="button"
+            onClick={requestChanges}
+            disabled={!note.trim() || busy !== null}
+            className="min-h-[48px] w-full rounded-full bg-[#2A1F1B] px-6 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {busy === 'changes' ? 'Sending…' : 'Send my request'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#FFFAF5]">
-      <div className="border-b border-[#C5A46D]/20 bg-white px-4 py-3">
-        <p className="mx-auto max-w-2xl text-lg font-semibold text-[#8B1A4A]" style={serif}>Shaadi Shopping</p>
+    <div className="min-h-screen bg-[#FFFAF5] print:bg-white">
+      {/* Brand bar */}
+      <div className="border-b border-[#C5A46D]/20 bg-[#1E0510] px-5 py-3 print:hidden">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
+          <p className="text-lg tracking-wide text-[#F3D9A4]" style={serif}>
+            Shaadi Shopping
+          </p>
+          <a
+            href={`tel:${SHAADI_PHONE}`}
+            className="text-xs font-medium text-white/75 hover:text-white"
+          >
+            {SHAADI_PHONE_DISPLAY}
+          </a>
+        </div>
       </div>
 
-      <div className="mx-auto max-w-2xl space-y-5 px-4 py-8 sm:py-10">
-        <header className="rounded-2xl bg-[#8B1A4A] p-6 text-white">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#F3D9A4]">Wedding proposal</p>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${TONE[status.tone]}`}>{status.label}</span>
+      {/* Hero */}
+      <header className="relative overflow-hidden bg-gradient-to-br from-[#2A0614] via-[#4A0B25] to-[#6B1238] px-5 pb-14 pt-12 text-white sm:pb-16 sm:pt-16 print:hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#C5A46D]/10 blur-3xl"
+        />
+        <div className="relative mx-auto max-w-3xl">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Eyebrow light>Your wedding proposal</Eyebrow>
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${TONE[status.tone]}`}
+            >
+              {status.label}
+            </span>
           </div>
-          <h1 className="mt-2 text-3xl font-semibold" style={serif}>{p.couple.name ?? 'Your wedding'}</h1>
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/85">
-            {weddingDate && <span>{weddingDate}</span>}
-            {p.wedding.guestCount != null && <span>{p.wedding.guestCount} guests</span>}
-            {p.wedding.city && <span>{p.wedding.city}</span>}
-          </div>
-          {p.venueName && <p className="mt-2 text-sm text-white">Venue: <span className="font-semibold">{p.venueName}</span></p>}
-          <p className="mt-4 text-xs text-white/70">
-            Proposal {p.number} · Version {p.version}
-            {p.validUntil && p.state === 'OPEN' && <> · Valid until {formatDate(p.validUntil)}</>}
+          <h1 className="mt-5 text-4xl leading-tight sm:text-5xl" style={serif}>
+            {p.couple.name ?? 'Your wedding'}
+          </h1>
+          <p className="mt-2 text-2xl italic text-[#E8C98A]" style={script}>
+            Curated for your celebration
           </p>
-        </header>
-
-        <div role="status" className="rounded-2xl border border-[#C5A46D]/30 bg-white p-4 text-sm text-[#2A1F1B]">
-          {nextStep(p)}
+          {facts.length > 0 && (
+            <p className="mt-5 text-sm tracking-wide text-white/85">{facts.join('  ·  ')}</p>
+          )}
+          {p.venueName && (
+            <p className="mt-1 text-sm text-white/85">
+              Venue · <span className="font-semibold text-white">{p.venueName}</span>
+            </p>
+          )}
+          <p className="mt-6 text-xs text-white/55">
+            Proposal {p.number} · Version {p.version}
+            {validUntil && <> · Valid until {validUntil}</>}
+          </p>
         </div>
+      </header>
 
-        {groups.map((group, gi) => (
-          <section key={group.title ?? gi} className="space-y-3">
-            {group.title && <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-[#8B1A4A]">{group.title}</h2>}
-            {group.items.map((item, i) => (
-              <ServiceCard key={i} item={item} />
-            ))}
-          </section>
-        ))}
+      {/* The two experiences */}
+      <div
+        id="views"
+        className="sticky top-0 z-20 scroll-mt-0 border-b border-[#E8DCC8] bg-[#FFFAF5]/95 backdrop-blur print:hidden"
+      >
+        <div role="tablist" aria-label="Proposal views" className="mx-auto flex max-w-3xl px-5">
+          {(
+            [
+              ['proposal', 'Your proposal'],
+              ['quotation', 'Detailed quotation'],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => open(key)}
+              className={`relative flex-1 py-4 text-sm font-medium transition ${tab === key ? 'text-[#8B1A4A]' : 'text-[#7A6556] hover:text-[#2A1F1B]'}`}
+              style={serif}
+            >
+              {label}
+              {tab === key && (
+                <span className="absolute inset-x-6 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-[#C5A46D] to-transparent" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        <section className="rounded-2xl border border-[#C5A46D]/20 bg-white p-5">
-          <dl className="space-y-1 text-sm">
-            <div className="flex justify-between text-[#6B5B4D]"><dt>Subtotal</dt><dd>{rupees(p.subtotal)}</dd></div>
-            {p.discount > 0 && <div className="flex justify-between text-emerald-700"><dt>Discount</dt><dd>− {rupees(p.discount)}</dd></div>}
-            {p.gstAmount != null && <div className="flex justify-between text-[#6B5B4D]"><dt>GST</dt><dd>{rupees(p.gstAmount)}</dd></div>}
-            <div className="flex justify-between pt-2 text-lg font-semibold text-[#2A1F1B]"><dt>Total</dt><dd>{rupees(p.total)}</dd></div>
-            {p.advanceAmount > 0 && (
-              <div className="flex justify-between text-[#8B1A4A]"><dt>Advance to confirm</dt><dd>{rupees(p.advanceAmount)}</dd></div>
-            )}
-          </dl>
-        </section>
-
-        <TextBlock title="What's included" text={p.inclusions} />
-        <TextBlock title="What's not included" text={p.exclusions} />
-        <TextBlock title="Terms" text={p.terms} />
-
-        {p.confirmedVendors.length > 0 && (
-          <section className="rounded-2xl border border-emerald-200 bg-white p-5" aria-label="Your confirmed vendors">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-emerald-800">Your confirmed vendors</h2>
-            <ul className="mt-3 space-y-2 text-sm">
-              {p.confirmedVendors.map((v, i) => (
-                <li key={i} className="rounded-xl bg-emerald-50/60 p-3">
-                  <p className="font-semibold text-[#2A1F1B]">{v.name}</p>
-                  <p className="text-[#6B5B4D]">
-                    {[v.category, capitalize(v.function), formatDate(v.date), v.venueName].filter(Boolean).join(' · ')}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </section>
+      <main className="mx-auto max-w-3xl space-y-6 px-5 py-8 sm:py-10 print:max-w-none print:px-0 print:py-0">
+        {/* The opening "take a look below" only belongs on the proposal; any other state message shows on both. */}
+        {(tab === 'proposal' || p.state !== 'OPEN' || p.changesRequested) && (
+          <div
+            role="status"
+            className="rounded-2xl border border-[#E8DCC8] bg-white p-4 text-sm leading-relaxed text-[#2A1F1B] print:hidden"
+          >
+            {nextStep(p)}
+          </div>
         )}
 
-        {p.state === 'OPEN' && (
-          <section className="space-y-4 rounded-2xl border border-[#C5A46D]/30 bg-white p-5">
-            <label className="flex items-start gap-3 text-sm text-[#2A1F1B]">
-              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 accent-[#8B1A4A]" />
-              <span>I have read this proposal and agree to its terms.</span>
-            </label>
-            <button
-              type="button"
-              onClick={accept}
-              disabled={!agree || busy !== null}
-              className="min-h-[48px] w-full rounded-xl bg-[#8B1A4A] px-5 text-base font-semibold text-white disabled:opacity-40"
-            >
-              {busy === 'accept' ? 'Accepting…' : 'Accept proposal'}
-            </button>
+        {tab === 'proposal' ? (
+          <div role="tabpanel" aria-label="Your proposal" className="space-y-10">
+            {groups.map((group, gi) => (
+              <section key={group.title ?? gi} className="space-y-5">
+                {group.title && <Eyebrow>{group.title}</Eyebrow>}
+                {group.items.map((item, i) => (
+                  <ServiceShowcase key={i} item={item} grouped={!!group.title} />
+                ))}
+              </section>
+            ))}
 
-            {!showChanges ? (
-              <button type="button" onClick={() => setShowChanges(true)} className="min-h-[44px] w-full rounded-xl border border-[#8B1A4A]/40 px-5 text-sm font-semibold text-[#8B1A4A]">
-                Request changes
+            {p.confirmedVendors.length > 0 && (
+              <section
+                className="rounded-[24px] border border-emerald-200 bg-white p-6"
+                aria-label="Your confirmed vendors"
+              >
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-800">
+                  Your confirmed vendors
+                </h2>
+                <ul className="mt-4 space-y-2 text-sm">
+                  {p.confirmedVendors.map((v, i) => (
+                    <li key={i} className="rounded-xl bg-emerald-50/60 p-3">
+                      <p className="font-semibold text-[#2A1F1B]">{v.name}</p>
+                      <p className="text-[#6B5B4D]">
+                        {[v.category, capitalize(v.function), formatDate(v.date), v.venueName]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* Key commercial information only — the breakdown lives in the detailed quotation. */}
+            <section className="overflow-hidden rounded-[24px] bg-gradient-to-br from-[#2A0614] to-[#5A0F2E] p-6 text-white sm:p-8">
+              <Eyebrow light>At a glance</Eyebrow>
+              <dl className="mt-5 space-y-3">
+                {proposalHighlights(p).map((row, i) => (
+                  <div key={row.label} className="flex items-baseline justify-between gap-4">
+                    <dt className={i === 0 ? 'text-sm text-white/80' : 'text-sm text-[#E8C98A]'}>
+                      {row.label}
+                    </dt>
+                    <dd className={i === 0 ? 'text-3xl' : 'text-lg text-[#F3D9A4]'} style={serif}>
+                      {rupees(row.amount)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <button
+                type="button"
+                onClick={() => open('quotation')}
+                className="mt-7 min-h-[52px] w-full rounded-full bg-gradient-to-r from-[#C5A46D] to-[#E8C98A] px-6 text-[15px] font-semibold text-[#2A0614] shadow-[0_12px_32px_rgba(197,164,109,0.25)]"
+              >
+                {p.state === 'OPEN' ? 'Review quotation & accept' : 'View detailed quotation'}
               </button>
-            ) : (
-              <div className="space-y-2">
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  maxLength={1000}
-                  rows={4}
-                  placeholder="For example: Can you reduce the decoration budget? Or: Please change catering from 350 to 300 guests."
-                  className="w-full rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-[#C5A46D]"
-                />
+            </section>
+
+            {requestChangesBlock}
+          </div>
+        ) : (
+          <div role="tabpanel" aria-label="Detailed quotation" className="space-y-6">
+            {/* Printed header — the on-screen hero does not print. */}
+            <div className="hidden print:block">
+              <p className="text-xl" style={serif}>
+                Shaadi Shopping — Quotation {p.number}
+              </p>
+              <p className="text-sm">
+                {[p.couple.name, ...facts, p.venueName ? `Venue: ${p.venueName}` : null]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+              <p className="text-xs">
+                Version {p.version}
+                {validUntil && <> · Valid until {validUntil}</>} · {SHAADI_PHONE_DISPLAY}
+              </p>
+            </div>
+
+            <section className="rounded-[24px] bg-white p-5 shadow-[0_20px_60px_rgba(42,6,20,0.06)] ring-1 ring-[#E8DCC8]/70 sm:p-8 print:p-0 print:shadow-none print:ring-0">
+              <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
+                <div>
+                  <Eyebrow>Detailed quotation</Eyebrow>
+                  <p className="mt-2 text-sm text-[#7A6556]">
+                    {p.number} · Version {p.version}
+                    {validUntil && <> · Valid until {validUntil}</>}
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={requestChanges}
-                  disabled={!note.trim() || busy !== null}
-                  className="min-h-[44px] w-full rounded-xl bg-[#2A1F1B] px-5 text-sm font-semibold text-white disabled:opacity-40"
+                  onClick={() => window.print()}
+                  className="rounded-full border border-[#E8DCC8] px-4 py-2 text-xs font-semibold text-[#8B1A4A] hover:border-[#C5A46D]"
                 >
-                  {busy === 'changes' ? 'Sending…' : 'Send my request'}
+                  Download / print
                 </button>
               </div>
+
+              <div className="mt-4">
+                <QuotationTable items={p.items} />
+              </div>
+
+              <dl className="ml-auto mt-5 max-w-sm space-y-2 text-sm">
+                {quotationSummary(p).map((row) => (
+                  <div
+                    key={row.label}
+                    className={`flex justify-between gap-4 ${row.kind === 'total' ? 'border-t border-[#E8DCC8] pt-3 text-lg font-semibold text-[#2A1F1B]' : row.kind === 'discount' ? 'text-emerald-700' : row.kind === 'advance' ? 'text-[#8B1A4A]' : 'text-[#5A4A40]'}`}
+                  >
+                    <dt>{row.label}</dt>
+                    <dd className="tabular-nums">
+                      {row.kind === 'discount' ? '− ' : ''}
+                      {rupees(row.amount)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+
+            <TextBlock title="What's included" text={p.inclusions} />
+            <TextBlock title="What's not included" text={p.exclusions} />
+            <TextBlock title="Terms" text={p.terms} />
+
+            {p.state === 'OPEN' && (
+              <section className="space-y-4 rounded-[24px] border border-[#C5A46D]/40 bg-white p-6 sm:p-8 print:hidden">
+                <Eyebrow>Accept</Eyebrow>
+                <label className="flex items-start gap-3 rounded-xl border border-[#F0E6D6] bg-[#FFFAF5] p-4 text-sm text-[#2A1F1B]">
+                  <input
+                    type="checkbox"
+                    checked={agree}
+                    onChange={(e) => setAgree(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 accent-[#8B1A4A]"
+                  />
+                  <span>I have read this quotation and agree to its terms.</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={accept}
+                  disabled={!agree || busy !== null}
+                  className="min-h-[52px] w-full rounded-full bg-gradient-to-r from-[#8B1A4A] via-[#9E2A55] to-[#C5A46D] px-6 text-base font-semibold text-white shadow-[0_12px_32px_rgba(139,26,74,0.25)] disabled:opacity-40 disabled:shadow-none"
+                >
+                  {busy === 'accept' ? 'Accepting…' : 'Accept this quotation'}
+                </button>
+                {requestChangesBlock}
+              </section>
             )}
-            {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-          </section>
+
+            <button
+              type="button"
+              onClick={() => open('proposal')}
+              className="text-sm font-medium text-[#8B1A4A] underline decoration-[#C5A46D] underline-offset-4 print:hidden"
+            >
+              ← Back to your proposal
+            </button>
+          </div>
         )}
 
-        <p className="pb-6 text-center text-sm text-[#6B5B4D]">
-          Questions? Call or WhatsApp us on <a href={`tel:${SHAADI_PHONE}`} className="font-semibold text-[#8B1A4A]">{SHAADI_PHONE_DISPLAY}</a>
+        {error && (
+          <p role="alert" className="text-sm text-red-600 print:hidden">
+            {error}
+          </p>
+        )}
+
+        <p className="pb-8 pt-2 text-center text-sm text-[#6B5B4D] print:hidden">
+          Questions? Call{' '}
+          <a href={`tel:${SHAADI_PHONE}`} className="font-semibold text-[#8B1A4A]">
+            {SHAADI_PHONE_DISPLAY}
+          </a>{' '}
+          or{' '}
+          <a
+            href={shaadiWhatsAppLink(
+              `Hi, I have a question about my wedding proposal ${p.number}.`
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[#8B1A4A]"
+          >
+            WhatsApp us
+          </a>
         </p>
-      </div>
+      </main>
     </div>
   );
 }
