@@ -531,3 +531,59 @@ appears once, in the quotation, after the terms; the quotation has the table, su
 
 **Not in 1.2:** vendor package lists on the proposal (their listed prices would differ from the quoted price), a
 server-generated PDF, "show interest" per vendor, and readiness checks before sending (§46).
+
+## 18. Customer payment by UPI, payment proof and receipts (Roadmap 1.3 — 3 Oct 2026)
+
+Master doc §27 (the couple sees Total → Advance → Paid → Pending → Due date, receipts and transaction history). Built on the
+proposal link and on Money v1 (`10-commercial-flow-v1.md`, the 25% rule) — **no second payment architecture**.
+
+**Decisions (approved 1 Oct 2026):** the payments live on the proposal link (no login); the UTR is required and a screenshot is
+optional; the same staff who record payments today (SUPER_ADMIN, SALES, OPERATIONS) verify; the UPI ID is read from the environment
+and the payment card stays hidden until it is set.
+
+### 18.1 What the couple sees
+
+A third tab, **Payments** (`#payments`), only once the quotation is ACCEPTED. Accepting reloads the page onto it.
+- Total · to confirm (25%) · paid · pending · due date (while the date is held: when the 7-day hold ends).
+- **Pay by UPI**: the amount (pre-filled with what still confirms the booking, else the balance; they may pay more, up to what is
+  due), a QR made on the page from the standard `upi://pay` link (payee, fixed amount, INR, the quotation number as the note), a
+  "Pay with a UPI app" button for phones, and the UPI ID and payee name to check.
+- **I have paid**: amount, UTR, date paid, optional screenshot (photo or PDF, under 5 MB), optional note.
+- "Payments you sent": each claim as *Being checked*, or *Could not be matched* with staff's reason.
+- **Receipts**: every payment received (staff-recorded, verified, or Razorpay), one receipt per payment even when it was split across
+  the advance and balance invoices (`receiptId`); Download / print prints just that receipt.
+- The sentence at the top follows the payments (`paymentsHeadline`): what confirms the booking, how long the date is held, or the
+  balance once confirmed.
+
+### 18.2 A claim is not money
+
+`PaymentSubmission` (migration `20261003120000_add_payment_submission`, additive) holds the claim: PENDING → VERIFIED / REJECTED.
+Received, Date Held and Confirmed still come **only** from Payment rows. A claim never starts the hold and never confirms anything.
+
+**Verify** (staff, in the Money card in the CRM and in the wedding's Money tab, "Payments to verify") records the Payment through
+`recordPaymentForQuotation` — the same path as "Record payment": method UPI, the UTR as its reference, the date the couple paid
+(staff may correct the amount and date to what arrived), idempotency key `sub-<submission id>`. So the 25% rule, the hold, the
+advance-then-balance split and auto-confirmation are unchanged, the same UTR is never counted twice, and a verify that stopped
+half-way is safe to press again. **Not matched** needs a reason, which the couple sees.
+
+### 18.3 Protection
+
+- Public route `POST /api/proposal/[token]/payments`: same per-IP limit as accept / request changes; only on an ACCEPTED proposal;
+  amount whole rupees, at most what is outstanding; UTR 6–35 letters/digits; date not in the future nor older than 90 days; at most
+  **3 open claims** per proposal; a UTR already claimed or already recorded on this agreement is refused; body over ~5 MB refused
+  before it is read.
+- Screenshots are **private** Cloudinary assets (`payment-proofs/`, type `private`): no public URL; staff get a signed link valid
+  for 10 minutes; the couple never gets one back. If saving the claim fails after the upload, the file is deleted.
+- The couple's view is an allow-list (`toProposalPayments`): no staff names, invoice ids, notes or proof files.
+- With `SHAADI_UPI_ID` / `SHAADI_UPI_NAME` unset or malformed: no QR, no "I have paid"; the page says to call us.
+- Every claim and every refusal is on the CRM / wedding timeline (`PAYMENT_SUBMITTED`, `PAYMENT_SUBMISSION_REJECTED`).
+
+**Tests:** `lib/payments/customerPayment.test.ts` (UPI link, claim validation, receipts, the allow-list),
+`services/paymentSubmission.service.test.ts` (a claim is never a payment; duplicates and limits refused before any upload; clean-up;
+verify goes through Money v1 with a fixed key and is idempotent; reject), `services/proposal.service.test.ts`,
+`app/api/proposal/[token]/routes.test.ts`, `lib/quotation/proposalView.test.ts`, `lib/quotation/proposalPage.test.ts`.
+
+**Not in 1.3:** a payment gateway on the link (Razorpay payment links stay staff-only), automatic bank matching, refunds, payment
+reminders, a list of all open claims across customers (they appear on each customer's timeline and Money card), and a Customer
+Portal view. Known gap from §16/§17: the proposal and detailed-quotation views still show the quotation's own *advance* as "Advance to
+confirm"; since Money v1 the amount that confirms is 25% of the total — the Payments view shows the real figure.

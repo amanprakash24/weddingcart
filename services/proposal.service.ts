@@ -17,6 +17,8 @@ import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { bookingSourceFacts, expireOverdue, quotationService } from '@/services/quotation.service';
 import { applyCommercialEvent } from '@/services/leadStage.service';
 import type { SourceType } from '@/services/leadInbox.service';
+import { paymentSubmissionService, type ProofFile } from '@/services/paymentSubmission.service';
+import type { ProposalPayments } from '@/lib/payments/customerPayment';
 
 // Wedding Proposal (docs/wedding-os/08-quotation.md §15) — what the couple can do through the secret link.
 // A thin adapter: the token is resolved to ONE quotation revision, and every rule that matters is the existing
@@ -50,6 +52,7 @@ export interface ProposalDeps {
   createBooking: typeof quotationService.createBooking;
   logActivity: typeof activityLogRepository.create;
   applyEvent: typeof applyCommercialEvent;
+  payments: Pick<typeof paymentSubmissionService, 'forProposal' | 'submit'>;
 }
 
 const defaultDeps = (): ProposalDeps => ({
@@ -62,6 +65,7 @@ const defaultDeps = (): ProposalDeps => ({
   createBooking: (...a) => quotationService.createBooking(...a),
   logActivity: activityLogRepository.create,
   applyEvent: applyCommercialEvent,
+  payments: paymentSubmissionService,
 });
 
 export function createProposalService(deps: ProposalDeps = defaultDeps()) {
@@ -105,7 +109,7 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
           },
         })
       : [];
-    return toCustomerProposal(q, source, vendorMap, now, {
+    const view = toCustomerProposal(q, source, vendorMap, now, {
       booked: q.booking?.status === 'CONFIRMED',
       confirmedVendors: confirmed.map((c) => ({
         vendorName: c.vendor.name,
@@ -116,6 +120,15 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
         venueName: c.weddingEvent.venueName,
       })),
     });
+    // Roadmap 1.3: totals, receipts and "I have paid" — only once accepted. Read-only; a failure here never hides the proposal.
+    if (q.status === 'ACCEPTED') {
+      try {
+        view.payments = await deps.payments.forProposal(q.id);
+      } catch (err) {
+        console.error(`proposal payments for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
+      }
+    }
+    return view;
   }
 
   return {
@@ -213,6 +226,17 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
       await deps.applyEvent(tx, sourceType, sourceId, 'CHANGES_REQUESTED', null);
     });
     return { recorded: true };
+  },
+
+  // "I have paid" (Roadmap 1.3, §18): only on an accepted proposal. Records a claim for staff to verify — never a payment.
+  async submitPayment(token: unknown, raw: { amount: unknown; utr: unknown; paidOn?: unknown; note?: unknown }, proof: ProofFile | null): Promise<{ submitted: true; payments: ProposalPayments }> {
+    const q = await resolve(token);
+    if (!q) throw new ProposalNotFoundError();
+    const state = proposalState(q, new Date());
+    if (state === 'INVALID') throw new ProposalNotFoundError();
+    if (state !== 'ACCEPTED') throw new ConflictError('Please accept the quotation before paying');
+    await deps.payments.submit(q, raw, proof);
+    return { submitted: true, payments: await deps.payments.forProposal(q.id) };
   },
   };
 }

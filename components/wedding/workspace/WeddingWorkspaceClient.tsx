@@ -267,7 +267,7 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         </div>
       )}
 
-      {tab === 'money' && <Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} onRecordAgreementPayment={recordAgreementPayment} />}
+      {tab === 'money' && <Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} onRecordAgreementPayment={recordAgreementPayment} onMoneyChanged={load} />}
 
       {tab === 'people' && (
         <div className="space-y-4">

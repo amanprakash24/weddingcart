@@ -127,4 +127,5 @@ automatically; a person decides. A later payment still counts, and reaching 25% 
 advance invoice is still made at conversion, from the quotation's own advance, unchanged). No historical record is rewritten.
 
 **Not in V1:** refunds, forfeits, cancellation after payment, change orders after acceptance, customer-submitted payments and proof,
-a payment-verification workflow, a Settings screen for the rules, and vendor payouts (unchanged, still in the Functions tab).
+a payment-verification workflow *(both added 3 Oct 2026 by Roadmap 1.3 — `08-quotation.md` §18; verification records the payment
+through this same path)*, a Settings screen for the rules, and vendor payouts (unchanged, still in the Functions tab).
