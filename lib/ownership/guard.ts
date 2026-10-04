@@ -6,7 +6,7 @@
 //  • creates (and upsert's create) → the business is set on the new record
 //  • a query that names a DIFFERENT business than the scope → refused (never silently widened or narrowed)
 //  • SYSTEM scope              → unchanged (named, deliberate cross-business lookups)
-import { OWNED_MODELS, type OwnedModel } from './owned';
+import { CHILD_MODELS, OWNED_MODELS, PARENT_LINKS, type ChildModel, type OwnedModel } from './owned';
 import type { Scope } from './scope';
 
 export class ScopeViolationError extends Error {
@@ -18,6 +18,43 @@ export class ScopeViolationError extends Error {
 
 const OWNED = new Set<string>(OWNED_MODELS);
 export const isOwnedModel = (model: string | undefined): model is OwnedModel => !!model && OWNED.has(model);
+const CHILD = new Set<string>(CHILD_MODELS);
+export const isChildModel = (model: string | undefined): model is ChildModel => !!model && CHILD.has(model);
+
+// The `where` that limits a model to a business: its own column for an owned record; for a child, "any parent leads to it".
+export function ownerFilter(model: OwnedModel | ChildModel, businessId: string): Record<string, unknown> {
+  if (isOwnedModel(model)) return { businessId };
+  const links = PARENT_LINKS[model];
+  const paths = links.map((l) => ({ [l.relation]: ownerFilter(l.model, businessId) }));
+  return paths.length === 1 ? paths[0] : { OR: paths };
+}
+
+function andWhere(where: unknown, extra: Record<string, unknown>): Record<string, unknown> {
+  const w = (where ?? {}) as Record<string, unknown>;
+  const and = w.AND === undefined ? [] : Array.isArray(w.AND) ? w.AND : [w.AND];
+  return { ...w, AND: [...and, extra] };
+}
+
+// Every parent a write points at — by its column (`weddingId`) or by `connect` — so the caller can check none belongs to another
+// business. Covers create, createMany, update, updateMany and both halves of upsert.
+export function parentRefs(model: string, operation: string, args: Record<string, unknown> | undefined): { relation: string; model: OwnedModel | ChildModel; id: string }[] {
+  if (!isOwnedModel(model) && !isChildModel(model)) return [];
+  const payloads: unknown[] = [];
+  if (CREATE_OPS.has(operation)) payloads.push(...(Array.isArray(args?.data) ? args.data : [args?.data]));
+  if (operation === 'update' || operation === 'updateMany' || operation === 'updateManyAndReturn') payloads.push(args?.data);
+  if (operation === 'upsert') payloads.push(args?.create, args?.update);
+  const refs: { relation: string; model: OwnedModel | ChildModel; id: string }[] = [];
+  for (const p of payloads) {
+    if (!p || typeof p !== 'object') continue;
+    const d = p as Record<string, unknown>;
+    for (const l of PARENT_LINKS[model]) {
+      const byColumn = d[l.fk];
+      const byConnect = (d[l.relation] as { connect?: { id?: unknown } } | undefined)?.connect?.id;
+      for (const id of [byColumn, byConnect]) if (typeof id === 'string' && id) refs.push({ relation: l.relation, model: l.model, id });
+    }
+  }
+  return refs;
+}
 
 const WHERE_OPS = new Set([
   'findUnique', 'findUniqueOrThrow', 'findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy',
@@ -51,7 +88,16 @@ function usesRelationWrites(data: Record<string, unknown>): boolean {
 }
 
 export function scopeQuery(model: string, operation: string, args: Args, scope: Scope): Args {
-  if (!isOwnedModel(model) || scope.kind === 'SYSTEM') return args;
+  if (scope.kind === 'SYSTEM') return args;
+  if (isChildModel(model)) {
+    // A child has no column of its own: reads, updates and deletes see it only through a parent of this business. Creates are
+    // checked by the caller (parentRefs) — a new child may not hang off another business's record.
+    const a = { ...(args ?? {}) } as Record<string, unknown>;
+    if (WHERE_OPS.has(operation)) return { ...a, where: andWhere(a.where, ownerFilter(model, scope.businessId)) };
+    if (CREATE_OPS.has(operation)) return args;
+    throw new ScopeViolationError(`${model}.${operation} is not covered by the ownership guard`);
+  }
+  if (!isOwnedModel(model)) return args;
   const { businessId } = scope;
   const a = { ...(args ?? {}) } as Record<string, unknown>;
 

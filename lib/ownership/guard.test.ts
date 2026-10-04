@@ -122,7 +122,11 @@ describe('code that could bypass the guard', () => {
     });
   const root = join(import.meta.dir, '..', '..');
   const source = ['services', 'repositories', 'lib', 'app'].flatMap((d) => files(join(root, d)));
-  const OWNED_TABLES = ['leads', 'enquiries', 'consultations', 'quotations', 'bookings', 'commercial_agreements', 'weddings', 'invoices', 'payments'];
+  // Owned tables and the child tables reached through them (Phase B2).
+  const OWNED_TABLES = ['leads', 'enquiries', 'consultations', 'quotations', 'bookings', 'commercial_agreements', 'weddings', 'invoices', 'payments',
+    'consultation_vendor_selections', 'booking_items', 'invoice_items', 'quotation_items', 'lead_insights', 'couples', 'wedding_events', 'guests',
+    'guest_function_responses', 'vendor_enquiries', 'vendor_bookings', 'timeline_milestones', 'documents', 'tasks', 'activity_logs', 'approval_requests',
+    'payment_links', 'payouts'];
 
   test('raw SQL on an owned table only ever locks a row by id (it returns no data)', () => {
     for (const f of source) {
