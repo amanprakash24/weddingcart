@@ -2,7 +2,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@/generated/prisma/client';
 import { buildPoolConfig, TRANSACTION_OPTIONS } from '@/lib/prismaPoolConfig';
 import { ownerFilter, parentRefs, scopeQuery, ScopeViolationError } from '@/lib/ownership/guard';
-import { effectiveScope } from '@/lib/ownership/scope';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { effectiveScope, runAsSystem } from '@/lib/ownership/scope';
 
 // Prisma 7 requires a driver adapter — the connection string is read here, not
 // in prisma.config.ts (that file is CLI-only: generate/migrate/studio).
@@ -42,7 +43,7 @@ if (process.env.NODE_ENV !== 'production') {
 // current scope (lib/ownership/scope.ts), in this one place — including inside $transaction. lib/ownership/guard.ts has the rules.
 // A query-only extension changes no method's arguments or results, so it is typed as the plain client: every existing
 // `Prisma.TransactionClient | typeof prisma` signature stays valid, while the guard runs on every call (transactions included).
-export const prisma = base.$extends({
+const extended = base.$extends({
   name: 'business-ownership',
   query: {
     $allModels: {
@@ -56,8 +57,13 @@ export const prisma = base.$extends({
           for (const ref of parentRefs(model, operation, scoped)) {
             const key = `${scope.businessId}|${ref.model}|${ref.id}`;
             if (parentChecked.has(key)) continue;
-            const delegate = (base as unknown as Record<string, { count: (a: unknown) => Promise<number> }>)[ref.model.charAt(0).toLowerCase() + ref.model.slice(1)];
-            if ((await delegate.count({ where: { id: ref.id, NOT: ownerFilter(ref.model, scope.businessId) } })) > 0) {
+            // On the SAME connection as the surrounding transaction, if there is one: the pool is small (3), and a second
+            // connection per check deadlocks when several transactions run at once. Run as a named system check so the guard
+            // does not filter its own lookup.
+            const client = (currentTransaction.getStore() ?? base) as unknown as Record<string, { count: (a: unknown) => Promise<number> }>;
+            const delegate = client[ref.model.charAt(0).toLowerCase() + ref.model.slice(1)];
+            const foreign = await runAsSystem('ownership parent check', () => delegate.count({ where: { id: ref.id, NOT: ownerFilter(ref.model, scope.businessId) } }));
+            if (foreign > 0) {
               throw new ScopeViolationError(`${model}: its ${ref.relation} belongs to another business`);
             }
             rememberParentCheck(key);
@@ -66,5 +72,24 @@ export const prisma = base.$extends({
         return query(scoped as typeof args);
       },
     },
+  },
+});
+
+// The transaction a query belongs to, per request, so the guard's own checks use its connection (see above).
+const currentTransaction = new AsyncLocalStorage<unknown>();
+
+// The app's client: the guarded client, whose interactive $transaction remembers its transaction client for the guard.
+export const prisma = new Proxy(extended, {
+  get(target, prop, receiver) {
+    if (prop === '$transaction') {
+      return (arg: unknown, options?: unknown) =>
+        typeof arg === 'function'
+          ? (target.$transaction as (fn: (tx: unknown) => unknown, o?: unknown) => Promise<unknown>)((tx) => currentTransaction.run(tx, () => (arg as (tx: unknown) => unknown)(tx)), options)
+          : (target.$transaction as (a: unknown, o?: unknown) => Promise<unknown>)(arg, options);
+    }
+    // Everything else is the real client, with methods bound to it (Prisma may rely on its own `this`).
+    void receiver;
+    const value = Reflect.get(target, prop, target);
+    return typeof value === 'function' ? value.bind(target) : value;
   },
 }) as unknown as PrismaClient;

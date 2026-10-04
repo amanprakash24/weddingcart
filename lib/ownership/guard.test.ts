@@ -140,7 +140,9 @@ describe('code that could bypass the guard', () => {
   });
 
   test('cross-business (SYSTEM) lookups are only in allowlisted places', () => {
-    const ALLOWED: string[] = []; // none yet — add a file here only with a review of why it must see every business
+    // Add a file here only with a review of why it must see every business.
+    //  • lib/prisma.ts — the guard's own parent check: "does this parent belong to ANOTHER business?" must look across businesses.
+    const ALLOWED: string[] = ['/lib/prisma.ts'];
     const users = source.filter((f) => /runAsSystem\(|kind: 'SYSTEM'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(root.length).replace(/\\/g, '/'));
     expect(users.filter((f) => !f.startsWith('/lib/ownership/'))).toEqual(ALLOWED);
   });
