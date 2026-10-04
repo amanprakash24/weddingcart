@@ -4,6 +4,7 @@ import { venuePortalService } from '@/services/venuePortal.service';
 import { buildVendorTodayView } from '@/lib/vendor/todayView';
 import { isVenueCategory } from '@/lib/quotation/terms';
 import VendorTodayScreen from '@/components/vendor/VendorTodayScreen';
+import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
   title: 'Today | Vendor OS',
@@ -18,7 +19,7 @@ export const metadata = {
 // PATCH-able — see docs/wedding-os/11-vivah-os-ux-architecture.md §21) — onAcceptResponse/onDeclineResponse
 // are deliberately left unwired rather than a new mutation invented here; the buttons render but the guard
 // already in VendorTodayScreen (`onAcceptResponse?.(id)`) makes that a safe, honest no-op, not a crash.
-export default async function VendorTodayPage() {
+async function VendorTodayPage() {
   const session = await requireRole([Role.VENDOR]);
   if (!session?.user?.id) return null;
   const dashboard = await venuePortalService.getDashboard(session.user.id);
@@ -26,3 +27,6 @@ export default async function VendorTodayPage() {
   const view = buildVendorTodayView(dashboard.bookings, isVenue);
   return <VendorTodayScreen vendor={{ businessName: dashboard.vendor.name, category: dashboard.vendor.category.name }} {...view} />;
 }
+
+// Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).
+export default platformScoped(VendorTodayPage);

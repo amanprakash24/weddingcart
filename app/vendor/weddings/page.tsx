@@ -4,6 +4,7 @@ import { venuePortalService } from '@/services/venuePortal.service';
 import { buildVendorWeddingsView } from '@/lib/vendor/weddingsView';
 import { isVenueCategory } from '@/lib/quotation/terms';
 import VendorWeddingsScreen from '@/components/vendor/VendorWeddingsScreen';
+import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
   title: 'Weddings | Vendor OS',
@@ -16,10 +17,13 @@ export const metadata = {
 //
 // Venue Owner specialization (docs/wedding-os/11-vivah-os-ux-architecture.md §3/§20): same isVenueCategory()
 // detection as the Services screen — not a new role, route, or shell.
-export default async function VendorWeddingsPage() {
+async function VendorWeddingsPage() {
   const session = await requireRole([Role.VENDOR]);
   if (!session?.user?.id) return null;
   const dashboard = await venuePortalService.getDashboard(session.user.id);
   const weddings = buildVendorWeddingsView(dashboard.bookings);
   return <VendorWeddingsScreen weddings={weddings} isVenue={isVenueCategory(dashboard.vendor.category.name)} />;
 }
+
+// Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).
+export default platformScoped(VendorWeddingsPage);

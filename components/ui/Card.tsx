@@ -89,7 +89,7 @@ export function NextActionCard({ title, detail, tone, ctaLabel, onCta, moreCount
       className={`rounded-2xl border p-4 sm:p-6 ${calm ? 'border-emerald-100 bg-emerald-50/60' : 'border-amber-200 bg-gradient-to-br from-amber-50 to-rose-50'}`}
     >
       <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Next action</p>
-      <h2 className="mt-1 font-[Playfair_Display,serif] text-2xl font-bold leading-snug text-[var(--color-text-primary)] sm:text-3xl">{title}</h2>
+      <h2 className="mt-1 font-playfair text-2xl font-bold leading-snug text-[var(--color-text-primary)] sm:text-3xl">{title}</h2>
       {detail && <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{detail}</p>}
       {moreCount > 0 && (
         <p className="mt-2 text-xs text-[var(--color-text-muted)]">
