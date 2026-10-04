@@ -1,4 +1,4 @@
-import { Briefcase, CalendarClock, Heart, LayoutDashboard, type LucideIcon, Receipt } from 'lucide-react';
+import { Briefcase, CalendarClock, Heart, Inbox, LayoutDashboard, type LucideIcon, Receipt } from 'lucide-react';
 
 // The one Vendor OS navigation — shared by ordinary vendors and venue owners alike. Venue Owner is a
 // specialized Vendor OS experience (docs/wedding-os/11-vivah-os-ux-architecture.md §3), not a separate
@@ -14,6 +14,8 @@ export type NavItem = { key: string; label: string; href: string; icon: LucideIc
 
 export const PRIMARY: NavItem[] = [
   { key: 'today', label: 'Today', href: '/vendor/today', icon: LayoutDashboard, isActive: (p) => p === '/vendor/today' },
+  // Phase C: the venue's own enquiries (+ New Enquiry) and Shaadi Shopping's availability requests, on one screen.
+  { key: 'enquiries', label: 'Enquiries', href: '/vendor/enquiries', icon: Inbox, isActive: (p) => p.startsWith('/vendor/enquiries') },
   { key: 'weddings', label: 'Weddings', href: '/vendor/weddings', icon: Heart, isActive: (p) => p.startsWith('/vendor/weddings') },
   { key: 'services', label: 'Services', href: '/vendor/services', icon: Briefcase, isActive: (p) => p.startsWith('/vendor/services') },
   { key: 'availability', label: 'Availability', href: '/vendor/availability', icon: CalendarClock, isActive: (p) => p.startsWith('/vendor/availability') },
@@ -21,5 +23,5 @@ export const PRIMARY: NavItem[] = [
 ];
 
 // Phone bottom bar: 4 daily items + a More button for the rest (same shape as adminNav.ts's PHONE_BAR).
-export const PHONE_BAR = PRIMARY.filter((item) => item.key !== 'availability');
-export const PHONE_MORE = PRIMARY.filter((item) => item.key === 'availability');
+export const PHONE_BAR = PRIMARY.filter((item) => ['today', 'enquiries', 'weddings', 'payments'].includes(item.key));
+export const PHONE_MORE = PRIMARY.filter((item) => !PHONE_BAR.includes(item));

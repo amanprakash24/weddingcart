@@ -631,6 +631,9 @@ model Consultation {
   venueType      String             @default("")
   preferredTime  String?
   message        String?
+  // Where the enquiry came from (docs/wedding-os/15-record-ownership.md §4.4): null = Shaadi Shopping's website (the /plan wizard);
+  // a venue's own enquiry records its channel — PHONE, WALK_IN, WHATSAPP, INSTAGRAM, GOOGLE, REFERENCE, EXISTING_CUSTOMER, OTHER.
+  channel        String?
   cartItems      Json?
   totalBudget    Int?
   budgetRange    String?
