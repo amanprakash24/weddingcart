@@ -21,7 +21,15 @@ const storage = new AsyncLocalStorage<Scope>();
 export function runInScope<T>(scope: Scope, fn: () => T): T {
   if (scope.kind === 'BUSINESS' && !scope.businessId) throw new Error('A business scope needs a business id');
   if (scope.kind === 'SYSTEM' && !scope.reason.trim()) throw new Error('A system scope needs a reason');
-  return storage.run(scope, fn);
+  // Prisma queries are lazy: `() => prisma.x.findMany()` returns a query that only runs when awaited — which would be OUTSIDE this
+  // scope. Starting it here (calling `then` inside the scope) makes it run as this scope however the caller writes it.
+  return storage.run(scope, () => {
+    const result = fn();
+    if (result !== null && typeof result === 'object' && typeof (result as { then?: unknown }).then === 'function') {
+      return (result as unknown as PromiseLike<unknown>).then((v) => v) as T;
+    }
+    return result;
+  });
 }
 
 export const runAsSystem = <T>(reason: string, fn: () => T): T => runInScope({ kind: 'SYSTEM', reason }, fn);

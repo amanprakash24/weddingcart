@@ -101,6 +101,13 @@ describe('scope', () => {
     expect(seen.sort()).toEqual(['a=a', 'b=b', 'c=c']);
   });
 
+  test('a LAZY result (like a Prisma query, which only runs when awaited) still runs inside the scope', async () => {
+    const lazyQuery = () => ({ then: (resolve: (v: unknown) => void) => resolve(effectiveScope()) }); // runs only when then() is called
+    const seen = await runInScope(VENUE, () => lazyQuery() as unknown as Promise<Scope>);
+    expect(seen).toEqual(VENUE);
+    expect(await runAsSystem('lazy', () => lazyQuery() as unknown as Promise<Scope>)).toEqual({ kind: 'SYSTEM', reason: 'lazy' });
+  });
+
   test('a scope must say whose it is, and a system scope why', () => {
     expect(() => runInScope({ kind: 'BUSINESS', businessId: '', role: 'OWNER' }, () => 1)).toThrow();
     expect(() => runAsSystem('  ', () => 1)).toThrow();
