@@ -634,6 +634,10 @@ model Consultation {
   // Where the enquiry came from (docs/wedding-os/15-record-ownership.md §4.4): null = Shaadi Shopping's website (the /plan wizard);
   // a venue's own enquiry records its channel — PHONE, WALK_IN, WHATSAPP, INSTAGRAM, GOOGLE, REFERENCE, EXISTING_CUSTOMER, OTHER.
   channel        String?
+  // A venue's own enquiry for a couple Shaadi Shopping already brought to THAT venue (decision D4): the Shaadi Shopping record it
+  // was linked to — "ENQUIRY:<id>", "CONSULTATION:<id>", "LEAD:<id>" or "BOOKING:<id>" — so commission applies to its booking.
+  platformMatch     String?
+  platformMatchedAt DateTime?
   cartItems      Json?
   totalBudget    Int?
   budgetRange    String?

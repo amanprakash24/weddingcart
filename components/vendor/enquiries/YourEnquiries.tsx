@@ -78,7 +78,7 @@ export default function YourEnquiries() {
                 <Card variant={e.next.kind === 'FOLLOW_UP_OVERDUE' ? 'attention' : 'clickable'} className="space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-base font-semibold text-[var(--color-text-primary)]">{e.name}</p>
-                    <span className="text-xs text-[var(--color-text-muted)]">{e.channel}</span>
+                    <span className="text-xs text-[var(--color-text-muted)]">{e.viaShaadiShopping ? 'Via Shaadi Shopping' : e.channel}</span>
                   </div>
                   <p className="text-sm text-[var(--color-text-secondary)]">
                     {[dateWords(e.weddingDate) ?? 'Date not decided', e.guestCount ? `${e.guestCount.toLocaleString('en-IN')} guests` : null].filter(Boolean).join(' · ')}

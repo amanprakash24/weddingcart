@@ -77,6 +77,11 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         </p>
         {e.need && <p className="mt-2 whitespace-pre-line text-sm text-[var(--color-text-primary)]">{e.need}</p>}
       </div>
+      {e.viaShaadiShopping && (
+        <p className="rounded-lg bg-[var(--color-info-bg)] p-3 text-sm text-[var(--color-info-text)]">
+          This couple came to you through Shaadi Shopping, so Shaadi Shopping’s commission applies when they book. You can work the enquiry here as usual.
+        </p>
+      )}
 
       {/* The one next step */}
       <Card variant={next.kind === 'FOLLOW_UP_OVERDUE' ? 'attention' : 'highlighted'} className="space-y-3">

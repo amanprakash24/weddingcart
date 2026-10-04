@@ -2,6 +2,8 @@ import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import { ACTION_ORDER, CHANNEL_LABEL, nextAction, validateNewEnquiry, type Channel, type FollowUp, type NextAction } from '@/lib/venue/enquiry';
+import { effectiveScope } from '@/lib/ownership/scope';
+import { platformMatchService } from '@/services/platformMatch.service';
 
 // A venue's OWN enquiries (Phase C, docs/wedding-os/15-record-ownership.md §5). Always called inside the venue's scope
 // (lib/ownership/venueEntry.ts): the database guard limits every query here to that venue's business, so this file never names a
@@ -22,6 +24,7 @@ export interface VenueEnquiryListItem {
   weddingDate: string | null;
   guestCount: number | null;
   channel: string;
+  viaShaadiShopping: boolean; // D4: Shaadi Shopping brought this couple to this venue — commission applies
   next: NextAction;
   createdAt: string;
 }
@@ -37,11 +40,13 @@ export interface VenueEnquiryDeps {
     consultation: Pick<typeof prisma.consultation, 'findMany' | 'findUnique' | 'create' | 'update'>;
     task: Pick<typeof prisma.task, 'create' | 'updateMany'>;
     activityLog: Pick<typeof prisma.activityLog, 'create'>;
+    business: Pick<typeof prisma.business, 'findUnique'>;
   };
+  match: Pick<typeof platformMatchService, 'find' | 'noteOnPlatformRecord'>;
   now: () => Date;
 }
 
-const defaultDeps = (): VenueEnquiryDeps => ({ db: prisma, now: () => new Date() });
+const defaultDeps = (): VenueEnquiryDeps => ({ db: prisma, match: platformMatchService, now: () => new Date() });
 
 const include = {
   tasks: { where: { context: 'SALES_FOLLOWUP' as const, status: { not: 'CANCELLED' as const } }, select: { id: true, title: true, dueAt: true, status: true }, orderBy: { dueAt: 'asc' as const } },
@@ -49,7 +54,7 @@ const include = {
 };
 
 type Row = {
-  id: string; name: string; phone: string; weddingDate: string; guestCount: number; channel: string | null; message: string | null; pipelineStage: string; createdAt: Date;
+  id: string; name: string; phone: string; weddingDate: string; guestCount: number; channel: string | null; message: string | null; pipelineStage: string; createdAt: Date; platformMatch: string | null;
   tasks: { id: string; title: string; dueAt: Date | null; status: string }[];
   activities: { id: string; type: string; summary: string; detail: string | null; createdAt: Date }[];
 };
@@ -64,6 +69,7 @@ function view(r: Row, now: Date): VenueEnquiryDetail {
     weddingDate: r.weddingDate || null,
     guestCount: r.guestCount > 0 ? r.guestCount : null,
     channel: CHANNEL_LABEL[r.channel as Channel] ?? 'Shaadi Shopping',
+    viaShaadiShopping: r.platformMatch !== null,
     next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || r.pipelineStage === 'WON', followUps }, now),
     createdAt: r.createdAt.toISOString(),
     need: r.message,
@@ -73,6 +79,24 @@ function view(r: Row, now: Date): VenueEnquiryDetail {
 }
 
 export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()) {
+  // D4: a couple Shaadi Shopping already brought to THIS venue is linked to that record — commission applies. Best effort: a failure
+  // here never loses the venue's enquiry (it is saved first).
+  async function linkIfShaadiShoppingCouple(id: string, phone: string): Promise<void> {
+    try {
+      const scope = effectiveScope();
+      if (scope.kind !== 'BUSINESS') return;
+      const business = await deps.db.business.findUnique({ where: { id: scope.businessId }, select: { name: true, vendorId: true, kind: true } });
+      if (!business?.vendorId || business.kind !== 'VENDOR') return;
+      const ref = await deps.match.find(business.vendorId, phone);
+      if (!ref) return;
+      await deps.db.consultation.update({ where: { id }, data: { platformMatch: ref, platformMatchedAt: deps.now() } });
+      await deps.db.activityLog.create({ data: { type: ActivityType.STATUS_CHANGED, summary: 'This couple came to you through Shaadi Shopping — commission applies to this booking', consultation: { connect: { id } } } });
+      await deps.match.noteOnPlatformRecord(ref, business.name);
+    } catch (err) {
+      console.error('D4 platform match failed (the enquiry is saved):', err instanceof Error ? err.message : err);
+    }
+  }
+
   async function load(id: string): Promise<Row> {
     const row = (await deps.db.consultation.findUnique({ where: { id }, include })) as Row | null;
     if (!row) throw new NotFoundError('Enquiry', id);
@@ -110,6 +134,7 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
         });
         return created.id;
       });
+      await linkIfShaadiShoppingCouple(id, e.phone);
       return { id };
     },
 
