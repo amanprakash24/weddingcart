@@ -3,11 +3,12 @@ import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { payoutService } from '@/services/payout.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // No request body — the payout amount is entirely server-computed from the
 // booking's agreedPrice and the current CommissionRate, same "never trust a
 // client amount" rule as the invoice/payment-link routes.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -21,3 +22,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

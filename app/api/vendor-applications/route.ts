@@ -7,6 +7,7 @@ import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { INDIAN_MOBILE_ERROR, normalizeIndianMobile } from '@/lib/indianPhone';
 import type { VendorApplicationWithCategory } from '@/repositories/vendorApplication.repository';
 import type { ApplicationStatus } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Public, unauthenticated POST with previously zero rate limiting or
 // validation (audit finding) — reuses the exact throttle mechanism and
@@ -78,7 +79,7 @@ function toApplicationStatus(status: string | null): ApplicationStatus | undefin
   return undefined;
 }
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
     if (await isRequestRateLimited(rateLimitId)) {
@@ -135,3 +136,7 @@ export async function POST(req: NextRequest) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

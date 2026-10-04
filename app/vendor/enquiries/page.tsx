@@ -4,13 +4,14 @@ import { Role } from '@/lib/auth/roles';
 import { NotFoundError } from '@/lib/errors';
 import { vendorEnquiryService } from '@/services/vendorEnquiry.service';
 import VendorEnquiriesClient from '@/components/vendor/VendorEnquiriesClient';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Vendor OS — availability enquiries (docs/wedding-os/04-vendor-os.md §9). The vendor is always the logged-in user's
 // own vendor; only their own enquiries are listed, reduced to operational facts.
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Enquiries | Vendor Portal', robots: { index: false, follow: false } };
 
-export default async function VendorEnquiriesPage() {
+async function VendorEnquiriesPage() {
   const session = await requireRole([Role.VENDOR]);
   if (!session?.user?.id) redirect('/vendor/login');
   let enquiries;
@@ -22,3 +23,6 @@ export default async function VendorEnquiriesPage() {
   }
   return <VendorEnquiriesClient initial={enquiries} />;
 }
+
+// Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).
+export default platformScoped(VendorEnquiriesPage);

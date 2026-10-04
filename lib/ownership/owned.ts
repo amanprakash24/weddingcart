@@ -70,3 +70,41 @@ export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
   PaymentLink: [link('invoice', 'Invoice')],
   Payout: [link('vendorBooking', 'VendorBooking')],
 };
+
+// Links from a record to another record of the SAME model (a quotation revision, a milestone dependency). Checked on writes like
+// any parent, but never followed when reading (a record's business comes from its other links).
+export const SELF_LINKS: Partial<Record<OwnedModel | ChildModel, ParentLink[]>> = {
+  Quotation: [link('supersedes', 'Quotation')],
+  TimelineMilestone: [link('dependsOn', 'TimelineMilestone')],
+};
+
+// Every relation field (either direction) from an owned / child record to an OWNED record — kept equal to the schema by
+// lib/ownership/children.test.ts. Nested writes through these are limited (lib/ownership/guard.ts: nestedOwnedWrite): only
+// `connect` / `disconnect` on a forward link (a PARENT_LINKS / SELF_LINKS relation, whose id is then checked); never a nested
+// create of an owned record, and nothing through a back-relation (which could pull another business's record onto this one).
+export const OWNED_RELATIONS: Partial<Record<OwnedModel | ChildModel, string[]>> = {
+  Lead: ['quotations', 'wedding'],
+  Enquiry: ['quotations', 'wedding', 'bookings', 'consultation'],
+  Consultation: ['quotations', 'wedding', 'bookings', 'enquiries'],
+  Quotation: ['supersedes', 'supersededBy', 'lead', 'enquiry', 'consultation', 'advanceInvoice', 'invoices', 'booking', 'agreement'],
+  Booking: ['enquiry', 'consultation', 'invoices', 'wedding', 'agreement', 'quotation'],
+  CommercialAgreement: ['quotation', 'booking'],
+  Wedding: ['sourceLead', 'sourceEnquiry', 'sourceConsultation', 'sourceBooking', 'invoices'],
+  Invoice: ['wedding', 'payments', 'quotation', 'booking', 'advanceForQuotation'],
+  Payment: ['invoice'],
+  ConsultationVendorSelection: ['consultation'],
+  BookingItem: ['booking'],
+  InvoiceItem: ['invoice'],
+  QuotationItem: ['quotation'],
+  LeadInsight: ['lead', 'enquiry', 'consultation'],
+  Couple: ['wedding'],
+  WeddingEvent: ['wedding'],
+  Guest: ['wedding'],
+  VendorEnquiry: ['lead', 'enquiry', 'consultation', 'quotation'],
+  TimelineMilestone: ['wedding'],
+  Document: ['wedding'],
+  Task: ['lead', 'enquiry', 'consultation', 'wedding'],
+  ActivityLog: ['lead', 'enquiry', 'consultation', 'wedding'],
+  ApprovalRequest: ['wedding'],
+  PaymentLink: ['invoice'],
+};

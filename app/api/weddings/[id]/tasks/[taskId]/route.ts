@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Any of these may be sent; only what is sent changes. `status` alone keeps working exactly as before (Done / Cancelled), and now also
 // PENDING / IN_PROGRESS to reopen a task. `dueAt`, `assignedToId` and `description` may be null to clear them.
@@ -19,7 +20,7 @@ const bodySchema = z
   .partial()
   .refine((body) => Object.keys(body).length > 0, 'Nothing to change');
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; taskId: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; taskId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -37,3 +38,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);

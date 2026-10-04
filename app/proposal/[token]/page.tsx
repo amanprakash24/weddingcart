@@ -6,6 +6,7 @@ import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { gateProposalView } from '@/lib/quotation/proposalViewGate';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import ProposalClient from '@/components/proposal/ProposalClient';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // The couple's proposal page (docs/wedding-os/08-quotation.md §15). The secret token in the URL is the only key.
 // Always rendered fresh (never cached), never indexed, and the URL is never sent on as a Referer.
@@ -32,7 +33,7 @@ function Notice({ title, children }: { title: string; children: React.ReactNode 
   );
 }
 
-export default async function ProposalPage({ params }: { params: Promise<{ token: string }> }) {
+async function ProposalPage({ params }: { params: Promise<{ token: string }> }) {
   const h = await headers();
   const { token } = await params;
   // Only a link that doesn't work is recorded for rate limiting — opening a valid link writes nothing (§15.5).
@@ -48,3 +49,6 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
   }
   return <ProposalClient token={token} initial={result.proposal} />;
 }
+
+// Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).
+export default platformScoped(ProposalPage);

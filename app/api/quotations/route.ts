@@ -6,12 +6,13 @@ import { isSourceType } from '@/lib/crm/subject';
 import { quotationService } from '@/services/quotation.service';
 import { afterVendorLinkChange, sourceOfQuotation } from '@/lib/vendorEnquiry/hook';
 import { createQuotationSchema } from './schema';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Staff-only in V1 (docs/wedding-os/08-quotation.md §10): quotations carry pricing, so there is
 // no public route and no customer login/link at this stage.
 
 // GET /api/quotations?sourceType=ENQUIRY&sourceId=<id> — quotations for one lead/enquiry/consultation.
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   if (!(await requireRole(ADMIN_ROLES))) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/quotations — create a DRAFT for a source.
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -45,3 +46,7 @@ export async function POST(req: NextRequest) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

@@ -1,9 +1,9 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@/generated/prisma/client';
 import { buildPoolConfig, TRANSACTION_OPTIONS } from '@/lib/prismaPoolConfig';
-import { ownerFilter, parentRefs, scopeQuery, ScopeViolationError } from '@/lib/ownership/guard';
+import { isChildModel, isOwnedModel, ownerFilter, parentRefs, scopeQuery, ScopeViolationError } from '@/lib/ownership/guard';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { effectiveScope, runAsSystem } from '@/lib/ownership/scope';
+import { runAsSystem, scopeForOwnedQuery } from '@/lib/ownership/scope';
 
 // Prisma 7 requires a driver adapter — the connection string is read here, not
 // in prisma.config.ts (that file is CLI-only: generate/migrate/studio).
@@ -48,7 +48,8 @@ const extended = base.$extends({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }) {
-        const scope = effectiveScope();
+        if (!isOwnedModel(model) && !isChildModel(model)) return query(args); // vendors, categories, users … are not owned
+        const scope = scopeForOwnedQuery(model, operation);
         const scoped = scopeQuery(model, operation, args as Record<string, unknown> | undefined, scope);
         // A write may not point at another business's record (a quotation for its customer, a guest on its wedding …). The check
         // looks for a COMMITTED parent that belongs to someone else; a parent made earlier in this same request is not visible yet

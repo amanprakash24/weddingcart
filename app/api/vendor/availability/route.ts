@@ -5,6 +5,7 @@ import { Role } from '@/lib/auth/roles';
 import { AvailabilityStatus } from '@/generated/prisma/enums';
 import { venuePortalService } from '@/services/venuePortal.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const schema = z.object({
   dates: z
@@ -18,7 +19,7 @@ const schema = z.object({
     .min(1),
 });
 
-export async function PATCH(req: NextRequest) {
+async function handlePATCH(req: NextRequest) {
   const session = await requireRole([Role.VENDOR]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -28,3 +29,6 @@ export async function PATCH(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);

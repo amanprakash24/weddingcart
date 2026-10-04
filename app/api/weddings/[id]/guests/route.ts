@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { GuestRsvpStatus } from '@/generated/prisma/enums';
 import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const responseSchema = z.object({ weddingEventId: z.string().min(1), status: z.nativeEnum(GuestRsvpStatus) });
 const guestSchema = z.object({
@@ -18,13 +19,13 @@ const guestSchema = z.object({
   functionResponses: z.array(responseSchema).default([]),
 });
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try { return NextResponse.json({ success: true, data: await guestService.listForAdmin((await params).id) }); } catch (error) { return handleApiError(error); }
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -32,3 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ success: true, data: await guestService.create((await params).id, body) }, { status: 201 });
   } catch (error) { return handleApiError(error); }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

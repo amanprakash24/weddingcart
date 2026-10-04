@@ -150,6 +150,6 @@ describe('code that could bypass the guard', () => {
   test('the guard is wired into the shared client', () => {
     const client = readFileSync(join(root, 'lib', 'prisma.ts'), 'utf8');
     expect(client).toContain('scopeQuery(model, operation');
-    expect(client).toContain('effectiveScope()');
+    expect(client).toContain('scopeForOwnedQuery(model, operation)');
   });
 });

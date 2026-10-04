@@ -7,8 +7,10 @@ import { PLATFORM_BUSINESS_ID } from './owned';
 //   runInScope({ kind: 'BUSINESS', businessId, role }, fn)  — everything inside sees only that business's records
 //   runAsSystem('proposal link lookup by token', fn)        — a deliberate, named, cross-business lookup (allowlisted in CI)
 //
-// Phase B: with no scope set, work runs as Shaadi Shopping — exactly today's behaviour, and safe because only staff routes run
-// without one. Before any venue screen ships (Phase C) this becomes fail-closed: no scope = an error.
+// Every entry point sets its scope (app/api routes and server pages via platformScoped / a business scope — a CI scan enforces it).
+// Work on owned records with NO scope is a bug. What happens then is set by OWNERSHIP_UNSCOPED:
+//   'error' — refused (fail-closed; the target for production once its logs show no warnings)
+//   'warn'  — the default: logged once per model and operation, and run as Shaadi Shopping (today's behaviour)
 
 export type BusinessRoleName = 'OWNER' | 'STAFF';
 
@@ -39,6 +41,28 @@ export const PLATFORM_SCOPE: Scope = { kind: 'BUSINESS', businessId: PLATFORM_BU
 // The scope the database guard applies right now.
 export function effectiveScope(): Scope {
   return storage.getStore() ?? PLATFORM_SCOPE;
+}
+
+export class UnscopedAccessError extends Error {
+  constructor(what: string) {
+    super(`${what} ran without a business scope (OWNERSHIP_UNSCOPED=error)`);
+    this.name = 'UnscopedAccessError';
+  }
+}
+
+const warnedUnscoped = new Set<string>();
+
+// The scope for a query on an owned / child record: the current one, or — when none is set — the OWNERSHIP_UNSCOPED rule.
+export function scopeForOwnedQuery(model: string, operation: string, mode: string | undefined = process.env.OWNERSHIP_UNSCOPED): Scope {
+  const scope = storage.getStore();
+  if (scope) return scope;
+  const what = `${model}.${operation}`;
+  if (mode === 'error') throw new UnscopedAccessError(what);
+  if (!warnedUnscoped.has(what)) {
+    warnedUnscoped.add(what);
+    console.warn(`[ownership] ${what} ran without a business scope — treated as Shaadi Shopping. Wrap its entry point (lib/ownership/entry.ts).`);
+  }
+  return PLATFORM_SCOPE;
 }
 
 export const hasExplicitScope = (): boolean => storage.getStore() !== undefined;

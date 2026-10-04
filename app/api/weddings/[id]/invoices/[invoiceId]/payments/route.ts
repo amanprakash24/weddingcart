@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { invoiceWorkflowService } from '@/services/invoiceWorkflow.service';
 import { MANUAL_PAYMENT_METHODS } from '@/lib/invoice/lifecycle';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const bodySchema = z.object({
   amount: z.number().int().positive(),
@@ -14,7 +15,7 @@ const bodySchema = z.object({
 });
 
 // Records money received OUTSIDE Razorpay (cash, UPI, bank transfer, cheque) against one invoice of this wedding.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; invoiceId: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; invoiceId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   const { id, invoiceId } = await params;
@@ -31,3 +32,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

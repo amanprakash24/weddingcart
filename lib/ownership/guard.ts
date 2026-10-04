@@ -6,7 +6,7 @@
 //  • creates (and upsert's create) → the business is set on the new record
 //  • a query that names a DIFFERENT business than the scope → refused (never silently widened or narrowed)
 //  • SYSTEM scope              → unchanged (named, deliberate cross-business lookups)
-import { CHILD_MODELS, OWNED_MODELS, PARENT_LINKS, type ChildModel, type OwnedModel } from './owned';
+import { CHILD_MODELS, OWNED_MODELS, OWNED_RELATIONS, PARENT_LINKS, SELF_LINKS, type ChildModel, type OwnedModel } from './owned';
 import type { Scope } from './scope';
 
 export class ScopeViolationError extends Error {
@@ -47,7 +47,7 @@ export function parentRefs(model: string, operation: string, args: Record<string
   for (const p of payloads) {
     if (!p || typeof p !== 'object') continue;
     const d = p as Record<string, unknown>;
-    for (const l of PARENT_LINKS[model]) {
+    for (const l of [...PARENT_LINKS[model], ...(SELF_LINKS[model] ?? [])]) {
       const byColumn = d[l.fk];
       const byConnect = (d[l.relation] as { connect?: { id?: unknown } } | undefined)?.connect?.id;
       for (const id of [byColumn, byConnect]) if (typeof id === 'string' && id) refs.push({ relation: l.relation, model: l.model, id });
@@ -87,8 +87,32 @@ function usesRelationWrites(data: Record<string, unknown>): boolean {
   return Object.values(data).some((v) => v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date) && RELATION_OPS.some((op) => op in (v as object)));
 }
 
+const NESTED_WRITE_OPS = ['create', 'createMany', 'connectOrCreate', 'upsert', 'connect', 'set', 'update', 'updateMany', 'delete', 'deleteMany', 'disconnect'];
+
+// A nested write inside `data` that the guard cannot check: a nested create of an owned record, or any write through a
+// back-relation. Only `connect` (its id is checked) and `disconnect` on a forward link are allowed. Returns the offending field.
+export function nestedOwnedWrite(model: string, data: unknown): string | null {
+  if (!isOwnedModel(model) && !isChildModel(model)) return null;
+  const forward = new Set([...PARENT_LINKS[model], ...(SELF_LINKS[model] ?? [])].map((l) => l.relation));
+  for (const d of Array.isArray(data) ? data : [data]) {
+    if (!d || typeof d !== 'object') continue;
+    for (const field of OWNED_RELATIONS[model] ?? []) {
+      const v = (d as Record<string, unknown>)[field];
+      if (!v || typeof v !== 'object') continue;
+      const ops = Object.keys(v).filter((k) => NESTED_WRITE_OPS.includes(k));
+      const fine = forward.has(field) && ops.every((op) => op === 'connect' || op === 'disconnect');
+      if (ops.length && !fine) return field;
+    }
+  }
+  return null;
+}
+
 export function scopeQuery(model: string, operation: string, args: Args, scope: Scope): Args {
   if (scope.kind === 'SYSTEM') return args;
+  for (const payload of [args?.data, args?.create, args?.update]) {
+    const field = nestedOwnedWrite(model, payload);
+    if (field) throw new ScopeViolationError(`${model}: a nested write through "${field}" is not allowed (create owned records on their own)`);
+  }
   if (isChildModel(model)) {
     // A child has no column of its own: reads, updates and deletes see it only through a parent of this business. Creates are
     // checked by the caller (parentRefs) — a new child may not hang off another business's record.
