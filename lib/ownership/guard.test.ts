@@ -37,6 +37,14 @@ describe('creates are stamped with the business', () => {
     expect(up?.where).toEqual({ id: 'q', businessId: 'venue-1' });
   });
 
+  test('the stamp uses the shape the data already uses (relation writes → business.connect; plain columns → businessId)', () => {
+    expect(scopeQuery('Quotation', 'create', { data: { total: 1, consultation: { connect: { id: 'c1' } }, items: { create: [] } } }, VENUE)?.data).toEqual({
+      total: 1, consultation: { connect: { id: 'c1' } }, items: { create: [] }, business: { connect: { id: 'venue-1' } },
+    });
+    expect(scopeQuery('Quotation', 'create', { data: { total: 1, consultationId: 'c1', validUntil: new Date(0) } }, VENUE)?.data).toEqual({ total: 1, consultationId: 'c1', validUntil: new Date(0), businessId: 'venue-1' });
+    expect(scopeQuery('Lead', 'create', { data: { phone: '1', meta: { a: 1 } } }, VENUE)?.data).toEqual({ phone: '1', meta: { a: 1 }, businessId: 'venue-1' });
+  });
+
   test('creating for another business is refused (by id or by relation)', () => {
     expect(() => scopeQuery('Lead', 'create', { data: { businessId: 'other' } }, VENUE)).toThrow(ScopeViolationError);
     expect(() => scopeQuery('Lead', 'create', { data: { business: { connect: { id: 'other' } } } }, VENUE)).toThrow(ScopeViolationError);

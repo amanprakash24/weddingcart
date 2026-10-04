@@ -40,7 +40,14 @@ function withBusinessData(model: string, data: unknown, businessId: string): Rec
   const named = d.businessId ?? (d.business as { connect?: { id?: string } } | undefined)?.connect?.id;
   if (named !== undefined && named !== businessId) throw new ScopeViolationError(`${model}: cannot create a record for another business`);
   if (d.business) return d; // already connected to this business
-  return { ...d, businessId };
+  // Prisma has two create shapes: with relation operations (`consultation: { connect }`, `items: { create }`) only the relation form
+  // `business: { connect }` is accepted; with plain columns (`consultationId`) only `businessId` is. Use whichever the data uses.
+  return usesRelationWrites(d) ? { ...d, business: { connect: { id: businessId } } } : { ...d, businessId };
+}
+
+const RELATION_OPS = ['connect', 'create', 'connectOrCreate', 'createMany', 'set'];
+function usesRelationWrites(data: Record<string, unknown>): boolean {
+  return Object.values(data).some((v) => v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date) && RELATION_OPS.some((op) => op in (v as object)));
 }
 
 export function scopeQuery(model: string, operation: string, args: Args, scope: Scope): Args {
