@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { proposalService } from '@/services/proposal.service';
 import { proposalError, proposalJson, proposalRateLimited } from '@/lib/quotation/proposalHttp';
-import { platformScoped } from '@/lib/ownership/entry';
+import { proposalScoped } from '@/lib/quotation/proposalEntry';
 
 // POST /api/proposal/[token]/request-changes — the couple asks for changes (public; the secret token is the only key).
 // Body: { note }. Records the request for staff; the quotation itself is never modified here.
@@ -16,5 +16,5 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ toke
   }
 }
 
-// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
-export const POST = platformScoped(handlePOST);
+// Record ownership: runs as the business that owns the quotation behind this link (lib/quotation/proposalEntry.ts).
+export const POST = proposalScoped(handlePOST);

@@ -143,7 +143,8 @@ describe('code that could bypass the guard', () => {
     // Add a file here only with a review of why it must see every business.
     //  • lib/prisma.ts — the guard's own parent check: "does this parent belong to ANOTHER business?" must look across businesses.
     //  • services/platformMatch.service.ts — decision D4: is this venue's new couple one Shaadi Shopping already brought to it?
-    const ALLOWED: string[] = ['/lib/prisma.ts', '/services/platformMatch.service.ts'];
+    //  • lib/quotation/proposalEntry.ts — the couple's link carries only a token: whose quotation is it (owner id only)?
+    const ALLOWED: string[] = ['/lib/prisma.ts', '/services/platformMatch.service.ts', '/lib/quotation/proposalEntry.ts'];
     const users = source.filter((f) => /runAsSystem\(|kind: 'SYSTEM'/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(root.length).replace(/\\/g, '/'));
     expect(users.filter((f) => !f.startsWith('/lib/ownership/')).sort()).toEqual([...ALLOWED].sort());
   });

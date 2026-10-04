@@ -6,7 +6,7 @@ import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { gateProposalView } from '@/lib/quotation/proposalViewGate';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import ProposalClient from '@/components/proposal/ProposalClient';
-import { platformScoped } from '@/lib/ownership/entry';
+import { proposalPageScoped } from '@/lib/quotation/proposalEntry';
 
 // The couple's proposal page (docs/wedding-os/08-quotation.md §15). The secret token in the URL is the only key.
 // Always rendered fresh (never cached), never indexed, and the URL is never sent on as a Referer.
@@ -50,5 +50,5 @@ async function ProposalPage({ params }: { params: Promise<{ token: string }> }) 
   return <ProposalClient token={token} initial={result.proposal} />;
 }
 
-// Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).
-export default platformScoped(ProposalPage);
+// Record ownership: runs as the business that owns the quotation behind this link (lib/quotation/proposalEntry.ts).
+export default proposalPageScoped(ProposalPage);

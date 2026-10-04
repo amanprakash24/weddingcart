@@ -117,7 +117,7 @@ describe('every entry point states its business', () => {
       const src = readFileSync(r, 'utf8');
       const exported = [...src.matchAll(/^export (?:async function|const|function) (GET|POST|PUT|PATCH|DELETE)\b(.*)$/gm)];
       expect({ name, count: exported.length > 0 }).toEqual({ name, count: true });
-      for (const e of exported) expect({ name, line: e[0] }).toEqual({ name, line: expect.stringMatching(/= (platformScoped|scoped|venueScoped)\(/) });
+      for (const e of exported) expect({ name, line: e[0] }).toEqual({ name, line: expect.stringMatching(/= (platformScoped|scoped|venueScoped|proposalScoped)\(/) });
     }
   });
 
@@ -131,7 +131,7 @@ describe('every entry point states its business', () => {
   ];
 
   test('pages that touch owned records are wrapped', () => {
-    for (const p of OWNED_DATA_PAGES) expect({ p, src: readFileSync(join(root, p), 'utf8') }).toEqual({ p, src: expect.stringMatching(/export default (platformScoped|scoped)\(/) });
+    for (const p of OWNED_DATA_PAGES) expect({ p, src: readFileSync(join(root, p), 'utf8') }).toEqual({ p, src: expect.stringMatching(/export default (platformScoped|scoped|proposalPageScoped)\(/) });
   });
 
   test('any OTHER page reaching the database uses only services for public, unowned data', () => {

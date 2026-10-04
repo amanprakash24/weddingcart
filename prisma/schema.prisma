@@ -2226,6 +2226,12 @@ model Business {
   numberPrefix     String?           @unique // per-business document numbers (D6); null = the platform's QTN- / INV- / WED-
   upiId            String? // where its customers pay (D7); the platform still uses SHAADI_UPI_ID until Phase D
   upiName          String?
+  // The business's own commercial rule for ITS customers (venues set their own; approved 4 Oct 2026). Null = the platform rule
+  // (lib/commercial/rules.ts: 25% confirms, 7-day hold). Frozen into each agreement when it is made, like the platform rule.
+  confirmationPercent Int?
+  holdWindowDays      Int?
+  // The number its customers see on their proposal link (D8). Null = the platform's / the vendor listing's.
+  contactPhone        String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
