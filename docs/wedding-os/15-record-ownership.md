@@ -111,6 +111,14 @@ venue's **own** (phone, walk-in, WhatsApp, Instagram, Google, reference, existin
 
 ### 4.7 How the code enforces it (the part that must not leak)
 
+> **Changed 4 Oct 2026 (approved): central enforcement.** Instead of passing the scope through every service (points 1–3 below as
+> first written), ONE guard in the database client (`lib/ownership/guard.ts`, wired in `lib/prisma.ts`) adds the business to every
+> read, update and delete on an owned table and stamps it on every create, from a scope set once per request
+> (`lib/ownership/scope.ts`: `runInScope`, and `runAsSystem(reason)` for named cross-business lookups, allowlisted in CI). It cannot
+> be forgotten in one service, and the diff stays small. During Phase B no scope means Shaadi Shopping (today's behaviour); before
+> any venue screen ships it becomes fail-closed. Proven by `tests-db/ownership.isolation.test.ts` (two businesses). Child records
+> (tasks, guests, vendor bookings, lines…) are added to the guard in the next Phase B step.
+
 1. **One place decides the scope.** Every request resolves a `BusinessScope` once — `{ businessId, role }` — from the login and
    the business it is working in. No route reads `businessId` from the request body or the URL.
 2. **Services take the scope as their first argument** and every read and write of an owned table filters by it
