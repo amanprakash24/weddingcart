@@ -1,6 +1,7 @@
 # 15 — Record ownership: one system for Shaadi Shopping *and* each venue's own business
 
-*Design for approval — 3 Oct 2026. No code until approved. Step 3 of the approved audit order (MASTER-GAP-ANALYSIS §2.9).*
+*Design — 3 Oct 2026. **All nine decisions (D1–D9) approved 4 Oct 2026, as recommended.** Step 3 of the approved audit order
+(MASTER-GAP-ANALYSIS §2.9).*
 
 ## 1. The problem in one paragraph
 
@@ -134,9 +135,9 @@ venue's **own** (phone, walk-in, WhatsApp, Instagram, Google, reference, existin
 Phase A + B change nothing anyone can see; that is deliberate — the risky part (scoping every query) lands while the behaviour is
 provably identical, and only then do venues get screens.
 
-## 6. Decisions needed
+## 6. Decisions (all approved 4 Oct 2026, as recommended)
 
-| # | Decision | Recommendation |
+| # | Decision | Approved |
 |---|---|---|
 | **D1** | A **Business** that owns every record (Shaadi Shopping = business #1), not an owner column per table | **Business** |
 | **D2** | Venues can have several logins (Owner / Staff) | **Yes** |
