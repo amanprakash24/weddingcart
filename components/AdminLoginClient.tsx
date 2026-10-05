@@ -37,7 +37,7 @@ export default function AdminLoginClient() {
       <div className="w-full max-w-md">
         {/* Logo / brand */}
         <div className="text-center mb-8">
-          <Image src="/logo.png" alt="ShaadiShopping" width={240} height={150} className="mx-auto mb-4 h-16 w-auto object-contain" priority />
+          <Image src="/logo.png" alt="ShaadiShopping" width={240} height={150} className="mx-auto mb-4 h-28 w-auto object-contain" priority />
           <h1 className="text-3xl font-bold text-gray-900 font-playfair">Admin Panel</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to manage your wedding planning platform</p>
         </div>
