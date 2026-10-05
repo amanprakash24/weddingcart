@@ -11,6 +11,7 @@ import {
   proposalStatus,
   quotationSummary,
   REQUEST_CHOICES,
+  shaadiSection,
   tabFromHash,
   type ProposalTab,
   type StatusTone,
@@ -302,6 +303,8 @@ export default function ProposalClient({
   const [eventSent, setEventSent] = useState<string | null>(null);
   // D8: the business whose quotation this is — Shaadi Shopping, or the venue (its own name and number).
   const contact = proposalContact(p.brand, { phone: SHAADI_PHONE, display: SHAADI_PHONE_DISPLAY });
+  // On a venue's own link only: Shaadi Shopping's separate offer to help with the rest of the wedding.
+  const shaadi = shaadiSection(p.brand, { phone: SHAADI_PHONE, display: SHAADI_PHONE_DISPLAY });
 
   // The view lives in the URL hash, so "#quotation" opens the detailed quotation directly (the server renders the proposal).
   const tab = tabFromHash(
@@ -787,6 +790,39 @@ export default function ProposalClient({
               WhatsApp us
             </a>
           </p>
+        )}
+        {/* Below the venue's own "Questions?" line and only on the proposal view — never beside the quotation's numbers. */}
+        {shaadi && tab === 'proposal' && (
+          <section aria-label="Shaadi Shopping" className="space-y-4 rounded-[24px] border border-[#E8DCC8] bg-white p-6 sm:p-8 print:hidden">
+            <Eyebrow>The rest of your wedding</Eyebrow>
+            <h2 className="text-2xl leading-snug text-[#2A1F1B]" style={serif}>
+              Planned around your guests and your budget
+            </h2>
+            <p className="text-sm leading-relaxed text-[#4A3F38]">
+              Still putting the rest of your wedding together? Shaadi Shopping plans it with you — decoration, photography, mehndi, makeup
+              and more — around your guests and what you want to spend.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <a
+                href={shaadi.whatsApp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-[48px] flex-1 items-center justify-center rounded-full bg-[#8B1A4A] px-6 text-sm font-semibold text-white"
+              >
+                WhatsApp Shaadi Shopping
+              </a>
+              <a
+                href={`tel:${shaadi.tel}`}
+                className="flex min-h-[48px] flex-1 items-center justify-center rounded-full border border-[#8B1A4A]/40 px-6 text-sm font-semibold text-[#8B1A4A]"
+              >
+                Call {shaadi.display}
+              </a>
+            </div>
+            <p className="text-xs leading-relaxed text-[#6B5B4D]">
+              Shaadi Shopping is a separate service. Your quotation on this page is with {shaadi.venueName} — for anything about it, please
+              contact {shaadi.venueName}.
+            </p>
+          </section>
         )}
         {!contact.isPlatform && (
           <p className="text-center text-xs text-[#6B5B4D]/70 print:hidden">Powered by Vivah OS</p>

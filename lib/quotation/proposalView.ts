@@ -93,3 +93,20 @@ export function proposalContact(brand: CustomerProposal['brand'], platform: { ph
   const e164 = `+91${brand.phone}`;
   return { name: brand.name, isPlatform: false, phone: { tel: e164, display: `+91 ${brand.phone.slice(0, 5)} ${brand.phone.slice(5)}`, whatsApp: whatsApp(e164) } };
 }
+
+// The Shaadi Shopping section on a venue's own proposal link (Phase C): a separate, clearly labelled offer to help with the rest
+// of the wedding. It is the only place a venue's link carries Shaadi Shopping's number — questions about THIS quotation still go
+// to the venue (proposalContact). A Shaadi Shopping proposal is already Shaadi Shopping's, so it has no such section. The message
+// the couple sends names the venue only: never the couple, the quotation number or the link.
+export interface ShaadiSection {
+  venueName: string;
+  tel: string;
+  display: string;
+  whatsApp: string;
+}
+
+export function shaadiSection(brand: CustomerProposal['brand'], platform: { phone: string; display: string }): ShaadiSection | null {
+  if (brand.isPlatform) return null;
+  const message = `Namaste Shaadi Shopping, I am planning my wedding with ${brand.name} and would like help with the rest of it.`;
+  return { venueName: brand.name, tel: platform.phone, display: platform.display, whatsApp: `https://wa.me/${platform.phone}?text=${encodeURIComponent(message)}` };
+}

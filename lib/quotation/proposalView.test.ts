@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { groupByFunction, proposalContact, nextStep, proposalHighlights, proposalStatus, quotationSummary, REQUEST_CHOICES, tabFromHash } from './proposalView';
+import { groupByFunction, proposalContact, nextStep, proposalHighlights, proposalStatus, quotationSummary, REQUEST_CHOICES, shaadiSection, tabFromHash } from './proposalView';
 
 const item = (functionLabel: string | null, description = 'x') => ({ service: null, functionLabel, description, vendor: null, quantity: 1, unitPrice: 1, lineTotal: 1 });
 
@@ -104,4 +104,27 @@ test('a booked venue quotation names the venue’s team, not Shaadi Shopping’s
   const booked = { state: 'ACCEPTED' as const, changesRequested: false, booked: true, advanceAmount: 0 };
   expect(nextStep(booked)).toContain('Your Shaadi Shopping team');
   expect(nextStep({ ...booked, brand: { name: 'Swayamvar Hall', phone: null, isPlatform: false } })).toContain('Your Swayamvar Hall team');
+});
+
+describe('shaadiSection — Shaadi Shopping’s separate offer on a venue’s own link', () => {
+  const platform = { phone: '+917646028228', display: '+91 76460 28228' };
+
+  test('a Shaadi Shopping proposal has no such section', () => {
+    expect(shaadiSection({ name: 'Shaadi Shopping', phone: null, isPlatform: true }, platform)).toBeNull();
+  });
+
+  test('a venue’s link carries Shaadi Shopping’s own number here — never the venue’s — even when the venue has no number', () => {
+    for (const phone of ['9876500000', null]) {
+      const s = shaadiSection({ name: 'Swayamvar Hall', phone, isPlatform: false }, platform);
+      expect(s).toMatchObject({ venueName: 'Swayamvar Hall', tel: '+917646028228', display: '+91 76460 28228' });
+      expect(s?.whatsApp.startsWith('https://wa.me/+917646028228?text=')).toBe(true);
+      expect(s?.whatsApp).not.toContain('9876500000');
+    }
+  });
+
+  test('the message the couple sends names the venue and nothing else about them', () => {
+    const s = shaadiSection({ name: 'Swayamvar Hall & Lawns', phone: '9876500000', isPlatform: false }, platform);
+    expect(decodeURIComponent(s!.whatsApp.split('?text=')[1])).toBe('Namaste Shaadi Shopping, I am planning my wedding with Swayamvar Hall & Lawns and would like help with the rest of it.');
+    expect(s!.whatsApp.split('?text=')[1]).not.toContain('&'); // the venue's "&" is encoded, so the message is not cut short
+  });
 });
