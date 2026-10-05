@@ -43,7 +43,7 @@ export function validateVenueSettings(input: Partial<Record<SettingsField, unkno
   if (days === 'INVALID') errors.holdWindowDays = `Enter a whole number of days from ${L.daysMin} to ${L.daysMax}`;
 
   const upiId = text(input.upiId).replace(/\s+/g, '');
-  if (upiId && !/^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,63}$/.test(upiId)) errors.upiId = 'Enter the UPI ID as it appears in your payment app, e.g. swayamvar@okhdfcbank';
+  if (upiId && !/^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,63}$/.test(upiId)) errors.upiId = 'Enter the UPI ID as it appears in your payment app, e.g. yourname@okhdfcbank';
   const upiName = text(input.upiName).replace(/\s+/g, ' ');
   if (upiName.length > L.upiNameMax) errors.upiName = `Please keep the name under ${L.upiNameMax} characters`;
   else if (upiName && !upiId) errors.upiName = 'Enter the UPI ID as well, or leave the name empty';

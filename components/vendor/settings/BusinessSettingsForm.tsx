@@ -94,7 +94,8 @@ export default function BusinessSettingsForm() {
       <div>
         <h1 className="font-playfair text-2xl font-bold text-[var(--color-text-primary)]">Settings</h1>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-          {settings.businessName} — for the customers you bring yourself. Customers from Shaadi Shopping keep Shaadi Shopping&rsquo;s rule and number.
+          {settings.businessName}{' '}
+          — for the customers you bring yourself. Customers from Shaadi Shopping keep Shaadi Shopping&rsquo;s rule and number.
         </p>
       </div>
 
@@ -157,7 +158,7 @@ export default function BusinessSettingsForm() {
             helperText="Optional. Added to the payment details you send a customer after they accept your quotation."
             autoCapitalize="none"
             autoCorrect="off"
-            placeholder="swayamvar@okhdfcbank"
+            placeholder="yourname@okhdfcbank"
             className="min-h-12 text-base"
             readOnly={readOnly}
           />
@@ -167,7 +168,7 @@ export default function BusinessSettingsForm() {
             onChange={(e) => set('upiName', e.target.value)}
             error={errors.upiName}
             helperText="Optional. So your customer can check they are paying the right account."
-            placeholder="Swayamvar Hall"
+            placeholder={settings.businessName}
             className="min-h-12 text-base"
             readOnly={readOnly}
           />

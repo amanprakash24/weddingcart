@@ -70,7 +70,7 @@ export default function OtpLoginClient({
     <div className="min-h-screen bg-[#FFFAF5] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Image src="/logo.png" alt="ShaadiShopping" width={240} height={150} className="mx-auto mb-4 h-16 w-auto object-contain" priority />
+          <Image src="/logo.png" alt="ShaadiShopping" width={240} height={150} className="mx-auto mb-4 h-28 w-auto object-contain" priority />
           <h1 className="text-3xl font-bold text-gray-900 font-playfair">{portalName} Login</h1>
           <p className="text-gray-500 text-sm mt-1">
             {stage === 'phone' ? "We'll text you a verification code" : `Enter the code sent to +91 ${phone}`}
