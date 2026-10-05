@@ -17,6 +17,9 @@ export interface BusinessInfo {
   confirmationPercent: number | null;
   holdWindowDays: number | null;
   contactPhone: string | null;
+  // Where its own customers pay (D7). Null = not set; nothing is shown.
+  upiId: string | null;
+  upiName: string | null;
 }
 
 const RESERVED = new Set(['QTN', 'INV', 'WED', 'RCPT', 'SS']);
@@ -47,11 +50,11 @@ export function documentPrefix(b: Pick<BusinessInfo, 'kind' | 'numberPrefix'>, k
   return `${b.numberPrefix}-${kind}`;
 }
 
-const select = { id: true, kind: true, name: true, numberPrefix: true, confirmationPercent: true, holdWindowDays: true, contactPhone: true } as const;
+const select = { id: true, kind: true, name: true, numberPrefix: true, confirmationPercent: true, holdWindowDays: true, contactPhone: true, upiId: true, upiName: true } as const;
 
 // Shaadi Shopping's numbering (QTN- / INV- / WED-) and rule (lib/commercial/rules.ts) live in code, so the platform needs no
 // database read — none on every number it makes.
-export const PLATFORM_INFO: BusinessInfo = { id: PLATFORM_BUSINESS_ID, kind: 'PLATFORM', name: 'Shaadi Shopping', numberPrefix: null, confirmationPercent: null, holdWindowDays: null, contactPhone: null };
+export const PLATFORM_INFO: BusinessInfo = { id: PLATFORM_BUSINESS_ID, kind: 'PLATFORM', name: 'Shaadi Shopping', numberPrefix: null, confirmationPercent: null, holdWindowDays: null, contactPhone: null, upiId: null, upiName: null };
 
 export async function businessById(id: string): Promise<BusinessInfo> {
   if (id === PLATFORM_BUSINESS_ID) return PLATFORM_INFO;

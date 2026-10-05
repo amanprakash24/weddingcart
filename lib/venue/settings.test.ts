@@ -4,7 +4,7 @@ import { validateVenueSettings } from './settings';
 
 describe('validateVenueSettings', () => {
   test('blank fields mean "use the default"', () => {
-    expect(validateVenueSettings({})).toEqual({ ok: true, value: { contactPhone: null, confirmationPercent: null, holdWindowDays: null } });
+    expect(validateVenueSettings({})).toEqual({ ok: true, value: { contactPhone: null, confirmationPercent: null, holdWindowDays: null, upiId: null, upiName: null } });
     expect(validateVenueSettings({ contactPhone: '  ', confirmationPercent: '', holdWindowDays: '' })).toMatchObject({ ok: true });
   });
 
@@ -28,6 +28,14 @@ describe('validateVenueSettings', () => {
   test('the hold is a whole number of days from 1 to 30', () => {
     for (const ok of ['1', '5', '30']) expect(validateVenueSettings({ holdWindowDays: ok })).toMatchObject({ ok: true, value: { holdWindowDays: Number(ok) } });
     for (const bad of ['0', '31', '2.5', 'week']) expect(validateVenueSettings({ holdWindowDays: bad })).toMatchObject({ ok: false, errors: { holdWindowDays: expect.any(String) } });
+  });
+
+  test('UPI details: an ID as the payment app shows it, with an optional name', () => {
+    expect(validateVenueSettings({ upiId: ' swayamvar@okhdfcbank ', upiName: '  Swayamvar   Hall ' })).toMatchObject({ ok: true, value: { upiId: 'swayamvar@okhdfcbank', upiName: 'Swayamvar Hall' } });
+    expect(validateVenueSettings({ upiId: '9876543210@ybl' })).toMatchObject({ ok: true, value: { upiId: '9876543210@ybl', upiName: null } });
+    for (const bad of ['swayamvar', '@okhdfcbank', 'a@b', 'swayam var@ok bank!', 'https://pay.example/x']) expect(validateVenueSettings({ upiId: bad })).toMatchObject({ ok: false, errors: { upiId: expect.any(String) } });
+    expect(validateVenueSettings({ upiName: 'Swayamvar Hall' })).toMatchObject({ ok: false, errors: { upiName: expect.stringContaining('UPI ID') } });
+    expect(validateVenueSettings({ upiId: 'a1@ok', upiName: 'x'.repeat(81) })).toMatchObject({ ok: false, errors: { upiName: expect.any(String) } });
   });
 
   test('every wrong field is reported at once', () => {

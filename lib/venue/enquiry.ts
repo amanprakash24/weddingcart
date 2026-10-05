@@ -75,7 +75,8 @@ export type NextAction =
   | { kind: 'FOLLOW_UP_LATER'; label: string; followUpId: string }
   | { kind: 'SCHEDULE'; label: string } // spoken to, nothing planned
   // The venue's own quotation for this enquiry (lib/venue/quotation.ts):
-  | { kind: 'QUOTE_ACCEPTED'; label: string } // the couple said yes
+  | { kind: 'BOOKED'; label: string } // the amount to confirm was received — the booking is confirmed
+  | { kind: 'QUOTE_ACCEPTED'; label: string } // the couple said yes; the amount to confirm is still to come
   | { kind: 'QUOTE_CHANGES'; label: string } // the couple asked for changes
   | { kind: 'QUOTE_DRAFT'; label: string } // written, not sent
   | { kind: 'QUOTE_WAITING'; label: string } // sent, the couple has not answered
@@ -88,9 +89,10 @@ const firstName = (name: string) => name.split(' ')[0];
 // One primary action per enquiry (audit brief §13): the earliest open follow-up decides; with none, call them if nobody has yet,
 // otherwise plan the next step. A quotation changes it: the couple's answer (yes / changes) comes before everything; a draft waits
 // to be sent and a sent one waits for the couple — but a follow-up that is due is still shown first.
-export function nextAction(e: { name: string; contacted: boolean; closed: boolean; followUps: FollowUp[]; quote?: QuoteStage | null }, now: Date = new Date()): NextAction {
+export function nextAction(e: { name: string; contacted: boolean; closed: boolean; followUps: FollowUp[]; quote?: QuoteStage | null; booked?: boolean }, now: Date = new Date()): NextAction {
   const who = firstName(e.name);
   if (e.closed) return { kind: 'CLOSED', label: 'Closed' };
+  if (e.quote === 'ACCEPTED' && e.booked) return { kind: 'BOOKED', label: `Booking confirmed for ${who}` };
   if (e.quote === 'ACCEPTED') return { kind: 'QUOTE_ACCEPTED', label: `${who} accepted your quotation` };
   if (e.quote === 'CHANGES') return { kind: 'QUOTE_CHANGES', label: `${who} asked for changes to the quotation` };
   const open = e.followUps.filter((f) => !f.done).sort((a, b) => (a.dueAt ?? '9999').localeCompare(b.dueAt ?? '9999'));
@@ -109,7 +111,7 @@ export function nextAction(e: { name: string; contacted: boolean; closed: boolea
 }
 
 // "Today's Work" order: the couple's answer first, then what is late, then today, then the rest.
-export const ACTION_ORDER: NextAction['kind'][] = ['QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY', 'QUOTE_DRAFT', 'SCHEDULE', 'QUOTE_WAITING', 'FOLLOW_UP_LATER', 'CLOSED'];
+export const ACTION_ORDER: NextAction['kind'][] = ['QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY', 'QUOTE_DRAFT', 'SCHEDULE', 'QUOTE_WAITING', 'FOLLOW_UP_LATER', 'BOOKED', 'CLOSED'];
 
 // Opens a chat with the venue's OWN customer, from the venue's own tool. (Public marketplace pages are different: there every
 // contact link must be Shaadi Shopping's number, never a venue's.)

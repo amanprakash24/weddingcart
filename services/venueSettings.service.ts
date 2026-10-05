@@ -8,7 +8,7 @@ import { validateVenueSettings, type SettingsField, type VenueSettingsValue } fr
 // A venue's own business settings (Phase C): the number its own couples see on their proposal link (D8) and the rule its own
 // customers book under. Always called inside the venue's scope (lib/ownership/venueEntry.ts) — the business is the scope's, never
 // one named by a request. Business is not an owned table, so these reads and writes need no scope of their own.
-// Only the Owner changes them; Staff see them.
+// Only the Owner changes them; Staff see them. The UPI details (D7) are where its own customers pay.
 
 export interface VenueSettingsView extends VenueSettingsValue {
   businessName: string;
@@ -46,6 +46,8 @@ export function createVenueSettingsService(deps: VenueSettingsDeps = defaultDeps
       contactPhone: b.contactPhone,
       confirmationPercent: b.confirmationPercent,
       holdWindowDays: b.holdWindowDays,
+      upiId: b.upiId,
+      upiName: b.upiName,
       shownPhone: (await deps.brand(b.id)).phone,
       defaults: { confirmationPercent: COMMERCIAL_RULES.confirmationPercent, holdWindowDays: COMMERCIAL_RULES.holdWindowDays },
       canEdit: role === 'OWNER',

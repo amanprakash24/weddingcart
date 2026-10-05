@@ -2,13 +2,16 @@
 // under. Pure and client-safe, so the form and the server check the same limits. A blank field means "use the default":
 // Shaadi Shopping's rule (lib/commercial/rules.ts) for the percent and the days; the listing's number for the phone.
 // A change applies to NEW agreements only — each agreement keeps the rule it was made with (lib/commercial/agreement.ts).
+// The UPI details (D7) are where its own customers pay: the venue shares them itself, with the amount, after a couple accepts.
 
-export const SETTINGS_LIMITS = { percentMin: 10, percentMax: 100, daysMin: 1, daysMax: 30 } as const;
+export const SETTINGS_LIMITS = { percentMin: 10, percentMax: 100, daysMin: 1, daysMax: 30, upiNameMax: 80 } as const;
 
 export interface VenueSettingsValue {
   contactPhone: string | null; // 10-digit Indian mobile
   confirmationPercent: number | null;
   holdWindowDays: number | null;
+  upiId: string | null; // name@bank
+  upiName: string | null; // the name the customer sees when paying
 }
 
 export type SettingsField = keyof VenueSettingsValue;
@@ -39,6 +42,12 @@ export function validateVenueSettings(input: Partial<Record<SettingsField, unkno
   const days = wholeNumber(text(input.holdWindowDays), L.daysMin, L.daysMax);
   if (days === 'INVALID') errors.holdWindowDays = `Enter a whole number of days from ${L.daysMin} to ${L.daysMax}`;
 
-  if (percent === 'INVALID' || days === 'INVALID' || errors.contactPhone) return { ok: false, errors };
-  return { ok: true, value: { contactPhone: phoneRaw ? local : null, confirmationPercent: percent, holdWindowDays: days } };
+  const upiId = text(input.upiId).replace(/\s+/g, '');
+  if (upiId && !/^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,63}$/.test(upiId)) errors.upiId = 'Enter the UPI ID as it appears in your payment app, e.g. swayamvar@okhdfcbank';
+  const upiName = text(input.upiName).replace(/\s+/g, ' ');
+  if (upiName.length > L.upiNameMax) errors.upiName = `Please keep the name under ${L.upiNameMax} characters`;
+  else if (upiName && !upiId) errors.upiName = 'Enter the UPI ID as well, or leave the name empty';
+
+  if (percent === 'INVALID' || days === 'INVALID' || Object.keys(errors).length) return { ok: false, errors };
+  return { ok: true, value: { contactPhone: phoneRaw ? local : null, confirmationPercent: percent, holdWindowDays: days, upiId: upiId || null, upiName: upiId ? upiName || null : null } };
 }

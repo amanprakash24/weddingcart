@@ -53,14 +53,14 @@ const include = {
   tasks: { where: { context: 'SALES_FOLLOWUP' as const, status: { not: 'CANCELLED' as const } }, select: { id: true, title: true, dueAt: true, status: true }, orderBy: { dueAt: 'asc' as const } },
   activities: { select: { id: true, type: true, summary: true, detail: true, createdAt: true }, orderBy: { createdAt: 'desc' as const }, take: 50 },
   // The current quotation (never one replaced by a revision) — it decides the next step (lib/venue/quotation.ts).
-  quotations: { where: { status: { not: 'SUPERSEDED' as const } }, select: { status: true, validUntil: true, changesRequestedAt: true }, orderBy: { createdAt: 'desc' as const }, take: 1 },
+  quotations: { where: { status: { not: 'SUPERSEDED' as const } }, select: { status: true, validUntil: true, changesRequestedAt: true, booking: { select: { status: true } } }, orderBy: { createdAt: 'desc' as const }, take: 1 },
 };
 
 type Row = {
   id: string; name: string; phone: string; weddingDate: string; guestCount: number; channel: string | null; message: string | null; pipelineStage: string; createdAt: Date; platformMatch: string | null;
   tasks: { id: string; title: string; dueAt: Date | null; status: string }[];
   activities: { id: string; type: string; summary: string; detail: string | null; createdAt: Date }[];
-  quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null }[];
+  quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null; booking?: { status: string } | null }[];
 };
 
 function view(r: Row, now: Date): VenueEnquiryDetail {
@@ -77,7 +77,7 @@ function view(r: Row, now: Date): VenueEnquiryDetail {
     guestCount: r.guestCount > 0 ? r.guestCount : null,
     channel: CHANNEL_LABEL[r.channel as Channel] ?? 'Shaadi Shopping',
     viaShaadiShopping: r.platformMatch !== null,
-    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || r.pipelineStage === 'WON', followUps, quote }, now),
+    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || r.pipelineStage === 'WON', followUps, quote, booked: q?.booking?.status === 'CONFIRMED' }, now),
     createdAt: r.createdAt.toISOString(),
     need: r.message,
     followUps,
