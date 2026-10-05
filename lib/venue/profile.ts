@@ -61,6 +61,9 @@ export function videoLink(input: unknown): string | null {
 
 // ---- our own storage ----
 
+// Where the upload routes put profile media (lib/venue/profileUpload.ts). isOwnUpload() accepts nothing else.
+export const PROFILE_UPLOAD_FOLDER = 'shaadishopping/vendor-profile';
+
 // A photo, logo or video the business uploaded through OUR upload routes: an https Cloudinary address in our own cloud, under the
 // one folder those routes write to. Nothing else is ever saved as media — never an address the browser merely claims.
 export function isOwnUpload(url: unknown, cloudName: string, folder: string): url is string {

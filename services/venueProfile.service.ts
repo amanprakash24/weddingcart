@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
-import { isOwnUpload, missingProfileSteps, PROFILE_LIMITS, validateProfile, videoLink, type ProfileErrors, type ProfileStep } from '@/lib/venue/profile';
+import { isOwnUpload, missingProfileSteps, PROFILE_LIMITS, PROFILE_UPLOAD_FOLDER, validateProfile, videoLink, type ProfileErrors, type ProfileStep } from '@/lib/venue/profile';
 
 // The business profile a vendor completes on first sign-in (6 Oct 2026): name, logo, photos, an optional video and GST number.
 //
@@ -14,8 +14,8 @@ import { isOwnUpload, missingProfileSteps, PROFILE_LIMITS, validateProfile, vide
 //
 // Business and BusinessPhoto are not owned tables, so EVERY read and write here names the business itself.
 
-// Where the upload routes put profile media. isOwnUpload() accepts nothing else — a media address is never taken on trust.
-export const PROFILE_UPLOAD_FOLDER = 'shaadishopping/vendor-profile';
+// A media address is never taken on trust: isOwnUpload() accepts only what our own upload routes stored (PROFILE_UPLOAD_FOLDER).
+export { PROFILE_UPLOAD_FOLDER };
 const cloudName = () => process.env.CLOUDINARY_CLOUD_NAME ?? '';
 
 type PhotoStatus = 'PENDING' | 'APPROVED' | 'REJECTED';

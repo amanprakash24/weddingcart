@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import VendorLoginCode from '@/components/admin/VendorLoginCode';
+import ProfileMediaReview from '@/components/admin/ProfileMediaReview';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, Users, AtSign, Globe, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle, Send } from 'lucide-react';
 
@@ -2604,6 +2605,8 @@ Create a separate standalone invoice anyway?`)) return;
           {/* OUTSIDE VENDORS */}
           {tab === 'outside-vendors' && (
             <div className="space-y-3">
+              {/* Vendors' own profile photos and videos waiting for approval before they show on the public listing. */}
+              <ProfileMediaReview />
               {/* Filter bar */}
               <div className="flex items-center gap-2 flex-wrap mb-2">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filter:</span>
