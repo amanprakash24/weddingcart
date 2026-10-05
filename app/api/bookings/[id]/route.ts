@@ -5,6 +5,7 @@ import { convertBookingToWedding, InvalidBookingStateError } from '@/services/we
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { Booking, BookingStatus } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 function toResponseShape<T extends Pick<Booking, 'id' | 'status'>>(booking: T) {
   return { ...booking, _id: booking.id, status: booking.status.toLowerCase() };
@@ -18,7 +19,7 @@ function toBookingStatus(status: unknown): BookingStatus | undefined {
   return undefined;
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -108,3 +109,6 @@ We look forward to making your special day truly memorable! ✨
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PUT = platformScoped(handlePUT);

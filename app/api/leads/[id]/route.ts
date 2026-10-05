@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { leadService } from '@/services/lead.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -15,3 +16,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const DELETE = platformScoped(handleDELETE);

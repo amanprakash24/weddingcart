@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { isProposalPath } from '@/lib/proposalPath';
+import { isProposalPath, isVendorOsPath } from '@/lib/proposalPath';
 
 const STORAGE_KEY = 'ss_lead_dismissed_v2';
 const DISMISS_MS = 10 * 60 * 1000; // 10 minutes
@@ -25,8 +25,8 @@ export default function LeadCapturePopup() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Not for couples-only prompts: the admin, the private proposal, and the Growth Partner sign-up page.
-    if (pathname.startsWith('/admin') || isProposalPath(pathname) || pathname.startsWith('/growth-partner')) return;
+    // Not for couples-only prompts: the admin, Vendor OS, the private proposal, and the Growth Partner sign-up page.
+    if (pathname.startsWith('/admin') || isVendorOsPath(pathname) || isProposalPath(pathname) || pathname.startsWith('/growth-partner')) return;
     const dismissed = localStorage.getItem(STORAGE_KEY);
     if (dismissed) {
       const until = Number(dismissed);

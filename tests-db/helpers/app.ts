@@ -18,8 +18,13 @@ export const DB_TESTS_ENABLED =
 
 export const dbDescribe = DB_TESTS_ENABLED ? describe : describe.skip;
 
+// The app's DATABASE_URL as it was before ANY test file ran. Bun runs every test file in one process, and loadApp() below points
+// DATABASE_URL at the test database — so the guard's "not the app's own database" check must compare against this original value,
+// or every file after the first would be refused (found when CI first ran the whole suite, 3 Oct 2026).
+const ORIGINAL_APP_DATABASE_URL = process.env.DATABASE_URL;
+
 export async function loadApp() {
-  const url = assertSafeTestDatabaseUrl(process.env.TEST_DATABASE_URL);
+  const url = assertSafeTestDatabaseUrl(process.env.TEST_DATABASE_URL, process.env.TEST_DATABASE_ALLOWED_REFS, ORIGINAL_APP_DATABASE_URL);
   process.env.DATABASE_URL = url; // never the developer's own DATABASE_URL
   console.log(`[db tests] target: ${describeTestTarget(url)}`);
 

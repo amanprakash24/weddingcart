@@ -3,6 +3,7 @@ import { consultationService } from '@/services/consultation.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { Consultation, ConsultationStatus } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 function toResponseShape(consultation: Consultation) {
   return {
@@ -22,7 +23,7 @@ function toConsultationStatus(status: unknown): ConsultationStatus | undefined {
 // Hard boundary: PUT only ever accepts `status` (the legacy tri-state
 // field). pipelineStage/assignedTo/tasks/activities/wedding are the CRM's
 // own fields and are never reachable from this route.
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -41,7 +42,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -53,3 +54,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PUT = platformScoped(handlePUT);
+export const DELETE = platformScoped(handleDELETE);

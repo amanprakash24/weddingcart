@@ -16,6 +16,7 @@ import { quotationRepository } from '@/repositories/quotation.repository';
 import { generateInvoiceNumber } from '@/services/documentNumber.service';
 import { settleInvoiceStatus } from '@/services/invoiceWorkflow.service';
 import type { SourceType } from '@/services/leadInbox.service';
+import { currentBusiness, rulesOf } from '@/lib/ownership/business';
 
 // Money v1 — the 25% confirmation rule (docs/wedding-os/10-commercial-flow-v1.md, 22 Sep 2026).
 //
@@ -92,7 +93,8 @@ export async function ensureAgreementInTx(
 
   const booking = input.booking ?? (await tx.booking.findFirst({ where: { quotationId } }));
   const customer = await customerFor(tx, quotation, booking);
-  const snapshot = buildAgreementSnapshot({ quotation, customer, bookingId: booking?.id ?? null });
+  // Frozen with the rule of the business that owns the quotation (a venue may set its own; the platform's is 25% / 7 days).
+  const snapshot = buildAgreementSnapshot({ quotation, customer, bookingId: booking?.id ?? null, rules: rulesOf(await currentBusiness()) });
   const agreement = await tx.commercialAgreement.create({
     data: { ...snapshot, itemsSnapshot: snapshot.itemsSnapshot as unknown as Prisma.InputJsonValue, functionLabels: snapshot.functionLabels as unknown as Prisma.InputJsonValue },
   });

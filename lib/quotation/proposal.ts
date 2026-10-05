@@ -153,6 +153,8 @@ export interface CustomerProposal {
   inclusions: string | null;
   exclusions: string | null;
   terms: string | null;
+  // Who the couple sees (D8): Shaadi Shopping, or the venue whose own quotation this is (lib/ownership/business.ts).
+  brand: { name: string; phone: string | null; isPlatform: boolean };
 }
 
 const ABOUT_MAX = 280;
@@ -258,5 +260,6 @@ export function toCustomerProposal(
     inclusions: q.inclusions,
     exclusions: q.exclusions,
     terms: q.terms,
+    brand: { name: 'Shaadi Shopping', phone: null, isPlatform: true }, // proposal.service sets the owning business's
   };
 }

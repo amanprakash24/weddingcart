@@ -4,9 +4,10 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { quotationService } from '@/services/quotation.service';
 import { rejectQuotationSchema } from '../../schema';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // POST /api/quotations/[id]/reject — the customer declined; a reason is required. 409 unless SENT.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -17,3 +18,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

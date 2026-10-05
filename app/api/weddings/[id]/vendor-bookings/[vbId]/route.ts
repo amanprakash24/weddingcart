@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // One deliberate scope addition beyond Milestone 6's literal spec (see
 // domain-model.md §5.2's "not yet built" note) — no vendor-facing self-serve
@@ -26,7 +27,7 @@ const bodySchema = z
   .refine((v) => v.status !== undefined || v.agreedPrice !== undefined, { message: 'Send a status or an agreed price' })
   .refine((v) => v.status === undefined || v.agreedPrice === undefined, { message: 'Change the status or the price, not both at once' });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -45,3 +46,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);

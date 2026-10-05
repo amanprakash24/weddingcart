@@ -3,8 +3,9 @@ import { requireRole } from '@/lib/auth/session';
 import { Role } from '@/lib/auth/roles';
 import { approvalService } from '@/services/approval.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ approvalId: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ approvalId: string }> }) {
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -18,3 +19,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ap
     return handleApiError(error);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);

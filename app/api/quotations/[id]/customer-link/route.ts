@@ -4,13 +4,14 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { proposalUrl } from '@/lib/quotation/proposal';
 import { quotationService } from '@/services/quotation.service';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const unauthorized = () => NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
 // POST /api/quotations/[id]/customer-link — create a NEW proposal link for a sent, still-valid quotation. Any previous
 // link stops working. The URL is returned ONLY in this response; it is never stored and cannot be fetched again.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return unauthorized();
   try {
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 // DELETE /api/quotations/[id]/customer-link — stop the current link working.
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return unauthorized();
   try {
@@ -33,3 +34,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);
+export const DELETE = platformScoped(handleDELETE);

@@ -4,8 +4,9 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { leadWorkspaceService } from '@/services/leadWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ sourceType: string; id: string }> }) {
+async function handleGET(req: NextRequest, { params }: { params: Promise<{ sourceType: string; id: string }> }) {
   if (!(await requireRole(ADMIN_ROLES))) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -22,3 +23,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ sour
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);

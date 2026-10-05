@@ -6,6 +6,7 @@ import type { CustomerProposal } from '@/lib/quotation/proposal';
 import {
   groupByFunction,
   nextStep,
+  proposalContact,
   proposalHighlights,
   proposalStatus,
   quotationSummary,
@@ -14,7 +15,7 @@ import {
   type ProposalTab,
   type StatusTone,
 } from '@/lib/quotation/proposalView';
-import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
+import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 
 // The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–17). One link, two separate experiences
 // (Decision 10): the visual, curated PROPOSAL, and the commercially detailed QUOTATION where the couple accepts.
@@ -293,6 +294,8 @@ export default function ProposalClient({
   const [busy, setBusy] = useState<'accept' | 'changes' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showChanges, setShowChanges] = useState(false);
+  // D8: the business whose quotation this is — Shaadi Shopping, or the venue (its own name and number).
+  const contact = proposalContact(p.brand, { phone: SHAADI_PHONE, display: SHAADI_PHONE_DISPLAY });
 
   // The view lives in the URL hash, so "#quotation" opens the detailed quotation directly (the server renders the proposal).
   const tab = tabFromHash(
@@ -419,14 +422,16 @@ export default function ProposalClient({
       <div className="border-b border-[#C5A46D]/20 bg-[#1E0510] px-5 py-3 print:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <p className="text-lg tracking-wide text-[#F3D9A4]" style={serif}>
-            Shaadi Shopping
+            {contact.name}
           </p>
-          <a
-            href={`tel:${SHAADI_PHONE}`}
-            className="text-xs font-medium text-white/75 hover:text-white"
-          >
-            {SHAADI_PHONE_DISPLAY}
-          </a>
+          {contact.phone && (
+            <a
+              href={`tel:${contact.phone.tel}`}
+              className="text-xs font-medium text-white/75 hover:text-white"
+            >
+              {contact.phone.display}
+            </a>
+          )}
         </div>
       </div>
 
@@ -572,7 +577,7 @@ export default function ProposalClient({
             {/* Printed header — the on-screen hero does not print. */}
             <div className="hidden print:block">
               <p className="text-xl" style={serif}>
-                Shaadi Shopping — Quotation {p.number}
+                {contact.name} — Quotation {p.number}
               </p>
               <p className="text-sm">
                 {[p.couple.name, ...facts, p.venueName ? `Venue: ${p.venueName}` : null]
@@ -581,7 +586,8 @@ export default function ProposalClient({
               </p>
               <p className="text-xs">
                 Version {p.version}
-                {validUntil && <> · Valid until {validUntil}</>} · {SHAADI_PHONE_DISPLAY}
+                {validUntil && <> · Valid until {validUntil}</>}
+                {contact.phone && <> · {contact.phone.display}</>}
               </p>
             </div>
 
@@ -667,23 +673,29 @@ export default function ProposalClient({
           </p>
         )}
 
-        <p className="pb-8 pt-2 text-center text-sm text-[#6B5B4D] print:hidden">
-          Questions? Call{' '}
-          <a href={`tel:${SHAADI_PHONE}`} className="font-semibold text-[#8B1A4A]">
-            {SHAADI_PHONE_DISPLAY}
-          </a>{' '}
-          or{' '}
-          <a
-            href={shaadiWhatsAppLink(
-              `Hi, I have a question about my wedding proposal ${p.number}.`
-            )}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-[#8B1A4A]"
-          >
-            WhatsApp us
-          </a>
-        </p>
+        {contact.phone && (
+          <p className="pt-2 text-center text-sm text-[#6B5B4D] print:hidden">
+            Questions? Call{' '}
+            <a href={`tel:${contact.phone.tel}`} className="font-semibold text-[#8B1A4A]">
+              {contact.phone.display}
+            </a>{' '}
+            or{' '}
+            <a
+              href={contact.phone.whatsApp(
+                `Hi, I have a question about my wedding proposal ${p.number}.`
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#8B1A4A]"
+            >
+              WhatsApp us
+            </a>
+          </p>
+        )}
+        {!contact.isPlatform && (
+          <p className="text-center text-xs text-[#6B5B4D]/70 print:hidden">Powered by Vivah OS</p>
+        )}
+        <div className="pb-8 print:hidden" />
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { otpService } from '@/services/otp.service';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Production-readiness audit (2026-09-17) — public, unauthenticated, and the
 // only trigger for a real, billable WhatsApp Business API send. The existing
@@ -21,7 +22,7 @@ function clientIp(req: NextRequest): string {
   return forwarded?.split(',')[0]?.trim() || 'unknown';
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
     if (await isRequestRateLimited(rateLimitId)) {
@@ -113,3 +114,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: 'Failed to send OTP' }, { status: 500 });
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

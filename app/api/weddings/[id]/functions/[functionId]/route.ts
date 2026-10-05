@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { FUNCTION_TYPES } from '@/lib/wedding/functions';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Only the fields that are sent change; send null to clear the optional ones.
 const patchSchema = z
@@ -21,7 +22,7 @@ const patchSchema = z
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change' });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; functionId: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; functionId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -38,7 +39,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 // Only an empty function can be deleted (nothing booked, no quoted service waiting, no guest replies, not the last one).
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; functionId: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; functionId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -52,3 +53,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);
+export const DELETE = platformScoped(handleDELETE);

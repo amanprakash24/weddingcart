@@ -23,6 +23,7 @@ const baseRow = (): Row => ({
   changesRequestNote: null,
   customerViewedAt: null,
   customerTokenHash: hashCustomerToken(TOKEN),
+  businessId: 'shaadi-shopping',
   subtotal: 100000, discount: 0, gstEnabled: false, gstAmount: 0, total: 100000, advanceAmount: 25000,
   terms: null, inclusions: null, exclusions: null, notes: 'internal',
   consultationId: 'c1', enquiryId: null, leadId: null,
@@ -68,6 +69,7 @@ const proposalService = createProposalService({
   createBooking: createBooking as never,
   logActivity: activityCreate as never,
   applyEvent: applyCommercialEvent as never,
+  brand: (async (id: string) => (id === 'venue-1' ? { name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false } : { name: 'Shaadi Shopping', phone: null, isPlatform: true })) as never,
 });
 
 beforeEach(() => {
@@ -243,5 +245,16 @@ describe('requestChanges', () => {
     row.validUntil = PAST;
     await expect(proposalService.requestChanges(TOKEN, 'x')).rejects.toBeInstanceOf(ConflictError);
     await expect(proposalService.requestChanges(newCustomerToken(), 'x')).rejects.toBeInstanceOf(ProposalNotFoundError);
+  });
+});
+
+describe('brand on the couple’s link (D8)', () => {
+  test('Shaadi Shopping’s quotation shows Shaadi Shopping', async () => {
+    expect((await proposalService.view(TOKEN))?.brand).toEqual({ name: 'Shaadi Shopping', phone: null, isPlatform: true });
+  });
+
+  test('a venue’s own quotation shows the venue and its number', async () => {
+    row.businessId = 'venue-1';
+    expect((await proposalService.view(TOKEN))?.brand).toEqual({ name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false });
   });
 });

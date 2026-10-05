@@ -24,6 +24,7 @@ const FIELD_LABELS: Record<string, string> = {
   portfolioImages: 'Our Work images',
   foodMenuImages: 'Menu images',
 };
+import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS } from '@/lib/wedding/functions';
 
 const CITIES = [
   'Patna', 'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad',
@@ -57,6 +58,7 @@ const EMPTY_FORM = {
   description:  '',
   instagram:    '',
   website:      '',
+  capabilities: [] as string[],
 };
 
 export default function VendorOnboardingClient() {
@@ -84,6 +86,8 @@ export default function VendorOnboardingClient() {
     // Editing a field clears its own error so the message doesn't linger.
     setFieldErrors((prev) => (prev[key] ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key)) : prev));
   };
+  const toggleCapability = (value: string) =>
+    setForm((f) => ({ ...f, capabilities: f.capabilities.includes(value) ? f.capabilities.filter((c) => c !== value) : [...f.capabilities, value] }));
 
   const handleImageUpload = async (index: 0 | 1 | 2, file: File) => {
     setImgUploading((prev) => { const n = [...prev] as [boolean,boolean,boolean]; n[index] = true; return n; });
@@ -304,6 +308,30 @@ export default function VendorOnboardingClient() {
                     <option value="">Select city</option>
                     {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Services & Capabilities <span className="text-gray-400 font-normal">(which wedding functions do you serve?)</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {FUNCTION_TYPES.map((f) => {
+                    const active = form.capabilities.includes(f);
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => toggleCapability(f)}
+                        aria-pressed={active}
+                        className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                          active ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {FUNCTION_TYPE_LABELS[f]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

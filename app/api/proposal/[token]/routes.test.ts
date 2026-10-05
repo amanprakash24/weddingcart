@@ -8,6 +8,8 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 const rows: { identifier: string; success: boolean; createdAt: Date }[] = [];
 mock.module('@/lib/prisma', () => ({
   prisma: {
+    // The proposal entry asks whose quotation a token is (lib/quotation/proposalEntry.ts); none here → runs as Shaadi Shopping.
+    quotation: { findFirst: mock(async () => null) },
     loginAttempt: {
       count: mock(async (a: { where: { identifier: string; createdAt: { gt: Date } } }) =>
         rows.filter((r) => r.identifier === a.where.identifier && r.createdAt > a.where.createdAt.gt).length),

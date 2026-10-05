@@ -17,6 +17,7 @@ import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { bookingSourceFacts, expireOverdue, quotationService } from '@/services/quotation.service';
 import { applyCommercialEvent } from '@/services/leadStage.service';
 import type { SourceType } from '@/services/leadInbox.service';
+import { proposalBrandFor } from '@/lib/ownership/business';
 
 // Wedding Proposal (docs/wedding-os/08-quotation.md §15) — what the couple can do through the secret link.
 // A thin adapter: the token is resolved to ONE quotation revision, and every rule that matters is the existing
@@ -50,6 +51,7 @@ export interface ProposalDeps {
   createBooking: typeof quotationService.createBooking;
   logActivity: typeof activityLogRepository.create;
   applyEvent: typeof applyCommercialEvent;
+  brand: typeof proposalBrandFor;
 }
 
 const defaultDeps = (): ProposalDeps => ({
@@ -62,6 +64,7 @@ const defaultDeps = (): ProposalDeps => ({
   createBooking: (...a) => quotationService.createBooking(...a),
   logActivity: activityLogRepository.create,
   applyEvent: applyCommercialEvent,
+  brand: proposalBrandFor,
 });
 
 export function createProposalService(deps: ProposalDeps = defaultDeps()) {
@@ -105,7 +108,7 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
           },
         })
       : [];
-    return toCustomerProposal(q, source, vendorMap, now, {
+    const view = toCustomerProposal(q, source, vendorMap, now, {
       booked: q.booking?.status === 'CONFIRMED',
       confirmedVendors: confirmed.map((c) => ({
         vendorName: c.vendor.name,
@@ -116,6 +119,9 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
         venueName: c.weddingEvent.venueName,
       })),
     });
+    // D8: the business that owns this quotation — Shaadi Shopping, or the venue whose own customer this is.
+    view.brand = await deps.brand(q.businessId);
+    return view;
   }
 
   return {
