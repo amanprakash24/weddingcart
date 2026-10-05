@@ -21,7 +21,8 @@ import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 // (Decision 10): the visual, curated PROPOSAL, and the commercially detailed QUOTATION where the couple accepts.
 // Everything shown comes from the server-side allow-list (toCustomerProposal) — this component never receives
 // internal notes, ids, contact details or vendor prices. It adds no data of its own: a missing vendor, photo,
-// function or inclusion is simply not shown.
+// function or inclusion is simply not shown. (The one id it holds is a line of the venue's own price list in "Add an event",
+// which only says what the couple ticked.)
 
 type Item = CustomerProposal['items'][number];
 
@@ -291,9 +292,14 @@ export default function ProposalClient({
   const [p, setP] = useState(initial);
   const [agree, setAgree] = useState(false);
   const [note, setNote] = useState('');
-  const [busy, setBusy] = useState<'accept' | 'changes' | null>(null);
+  const [busy, setBusy] = useState<'accept' | 'changes' | 'event' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showChanges, setShowChanges] = useState(false);
+  // "Add an event" (a venue's own proposal): the function being added, what is ticked for it, and a line in their own words.
+  const [addFn, setAddFn] = useState<string | null>(null);
+  const [picks, setPicks] = useState<string[]>([]);
+  const [eventNote, setEventNote] = useState('');
+  const [eventSent, setEventSent] = useState<string | null>(null);
   // D8: the business whose quotation this is — Shaadi Shopping, or the venue (its own name and number).
   const contact = proposalContact(p.brand, { phone: SHAADI_PHONE, display: SHAADI_PHONE_DISPLAY });
 
@@ -317,7 +323,7 @@ export default function ProposalClient({
     document.getElementById('views')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  async function post(path: 'accept' | 'request-changes', body: unknown): Promise<boolean> {
+  async function post(path: 'accept' | 'request-changes' | 'add-event', body: unknown): Promise<boolean> {
     setError(null);
     try {
       const res = await fetch(`/api/proposal/${token}/${path}`, {
@@ -356,6 +362,25 @@ export default function ProposalClient({
       setP((cur) => ({ ...cur, changesRequested: true }));
       setNote('');
       setShowChanges(false);
+    }
+    setBusy(null);
+  }
+
+  function chooseFunction(fn: string | null) {
+    setAddFn(fn);
+    setPicks([]);
+    setEventNote('');
+    setError(null);
+  }
+
+  async function addEvent() {
+    const group = p.addable.find((g) => g.function === addFn);
+    if (!group || busy) return;
+    setBusy('event');
+    if (await post('add-event', { function: group.function, offeringIds: picks, note: eventNote })) {
+      setP((cur) => ({ ...cur, changesRequested: true }));
+      setEventSent(group.label);
+      chooseFunction(null);
     }
     setBusy(null);
   }
@@ -414,6 +439,76 @@ export default function ProposalClient({
         </div>
       )}
     </div>
+  );
+
+  const adding = p.addable.find((g) => g.function === addFn);
+  const addEventBlock = p.state === 'OPEN' && p.addable.length > 0 && (
+    <section className="space-y-4 rounded-[24px] border border-[#E8DCC8] bg-white p-6 sm:p-8 print:hidden">
+      <Eyebrow>Add an event</Eyebrow>
+      <p className="text-sm leading-relaxed text-[#4A3F38]">
+        Planning another function with {contact.name}? Choose it, tick what you would like, and we will send you an updated quotation.
+      </p>
+      {eventSent && !adding && (
+        <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Your request to add {eventSent} has been sent.
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {p.addable.map((g) => (
+          <button
+            key={g.function}
+            type="button"
+            aria-pressed={g.function === addFn}
+            onClick={() => chooseFunction(g.function === addFn ? null : g.function)}
+            className={`min-h-[44px] rounded-full border px-4 text-sm font-medium transition ${
+              g.function === addFn ? 'border-[#8B1A4A] bg-[#8B1A4A] text-white' : 'border-[#E8DCC8] bg-[#FFFCF7] text-[#5A4A40] hover:border-[#C5A46D]'
+            }`}
+          >
+            {g.label}
+          </button>
+        ))}
+      </div>
+      {adding && (
+        <div className="space-y-3">
+          <ul className="divide-y divide-[#F0E6D6] rounded-xl border border-[#F0E6D6]">
+            {adding.items.map((o) => (
+              <li key={o.id}>
+                <label className="flex min-h-[52px] cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-[#2A1F1B]">
+                  <input
+                    type="checkbox"
+                    checked={picks.includes(o.id)}
+                    onChange={(e) => setPicks((cur) => (e.target.checked ? [...cur, o.id] : cur.filter((id) => id !== o.id)))}
+                    className="h-5 w-5 shrink-0 accent-[#8B1A4A]"
+                  />
+                  <span className="flex-1">{o.name}</span>
+                  <span className="shrink-0 text-[#6B5B4D]">from {o.price}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs leading-relaxed text-[#6B5B4D]">These are starting prices. Your updated quotation will show the exact amount.</p>
+          <textarea
+            value={eventNote}
+            onChange={(e) => setEventNote(e.target.value)}
+            maxLength={500}
+            rows={2}
+            aria-label={`Anything else about your ${adding.label}?`}
+            placeholder="Anything else? For example the date, or how many guests."
+            className="w-full rounded-xl border border-[#E8DCC8] bg-[#FFFCF7] p-3.5 text-sm outline-none focus:border-[#C5A46D] focus:ring-2 focus:ring-[#C5A46D]/25"
+          />
+          {/* The page's own alert is at the very bottom — repeated here (not as a second alert) so it is seen where the couple is. */}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button
+            type="button"
+            onClick={addEvent}
+            disabled={busy !== null}
+            className="min-h-[48px] w-full rounded-full bg-[#2A1F1B] px-6 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {busy === 'event' ? 'Sending…' : `Ask to add ${adding.label}`}
+          </button>
+        </div>
+      )}
+    </section>
   );
 
   return (
@@ -570,6 +665,7 @@ export default function ProposalClient({
               </button>
             </section>
 
+            {addEventBlock}
             {requestChangesBlock}
           </div>
         ) : (

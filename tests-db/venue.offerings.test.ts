@@ -117,6 +117,24 @@ dbDescribe('what a venue offers, and functions on its quotations (real database)
     const token = (await inA(() => quotes.send(enquiryId, users[0]))).linkPath.slice('/proposal/'.length);
     const page = await runInScope(await scopeForProposalToken(token), () => proposalService.view(token));
     expect(page?.items.map((i) => [i.functionLabel, i.description])).toEqual([['Haldi', 'Haldi decoration (marigold)'], ['Reception', 'Banquet hall'], ['Reception', 'Veg plate (per plate)']]);
+
+    // "Add an event": the couple's open link shows what THIS venue offers — never venue B's list.
+    expect(page?.addable.map((g) => [g.label, g.items.map((o) => o.name)])).toEqual([['Haldi', ['Haldi decoration (marigold)']], ['Reception', ['Banquet hall', 'Veg plate']]]);
+    expect(page?.addable[1].items[1].price).toBe('₹900 per plate');
+
+    // The couple asks to add the Haldi, ticking the venue's decoration — and, tampering, venue B's lawn. Only the venue's own counts.
+    const asCouple = async <T>(fn: () => Promise<T>) => runInScope(await scopeForProposalToken(token), fn);
+    expect((await outcome(asCouple(() => proposalService.requestEvent(token, { function: 'MEHNDI' }))))?.name).toBe('ValidationError'); // nothing listed for it
+    await asCouple(() => proposalService.requestEvent(token, { function: 'HALDI', offeringIds: [haldiDecorId, bLawnId], note: 'About 150 guests' }));
+
+    // The venue sees it as a change request, in its own words and prices; the quotation itself is untouched.
+    const after = (await inA(() => quotes.get(enquiryId))).quotation;
+    expect(after?.stage).toBe('CHANGES');
+    expect(after?.changesNote).toContain('Please add Haldi: Haldi decoration (marigold) (from ₹28,000).\nAbout 150 guests');
+    expect(after?.changesNote).not.toContain('B lawn');
+    expect(after?.total).toBe(498000);
+    expect(after?.items).toHaveLength(3);
+    expect((await asCouple(() => proposalService.view(token)))?.changesRequested).toBe(true);
   });
 
   test('a function that is not on the list is refused, and a line without one is fine', async () => {
