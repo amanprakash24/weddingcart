@@ -1,15 +1,18 @@
 import { prisma } from '@/lib/prisma';
 import { ActivityType } from '@/generated/prisma/enums';
-import { ConflictError, NotFoundError } from '@/lib/errors';
+import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { subjectCreateData } from '@/lib/crm/subject';
 import { ONLINE_CHANNEL } from '@/lib/quotation/rules';
 import {
   appendChangeNote,
+  eventRequestNote,
   hashCustomerToken,
   isWellFormedToken,
   proposalState,
+  toAddable,
   toCustomerProposal,
   validateChangeNote,
+  validateEventRequest,
   type CustomerProposal,
 } from '@/lib/quotation/proposal';
 import { quotationRepository, type QuotationWithItems } from '@/repositories/quotation.repository';
@@ -18,6 +21,7 @@ import { bookingSourceFacts, expireOverdue, quotationService } from '@/services/
 import { applyCommercialEvent } from '@/services/leadStage.service';
 import type { SourceType } from '@/services/leadInbox.service';
 import { proposalBrandFor } from '@/lib/ownership/business';
+import { FUNCTION_TYPE_LABELS, type Offering } from '@/lib/venue/offering';
 
 // Wedding Proposal (docs/wedding-os/08-quotation.md §15) — what the couple can do through the secret link.
 // A thin adapter: the token is resolved to ONE quotation revision, and every rule that matters is the existing
@@ -52,6 +56,8 @@ export interface ProposalDeps {
   logActivity: typeof activityLogRepository.create;
   applyEvent: typeof applyCommercialEvent;
   brand: typeof proposalBrandFor;
+  // The owning venue's "What we offer" list. BusinessOffering is not an owned table, so the business is always named here.
+  offerings: (businessId: string) => Promise<Offering[]>;
 }
 
 const defaultDeps = (): ProposalDeps => ({
@@ -65,6 +71,12 @@ const defaultDeps = (): ProposalDeps => ({
   logActivity: activityLogRepository.create,
   applyEvent: applyCommercialEvent,
   brand: proposalBrandFor,
+  offerings: (businessId) =>
+    prisma.businessOffering.findMany({
+      where: { businessId },
+      select: { id: true, function: true, name: true, price: true, perPlate: true },
+      orderBy: [{ function: 'asc' }, { createdAt: 'asc' }],
+    }),
 });
 
 export function createProposalService(deps: ProposalDeps = defaultDeps()) {
@@ -121,7 +133,36 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     });
     // D8: the business that owns this quotation — Shaadi Shopping, or the venue whose own customer this is.
     view.brand = await deps.brand(q.businessId);
+    // "Add an event": a venue's own open proposal shows what that venue offers. Shaadi Shopping has no such list.
+    if (!view.brand.isPlatform && view.state === 'OPEN') view.addable = toAddable(await deps.offerings(q.businessId));
     return view;
+  }
+
+  // What "Request changes" and "Add an event" both do: keep the couple's words on the quotation, log them, and move the lead
+  // Quotation Sent → Negotiation. The quotation's content, prices and status are NOT touched (decision D3).
+  async function recordRequest(q: QuotationWithItems, text: string, summary: string): Promise<void> {
+    const { sourceType, sourceId } = sourceOf(q);
+    const now = new Date();
+    await deps.db.$transaction(async (tx) => {
+      const current = await tx.quotation.findUnique({ where: { id: q.id }, select: { changesRequestNote: true } });
+      // Only while it is still SENT — a staff revision/acceptance in the meantime wins.
+      const updated = await tx.quotation.updateMany({
+        where: { id: q.id, status: 'SENT' },
+        data: { changesRequestedAt: now, changesRequestNote: appendChangeNote(current?.changesRequestNote ?? null, text, now) },
+      });
+      if (updated.count !== 1) throw new ConflictError('This proposal was just updated — please reload the page');
+      await deps.logActivity({ type: ActivityType.QUOTATION_CHANGES_REQUESTED, summary, detail: text, ...subjectCreateData(sourceType, sourceId) }, tx);
+      await deps.applyEvent(tx, sourceType, sourceId, 'CHANGES_REQUESTED', null);
+    });
+  }
+
+  // A link the couple can still act on, or the same answers "Request changes" has always given.
+  async function openProposal(token: unknown): Promise<QuotationWithItems> {
+    const q = await resolve(token);
+    if (!q) throw new ProposalNotFoundError();
+    const state = proposalState(q, new Date());
+    if (state !== 'OPEN') throw state === 'INVALID' ? new ProposalNotFoundError() : new ConflictError(state === 'ACCEPTED' ? 'This proposal has already been accepted' : 'This proposal has expired');
+    return q;
   }
 
   return {
@@ -192,32 +233,24 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
   // (decision D3). The lead moves Quotation Sent → Negotiation; staff answer with a revision.
   async requestChanges(token: unknown, note: unknown): Promise<{ recorded: true }> {
     const text = validateChangeNote(note);
-    const q = await resolve(token);
-    if (!q) throw new ProposalNotFoundError();
-    const state = proposalState(q, new Date());
-    if (state !== 'OPEN') throw state === 'INVALID' ? new ProposalNotFoundError() : new ConflictError(state === 'ACCEPTED' ? 'This proposal has already been accepted' : 'This proposal has expired');
+    const q = await openProposal(token);
+    await recordRequest(q, text, `The couple asked for changes on proposal ${q.quotationNumber} (revision ${q.revision})`);
+    return { recorded: true };
+  },
 
-    const { sourceType, sourceId } = sourceOf(q);
-    const now = new Date();
-    await deps.db.$transaction(async (tx) => {
-      const current = await tx.quotation.findUnique({ where: { id: q.id }, select: { changesRequestNote: true } });
-      // Only while it is still SENT — a staff revision/acceptance in the meantime wins.
-      const updated = await tx.quotation.updateMany({
-        where: { id: q.id, status: 'SENT' },
-        data: { changesRequestedAt: now, changesRequestNote: appendChangeNote(current?.changesRequestNote ?? null, text, now) },
-      });
-      if (updated.count !== 1) throw new ConflictError('This proposal was just updated — please reload the page');
-      await deps.logActivity(
-        {
-          type: ActivityType.QUOTATION_CHANGES_REQUESTED,
-          summary: `The couple asked for changes on proposal ${q.quotationNumber} (revision ${q.revision})`,
-          detail: text,
-          ...subjectCreateData(sourceType, sourceId),
-        },
-        tx
-      );
-      await deps.applyEvent(tx, sourceType, sourceId, 'CHANGES_REQUESTED', null);
-    });
+  // "Add an event": the couple asks the venue to add a function, optionally ticking what they want from the venue's own list.
+  // Only ticks that really are on THIS venue's list for THAT function count — the names and prices written down are the venue's.
+  async requestEvent(token: unknown, input: unknown): Promise<{ recorded: true }> {
+    const wanted = validateEventRequest(input);
+    const q = await openProposal(token);
+    const offered = (await deps.brand(q.businessId)).isPlatform ? [] : (await deps.offerings(q.businessId)).filter((o) => o.function === wanted.function);
+    if (offered.length === 0) throw new ValidationError('That function cannot be added here — please use "Request changes" instead');
+    const picked = offered.filter((o) => wanted.offeringIds.includes(o.id));
+    await recordRequest(
+      q,
+      eventRequestNote(wanted.function, picked, wanted.note),
+      `The couple asked to add ${FUNCTION_TYPE_LABELS[wanted.function]} on proposal ${q.quotationNumber} (revision ${q.revision})`
+    );
     return { recorded: true };
   },
   };

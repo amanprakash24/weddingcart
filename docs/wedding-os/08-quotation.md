@@ -531,3 +531,44 @@ appears once, in the quotation, after the terms; the quotation has the table, su
 
 **Not in 1.2:** vendor package lists on the proposal (their listed prices would differ from the quoted price), a
 server-generated PDF, "show interest" per vendor, and readiness checks before sending (§46).
+
+## 18. "Add an event" on a venue's own proposal (Phase C — 5 Oct 2026)
+
+A venue lists what it offers for each wedding function on its **What we offer** screen (`/vendor/offerings`,
+table `business_offerings`). On the couple's link for **that venue's own quotation**, while the proposal is open,
+the "Your proposal" view shows an **Add an event** card above "Request changes":
+
+1. The couple taps a function the venue has something listed for (Haldi, Reception …).
+2. They see the venue's list for it with **starting prices** ("from ₹25,000", "from ₹450 per plate") and tick what
+   they want. Ticking nothing is allowed; a short note is optional (500 characters).
+3. "Ask to add Haldi" sends it to `POST /api/proposal/[token]/add-event` — body `{ function, offeringIds?, note? }`.
+
+**It is a change request, nothing more** (decision D3 still holds). The quotation's lines, prices and status are not
+touched. The request is written the same way "Request changes" is: appended to `changesRequestNote`, one
+`QUOTATION_CHANGES_REQUESTED` timeline entry ("The couple asked to add Haldi on proposal …"), and the stage moves to
+Negotiation. The venue sees it on the enquiry as "asked for changes" and answers with a new version, where the
+one-tap lines of the quotation form already carry the function. **No migration.**
+
+**Rules**
+- Only a venue's own quotation shows the card. A Shaadi Shopping proposal has no price list, so `addable` is empty
+  and the endpoint refuses.
+- Only an OPEN proposal: an accepted or expired one shows nothing and answers 409; a dead link answers the one
+  generic 404.
+- The sentence the venue reads is built on the server from **the venue's own rows**: a ticked id counts only if it is
+  on this venue's list for that function. Another venue's row, another function's row or a made-up id is ignored, and
+  no name or price is ever taken from the request.
+- A function the venue has nothing listed for is refused (400) — the couple uses "Request changes" for that.
+- Same protection as the other two actions: the shared per-IP limit, `no-store`, `noindex`, and the route runs as the
+  business that owns the quotation.
+
+**Allow-list:** `CustomerProposal.addable` — per function: its label and, for each offering, the name, the price in
+words and the row id (used only to say which ones were ticked).
+
+**Tests:** `lib/quotation/proposal.test.ts` (grouping, request validation, the sentence),
+`services/proposal.service.test.ts` (what each kind of proposal shows; the request is recorded without touching the
+quotation; foreign and made-up ticks ignored; closed and dead links), `app/api/proposal/[token]/routes.test.ts`
+(status codes, headers, rate limit) and `tests-db/venue.offerings.test.ts` (two real venues: the couple sees only this
+venue's list, a tampered tick for the other venue's row is dropped, the venue sees the request).
+
+**Not built:** adding the lines to the quotation automatically, choosing a quantity or a date per function, and a
+Shaadi Shopping section on a venue's proposal link.
