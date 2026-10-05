@@ -570,5 +570,28 @@ quotation; foreign and made-up ticks ignored; closed and dead links), `app/api/p
 (status codes, headers, rate limit) and `tests-db/venue.offerings.test.ts` (two real venues: the couple sees only this
 venue's list, a tampered tick for the other venue's row is dropped, the venue sees the request).
 
-**Not built:** adding the lines to the quotation automatically, choosing a quantity or a date per function, and a
-Shaadi Shopping section on a venue's proposal link.
+**Not built:** adding the lines to the quotation automatically, and choosing a quantity or a date per function.
+
+## 19. The Shaadi Shopping section on a venue's own proposal (Phase C — 5 Oct 2026)
+
+A venue's own proposal link is the venue's page: its name in the header and its own number for questions (D8). At the
+bottom of the "Your proposal" view, below the venue's "Questions?" line and above "Powered by Vivah OS", there is one
+clearly separate card, **The rest of your wedding** — Shaadi Shopping's offer to plan everything around the venue
+(decoration, photography, mehndi, makeup …) around the couple's guests and budget.
+
+- **Two actions only:** "WhatsApp Shaadi Shopping" and "Call +91 76460 28228". This card is the only place a venue's
+  link carries Shaadi Shopping's number; every other call or WhatsApp link on the page stays the venue's.
+- **What the WhatsApp message says:** "Namaste Shaadi Shopping, I am planning my wedding with ‹venue› and would like
+  help with the rest of it." It names the venue only — never the couple, the quotation number or the link.
+- **It says who is who:** "Shaadi Shopping is a separate service. Your quotation on this page is with ‹venue› — for
+  anything about it, please contact ‹venue›."
+- **Where it shows:** on a venue's own proposal in every state (open, accepted, expired), on the proposal view only —
+  never beside the detailed quotation's numbers, and never in print. A Shaadi Shopping proposal has no such card.
+- **No data, no request, no migration:** the card is built on the page from the brand already on the allow-list
+  (`shaadiSection` in `lib/quotation/proposalView.ts`). Tapping it records nothing.
+
+**Tests:** `lib/quotation/proposalView.test.ts` (none for Shaadi Shopping's own proposal; always Shaadi Shopping's
+number, never the venue's; the message) and `lib/quotation/proposalPage.test.ts` (venue links only, proposal view only,
+not printed, after the venue's contact line).
+
+**Not built:** a way for a venue to turn the card off, and counting how many couples tap it.
