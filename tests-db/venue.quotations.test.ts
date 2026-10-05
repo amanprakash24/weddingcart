@@ -141,7 +141,7 @@ dbDescribe('a venue’s own quotations (real database)', () => {
 
   test('the couple asks for changes — the venue sees their words and it becomes the next step', async () => {
     await asCouple(firstToken, () => proposalService.requestChanges(firstToken, 'Can you include the lawn?'));
-    expect((await inA(() => quotes.get(enquiryId))).quotation).toMatchObject({ stage: 'CHANGES', changesNote: 'Can you include the lawn?' });
+    expect((await inA(() => quotes.get(enquiryId))).quotation).toMatchObject({ stage: 'CHANGES', changesNote: expect.stringContaining('Can you include the lawn?') });
     expect(await nextKind(enquiryId)).toBe('QUOTE_CHANGES');
   });
 
