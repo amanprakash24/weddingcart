@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { groupByFunction, nextStep, proposalHighlights, proposalStatus, quotationSummary, REQUEST_CHOICES, tabFromHash } from './proposalView';
+import { groupByFunction, proposalContact, nextStep, proposalHighlights, proposalStatus, quotationSummary, REQUEST_CHOICES, tabFromHash } from './proposalView';
 
 const item = (functionLabel: string | null, description = 'x') => ({ service: null, functionLabel, description, vendor: null, quantity: 1, unitPrice: 1, lineTotal: 1 });
 
@@ -75,4 +75,33 @@ describe('proposal vs detailed quotation (Decision 10)', () => {
     expect(REQUEST_CHOICES.map((c) => c.label)).toEqual(['Show me another option', 'I have a question', 'Change something else']);
     for (const c of REQUEST_CHOICES) expect(c.start.length).toBeGreaterThan(5);
   });
+});
+
+describe('proposalContact — who the couple reaches (D8)', () => {
+  const platform = { phone: '+917646028228', display: '+91 76460 28228' };
+
+  test('Shaadi Shopping’s quotation uses Shaadi Shopping’s number', () => {
+    const c = proposalContact({ name: 'Shaadi Shopping', phone: null, isPlatform: true }, platform);
+    expect(c.phone?.tel).toBe('+917646028228');
+    expect(c.phone?.display).toBe('+91 76460 28228');
+    expect(c.phone?.whatsApp('Hi there')).toBe('https://wa.me/+917646028228?text=Hi%20there');
+  });
+
+  test('a venue’s own quotation uses the venue’s number', () => {
+    const c = proposalContact({ name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false }, platform);
+    expect(c).toMatchObject({ name: 'Swayamvar Hall', isPlatform: false });
+    expect(c.phone?.tel).toBe('+919876500000');
+    expect(c.phone?.display).toBe('+91 98765 00000');
+    expect(c.phone?.whatsApp('Hi')).toBe('https://wa.me/+919876500000?text=Hi');
+  });
+
+  test('a venue with no usable number shows none — never Shaadi Shopping’s', () => {
+    for (const phone of [null, '', '12345', '1234567890']) expect(proposalContact({ name: 'Swayamvar Hall', phone, isPlatform: false }, platform).phone).toBeNull();
+  });
+});
+
+test('a booked venue quotation names the venue’s team, not Shaadi Shopping’s', () => {
+  const booked = { state: 'ACCEPTED' as const, changesRequested: false, booked: true, advanceAmount: 0 };
+  expect(nextStep(booked)).toContain('Your Shaadi Shopping team');
+  expect(nextStep({ ...booked, brand: { name: 'Swayamvar Hall', phone: null, isPlatform: false } })).toContain('Your Swayamvar Hall team');
 });
