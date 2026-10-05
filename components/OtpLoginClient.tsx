@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
-import { Phone, ShieldCheck, Sparkles } from 'lucide-react';
+import { Phone, ShieldCheck } from 'lucide-react';
 
 // Shared by /vendor/login and /customer/login — the underlying auth call is
 // identical (NextAuth's 'otp' credentials provider looks the phone number up
@@ -69,10 +70,7 @@ export default function OtpLoginClient({
     <div className="min-h-screen bg-[#FFFAF5] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-5 py-2.5 rounded-full text-sm font-bold mb-4 shadow-lg">
-            <Sparkles className="w-4 h-4" />
-            ShaadiShopping
-          </div>
+          <Image src="/logo.png" alt="ShaadiShopping" width={240} height={150} className="mx-auto mb-4 h-16 w-auto object-contain" priority />
           <h1 className="text-3xl font-bold text-gray-900 font-playfair">{portalName} Login</h1>
           <p className="text-gray-500 text-sm mt-1">
             {stage === 'phone' ? "We'll text you a verification code" : `Enter the code sent to +91 ${phone}`}
