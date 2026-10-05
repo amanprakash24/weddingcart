@@ -8,6 +8,8 @@ import { Check, Copy, KeyRound } from 'lucide-react';
 // asks for a new one here — because only its hash is stored. A new code ends the old one and signs the vendor out everywhere.
 export default function VendorLoginCode({ vendorId, mobile, firstCode }: { vendorId: string; mobile: string; firstCode?: string }) {
   const [code, setCode] = useState<string | null>(firstCode ?? null);
+  // The number on the login itself, once the server has said it — it can differ from the contact number typed on a listing.
+  const [loginMobile, setLoginMobile] = useState(mobile);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -21,6 +23,7 @@ export default function VendorLoginCode({ vendorId, mobile, firstCode }: { vendo
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.success) {
         setCode(body.loginCode);
+        if (body.mobile) setLoginMobile(body.mobile);
         setAsking(false);
         setCopied(false);
       } else {
@@ -56,7 +59,7 @@ export default function VendorLoginCode({ vendorId, mobile, firstCode }: { vendo
             </button>
           </div>
           <p>
-            The vendor signs in at <span className="font-medium">/vendor/login</span> with mobile <span className="font-medium">{mobile}</span> and this code.
+            The vendor signs in at <span className="font-medium">/vendor/login</span> with mobile <span className="font-medium">{loginMobile}</span> and this code.
           </p>
           <p className="font-medium text-amber-800">Shown only now. Put it in the terms paper before you leave this page — it cannot be shown again, only replaced.</p>
         </div>

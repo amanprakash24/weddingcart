@@ -1307,6 +1307,8 @@ Create a separate standalone invoice anyway?`)) return;
                               <input type="email" value={vendorForm.ownerEmail} onChange={(e) => setVendorForm({ ...vendorForm, ownerEmail: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="ramesh@example.com" />
                             </div>
                           </div>
+                          {/* A vendor that has a login signs in with its mobile number + this code (lib/auth/vendorCode.ts). */}
+                          {editingVendor && <VendorLoginCode key={editingVendor.id} vendorId={editingVendor.id} mobile={vendorForm.ownerPhone || 'the number on its login'} />}
                         </div>
                       </div>
 
