@@ -26,7 +26,7 @@ dbDescribe('per-business numbers, rules and proposal links (real database)', () 
   async function venueSentQuote(i: number) {
     return inVenue(i, async () => {
       const couple = await app.prisma.consultation.create({
-        data: { name: `DBTEST venue couple ${fx.runId}`, phone: '9800000011', weddingDate: '2026-12-09', days: 1, guestCount: 300, message: `DBTEST venue ${fx.runId}` },
+        data: { name: `DBTEST venue couple ${fx.runId}`, phone: '9800000011', city: 'Patna', weddingDate: '2026-12-09', days: 1, guestCount: 300, message: `DBTEST venue ${fx.runId}` },
       });
       const draft = await app.quotationService.create('CONSULTATION', couple.id, { items: [fx.line('Hall hire', 200000)], advanceAmount: 50000, validUntil: inDays(10) }, null);
       await app.quotationService.send(draft.id, null);
