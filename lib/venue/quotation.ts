@@ -2,7 +2,9 @@
 // plain lines (what, how many, price), a discount, a valid-until date and what is / is not included. No tax line (a tax amount
 // needs the venue's GST number on the quotation, the invoice and the couple's link — that comes together, later) and no other
 // vendors on the lines. The amount that confirms the booking is never typed: it is the venue's own rule (Settings) applied to the
-// total. Pure and client-safe: the form and the server share these rules.
+// total. A line may say which wedding function it is for (Haldi, Reception …) — the couple's page groups by it when every line does.
+// Pure and client-safe: the form and the server share these rules.
+import { isFunctionType, type FunctionType } from './offering';
 
 export const VENUE_QUOTE_LIMITS = { maxLines: 30, descriptionMax: 200, textMax: 4000, maxUnitPrice: 100_000_000, maxQuantity: 100_000 } as const;
 
@@ -10,6 +12,7 @@ export interface VenueQuoteLine {
   description: string;
   quantity: number;
   unitPrice: number;
+  function: FunctionType | null; // the wedding function this line is for (Haldi, Reception …) — optional
 }
 
 export interface VenueQuoteInput {
@@ -50,7 +53,10 @@ export function validateVenueQuote(input: Record<string, unknown>, today: string
       const unitPrice = whole(rupeeText(str(raw?.unitPrice)));
       if (unitPrice === null || unitPrice > L.maxUnitPrice) errors[`items.${i}.unitPrice`] = 'Enter the price in whole rupees';
 
-      items.push({ description, quantity: quantity ?? 1, unitPrice: unitPrice ?? 0 });
+      const fn = str(raw?.function);
+      if (fn && !isFunctionType(fn)) errors[`items.${i}.function`] = 'Choose the function from the list';
+
+      items.push({ description, quantity: quantity ?? 1, unitPrice: unitPrice ?? 0, function: isFunctionType(fn) ? fn : null });
     });
   }
 

@@ -30,7 +30,9 @@ export default function VendorShell({ children }: { children: ReactNode }) {
 
   const vendorName = session?.user?.name ?? 'Vendor';
 
-  const navLink = (item: (typeof PRIMARY)[number], compact = false) => {
+  // `desktop`: the top bar has no room for eight labels below xl, so there it shows icons only and the "current workspace"
+  // text beside the logo names the page; from xl up the labels are back, each on one line.
+  const navLink = (item: (typeof PRIMARY)[number], compact = false, desktop = false) => {
     const isActive = item.isActive(pathname);
     const Icon = item.icon;
     return (
@@ -38,12 +40,14 @@ export default function VendorShell({ children }: { children: ReactNode }) {
         key={item.key}
         href={item.href}
         aria-current={isActive ? 'page' : undefined}
+        aria-label={desktop ? item.label : undefined}
+        title={desktop ? item.label : undefined}
         className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
           isActive ? 'bg-[var(--primary)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]'
         } ${compact ? 'flex-col gap-0.5 !px-1 !py-2 text-[10px]' : ''}`}
       >
         <Icon className={compact ? 'h-5 w-5' : 'h-4 w-4'} />
-        <span className={compact ? 'max-w-full truncate' : ''}>{item.label}</span>
+        <span className={compact ? 'max-w-full truncate' : desktop ? 'hidden whitespace-nowrap xl:inline' : ''}>{item.label}</span>
       </Link>
     );
   };
@@ -52,8 +56,8 @@ export default function VendorShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[var(--color-bg-surface-muted)]">
       {/* Desktop header */}
       <header className="sticky top-0 z-30 hidden border-b border-[var(--color-border-subtle)] bg-white/95 backdrop-blur md:block">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-6">
-          <Link href="/vendor/today" className="flex items-center gap-2">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-6">
+          <Link href="/vendor/today" className="flex shrink-0 items-center gap-2 whitespace-nowrap">
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Vendor OS</span>
             <span className="text-[11px] text-[var(--color-text-muted)]">by ShaadiShopping</span>
           </Link>
@@ -61,13 +65,13 @@ export default function VendorShell({ children }: { children: ReactNode }) {
           {/* Current workspace */}
           {active && (
             <>
-              <span className="h-5 w-px bg-[var(--color-border-default)]" aria-hidden />
-              <span className="text-sm font-semibold text-[var(--color-text-primary)]">{active.label}</span>
+              <span className="h-5 w-px bg-[var(--color-border-default)] xl:hidden" aria-hidden />
+              <span className="whitespace-nowrap text-sm font-semibold text-[var(--color-text-primary)] xl:hidden">{active.label}</span>
             </>
           )}
 
           <nav aria-label="Vendor" className="ml-auto flex items-center gap-1">
-            {PRIMARY.map((item) => navLink(item))}
+            {PRIMARY.map((item) => navLink(item, false, true))}
           </nav>
 
           {/* Account / profile access */}

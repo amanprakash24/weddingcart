@@ -45,7 +45,7 @@ const confirmBooking = mock(async (_bookingId: string) => {
 });
 
 const consultationUpdate = mock(async ({ where, data }: { where: { id: string }; data: Record<string, string> }) => Object.assign(enquiries[where.id], data));
-const body = (input: { items: { description: string; quantity: number; unitPrice: number }[]; discount: number; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
+const body = (input: { items: { description: string; quantity: number; unitPrice: number; functionLabel?: string | null }[]; discount: number; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
   const subtotal = input.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   return { items: input.items.map((i) => ({ ...i, lineTotal: i.quantity * i.unitPrice })), subtotal, discount: input.discount, total: subtotal - input.discount, advanceAmount: input.advanceAmount, validUntil: input.validUntil, inclusions: input.inclusions, exclusions: input.exclusions, terms: input.terms };
 };
@@ -67,11 +67,14 @@ const createBooking = mock(async (_id?: string, _overrides?: unknown, _actor?: s
   agreement = { confirmationPercent: 30, confirmationAmount: 60000, holdWindowDays: 5 };
 });
 
+const offeringFindMany = mock(async (_args: { where: { businessId: string } }) => [{ id: 'o1', function: 'HALDI', name: 'Haldi decoration', price: 25000, perPlate: false }]);
+
 const service = createVenueQuotationService({
   db: {
     consultation: { findUnique: mock(async ({ where }: { where: { id: string } }) => enquiries[where.id] ?? null) as never, update: consultationUpdate as never },
     business: { findUnique: mock(async () => ({ vendorId: 'v1', vendor: { city: 'Patna' } })) as never },
     vendorPackage: { findMany: mock(async () => [{ name: 'Gold package', price: 150000, isPerPlate: false }, { name: 'Veg plate', price: 900, isPerPlate: true }]) as never },
+    businessOffering: { findMany: offeringFindMany as never },
   },
   money: money as never,
   recordPayment: recordPayment as never,
@@ -103,8 +106,10 @@ describe('a venue’s own quotation', () => {
       rules: { confirmationPercent: 30, holdWindowDays: 5 },
       quotation: null,
       packages: [{ name: 'Gold package', price: 150000, perPlate: false }, { name: 'Veg plate', price: 900, perPlate: true }],
+      offerings: [{ id: 'o1', function: 'HALDI', name: 'Haldi decoration', price: 25000, perPlate: false }],
       payTo: null,
     });
+    expect(offeringFindMany.mock.calls[0][0].where).toEqual({ businessId: 'venue-1' }); // the scope's business, named by the service
   });
 
   test('another business’s enquiry is not found', async () => {
@@ -120,6 +125,16 @@ describe('a venue’s own quotation', () => {
     expect(create.mock.calls[0][2]).toMatchObject({ items: [{ description: 'Hall hire', quantity: 1, unitPrice: 200000 }], discount: 0, advanceAmount: 60000 });
     expect(create.mock.calls[0][2].validUntil.toISOString()).toBe('2026-10-12T18:29:59.000Z'); // the end of 12 Oct in India
     expect('quotation' in saved && saved.quotation).toMatchObject({ stage: 'DRAFT', total: 200000, toConfirm: 60000, confirmationPercent: 30, validUntil: '2026-10-12', booking: null });
+  });
+
+  test('a line’s function is stored as its label, and read back as the function', async () => {
+    await service.save('e1', { ...good, items: [{ description: 'Haldi decoration', quantity: '1', unitPrice: '25000', function: 'HALDI' }, { description: 'Hall hire', quantity: '1', unitPrice: '200000' }] }, 'u1');
+    expect(create.mock.calls[0][2].items).toEqual([
+      { description: 'Haldi decoration', quantity: 1, unitPrice: 25000, functionLabel: 'Haldi' },
+      { description: 'Hall hire', quantity: 1, unitPrice: 200000, functionLabel: null },
+    ]);
+    Object.assign(quotes[0].items[0], { functionLabel: 'Haldi' });
+    expect((await service.get('e1')).quotation?.items.map((i) => i.function)).toEqual(['HALDI', null]);
   });
 
   test('a venue that set no rule quotes under 25%', async () => {

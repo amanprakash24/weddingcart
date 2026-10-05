@@ -9,7 +9,7 @@ describe('validateVenueQuote', () => {
   test('a simple quotation: lines, valid-until; everything else is optional', () => {
     expect(validateVenueQuote(good, TODAY)).toEqual({
       ok: true,
-      value: { items: [{ description: 'Hall hire', quantity: 1, unitPrice: 200000 }], discount: 0, validUntil: '2026-10-12', inclusions: null, exclusions: null, terms: null },
+      value: { items: [{ description: 'Hall hire', quantity: 1, unitPrice: 200000, function: null }], discount: 0, validUntil: '2026-10-12', inclusions: null, exclusions: null, terms: null },
     });
   });
 
@@ -21,6 +21,12 @@ describe('validateVenueQuote', () => {
   test('each wrong box gets its own message', () => {
     const r = validateVenueQuote({ items: [{ description: '', quantity: '0', unitPrice: 'free' }, { description: 'Lawn', quantity: '1.5', unitPrice: '-5' }], validUntil: '' }, TODAY);
     expect(r.ok === false && Object.keys(r.errors).sort()).toEqual(['items.0.description', 'items.0.quantity', 'items.0.unitPrice', 'items.1.quantity', 'items.1.unitPrice', 'validUntil']);
+  });
+
+  test('a line may say which function it is for — only one from the list', () => {
+    const r = validateVenueQuote({ ...good, items: [{ ...good.items[0], function: 'HALDI' }, { description: 'Lawn', quantity: 1, unitPrice: 1, function: '' }] }, TODAY);
+    expect(r.ok && r.value.items.map((i) => i.function)).toEqual(['HALDI', null]);
+    expect(validateVenueQuote({ ...good, items: [{ ...good.items[0], function: 'BACHELOR_PARTY' }] }, TODAY)).toMatchObject({ ok: false, errors: { 'items.0.function': expect.any(String) } });
   });
 
   test('no lines, or too many, is refused', () => {
@@ -44,7 +50,7 @@ describe('validateVenueQuote', () => {
   test('totals, tax and the amount to confirm are never taken from the request', () => {
     const r = validateVenueQuote({ ...good, total: 1, subtotal: 1, advanceAmount: 1, gstEnabled: true, gstAmount: 36000, items: [{ ...good.items[0], vendorId: 'someone-else', lineTotal: 1 }] }, TODAY);
     expect(r.ok && Object.keys(r.value).sort()).toEqual(['discount', 'exclusions', 'inclusions', 'items', 'terms', 'validUntil']);
-    expect(r.ok && Object.keys(r.value.items[0]).sort()).toEqual(['description', 'quantity', 'unitPrice']);
+    expect(r.ok && Object.keys(r.value.items[0]).sort()).toEqual(['description', 'function', 'quantity', 'unitPrice']);
   });
 });
 

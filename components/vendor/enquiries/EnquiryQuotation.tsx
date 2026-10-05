@@ -5,9 +5,12 @@ import { MessageCircle, Plus, Trash2 } from 'lucide-react';
 import { Card, CardSkeleton } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
+import Select from '@/components/ui/Select';
 import StatusPill, { type PillStatus } from '@/components/ui/StatusPill';
 import { requiredConfirmation } from '@/lib/commercial/rules';
+import Link from 'next/link';
 import { whatsappTo } from '@/lib/venue/enquiry';
+import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS, groupOfferings, offeringPriceWords, type FunctionType, type Offering } from '@/lib/venue/offering';
 import { QUOTE_STAGE_LABEL, quoteShareMessage, VENUE_QUOTE_LIMITS, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
 import type { VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
 import BookingMoney from './BookingMoney';
@@ -16,7 +19,7 @@ import BookingMoney from './BookingMoney';
 // what the couple did — opened it, asked for changes, accepted. Phone-first. No totals are typed: the total is the lines minus the
 // discount, and the amount that confirms the booking is the venue's own rule (Settings).
 
-type Line = { description: string; quantity: string; unitPrice: string };
+type Line = { description: string; quantity: string; unitPrice: string; function: FunctionType | '' };
 type Form = { items: Line[]; discount: string; validUntil: string; inclusions: string; exclusions: string; terms: string };
 
 const TONE: Record<QuoteStage, PillStatus> = { DRAFT: 'dateHeld', SENT: 'info', CHANGES: 'overdue', ACCEPTED: 'confirmed', ENDED: 'neutral' };
@@ -29,10 +32,11 @@ const istDay = (offsetDays = 0) => new Intl.DateTimeFormat('en-CA', { timeZone: 
 const dayWords = (value: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(value.length === 10 ? `${value}T12:00:00+05:30` : value));
 const num = (raw: string) => Number(raw.replace(/[₹,\s]/g, '')) || 0;
 
-const emptyLine = (): Line => ({ description: '', quantity: '1', unitPrice: '' });
+const FUNCTION_OPTIONS = [{ value: '', label: 'Not for one function' }, ...FUNCTION_TYPES.map((fn) => ({ value: fn, label: FUNCTION_TYPE_LABELS[fn] }))];
+const emptyLine = (): Line => ({ description: '', quantity: '1', unitPrice: '', function: '' });
 const blankForm = (): Form => ({ items: [emptyLine()], discount: '', validUntil: istDay(7), inclusions: '', exclusions: '', terms: '' });
 const formOf = (q: VenueQuotationView): Form => ({
-  items: q.items.map((i) => ({ description: i.description, quantity: String(i.quantity), unitPrice: String(i.unitPrice) })),
+  items: q.items.map((i) => ({ description: i.description, quantity: String(i.quantity), unitPrice: String(i.unitPrice), function: i.function ?? '' })),
   discount: q.discount ? String(q.discount) : '',
   validUntil: q.validUntil && q.validUntil >= istDay() ? q.validUntil : istDay(7),
   inclusions: q.inclusions ?? '',
@@ -106,9 +110,16 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== key)));
   };
+  // One tap adds a line from the venue's "What we offer" list — it carries its function (Haldi, Reception …).
+  const addOffering = (o: Offering) =>
+    setForm((f) => {
+      const line: Line = { description: o.perPlate ? `${o.name} (per plate)` : o.name, quantity: '1', unitPrice: String(o.price), function: o.function };
+      const only = f.items.length === 1 && !f.items[0].description.trim() && !f.items[0].unitPrice.trim();
+      return { ...f, items: only ? [line] : [...f.items, line] };
+    });
   const addPackage = (p: VenueQuotationState['packages'][number]) =>
     setForm((f) => {
-      const line: Line = { description: p.perPlate ? `${p.name} (per plate)` : p.name, quantity: '1', unitPrice: String(p.price) };
+      const line: Line = { description: p.perPlate ? `${p.name} (per plate)` : p.name, quantity: '1', unitPrice: String(p.price), function: '' };
       const only = f.items.length === 1 && !f.items[0].description.trim() && !f.items[0].unitPrice.trim();
       return { ...f, items: only ? [line] : [...f.items, line] };
     });
@@ -159,6 +170,23 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
       <section aria-label="Quotation" className="space-y-3">
         {heading}
         <Card className="space-y-4">
+          {groupOfferings(state.offerings).map((g) => (
+            <div key={g.function}>
+              <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">Add for {g.label}</p>
+              <div className="flex flex-wrap gap-2">
+                {g.items.map((o) => (
+                  <button key={o.id} type="button" onClick={() => addOffering(o)} className="min-h-10 rounded-full border border-[var(--color-border-default)] px-3 text-sm text-[var(--color-text-primary)]">
+                    {o.name} · {offeringPriceWords(o)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {state.offerings.length === 0 && (
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Tip: add your services and prices for each function in <Link href="/vendor/offerings" className="font-medium text-[var(--primary)] underline underline-offset-2">What we offer</Link> — they will appear here as one-tap lines.
+            </p>
+          )}
           {state.packages.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">Add from your packages</p>
@@ -176,6 +204,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
             {form.items.map((l, i) => (
               <li key={i} className="space-y-2 border-b border-[var(--color-border-subtle)] pb-4 last:border-b-0 last:pb-0">
                 <Input label={`Line ${i + 1}`} value={l.description} onChange={(ev) => setLine(i, 'description', ev.target.value)} error={errors[`items.${i}.description`]} placeholder="Hall for the reception" maxLength={VENUE_QUOTE_LIMITS.descriptionMax} className="min-h-12 text-base" />
+                <Select label="For which function? (optional)" value={l.function} onChange={(ev) => setLine(i, 'function', ev.target.value)} error={errors[`items.${i}.function`]} options={FUNCTION_OPTIONS} className="min-h-12 text-base" />
                 <div className="grid grid-cols-[1fr_1.5fr_auto] items-start gap-2">
                   <Input label="How many" inputMode="numeric" value={l.quantity} onChange={(ev) => setLine(i, 'quantity', ev.target.value)} error={errors[`items.${i}.quantity`]} className="min-h-12 text-base" />
                   <Input label="Price each (₹)" inputMode="numeric" value={l.unitPrice} onChange={(ev) => setLine(i, 'unitPrice', ev.target.value)} error={errors[`items.${i}.unitPrice`]} placeholder="200000" className="min-h-12 text-base" />
@@ -236,7 +265,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
         <ul className="space-y-2 text-sm">
           {q.items.map((i, n) => (
             <li key={n} className="flex justify-between gap-3">
-              <span className="text-[var(--color-text-primary)]">{i.description}{i.quantity > 1 && <span className="text-[var(--color-text-muted)]"> · {i.quantity.toLocaleString('en-IN')} × {inr(i.unitPrice)}</span>}</span>
+              <span className="text-[var(--color-text-primary)]">{i.function && <span className="text-[var(--color-text-muted)]">{FUNCTION_TYPE_LABELS[i.function]} · </span>}{i.description}{i.quantity > 1 && <span className="text-[var(--color-text-muted)]"> · {i.quantity.toLocaleString('en-IN')} × {inr(i.unitPrice)}</span>}</span>
               <span className="shrink-0 text-[var(--color-text-primary)]">{inr(i.lineTotal)}</span>
             </li>
           ))}

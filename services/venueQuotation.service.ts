@@ -5,6 +5,7 @@ import { resolveSourceDate } from '@/lib/quotation/booking';
 import { currentBusiness, rulesOf } from '@/lib/ownership/business';
 import { lineTotal, quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
 import { validateVenuePayment, type VenuePaymentErrors } from '@/lib/venue/payment';
+import { FUNCTION_TYPE_LABELS, functionOfLabel, type FunctionType, type Offering } from '@/lib/venue/offering';
 import { quotationService, type QuotationView } from '@/services/quotation.service';
 import { loadAgreementMoney, recordAgreementPayment } from '@/services/agreement.service';
 import { bookingService } from '@/services/booking.service';
@@ -26,7 +27,7 @@ export interface VenueQuotationView {
   number: string;
   revision: number;
   stage: QuoteStage;
-  items: { description: string; quantity: number; unitPrice: number; lineTotal: number }[];
+  items: { description: string; quantity: number; unitPrice: number; lineTotal: number; function: FunctionType | null }[];
   subtotal: number;
   discount: number;
   total: number;
@@ -64,6 +65,8 @@ export interface VenueQuotationState {
   quotation: VenueQuotationView | null;
   // The venue's listing packages, offered as one-tap starting lines for a new quotation.
   packages: { name: string; price: number; perPlate: boolean }[];
+  // What the venue offers for each function (its "What we offer" list) — one-tap lines that carry their function.
+  offerings: Offering[];
   // Where the venue's own customers pay (Settings, D7) — for the payment details the venue sends them. null = not set.
   payTo: { upiId: string; upiName: string | null } | null;
 }
@@ -78,6 +81,7 @@ export interface VenueQuotationDeps {
     consultation: Pick<typeof prisma.consultation, 'findUnique' | 'update'>;
     business: Pick<typeof prisma.business, 'findUnique'>;
     vendorPackage: Pick<typeof prisma.vendorPackage, 'findMany'>;
+    businessOffering: Pick<typeof prisma.businessOffering, 'findMany'>;
   };
   quotations: Pick<typeof quotationService, 'listForSource' | 'create' | 'update' | 'send' | 'revise' | 'issueCustomerLink' | 'createBooking'>;
   business: typeof currentBusiness;
@@ -131,7 +135,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       number: q.quotationNumber,
       revision: q.revision,
       stage,
-      items: q.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal })),
+      items: q.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal, function: functionOfLabel(i.functionLabel) })),
       subtotal: q.subtotal,
       discount: q.discount,
       total: q.total,
@@ -174,6 +178,8 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       rules: { confirmationPercent: v.rules.confirmationPercent, holdWindowDays: v.rules.holdWindowDays },
       quotation: q ? await toView(q, v.rules) : null,
       packages: packages.map((p) => ({ name: p.name, price: p.price, perPlate: p.isPerPlate })),
+      // Not an owned table: the business is named here, from the scope (services/venueOffering.service.ts).
+      offerings: await deps.db.businessOffering.findMany({ where: { businessId: v.business.id }, select: { id: true, function: true, name: true, price: true, perPlate: true }, orderBy: [{ function: 'asc' }, { createdAt: 'asc' }] }),
       payTo: v.business.upiId ? { upiId: v.business.upiId, upiName: v.business.upiName } : null,
     };
   }
@@ -198,7 +204,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       const value = checked.value;
       const total = value.items.reduce((sum, l) => sum + lineTotal(l), 0) - value.discount;
       const body = {
-        items: value.items,
+        items: value.items.map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, functionLabel: l.function ? FUNCTION_TYPE_LABELS[l.function] : null })),
         discount: value.discount,
         advanceAmount: requiredConfirmation(total, v.rules),
         validUntil: endOfIstDay(value.validUntil),

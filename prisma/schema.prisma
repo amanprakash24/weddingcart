@@ -2239,6 +2239,7 @@ model Business {
   leads                 Lead[]
   enquiries             Enquiry[]
   consultations         Consultation[]
+  offerings             BusinessOffering[]
   quotations            Quotation[]
   bookings              Booking[]
   commercialAgreements  CommercialAgreement[]
@@ -2247,6 +2248,24 @@ model Business {
   payments              Payment[]
 
   @@map("businesses")
+}
+
+// What a venue offers for each wedding function (Haldi: lawn, decoration, veg plate …), with its starting price — its own price list
+// for the customers it brings itself. Offered as one-tap lines in the venue's quotation form, and shown to the couple when they ask
+// to add a function on their proposal link. Not an owned record: always read and written by the business of the current scope.
+model BusinessOffering {
+  id         String           @id @default(uuid())
+  businessId String
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  function   WeddingEventType
+  name       String
+  price      Int // whole rupees
+  perPlate   Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([businessId, function])
+  @@map("business_offerings")
 }
 
 // A login working in a business (D2: venues can have several). Nothing reads this until Phase B.
