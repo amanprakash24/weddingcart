@@ -2,6 +2,7 @@ import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import { ACTION_ORDER, CHANNEL_LABEL, nextAction, validateNewEnquiry, type Channel, type FollowUp, type NextAction } from '@/lib/venue/enquiry';
+import { quoteStage } from '@/lib/venue/quotation';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { platformMatchService } from '@/services/platformMatch.service';
 
@@ -51,17 +52,23 @@ const defaultDeps = (): VenueEnquiryDeps => ({ db: prisma, match: platformMatchS
 const include = {
   tasks: { where: { context: 'SALES_FOLLOWUP' as const, status: { not: 'CANCELLED' as const } }, select: { id: true, title: true, dueAt: true, status: true }, orderBy: { dueAt: 'asc' as const } },
   activities: { select: { id: true, type: true, summary: true, detail: true, createdAt: true }, orderBy: { createdAt: 'desc' as const }, take: 50 },
+  // The current quotation (never one replaced by a revision) — it decides the next step (lib/venue/quotation.ts).
+  quotations: { where: { status: { not: 'SUPERSEDED' as const } }, select: { status: true, validUntil: true, changesRequestedAt: true }, orderBy: { createdAt: 'desc' as const }, take: 1 },
 };
 
 type Row = {
   id: string; name: string; phone: string; weddingDate: string; guestCount: number; channel: string | null; message: string | null; pipelineStage: string; createdAt: Date; platformMatch: string | null;
   tasks: { id: string; title: string; dueAt: Date | null; status: string }[];
   activities: { id: string; type: string; summary: string; detail: string | null; createdAt: Date }[];
+  quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null }[];
 };
 
 function view(r: Row, now: Date): VenueEnquiryDetail {
   const followUps: FollowUp[] = r.tasks.map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt?.toISOString() ?? null, done: t.status === 'DONE' }));
   const contacted = r.activities.some((a) => (CONTACT_TYPES as readonly string[]).includes(a.type));
+  const q = r.quotations?.[0];
+  // A sent quotation past its date is expired, whether or not the lazy expiry has marked it yet.
+  const quote = q ? (q.status === 'SENT' && q.validUntil && q.validUntil < now ? 'ENDED' : quoteStage({ status: q.status, changesRequested: q.changesRequestedAt !== null })) : null;
   return {
     id: r.id,
     name: r.name,
@@ -70,7 +77,7 @@ function view(r: Row, now: Date): VenueEnquiryDetail {
     guestCount: r.guestCount > 0 ? r.guestCount : null,
     channel: CHANNEL_LABEL[r.channel as Channel] ?? 'Shaadi Shopping',
     viaShaadiShopping: r.platformMatch !== null,
-    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || r.pipelineStage === 'WON', followUps }, now),
+    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || r.pipelineStage === 'WON', followUps, quote }, now),
     createdAt: r.createdAt.toISOString(),
     need: r.message,
     followUps,

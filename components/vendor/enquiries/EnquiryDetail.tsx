@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import { whatsappTo } from '@/lib/venue/enquiry';
 import type { VenueEnquiryDetail } from '@/services/venueEnquiry.service';
+import EnquiryQuotation from './EnquiryQuotation';
 
 // One of the venue's own enquiries (Phase C). The top card answers "what should I do next?" with ONE primary action (audit brief
 // §13); calling, WhatsApp, a follow-up date and a note are always one tap away below it.
@@ -24,6 +25,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
   const [panel, setPanel] = useState<'none' | 'followup' | 'note' | 'close'>('none');
   const [date, setDate] = useState('');
   const [text, setText] = useState('');
+  const [version, setVersion] = useState(0); // bumped when the quotation below changes — the next step and history follow it
 
   useEffect(() => {
     let live = true;
@@ -34,7 +36,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
     return () => {
       live = false;
     };
-  }, [id]);
+  }, [id, version]);
 
   async function send(path: string, body: unknown, method = 'POST') {
     if (busy) return;
@@ -102,6 +104,9 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         {next.kind === 'SCHEDULE' && (
           <button type="button" onClick={() => setPanel('followup')} className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)]`}>Schedule a follow-up</button>
         )}
+        {(next.kind === 'QUOTE_ACCEPTED' || next.kind === 'QUOTE_CHANGES' || next.kind === 'QUOTE_DRAFT' || next.kind === 'QUOTE_WAITING') && (
+          <a href="#quotation" className={`${big} w-full ${next.kind === 'QUOTE_WAITING' ? 'border border-[var(--color-border-default)] text-[var(--color-text-primary)]' : 'bg-[var(--primary)] text-[var(--color-on-primary)]'}`}>See the quotation</a>
+        )}
         {closed && <p className="text-sm text-[var(--color-text-muted)]">This enquiry is closed — it is kept here for your records.</p>}
       </Card>
 
@@ -113,6 +118,10 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
           <button type="button" onClick={() => setPanel(panel === 'note' ? 'none' : 'note')} className={`${big} border border-[var(--color-border-default)] text-[var(--color-text-primary)]`}>Add note</button>
         </div>
       )}
+
+      <div id="quotation" className="scroll-mt-4">
+        <EnquiryQuotation enquiryId={id} closed={closed} onChanged={() => setVersion((v) => v + 1)} />
+      </div>
 
       {panel === 'followup' && (
         <Card className="space-y-3">

@@ -17,6 +17,10 @@ const TONE: Record<NextAction['kind'], PillStatus> = {
   FOLLOW_UP_TODAY: 'dateHeld',
   SCHEDULE: 'info',
   FOLLOW_UP_LATER: 'neutral',
+  QUOTE_ACCEPTED: 'confirmed',
+  QUOTE_CHANGES: 'overdue',
+  QUOTE_DRAFT: 'dateHeld',
+  QUOTE_WAITING: 'neutral',
   CLOSED: 'neutral',
 };
 
