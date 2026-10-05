@@ -55,8 +55,28 @@ describe('what to do next — one action', () => {
     expect(nextAction({ ...base, closed: true, followUps: [fu('a', '2026-10-02T06:30:00Z')] }, NOW).kind).toBe('CLOSED');
   });
 
-  test('late first, then people nobody has called, then today', () => {
-    expect(ACTION_ORDER.slice(0, 3)).toEqual(['FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY']);
+  test('the couple’s answer first, then late, then people nobody has called, then today', () => {
+    expect(ACTION_ORDER.slice(0, 5)).toEqual(['QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY']);
+    expect(ACTION_ORDER.indexOf('QUOTE_DRAFT')).toBeLessThan(ACTION_ORDER.indexOf('QUOTE_WAITING'));
+    expect(ACTION_ORDER.at(-1)).toBe('CLOSED');
+  });
+
+  test('a quotation decides the next step: the couple’s answer before anything else', () => {
+    const late = [fu('a', '2026-10-02T06:30:00Z')];
+    expect(nextAction({ ...base, quote: 'ACCEPTED', followUps: late }, NOW)).toEqual({ kind: 'QUOTE_ACCEPTED', label: 'Rahul accepted your quotation' });
+    expect(nextAction({ ...base, quote: 'CHANGES', followUps: late }, NOW)).toEqual({ kind: 'QUOTE_CHANGES', label: 'Rahul asked for changes to the quotation' });
+  });
+
+  test('a draft waits to be sent and a sent one waits for the couple — but a due follow-up is shown first', () => {
+    expect(nextAction({ ...base, quote: 'DRAFT' }, NOW)).toEqual({ kind: 'QUOTE_DRAFT', label: 'Finish and send the quotation to Rahul' });
+    expect(nextAction({ ...base, contacted: true, quote: 'SENT' }, NOW)).toEqual({ kind: 'QUOTE_WAITING', label: 'Waiting for Rahul to answer the quotation' });
+    expect(nextAction({ ...base, quote: 'SENT', followUps: [fu('a', '2026-10-02T06:30:00Z')] }, NOW).kind).toBe('FOLLOW_UP_OVERDUE');
+  });
+
+  test('an expired quotation, or none, changes nothing; a closed enquiry stays closed', () => {
+    expect(nextAction({ ...base, quote: 'ENDED' }, NOW).kind).toBe('CALL');
+    expect(nextAction({ ...base, contacted: true, quote: null }, NOW).kind).toBe('SCHEDULE');
+    expect(nextAction({ ...base, closed: true, quote: 'ACCEPTED' }, NOW).kind).toBe('CLOSED');
   });
 
   test('WhatsApp opens a chat with the customer’s own number', () => {
