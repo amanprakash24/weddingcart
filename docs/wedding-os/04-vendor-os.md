@@ -179,6 +179,56 @@ after the save, best-effort (`lib/vendorEnquiry/hook.ts`). **Staff alerts** (in-
 lead's "Vendor availability" card warns on *Not available* and *another date*; the timeline records "Enquiry sent" and
 "<vendor> answered …". **The customer never sees any of it** (guard test on the proposal page and its data).
 
+## 10. Vendor login code ("Mobile number + 6-digit code") — built 6 Oct 2026
+
+Founder decision, 6 Oct 2026: registration stays short; when Shaadi Shopping accepts it, the system issues a **6-digit login
+code**; the team shares it with the vendor together with the terms paper; the vendor signs in at `/vendor/login` with **the
+mobile number given at registration + the code**. No message is sent and nothing is paid per sign-in.
+
+**Where the code comes from**
+- **On acceptance** ("Approve & List" on a registration): the code is issued in the same transaction that creates the vendor and
+  its login, and comes back **once** in the answer (`loginCode`, beside the application, never inside it). The admin card shows
+  it with a copy button and says it will not be shown again.
+- **Later** (a lost code, or a vendor from before codes existed): "New login code" on the same card —
+  `POST /api/vendors/[id]/login-code` (admin only). The old code stops working and the vendor is signed out on every device
+  (`User.sessionVersion` + 1).
+- There is no self-service reset: a vendor who forgets the code calls Shaadi Shopping.
+
+**Changing it:** Settings → "Login code": current code, new code twice (`POST /api/vendor-os/login-code`). The vendor stays signed
+in. A code may not be one digit repeated or a straight run (111111, 123456, 654321). Changing is **optional**: once a code is
+30 days old every Vendor OS screen shows one line, "Your login code is more than 30 days old. Change it now", which can be put
+away until the browser is closed. Nothing is ever blocked.
+
+**Protection**
+- Only a **bcrypt hash** is stored (`VendorProfile.loginCodeHash`, `loginCodeSetAt`); the code is readable only in the one answer
+  that issues it. A six-digit code has a million possibilities, so the hash alone would not survive a leaked database — the
+  protection that matters is the lock below, and the code is one of two things needed (with the registered number).
+- **Five wrong tries in 15 minutes lock that number** (`vendor-code:<mobile>` in `login_attempts`); a locked number is refused
+  before anything is looked up, even with the right code. Changing a code has its own lock (`vendor-code-change:<user>`).
+- One answer for every kind of "no" — wrong code, unknown number, a number with no code, a customer's number, a locked number —
+  so the page never reveals which numbers are registered.
+- Codes are drawn from `crypto.randomInt`.
+
+**Data:** migration `20261006100000_add_vendor_login_code` — two nullable columns on `vendor_profiles`; additive. Existing vendor
+logins have no code until an admin issues one. **Sign-in:** NextAuth provider `vendor-code` (`lib/auth/auth.ts`); the session is
+the same as before (roles, `vendorId`, session version).
+
+**What changed for existing logins:** `/vendor/login` no longer offers the WhatsApp one-time code. The `otp` provider itself is
+unchanged (customers use it), so a vendor's number can still receive a one-time code on the customer login page.
+
+**New-registration notice:** the founder chose a count inside the admin dashboard and no email or WhatsApp send. The dashboard
+already had a banner for new registrations (`stats.newOutsideVendors`); this slice adds the count beside "Vendor applications" in
+the admin menu (`AdminShell`, read from `GET /api/vendor-applications?status=new` on every screen change).
+
+**Tests:** `lib/auth/vendorCode.test.ts` (number and code shapes, guessable codes, the change form, the reminder),
+`services/vendorLoginCode.service.test.ts` (sign-in, every "no", the lock, issue, change, status),
+`services/vendorApplication.service.test.ts` (acceptance issues a code and stores only its hash),
+`app/api/vendor-os/login-code/route.test.ts` (who may call; nothing but dates and flags leaves the server) and
+`tests-db/vendor.login-code.test.ts` (a real database and the real lock).
+
+**Not built yet:** the first-login profile (name, logo, photos, video, GST number), upload limits, and approving a vendor's photos
+before they appear on the public listing — the next slice.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |
