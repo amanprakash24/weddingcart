@@ -4,7 +4,10 @@ import { requiredConfirmation, type CommercialRules } from '@/lib/commercial/rul
 import { resolveSourceDate } from '@/lib/quotation/booking';
 import { currentBusiness, rulesOf } from '@/lib/ownership/business';
 import { lineTotal, quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
+import { validateVenuePayment, type VenuePaymentErrors } from '@/lib/venue/payment';
 import { quotationService, type QuotationView } from '@/services/quotation.service';
+import { loadAgreementMoney, recordAgreementPayment } from '@/services/agreement.service';
+import { bookingService } from '@/services/booking.service';
 
 // A venue's OWN quotation for one of its own enquiries (Phase C). A thin adapter: every rule that matters — one open quotation
 // per enquiry, a sent quotation is never edited, revisions, expiry, the couple's link, acceptance, the booking and its agreement —
@@ -38,8 +41,20 @@ export interface VenueQuotationView {
   changesNote: string | null; // what the couple asked to change
   acceptedAt: string | null;
   hasLink: boolean;
-  // After the couple accepts: the booking and what it takes to confirm it. null = not made yet (the wedding date is needed).
-  booking: { holdWindowDays: number } | null;
+  // After the couple accepts: the booking and its money. null = not made yet (the wedding date is needed).
+  booking: VenueBookingMoney | null;
+}
+
+// Where the booking stands, from the payments actually recorded (lib/commercial/view.ts) under the agreement's frozen rule.
+export interface VenueBookingMoney {
+  holdWindowDays: number;
+  confirmed: boolean; // the booking is confirmed — the amount to confirm was received
+  received: number;
+  toConfirmRemaining: number; // still needed to confirm the booking
+  outstanding: number; // still to be received of the whole agreed total
+  stateLabel: string; // "No payment yet", "Date held — 3 of 5 days left", "Booking confirmed" …
+  holdOver: boolean; // a part payment held the date and the hold period has passed
+  payments: { id: string; amount: number; method: string; reference: string | null; paidAt: string }[];
 }
 
 export interface VenueQuotationState {
@@ -49,9 +64,12 @@ export interface VenueQuotationState {
   quotation: VenueQuotationView | null;
   // The venue's listing packages, offered as one-tap starting lines for a new quotation.
   packages: { name: string; price: number; perPlate: boolean }[];
+  // Where the venue's own customers pay (Settings, D7) — for the payment details the venue sends them. null = not set.
+  payTo: { upiId: string; upiName: string | null } | null;
 }
 
 export type SaveResult = VenueQuotationState | { errors: VenueQuoteErrors };
+export type PayResult = VenueQuotationState | { errors: VenuePaymentErrors };
 // The couple's link is shown ONCE, when it is made — only its hash is stored (services/quotation.service.ts).
 export type LinkResult = VenueQuotationState & { linkPath: string };
 
@@ -60,14 +78,26 @@ export interface VenueQuotationDeps {
     consultation: Pick<typeof prisma.consultation, 'findUnique' | 'update'>;
     business: Pick<typeof prisma.business, 'findUnique'>;
     vendorPackage: Pick<typeof prisma.vendorPackage, 'findMany'>;
-    commercialAgreement: Pick<typeof prisma.commercialAgreement, 'findUnique'>;
   };
   quotations: Pick<typeof quotationService, 'listForSource' | 'create' | 'update' | 'send' | 'revise' | 'issueCustomerLink' | 'createBooking'>;
   business: typeof currentBusiness;
+  // Money v1, unchanged (services/agreement.service.ts): the agreement's money, recording a payment, and the one gate that
+  // confirms a booking (services/booking.service.ts — it re-checks the amount itself).
+  money: typeof loadAgreementMoney;
+  recordPayment: typeof recordAgreementPayment;
+  confirmBooking: (bookingId: string) => Promise<unknown>;
   now: () => Date;
 }
 
-const defaultDeps = (): VenueQuotationDeps => ({ db: prisma, quotations: quotationService, business: currentBusiness, now: () => new Date() });
+const defaultDeps = (): VenueQuotationDeps => ({
+  db: prisma,
+  quotations: quotationService,
+  business: currentBusiness,
+  money: loadAgreementMoney,
+  recordPayment: recordAgreementPayment,
+  confirmBooking: (bookingId) => bookingService.update(bookingId, { status: 'CONFIRMED' }),
+  now: () => new Date(),
+});
 
 export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDeps()) {
   async function enquiry(id: string) {
@@ -92,8 +122,10 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
   async function toView(q: QuotationView, rules: CommercialRules): Promise<VenueQuotationView | null> {
     const stage = quoteStage({ status: q.status, changesRequested: q.changesRequestedAt !== null });
     if (!stage) return null;
-    // Once accepted, the agreement holds the rule this deal was made with — never today's setting.
-    const agreement = stage === 'ACCEPTED' ? await deps.db.commercialAgreement.findUnique({ where: { quotationId: q.id }, select: { confirmationPercent: true, confirmationAmount: true, holdWindowDays: true } }) : null;
+    // Once accepted and booked, the agreement holds the rule this deal was made with — never today's setting. (No agreement yet =
+    // the booking is not made; the figures are then the quotation's own.)
+    const money = stage === 'ACCEPTED' ? await deps.money(q.id, deps.now()) : null;
+    const agreement = money?.exists ? money : null;
     return {
       id: q.id,
       number: q.quotationNumber,
@@ -114,7 +146,18 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       changesNote: stage === 'CHANGES' ? q.changesRequestNote : null,
       acceptedAt: q.acceptedAt?.toISOString() ?? null,
       hasLink: q.hasCustomerLink,
-      booking: agreement ? { holdWindowDays: agreement.holdWindowDays } : null,
+      booking: agreement
+        ? {
+            holdWindowDays: agreement.holdWindowDays,
+            confirmed: agreement.bookingConfirmed,
+            received: agreement.received,
+            toConfirmRemaining: agreement.remaining,
+            outstanding: agreement.outstanding,
+            stateLabel: agreement.stateLabel,
+            holdOver: agreement.overdue && !agreement.bookingConfirmed,
+            payments: agreement.payments.map((p) => ({ id: p.id, amount: p.amount, method: p.method, reference: p.reference, paidAt: p.paidAt })),
+          }
+        : null,
     };
   }
 
@@ -131,6 +174,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       rules: { confirmationPercent: v.rules.confirmationPercent, holdWindowDays: v.rules.holdWindowDays },
       quotation: q ? await toView(q, v.rules) : null,
       packages: packages.map((p) => ({ name: p.name, price: p.price, perPlate: p.isPerPlate })),
+      payTo: v.business.upiId ? { upiId: v.business.upiId, upiName: v.business.upiName } : null,
     };
   }
 
@@ -205,6 +249,31 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       const v = await venue();
       await deps.quotations.createBooking(q.id, { weddingDate: weddingDate ?? undefined, city: e.city?.trim() ? undefined : (v.city ?? undefined) }, actorId);
       if (weddingDate && !e.weddingDate) await deps.db.consultation.update({ where: { id: enquiryId }, data: { weddingDate: raw } });
+      return state(enquiryId);
+    },
+
+    // Money received from the venue's own customer — cash, UPI, bank transfer or cheque. A part payment holds the date for the
+    // agreement's hold days; once the amount to confirm is in, the booking is confirmed (anything above it goes to the balance).
+    // The payment is its own transaction: it is never undone because the confirmation that follows could not be completed.
+    // No wedding is created here — the venue's own Weddings come in a later slice.
+    async pay(enquiryId: string, input: Record<string, unknown>, actorId: string | null): Promise<PayResult> {
+      const q = await requireCurrent(enquiryId, 'take a payment for');
+      if (q.status !== 'ACCEPTED') throw new ConflictError('The couple has not accepted this quotation yet');
+      const before = await deps.money(q.id, deps.now());
+      if (!before.exists || !before.bookingId) throw new ConflictError('Make the booking first — then record the payment');
+      const checked = validateVenuePayment(input, istToday(deps.now()));
+      if (!checked.ok) return { errors: checked.errors };
+      const p = checked.value;
+      const key = typeof input.idempotencyKey === 'string' && /^[\w-]{8,64}$/.test(input.idempotencyKey) ? input.idempotencyKey : null;
+      await deps.recordPayment(q.id, { amount: p.amount, method: p.method, reference: p.reference, paidAt: p.paidOn ? new Date(`${p.paidOn}T12:00:00+05:30`) : null, idempotencyKey: key }, actorId);
+      const after = await deps.money(q.id, deps.now());
+      if (after.readyToConfirm && after.bookingId) {
+        try {
+          await deps.confirmBooking(after.bookingId);
+        } catch (err) {
+          console.error(`venue payment: booking for ${q.quotationNumber} not confirmed —`, err instanceof Error ? err.message : err);
+        }
+      }
       return state(enquiryId);
     },
   };

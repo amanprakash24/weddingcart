@@ -10,6 +10,7 @@ import { requiredConfirmation } from '@/lib/commercial/rules';
 import { whatsappTo } from '@/lib/venue/enquiry';
 import { QUOTE_STAGE_LABEL, quoteShareMessage, VENUE_QUOTE_LIMITS, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
 import type { VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
+import BookingMoney from './BookingMoney';
 
 // The venue's own quotation for one of its own enquiries (Phase C): write it, send it with the couple's link on WhatsApp, and see
 // what the couple did — opened it, asked for changes, accepted. Phone-first. No totals are typed: the total is the lines minus the
@@ -285,13 +286,11 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
 
         {q.stage === 'ACCEPTED' && (
           <>
-            <p className="rounded-lg bg-[var(--color-success-bg)] p-3 text-sm text-[var(--color-success-text)]">
+            <p className="text-sm text-[var(--color-text-secondary)]">
               {first} accepted{q.acceptedAt && <> on {dayWords(q.acceptedAt)}</>}. {inr(q.toConfirm)} ({q.confirmationPercent}%) confirms the booking.
             </p>
             {q.booking ? (
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                The booking is made. A smaller payment holds the date for {q.booking.holdWindowDays} days. Recording payments in Vivah OS is not available yet — keep them in your own records for now.
-              </p>
+              <BookingMoney q={q} money={q.booking} state={state} busy={busy} errors={errors} onPay={async (body) => (await call('/payments', body)) !== null} />
             ) : (
               <>
                 {!state.customer.weddingDate && <Input label="Wedding date" type="date" min={istDay()} value={weddingDate} onChange={(ev) => setWeddingDate(ev.target.value)} helperText="Needed to make the booking" className="min-h-12 text-base" />}

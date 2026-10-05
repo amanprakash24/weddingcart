@@ -5,6 +5,7 @@ import { describe, test, expect, mock, beforeEach } from 'bun:test';
 // services/quotation.service and on a real database in tests-db/venue.quotations.test.ts.
 mock.module('@/lib/prisma', () => ({ prisma: {} }));
 const { createVenueQuotationService } = await import('./venueQuotation.service');
+const { buildAgreementMoney } = await import('@/lib/commercial/view');
 
 const NOW = new Date('2026-10-05T06:00:00Z');
 
@@ -17,8 +18,31 @@ type Quote = {
 
 let enquiries: Record<string, { id: string; name: string; phone: string; weddingDate: string; city: string | null; pipelineStage: string }>;
 let quotes: Quote[];
-let business: { id: string; kind: 'VENDOR' | 'PLATFORM'; name: string; numberPrefix: string | null; confirmationPercent: number | null; holdWindowDays: number | null; contactPhone: string | null };
+let business: { id: string; kind: 'VENDOR' | 'PLATFORM'; name: string; numberPrefix: string | null; confirmationPercent: number | null; holdWindowDays: number | null; contactPhone: string | null; upiId: string | null; upiName: string | null };
 let agreement: { confirmationPercent: number; confirmationAmount: number; holdWindowDays: number } | null;
+// Money: the real builder (lib/commercial/view.ts) over fake payments, so "date held" / "confirmed" are the real rules.
+let payments: { id: string; amount: number; method: string; status: string; paidAt: Date; reference: string | null }[];
+let bookingStatus: 'NEW' | 'CONFIRMED';
+let confirmFails = false;
+
+const money = mock(async (quotationId: string, now?: Date) =>
+  buildAgreementMoney({
+    quotationId,
+    agreement: agreement ? { bookingId: 'b1', agreementTotal: 200000, confirmationRounding: 'CEIL_RUPEE', holdStartedAt: payments[0]?.paidAt ?? null, ...agreement } as never : null,
+    previewTotal: 200000,
+    invoices: agreement ? [{ id: 'i1', invoiceNumber: 'SWA-INV-202610-0001', kind: 'ADVANCE', status: 'ISSUED', total: 200000, payments }] : [],
+    bookingConfirmed: bookingStatus === 'CONFIRMED',
+    now,
+  })
+);
+const recordPayment = mock(async (_quotationId: string, input: { amount: number; method: string; reference?: string | null; paidAt?: Date | null; idempotencyKey?: string | null }, _actor: string | null) => {
+  payments.push({ id: `p${payments.length + 1}`, amount: input.amount, method: input.method, status: 'SUCCESS', paidAt: input.paidAt ?? NOW, reference: input.reference ?? null });
+  return { receiptId: 'r1', duplicate: false, splits: [] };
+});
+const confirmBooking = mock(async (_bookingId: string) => {
+  if (confirmFails) throw new Error('database unavailable');
+  bookingStatus = 'CONFIRMED';
+});
 
 const consultationUpdate = mock(async ({ where, data }: { where: { id: string }; data: Record<string, string> }) => Object.assign(enquiries[where.id], data));
 const body = (input: { items: { description: string; quantity: number; unitPrice: number }[]; discount: number; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
@@ -48,8 +72,10 @@ const service = createVenueQuotationService({
     consultation: { findUnique: mock(async ({ where }: { where: { id: string } }) => enquiries[where.id] ?? null) as never, update: consultationUpdate as never },
     business: { findUnique: mock(async () => ({ vendorId: 'v1', vendor: { city: 'Patna' } })) as never },
     vendorPackage: { findMany: mock(async () => [{ name: 'Gold package', price: 150000, isPerPlate: false }, { name: 'Veg plate', price: 900, isPerPlate: true }]) as never },
-    commercialAgreement: { findUnique: mock(async () => agreement) as never },
   },
+  money: money as never,
+  recordPayment: recordPayment as never,
+  confirmBooking,
   quotations: { listForSource: mock(async () => quotes) as never, create: create as never, update: update as never, send: send as never, revise: revise as never, issueCustomerLink: issueCustomerLink as never, createBooking: createBooking as never },
   business: (async () => business) as never,
   now: () => NOW,
@@ -59,11 +85,14 @@ const good = { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '20
 const outcome = (p: Promise<unknown>) => p.then(() => null, (e: Error) => e);
 
 beforeEach(() => {
-  for (const m of [consultationUpdate, create, update, send, issueCustomerLink, revise, createBooking]) m.mockClear();
+  for (const m of [consultationUpdate, create, update, send, issueCustomerLink, revise, createBooking, recordPayment, confirmBooking]) m.mockClear();
+  payments = [];
+  bookingStatus = 'NEW';
+  confirmFails = false;
   enquiries = { e1: { id: 'e1', name: 'Rahul Kumar', phone: '9876543210', weddingDate: '2026-12-09', city: null, pipelineStage: 'NEW' } };
   quotes = [];
   agreement = null;
-  business = { id: 'venue-1', kind: 'VENDOR', name: 'Swayamvar Hall', numberPrefix: 'SWA', confirmationPercent: 30, holdWindowDays: 5, contactPhone: null };
+  business = { id: 'venue-1', kind: 'VENDOR', name: 'Swayamvar Hall', numberPrefix: 'SWA', confirmationPercent: 30, holdWindowDays: 5, contactPhone: null, upiId: null, upiName: null };
 });
 
 describe('a venue’s own quotation', () => {
@@ -74,6 +103,7 @@ describe('a venue’s own quotation', () => {
       rules: { confirmationPercent: 30, holdWindowDays: 5 },
       quotation: null,
       packages: [{ name: 'Gold package', price: 150000, perPlate: false }, { name: 'Veg plate', price: 900, perPlate: true }],
+      payTo: null,
     });
   });
 
@@ -166,7 +196,76 @@ describe('a venue’s own quotation', () => {
     const booked = await service.book('e1', { weddingDate: '2026-12-09' }, 'u1');
     expect(createBooking.mock.calls[0]).toEqual(['q1', { weddingDate: new Date('2026-12-09T00:00:00.000Z'), city: undefined }, 'u1']);
     expect(enquiries.e1.weddingDate).toBe('2026-12-09');
-    expect(booked.quotation?.booking).toEqual({ holdWindowDays: 5 });
+    expect(booked.quotation?.booking).toMatchObject({ holdWindowDays: 5, confirmed: false, received: 0, toConfirmRemaining: 60000, stateLabel: 'No payment yet', payments: [] });
+  });
+
+  // ----- payments -----
+
+  async function acceptedAndBooked() {
+    await service.save('e1', good, 'u1');
+    Object.assign(quotes[0], { status: 'ACCEPTED', acceptedAt: NOW });
+    agreement = { confirmationPercent: 30, confirmationAmount: 60000, holdWindowDays: 5 };
+  }
+
+  test('a payment needs an accepted quotation with its booking', async () => {
+    await service.save('e1', good, 'u1');
+    expect((await outcome(service.pay('e1', { amount: '10000', method: 'CASH' }, 'u1')))?.name).toBe('ConflictError'); // a draft
+    Object.assign(quotes[0], { status: 'ACCEPTED', acceptedAt: NOW });
+    expect((await outcome(service.pay('e1', { amount: '10000', method: 'CASH' }, 'u1')))?.message).toContain('Make the booking first');
+    expect(recordPayment).not.toHaveBeenCalled();
+  });
+
+  test('a wrong payment is explained and nothing is recorded', async () => {
+    await acceptedAndBooked();
+    expect(await service.pay('e1', { amount: '', method: 'CARD' }, 'u1')).toEqual({ errors: { amount: expect.any(String), method: expect.any(String) } });
+    expect(recordPayment).not.toHaveBeenCalled();
+  });
+
+  test('a part payment holds the date for the agreement’s days — the booking is not confirmed', async () => {
+    await acceptedAndBooked();
+    const state = await service.pay('e1', { amount: '20,000', method: 'UPI', reference: ' UTR123 ', idempotencyKey: 'form-key-0001' }, 'u1');
+    expect(recordPayment.mock.calls[0]).toEqual(['q1', { amount: 20000, method: 'UPI', reference: 'UTR123', paidAt: null, idempotencyKey: 'form-key-0001' }, 'u1']);
+    expect(confirmBooking).not.toHaveBeenCalled();
+    expect('quotation' in state && state.quotation?.booking).toMatchObject({ confirmed: false, received: 20000, toConfirmRemaining: 40000, outstanding: 180000, stateLabel: 'Date held — 5 of 5 days left', holdOver: false, payments: [{ amount: 20000, method: 'UPI', reference: 'UTR123' }] });
+  });
+
+  test('once the amount to confirm is in, the booking is confirmed — no wedding is created here', async () => {
+    await acceptedAndBooked();
+    await service.pay('e1', { amount: '20000', method: 'CASH' }, 'u1');
+    const state = await service.pay('e1', { amount: '40000', method: 'BANK_TRANSFER', paidOn: '2026-10-04' }, 'u1');
+    expect(recordPayment.mock.calls[1][1]).toMatchObject({ amount: 40000, paidAt: new Date('2026-10-04T06:30:00.000Z') });
+    expect(confirmBooking.mock.calls).toEqual([['b1']]);
+    expect('quotation' in state && state.quotation?.booking).toMatchObject({ confirmed: true, received: 60000, toConfirmRemaining: 0, outstanding: 140000, stateLabel: 'Booking confirmed' });
+  });
+
+  test('money after confirmation goes to the balance and confirms nothing twice', async () => {
+    await acceptedAndBooked();
+    await service.pay('e1', { amount: '60000', method: 'CASH' }, 'u1');
+    const state = await service.pay('e1', { amount: '50000', method: 'CHEQUE', reference: '000123' }, 'u1');
+    expect(confirmBooking).toHaveBeenCalledTimes(1);
+    expect('quotation' in state && state.quotation?.booking).toMatchObject({ confirmed: true, received: 110000, outstanding: 90000 });
+  });
+
+  test('a payment is kept even if the confirmation that follows fails', async () => {
+    await acceptedAndBooked();
+    confirmFails = true;
+    const state = await service.pay('e1', { amount: '60000', method: 'CASH' }, 'u1');
+    expect('quotation' in state && state.quotation?.booking).toMatchObject({ confirmed: false, received: 60000, stateLabel: 'Ready to confirm' });
+    confirmFails = false;
+    await service.pay('e1', { amount: '1000', method: 'CASH' }, 'u1'); // the next payment retries it
+    expect(bookingStatus).toBe('CONFIRMED');
+  });
+
+  test('the hold period passing is shown', async () => {
+    await acceptedAndBooked();
+    await service.pay('e1', { amount: '20000', method: 'CASH', paidOn: '2026-09-20' }, 'u1');
+    expect((await service.get('e1')).quotation?.booking).toMatchObject({ confirmed: false, holdOver: true, stateLabel: 'Date held — hold period over' });
+  });
+
+  test('where to pay comes from Settings, and only when it is set', async () => {
+    expect((await service.get('e1')).payTo).toBeNull();
+    Object.assign(business, { upiId: 'swayamvar@okhdfcbank', upiName: 'Swayamvar Hall' });
+    expect((await service.get('e1')).payTo).toEqual({ upiId: 'swayamvar@okhdfcbank', upiName: 'Swayamvar Hall' });
   });
 
   test('nothing to send, share or change before a quotation exists', async () => {

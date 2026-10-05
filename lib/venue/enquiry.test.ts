@@ -58,13 +58,19 @@ describe('what to do next — one action', () => {
   test('the couple’s answer first, then late, then people nobody has called, then today', () => {
     expect(ACTION_ORDER.slice(0, 5)).toEqual(['QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY']);
     expect(ACTION_ORDER.indexOf('QUOTE_DRAFT')).toBeLessThan(ACTION_ORDER.indexOf('QUOTE_WAITING'));
-    expect(ACTION_ORDER.at(-1)).toBe('CLOSED');
+    expect(ACTION_ORDER.slice(-2)).toEqual(['BOOKED', 'CLOSED']);
   });
 
   test('a quotation decides the next step: the couple’s answer before anything else', () => {
     const late = [fu('a', '2026-10-02T06:30:00Z')];
     expect(nextAction({ ...base, quote: 'ACCEPTED', followUps: late }, NOW)).toEqual({ kind: 'QUOTE_ACCEPTED', label: 'Rahul accepted your quotation' });
     expect(nextAction({ ...base, quote: 'CHANGES', followUps: late }, NOW)).toEqual({ kind: 'QUOTE_CHANGES', label: 'Rahul asked for changes to the quotation' });
+  });
+
+  test('accepted and the amount to confirm received: the booking is confirmed', () => {
+    expect(nextAction({ ...base, quote: 'ACCEPTED', booked: true }, NOW)).toEqual({ kind: 'BOOKED', label: 'Booking confirmed for Rahul' });
+    expect(nextAction({ ...base, quote: 'ACCEPTED', booked: false }, NOW).kind).toBe('QUOTE_ACCEPTED');
+    expect(nextAction({ ...base, quote: 'SENT', booked: true }, NOW).kind).toBe('QUOTE_WAITING'); // never without an accepted quotation
   });
 
   test('a draft waits to be sent and a sent one waits for the couple — but a due follow-up is shown first', () => {

@@ -15,13 +15,15 @@ const toForm = (s: VenueSettingsView): Form => ({
   contactPhone: s.contactPhone ?? '',
   confirmationPercent: s.confirmationPercent?.toString() ?? '',
   holdWindowDays: s.holdWindowDays?.toString() ?? '',
+  upiId: s.upiId ?? '',
+  upiName: s.upiName ?? '',
 });
 
 const phoneWords = (p: string) => `${p.slice(0, 5)} ${p.slice(5)}`;
 
 export default function BusinessSettingsForm() {
   const [settings, setSettings] = useState<VenueSettingsView | null>(null);
-  const [form, setForm] = useState<Form>({ contactPhone: '', confirmationPercent: '', holdWindowDays: '' });
+  const [form, setForm] = useState<Form>({ contactPhone: '', confirmationPercent: '', holdWindowDays: '', upiId: '', upiName: '' });
   const [errors, setErrors] = useState<Partial<Record<SettingsField, string>>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,6 +144,33 @@ export default function BusinessSettingsForm() {
             />
           </div>
           <p className="text-xs text-[var(--color-text-muted)]">A change applies to new bookings only. A booking already agreed keeps the rule it was made with.</p>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="space-y-4">
+          <Input
+            label="UPI ID for payments"
+            value={form.upiId}
+            onChange={(e) => set('upiId', e.target.value)}
+            error={errors.upiId}
+            helperText="Optional. Added to the payment details you send a customer after they accept your quotation."
+            autoCapitalize="none"
+            autoCorrect="off"
+            placeholder="swayamvar@okhdfcbank"
+            className="min-h-12 text-base"
+            readOnly={readOnly}
+          />
+          <Input
+            label="Name on the UPI account"
+            value={form.upiName}
+            onChange={(e) => set('upiName', e.target.value)}
+            error={errors.upiName}
+            helperText="Optional. So your customer can check they are paying the right account."
+            placeholder="Swayamvar Hall"
+            className="min-h-12 text-base"
+            readOnly={readOnly}
+          />
         </div>
       </Card>
 

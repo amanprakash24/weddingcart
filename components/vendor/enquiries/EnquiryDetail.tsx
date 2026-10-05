@@ -104,8 +104,8 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         {next.kind === 'SCHEDULE' && (
           <button type="button" onClick={() => setPanel('followup')} className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)]`}>Schedule a follow-up</button>
         )}
-        {(next.kind === 'QUOTE_ACCEPTED' || next.kind === 'QUOTE_CHANGES' || next.kind === 'QUOTE_DRAFT' || next.kind === 'QUOTE_WAITING') && (
-          <a href="#quotation" className={`${big} w-full ${next.kind === 'QUOTE_WAITING' ? 'border border-[var(--color-border-default)] text-[var(--color-text-primary)]' : 'bg-[var(--primary)] text-[var(--color-on-primary)]'}`}>See the quotation</a>
+        {(next.kind === 'BOOKED' || next.kind === 'QUOTE_ACCEPTED' || next.kind === 'QUOTE_CHANGES' || next.kind === 'QUOTE_DRAFT' || next.kind === 'QUOTE_WAITING') && (
+          <a href="#quotation" className={`${big} w-full ${next.kind === 'QUOTE_WAITING' || next.kind === 'BOOKED' ? 'border border-[var(--color-border-default)] text-[var(--color-text-primary)]' : 'bg-[var(--primary)] text-[var(--color-on-primary)]'}`}>{next.kind === 'BOOKED' || next.kind === 'QUOTE_ACCEPTED' ? 'See the booking and payments' : 'See the quotation'}</a>
         )}
         {closed && <p className="text-sm text-[var(--color-text-muted)]">This enquiry is closed — it is kept here for your records.</p>}
       </Card>
