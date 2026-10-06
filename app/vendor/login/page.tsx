@@ -1,7 +1,7 @@
 import VendorCodeLoginClient from '@/components/vendor/VendorCodeLoginClient';
 
 export const metadata = {
-  title: 'Vendor Login | ShaadiShopping',
+  title: 'Vendor Login | Vivah OS', // the site template adds "| ShaadiShopping"
   robots: { index: false, follow: false },
 };
 
