@@ -34,6 +34,8 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       .then((r) => r.json())
       .then((b) => {
         if (!live) return;
+        // A member of several businesses who has not said which one they are working in.
+        if (b.chooseWorkspace) return void window.location.replace('/workspace');
         const setup = Boolean(b.success && b.data?.canEdit && b.data.missing?.length > 0);
         if (setup && !onProfile) window.location.replace('/vendor/profile');
         else setGate(setup ? 'setup' : 'open');

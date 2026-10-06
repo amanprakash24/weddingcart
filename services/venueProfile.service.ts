@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
+import { can } from '@/lib/auth/permissions';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { isOwnUpload, missingProfileSteps, PROFILE_LIMITS, PROFILE_UPLOAD_FOLDER, validateProfile, videoLink, type ProfileErrors, type ProfileStep } from '@/lib/venue/profile';
 
@@ -51,7 +52,7 @@ export function createVenueProfileService(deps: VenueProfileDeps = defaultDeps()
     if (scope.kind !== 'BUSINESS' || scope.businessId === PLATFORM_BUSINESS_ID) throw new NotFoundError('Business', 'current');
     const business = await deps.db.business.findUnique({ where: { id: scope.businessId }, select: businessSelect });
     if (!business || business.kind !== 'VENDOR') throw new NotFoundError('Business', scope.businessId);
-    return { business, canEdit: scope.role === 'OWNER' };
+    return { business, canEdit: can(scope, 'settings') };
   }
 
   const ours = (url: unknown): url is string => isOwnUpload(url, deps.cloudName(), PROFILE_UPLOAD_FOLDER);

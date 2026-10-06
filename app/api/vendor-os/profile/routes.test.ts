@@ -43,7 +43,7 @@ mock.module('@/lib/prisma', () => ({
 }));
 mock.module('@/lib/adminAuth', () => ({ requireAdmin: mock(async () => admin) }));
 // The real wrappers resolve a business from the database; here they only pass the call through.
-mock.module('@/lib/ownership/venueEntry', () => ({ venueScoped: <A extends unknown[], R>(fn: (...args: A) => Promise<R>) => fn }));
+mock.module('@/lib/ownership/venueEntry', () => ({ MEMBER: 'member', venueScoped: <A extends unknown[], R>(fn: (...args: A) => Promise<R>) => fn }));
 mock.module('@/lib/ownership/entry', () => ({ platformScoped: <A extends unknown[], R>(fn: (...args: A) => Promise<R>) => fn }));
 mock.module('@/lib/venue/profileUpload', () => ({
   storeProfileImage,

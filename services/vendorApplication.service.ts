@@ -115,13 +115,12 @@ async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: 
     update: {},
   });
 
-  const loginCode = newLoginCode();
-  const code = { loginCodeHash: await hashLoginCode(loginCode), loginCodeSetAt: new Date() };
   if (!user?.vendorProfile) {
-    await tx.vendorProfile.create({ data: { userId: resolvedUser.id, vendorId, ...code } });
-  } else {
-    await tx.vendorProfile.update({ where: { id: user.vendorProfile.id }, data: code });
+    await tx.vendorProfile.create({ data: { userId: resolvedUser.id, vendorId } });
   }
+  // The code belongs to the person (7 Oct 2026) — the same code signs them in wherever they are a member.
+  const loginCode = newLoginCode();
+  await tx.user.update({ where: { id: resolvedUser.id }, data: { loginCodeHash: await hashLoginCode(loginCode), loginCodeSetAt: new Date() } });
   return loginCode;
 }
 

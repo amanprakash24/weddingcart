@@ -60,20 +60,22 @@ export const authOptions: AuthOptions = {
         return { id: user.id, email: user.email, name: user.name, roles, sessionVersion: user.sessionVersion };
       },
     }),
-    // Vendor — the registered mobile number + the 6-digit login code Shaadi Shopping issued when it accepted the registration
-    // (6 Oct 2026). All the checking — the 5-wrong-tries lock, the hash compare, "no code yet" — is in the service; null is the one
-    // answer for every kind of "no".
-    CredentialsProvider({
-      id: 'vendor-code',
-      name: 'Mobile number and login code',
-      credentials: {
-        phone: { label: 'Mobile number', type: 'text' },
-        code: { label: 'Login code', type: 'password' },
-      },
-      async authorize(credentials) {
-        return vendorLoginCodeService.verify(credentials?.phone, credentials?.code);
-      },
-    }),
+    // Every person — founder, manager, employee, vendor owner — signs in the same way (7 Oct 2026): their own mobile number + their
+    // own 6-digit login code. All the checking — the 5-wrong-tries lock, the hash compare, "no code yet" — is in the service; null
+    // is the one answer for every kind of "no". What they may do afterwards comes from their memberships, not from this.
+    ...(['code', 'vendor-code'] as const).map((id) =>
+      CredentialsProvider({
+        id, // 'vendor-code' is the first name of the same thing — kept so a sign-in page already open during a deploy still works
+        name: 'Mobile number and login code',
+        credentials: {
+          phone: { label: 'Mobile number', type: 'text' },
+          code: { label: 'Login code', type: 'password' },
+        },
+        async authorize(credentials) {
+          return vendorLoginCodeService.verify(credentials?.phone, credentials?.code);
+        },
+      })
+    ),
     // Vendor / Customer — phone + OTP. Structurally complete against the
     // Postgres `Otp` table, but NOT independently testable yet: /api/otp/send
     // and /api/otp/verify still write to MongoDB today (not migrated — see

@@ -26,11 +26,12 @@ function makeMocks(application: ReturnType<typeof fakeApplication>) {
   const vendorCapabilityCreateMany = mock(async (args: { data: unknown[] }) => ({ count: args.data.length }));
   const userFindUnique = mock(async () => null);
   const userCreate = mock(async () => ({ id: 'user-1' }));
+  const userUpdate = mock(async (args: { where: { id: string }; data: { loginCodeHash: string; loginCodeSetAt: Date } }) => args);
   const userRoleUpsert = mock(async () => ({}));
   const vendorProfileCreate = mock(async () => ({}));
 
   const tx = {
-    user: { findUnique: userFindUnique, create: userCreate },
+    user: { findUnique: userFindUnique, create: userCreate, update: userUpdate },
     userRole: { upsert: userRoleUpsert },
     vendorProfile: { create: vendorProfileCreate },
     vendorCapability: { createMany: vendorCapabilityCreateMany },
@@ -44,7 +45,7 @@ function makeMocks(application: ReturnType<typeof fakeApplication>) {
   };
   const vendorRepository = { create: mock(async () => ({ id: 'vendor-1' })) };
 
-  return { prismaMock, vendorApplicationRepository, vendorRepository, vendorCapabilityCreateMany, vendorCreate: vendorRepository.create, vendorProfileCreate };
+  return { prismaMock, vendorApplicationRepository, vendorRepository, vendorCapabilityCreateMany, vendorCreate: vendorRepository.create, vendorProfileCreate, userUpdate };
 }
 
 async function loadServiceWith(mocks: ReturnType<typeof makeMocks>) {
@@ -112,8 +113,10 @@ describe('vendorApplicationService.updateStatus — the vendor’s first login c
     const result = await service.updateStatus('app-1', 'APPROVED');
 
     expect(result?.issuedLoginCode).toMatch(/^\d{6}$/);
-    const [args] = mocks.vendorProfileCreate.mock.calls[0] as unknown as [{ data: { userId: string; vendorId: string; loginCodeHash: string; loginCodeSetAt: Date } }];
-    expect(args.data).toMatchObject({ userId: 'user-1', vendorId: 'vendor-1' });
+    // The owner link carries no code any more; the code is the person's.
+    expect((mocks.vendorProfileCreate.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data).toEqual({ userId: 'user-1', vendorId: 'vendor-1' });
+    const [args] = mocks.userUpdate.mock.calls[0] as unknown as [{ where: { id: string }; data: { loginCodeHash: string; loginCodeSetAt: Date } }];
+    expect(args.where).toEqual({ id: 'user-1' });
     expect(args.data.loginCodeSetAt).toBeInstanceOf(Date);
     expect(args.data.loginCodeHash).toMatch(/^\$2[aby]\$/); // a bcrypt hash …
     expect(args.data.loginCodeHash).not.toContain(result!.issuedLoginCode!); // … never the code itself
@@ -129,5 +132,6 @@ describe('vendorApplicationService.updateStatus — the vendor’s first login c
     const again = await (await loadServiceWith(mocks)).updateStatus('app-1', 'APPROVED');
     expect(again && 'issuedLoginCode' in again ? again.issuedLoginCode : undefined).toBeUndefined();
     expect(mocks.vendorProfileCreate).not.toHaveBeenCalled();
+    expect(mocks.userUpdate).not.toHaveBeenCalled();
   });
 });

@@ -15,7 +15,7 @@ mock.module('@/lib/prisma', () => ({ prisma: {} }));
 mock.module('@/lib/auth/session', () => ({ requireRole: mock(async () => session) }));
 mock.module('@/lib/adminAuth', () => ({ requireAdmin: mock(async () => admin) }));
 // The real wrapper resolves the vendor's business from the database; here it only passes the call through.
-mock.module('@/lib/ownership/venueEntry', () => ({ venueScoped: <A extends unknown[], R>(fn: (...args: A) => Promise<R>) => fn }));
+mock.module('@/lib/ownership/venueEntry', () => ({ MEMBER: 'member', venueScoped: <A extends unknown[], R>(fn: (...args: A) => Promise<R>) => fn }));
 mock.module('@/services/vendorLoginCode.service', () => ({ vendorLoginCodeService: { status, change, issue } }));
 
 const { GET, POST } = await import('./route');

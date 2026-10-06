@@ -26,5 +26,5 @@ async function handlePUT(req: NextRequest) {
   }
 }
 
-export const GET = venueScoped(handleGET);
-export const PUT = venueScoped(handlePUT);
+export const GET = venueScoped(handleGET, 'settings');
+export const PUT = venueScoped(handlePUT, 'settings');

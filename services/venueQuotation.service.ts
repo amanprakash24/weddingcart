@@ -3,6 +3,8 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { requiredConfirmation, type CommercialRules } from '@/lib/commercial/rules';
 import { resolveSourceDate } from '@/lib/quotation/booking';
 import { currentBusiness, rulesOf } from '@/lib/ownership/business';
+import { effectiveScope } from '@/lib/ownership/scope';
+import { can } from '@/lib/auth/permissions';
 import { lineTotal, quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
 import { validateVenuePayment, type VenuePaymentErrors } from '@/lib/venue/payment';
 import { FUNCTION_TYPE_LABELS, functionOfLabel, type FunctionType, type Offering } from '@/lib/venue/offering';
@@ -44,6 +46,9 @@ export interface VenueQuotationView {
   hasLink: boolean;
   // After the couple accepts: the booking and its money. null = not made yet (the wedding date is needed).
   booking: VenueBookingMoney | null;
+  // true when the booking exists but this member may not see its money (lib/auth/permissions.ts: view_financials) — `booking` is
+  // then null, and the screen says the payments are with the owner.
+  moneyHidden: boolean;
 }
 
 // Where the booking stands, from the payments actually recorded (lib/commercial/view.ts) under the agreement's frozen rule.
@@ -130,6 +135,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
     // the booking is not made; the figures are then the quotation's own.)
     const money = stage === 'ACCEPTED' ? await deps.money(q.id, deps.now()) : null;
     const agreement = money?.exists ? money : null;
+    const seesMoney = can(effectiveScope(), 'view_financials');
     return {
       id: q.id,
       number: q.quotationNumber,
@@ -150,7 +156,8 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       changesNote: stage === 'CHANGES' ? q.changesRequestNote : null,
       acceptedAt: q.acceptedAt?.toISOString() ?? null,
       hasLink: q.hasCustomerLink,
-      booking: agreement
+      moneyHidden: !!agreement && !seesMoney,
+      booking: agreement && seesMoney
         ? {
             holdWindowDays: agreement.holdWindowDays,
             confirmed: agreement.bookingConfirmed,
@@ -180,7 +187,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       packages: packages.map((p) => ({ name: p.name, price: p.price, perPlate: p.isPerPlate })),
       // Not an owned table: the business is named here, from the scope (services/venueOffering.service.ts).
       offerings: await deps.db.businessOffering.findMany({ where: { businessId: v.business.id }, select: { id: true, function: true, name: true, price: true, perPlate: true }, orderBy: [{ function: 'asc' }, { createdAt: 'asc' }] }),
-      payTo: v.business.upiId ? { upiId: v.business.upiId, upiName: v.business.upiName } : null,
+      payTo: v.business.upiId && can(effectiveScope(), 'view_financials') ? { upiId: v.business.upiId, upiName: v.business.upiName } : null,
     };
   }
 

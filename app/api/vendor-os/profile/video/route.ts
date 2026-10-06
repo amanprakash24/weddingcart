@@ -30,5 +30,5 @@ const handleDELETE = () =>
     return result;
   });
 
-export const PUT = venueScoped(handlePUT);
-export const DELETE = venueScoped(handleDELETE);
+export const PUT = venueScoped(handlePUT, 'settings');
+export const DELETE = venueScoped(handleDELETE, 'settings');

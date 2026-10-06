@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { venueScoped } from '@/lib/ownership/venueEntry';
+import { MEMBER, venueScoped } from '@/lib/ownership/venueEntry';
 import { profileRoute } from '@/lib/venue/profileHttp';
 import { venueProfileService } from '@/services/venueProfile.service';
 
@@ -13,5 +13,5 @@ async function handlePUT(req: NextRequest) {
   return profileRoute(() => venueProfileService.update({ name: body?.name, gstin: body?.gstin }));
 }
 
-export const GET = venueScoped(handleGET);
-export const PUT = venueScoped(handlePUT);
+export const GET = venueScoped(handleGET, MEMBER);
+export const PUT = venueScoped(handlePUT, 'settings');

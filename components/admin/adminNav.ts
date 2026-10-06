@@ -1,4 +1,4 @@
-import { Briefcase, CalendarDays, Handshake, Database, FileText, Heart, LayoutDashboard, ListChecks, Receipt, Sparkles, Tag, Users, UsersRound } from 'lucide-react';
+import { Briefcase, CalendarDays, Handshake, Database, FileText, Heart, KeyRound, LayoutDashboard, ListChecks, Receipt, Sparkles, Tag, Users, UsersRound } from 'lucide-react';
 
 // The one admin navigation. Product structure: Today / Leads & Quotes / Weddings / Vendors / Invoices, with everything
 // else under More. Every /admin page renders inside this shell (app/admin/layout.tsx), so the same sidebar (desktop) or
@@ -76,6 +76,8 @@ export const MORE: NavItem[] = [
   },
   { key: 'special-services', label: 'Special services', href: '/admin?tab=special-services', icon: Sparkles, isActive: onTab('special-services') },
   { key: 'special-vendors', label: 'Special vendors', href: '/admin?tab=special-vendors', icon: Briefcase, isActive: onTab('special-vendors') },
+  // A team member's own mobile number and 6-digit code (services/teamLogin.service.ts).
+  { key: 'account', label: 'My sign-in', href: '/admin/account', icon: KeyRound, isActive: ({ pathname }) => pathname.startsWith('/admin/account') },
 ];
 
 // Development / setup only — shown to super admins.

@@ -16,4 +16,4 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export const POST = venueScoped(handlePOST);
+export const POST = venueScoped(handlePOST, 'quotations');

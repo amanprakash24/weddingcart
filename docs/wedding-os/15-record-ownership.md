@@ -162,3 +162,80 @@ provably identical, and only then do venues get screens.
 Billing and invoicing for SaaS plans (Roadmap Block 2), a venue inviting its own vendors (caterers it works with) as businesses,
 moving customers between businesses, white-label domains, Postgres row-level security (phase-2 hardening, §4.7.4), and the
 Customer Portal for venue-owned weddings (the link works for both from day one).
+
+## 8. People, memberships and permissions (Phase 1 — built 7 Oct 2026)
+
+Founder decision, 7 Oct 2026. §4.2 gave a business one login (its owner, through `VendorProfile`) and a STAFF role nobody could
+be given. The model is now:
+
+```
+Person (User)  →  Business Membership  →  Role  →  Permissions
+```
+
+- **A person signs in as themselves:** their own mobile number + their own 6-digit code — founder, manager, employee or vendor
+  owner, the same mechanism. The code is on the person (`users.loginCodeHash`), not on a vendor link. No shared passwords.
+- **A membership** (`business_members`) says which business a person belongs to, with a role (`OWNER`, `MANAGER`, `EMPLOYEE`;
+  `STAFF` is the older role, kept), a job title, and that person's own changes to the role's permissions (`grants`, `denies`).
+  One person may hold several memberships. Shaadi Shopping's own team are members of the Shaadi Shopping business.
+- **Workspace:** after signing in, a person with one membership goes straight in; with several they see **Choose Workspace**
+  (`/workspace`). The choice is a cookie and only a preference — every request checks it against the person's memberships.
+
+### 8.1 Permissions — one model, enforced on the server
+
+`lib/auth/permissions.ts` is the only place permissions are defined:
+
+| Permission | What it allows |
+|---|---|
+| `enquiries` | see and work the business's enquiries |
+| `quotations` | make, send and revise quotations |
+| `weddings` | manage booked weddings / events |
+| `tasks` | give out work and manage the team's tasks |
+| `catalog` | what the business offers and its price list |
+| `view_financials` | see payments received, amounts due and totals |
+| `edit_financials` | record payments and change payment details |
+| `team` | add and remove people, set roles and permissions |
+| `settings` | the business profile and settings |
+
+| Role | Default permissions |
+|---|---|
+| Owner | everything, always — cannot be reduced |
+| Manager | enquiries, quotations, weddings, tasks, catalog — **no money, no team, no settings** |
+| Employee | none — their own assigned work only, until the owner gives more |
+| Staff (older) | enquiries, quotations, weddings |
+
+Effective permissions = the role's defaults + `grants` − `denies`. The owner can give one manager `view_financials` without
+giving it to the others.
+
+**Where it is enforced.** Not in the screens. Every Vendor OS route states what it needs —
+`export const POST = venueScoped(handlePOST, 'quotations')` — and the wrapper (`lib/ownership/venueEntry.ts`) answers **403 before
+the handler runs** for a member without it. `MEMBER` (said out loud) marks the few routes any member may use: their own login
+code, and reading the business profile. A CI test (`lib/ownership/venuePermissions.test.ts`) fails when a Vendor OS route does
+not say. Inside a service, `can(scope, …)` decides finer points: a manager sees a quotation but not what has been paid on it
+(`moneyHidden`), nor the business's payment details.
+
+### 8.2 Sign-in for Shaadi Shopping's own team
+
+`/admin/login` is the same mobile + code screen. **Email and password is kept** at `/admin/login?with=password` until the code
+sign-in is proven for founder, vendor owner, manager and employee (founder's decision). A team member registers **their own**
+mobile number at Admin → More → **My sign-in** (`services/teamLogin.service.ts`): the number is typed on that screen, never in
+source code; their password is asked again; the code is shown once. If the number already belongs to another login (the same
+person's vendor login, say), they are told whose it is and must confirm — that person then gets the **same** access, never more,
+and a fresh code.
+
+### 8.3 What changed in the database (additive; nothing dropped)
+
+- `20261007100000_add_member_roles` — `MANAGER`, `EMPLOYEE` added to `BusinessRole`.
+- `20261007100100_person_code_and_memberships` — `users.loginCodeHash`, `loginCodeSetAt`; `business_members.jobTitle`, `grants`,
+  `denies`, `removedAt`; each vendor owner's existing code copied to the person; Shaadi Shopping's team added as members of the
+  Shaadi Shopping business (a SUPER_ADMIN as Owner; SALES / OPERATIONS as Managers who keep the access to money they have today).
+- `vendor_profiles.loginCodeHash` / `loginCodeSetAt` stay, unread. `user_roles` (which portal a login may open) is unchanged.
+
+### 8.4 What Phase 1 does not do yet
+
+- **The Command Center's own routes** (about 70) still ask only "is this an internal team member?". The membership and its
+  permissions exist for the team, but those routes are not yet behind `can()`.
+- **Adding people:** there is no Team screen yet (Phase 2). The only way a second person gets a membership today is "My sign-in".
+- **My Work** for an employee, and task assignment (Phase 2).
+- **What Shaadi Shopping shares with a vendor** (availability requests, bookings, payouts — the older Vendor OS screens) is still
+  read through the owner's vendor link, so a manager or employee sees none of it yet.
+- The `/vendor` door still needs the `VENDOR` portal role; Phase 2's "Add employee" gives it.
