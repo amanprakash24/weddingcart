@@ -91,7 +91,8 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
         return b.data;
       }
       setErrors(b.fieldErrors ?? {});
-      setError(b.fieldErrors ? 'Please check the highlighted boxes.' : (b.error ?? 'Something went wrong. It was not saved — please try again.'));
+      const onlyGstNumber = b.fieldErrors && Object.keys(b.fieldErrors).length === 1 && 'gst' in b.fieldErrors;
+      setError(onlyGstNumber ? null : b.fieldErrors ? 'Please check the highlighted boxes.' : (b.error ?? 'Something went wrong. It was not saved — please try again.'));
     } catch {
       setError('Could not reach Vivah OS. It was not saved — please check your connection.');
     }
@@ -216,7 +217,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
                   </button>
                 </div>
                 <div className="grid grid-cols-[7rem_1fr] items-start gap-3">
-                  <Input label="GST %" inputMode="decimal" value={l.gstPercent} onChange={(ev) => setLine(i, 'gstPercent', ev.target.value.replace(/[^0-9.]/g, '').slice(0, 5))} error={errors[`items.${i}.gstPercent`]} placeholder="e.g. 18" helperText="Empty = no GST" className="min-h-12 text-base" />
+                  <Input label="GST %" inputMode="decimal" value={l.gstPercent} onChange={(ev) => setLine(i, 'gstPercent', ev.target.value.replace(/[^0-9.]/g, '').slice(0, 5))} error={errors[`items.${i}.gstPercent`] ?? (parseGstPercent(l.gstPercent) === undefined ? 'Enter a rate like 5, 12 or 18' : undefined)} placeholder="e.g. 18" helperText="Empty = no GST" className="min-h-12 text-base" />
                   <dl className="mt-6 space-y-0.5 rounded-lg bg-[var(--color-bg-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                     <div className="flex justify-between"><dt>Amount</dt><dd>{inr(money.lines[i].amount)}</dd></div>
                     {money.lines[i].discount > 0 && <div className="flex justify-between"><dt>After discount</dt><dd>{inr(money.lines[i].taxable)}</dd></div>}
