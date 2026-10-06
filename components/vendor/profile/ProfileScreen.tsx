@@ -12,7 +12,9 @@ import type { ProfileView } from '@/services/venueProfile.service';
 // at once on the business's own documents; they show on the public Shaadi Shopping listing only after Shaadi Shopping approves
 // them. Until the name, the logo and three photos are in, the rest of Vendor OS stays behind this page (VendorShell).
 
-const STATUS_WORDS = { PENDING: 'Waiting for approval', APPROVED: 'On your public listing', REJECTED: 'Not on your public listing' } as const;
+// No label while a photo is waiting (founder, 7 Oct 2026: "Waiting for approval" on every image is unnecessary) — the sentence above
+// the photos already says they reach the public page after approval. A label appears only when there is something to tell.
+const STATUS_WORDS = { PENDING: null, APPROVED: 'On your public listing', REJECTED: 'Not on your public listing' } as const;
 const STATUS_TONE = { PENDING: 'bg-amber-50 text-amber-800 ring-amber-200', APPROVED: 'bg-emerald-50 text-emerald-800 ring-emerald-200', REJECTED: 'bg-stone-100 text-stone-600 ring-stone-200' } as const;
 
 const card = 'rounded-[24px] border border-[#E8DCC8] bg-white p-6 shadow-[0_10px_30px_rgba(42,31,27,0.04)] sm:p-8';
@@ -287,7 +289,7 @@ export default function ProfileScreen() {
                   <Image src={photo.url} alt="" fill sizes="(min-width: 640px) 220px, 45vw" className="object-cover" />
                 </div>
                 <div className="flex items-center justify-between gap-1 px-2.5 py-2">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${STATUS_TONE[photo.status]}`}>{STATUS_WORDS[photo.status]}</span>
+                  {STATUS_WORDS[photo.status] ? <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${STATUS_TONE[photo.status]}`}>{STATUS_WORDS[photo.status]}</span> : <span />}
                   {p.canEdit && (
                     <button type="button" onClick={() => removePhoto(photo.id)} disabled={busy !== null} aria-label="Remove this photo" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#8B6F5A] hover:bg-[#F0E6D6] disabled:opacity-40">
                       {busy === photo.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Trash2 className="h-4 w-4" aria-hidden />}
@@ -319,7 +321,7 @@ export default function ProfileScreen() {
                 <video src={p.video.url} controls preload="metadata" className="w-full rounded-2xl border border-[#E8DCC8] bg-black" />
               )}
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${STATUS_TONE[p.video.status]}`}>{STATUS_WORDS[p.video.status]}</span>
+                {STATUS_WORDS[p.video.status] ? <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${STATUS_TONE[p.video.status]}`}>{STATUS_WORDS[p.video.status]}</span> : <span />}
                 {p.canEdit && <button type="button" onClick={removeVideo} disabled={busy !== null} className={secondary}>{busy === 'video' ? 'Removing…' : 'Remove video'}</button>}
               </div>
             </div>
