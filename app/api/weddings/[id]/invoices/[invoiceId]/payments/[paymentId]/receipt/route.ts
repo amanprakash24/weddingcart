@@ -4,11 +4,12 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { invoiceRepository } from '@/repositories/invoice.repository';
 import { weddingRepository } from '@/repositories/wedding.repository';
 import { NotFoundError, handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Structured receipt data only — no PDF rendering. No document-generation
 // library exists in this codebase yet, and nothing needs a rendered file
 // until Sprint 7.5's customer-facing portal picks this endpoint up.
-export async function GET(
+async function handleGET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; invoiceId: string; paymentId: string }> }
 ) {
@@ -48,3 +49,6 @@ export async function GET(
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);

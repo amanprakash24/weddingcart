@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/errors';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { enquiryCreateSchema } from './schema';
 import type { Enquiry, EnquiryStatus } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Public, unauthenticated POST — previously had neither validation nor rate
 // limiting (production-readiness audit finding), unlike its sibling routes
@@ -38,7 +39,7 @@ function toEnquiryStatus(status: string | null): EnquiryStatus | undefined {
   return undefined;
 }
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
     if (await isRequestRateLimited(rateLimitId)) {
@@ -74,3 +75,7 @@ export async function POST(req: NextRequest) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

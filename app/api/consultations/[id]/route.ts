@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { consultationService } from '@/services/consultation.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Retired 4 Oct 2026 (MASTER-GAP-ANALYSIS §2.4.2): this changed the legacy `status`, a second state the CRM never saw. The CRM
 // stage is now the only status — change it from the CRM (/api/crm/leads/[sourceType]/[id]/stage).
-export async function PUT() {
+async function handlePUT() {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   return NextResponse.json({ success: false, error: 'This screen was retired — change the status in Leads & Quotes (the CRM).' }, { status: 410 });
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -24,3 +25,7 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PUT = platformScoped(handlePUT);
+export const DELETE = platformScoped(handleDELETE);

@@ -441,6 +441,7 @@ export default function Finance({
   onCreateBalanceInvoice,
   onRecordPayment,
   onRecordAgreementPayment,
+  onMoneyChanged,
 }: {
   weddingId: string;
   finance: WorkspaceFinance;
@@ -450,13 +451,14 @@ export default function Finance({
   onCreateBalanceInvoice: () => Promise<void>;
   onRecordPayment: RecordPayment;
   onRecordAgreementPayment: (input: RecordPaymentInput) => Promise<PaymentResult | void>;
+  onMoneyChanged?: () => Promise<unknown> | void; // a verified "I have paid" claim (Roadmap 1.3) changed the money
 }) {
   const [creating, setCreating] = useState(false);
   const money = finance.agreement?.money ?? null;
 
   return (
     <div className="space-y-4">
-    {money && <AgreementCard money={money} onRecordPayment={onRecordAgreementPayment} />}
+    {money && <AgreementCard money={money} onRecordPayment={onRecordAgreementPayment} onRefresh={onMoneyChanged} />}
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 className="text-sm font-semibold text-gray-900 mb-3">Finance</h2>
       {finance.agreement && <AgreementBlock agreement={finance.agreement} onCreateBalance={onCreateBalanceInvoice} />}

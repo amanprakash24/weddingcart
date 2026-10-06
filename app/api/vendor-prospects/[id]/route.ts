@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { vendorProspectService } from '@/services/vendorProspect.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const schema = z.object({
   status: z.enum(['NEW', 'CONTACTED', 'INTERESTED', 'ONBOARDING', 'ONBOARDED', 'DECLINED', 'ALREADY_LISTED']),
   notes: z.string().trim().max(2000).optional(),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -25,3 +26,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);

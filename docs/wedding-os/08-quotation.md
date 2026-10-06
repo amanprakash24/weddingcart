@@ -531,3 +531,131 @@ appears once, in the quotation, after the terms; the quotation has the table, su
 
 **Not in 1.2:** vendor package lists on the proposal (their listed prices would differ from the quoted price), a
 server-generated PDF, "show interest" per vendor, and readiness checks before sending (§46).
+
+## 18. "Add an event" on a venue's own proposal (Phase C — 5 Oct 2026)
+
+A venue lists what it offers for each wedding function on its **What we offer** screen (`/vendor/offerings`,
+table `business_offerings`). On the couple's link for **that venue's own quotation**, while the proposal is open,
+the "Your proposal" view shows an **Add an event** card above "Request changes":
+
+1. The couple taps a function the venue has something listed for (Haldi, Reception …).
+2. They see the venue's list for it with **starting prices** ("from ₹25,000", "from ₹450 per plate") and tick what
+   they want. Ticking nothing is allowed; a short note is optional (500 characters).
+3. "Ask to add Haldi" sends it to `POST /api/proposal/[token]/add-event` — body `{ function, offeringIds?, note? }`.
+
+**It is a change request, nothing more** (decision D3 still holds). The quotation's lines, prices and status are not
+touched. The request is written the same way "Request changes" is: appended to `changesRequestNote`, one
+`QUOTATION_CHANGES_REQUESTED` timeline entry ("The couple asked to add Haldi on proposal …"), and the stage moves to
+Negotiation. The venue sees it on the enquiry as "asked for changes" and answers with a new version, where the
+one-tap lines of the quotation form already carry the function. **No migration.**
+
+**Rules**
+- Only a venue's own quotation shows the card. A Shaadi Shopping proposal has no price list, so `addable` is empty
+  and the endpoint refuses.
+- Only an OPEN proposal: an accepted or expired one shows nothing and answers 409; a dead link answers the one
+  generic 404.
+- The sentence the venue reads is built on the server from **the venue's own rows**: a ticked id counts only if it is
+  on this venue's list for that function. Another venue's row, another function's row or a made-up id is ignored, and
+  no name or price is ever taken from the request.
+- A function the venue has nothing listed for is refused (400) — the couple uses "Request changes" for that.
+- Same protection as the other two actions: the shared per-IP limit, `no-store`, `noindex`, and the route runs as the
+  business that owns the quotation.
+
+**Allow-list:** `CustomerProposal.addable` — per function: its label and, for each offering, the name, the price in
+words and the row id (used only to say which ones were ticked).
+
+**Tests:** `lib/quotation/proposal.test.ts` (grouping, request validation, the sentence),
+`services/proposal.service.test.ts` (what each kind of proposal shows; the request is recorded without touching the
+quotation; foreign and made-up ticks ignored; closed and dead links), `app/api/proposal/[token]/routes.test.ts`
+(status codes, headers, rate limit) and `tests-db/venue.offerings.test.ts` (two real venues: the couple sees only this
+venue's list, a tampered tick for the other venue's row is dropped, the venue sees the request).
+
+**Not built:** adding the lines to the quotation automatically, and choosing a quantity or a date per function.
+
+## 19. The Shaadi Shopping section on a venue's own proposal (Phase C — 5 Oct 2026)
+
+A venue's own proposal link is the venue's page: its name in the header and its own number for questions (D8). At the
+bottom of the "Your proposal" view, below the venue's "Questions?" line and above "Powered by Vivah OS", there is one
+clearly separate card, **The rest of your wedding** — Shaadi Shopping's offer to plan everything around the venue
+(decoration, photography, mehndi, makeup …) around the couple's guests and budget.
+
+- **Two actions only:** "WhatsApp Shaadi Shopping" and "Call +91 76460 28228". This card is the only place a venue's
+  link carries Shaadi Shopping's number; every other call or WhatsApp link on the page stays the venue's.
+- **What the WhatsApp message says:** "Namaste Shaadi Shopping, I am planning my wedding with ‹venue› and would like
+  help with the rest of it." It names the venue only — never the couple, the quotation number or the link.
+- **It says who is who:** "Shaadi Shopping is a separate service. Your quotation on this page is with ‹venue› — for
+  anything about it, please contact ‹venue›."
+- **Where it shows:** on a venue's own proposal in every state (open, accepted, expired), on the proposal view only —
+  never beside the detailed quotation's numbers, and never in print. A Shaadi Shopping proposal has no such card.
+- **No data, no request, no migration:** the card is built on the page from the brand already on the allow-list
+  (`shaadiSection` in `lib/quotation/proposalView.ts`). Tapping it records nothing.
+
+**Tests:** `lib/quotation/proposalView.test.ts` (none for Shaadi Shopping's own proposal; always Shaadi Shopping's
+number, never the venue's; the message) and `lib/quotation/proposalPage.test.ts` (venue links only, proposal view only,
+not printed, after the venue's contact line).
+
+**Not built:** a way for a venue to turn the card off, and counting how many couples tap it.
+
+## 20. Customer payment by UPI, payment proof and receipts (Roadmap 1.3 — 3 Oct 2026)
+
+> **Brought up to date with record ownership on 6 Oct 2026.** This section was written as §18 before venues had their own
+> quotations; "Add an event" and the Shaadi Shopping section took §18 and §19. Two rules were added when it was merged:
+> - **Shaadi Shopping's own quotations only.** The UPI payee shown is Shaadi Shopping's (`SHAADI_UPI_ID`) and its staff verify
+>   each claim, so the Payments view and "I have paid" never appear on a **venue's own** proposal link — a venue's customer pays
+>   the venue. The venue's own payee (its UPI ID from Settings) on its link, and verification inside Vendor OS, are not built.
+> - **Ownership:** `PaymentSubmission` is a child of `Quotation` in the ownership guard (`lib/ownership/owned.ts`); the couple's
+>   route runs as the business that owns the quotation and the staff routes as Shaadi Shopping.
+
+Master doc §27 (the couple sees Total → Advance → Paid → Pending → Due date, receipts and transaction history). Built on the
+proposal link and on Money v1 (`10-commercial-flow-v1.md`, the 25% rule) — **no second payment architecture**.
+
+**Decisions (approved 1 Oct 2026):** the payments live on the proposal link (no login); the UTR is required and a screenshot is
+optional; the same staff who record payments today (SUPER_ADMIN, SALES, OPERATIONS) verify; the UPI ID is read from the environment
+and the payment card stays hidden until it is set.
+
+### 18.1 What the couple sees
+
+A third tab, **Payments** (`#payments`), only once the quotation is ACCEPTED. Accepting reloads the page onto it.
+- Total · to confirm (25%) · paid · pending · due date (while the date is held: when the 7-day hold ends).
+- **Pay by UPI**: the amount (pre-filled with what still confirms the booking, else the balance; they may pay more, up to what is
+  due), a QR made on the page from the standard `upi://pay` link (payee, fixed amount, INR, the quotation number as the note), a
+  "Pay with a UPI app" button for phones, and the UPI ID and payee name to check.
+- **I have paid**: amount, UTR, date paid, optional screenshot (photo or PDF, under 5 MB), optional note.
+- "Payments you sent": each claim as *Being checked*, or *Could not be matched* with staff's reason.
+- **Receipts**: every payment received (staff-recorded, verified, or Razorpay), one receipt per payment even when it was split across
+  the advance and balance invoices (`receiptId`); Download / print prints just that receipt.
+- The sentence at the top follows the payments (`paymentsHeadline`): what confirms the booking, how long the date is held, or the
+  balance once confirmed.
+
+### 18.2 A claim is not money
+
+`PaymentSubmission` (migration `20261003120000_add_payment_submission`, additive) holds the claim: PENDING → VERIFIED / REJECTED.
+Received, Date Held and Confirmed still come **only** from Payment rows. A claim never starts the hold and never confirms anything.
+
+**Verify** (staff, in the Money card in the CRM and in the wedding's Money tab, "Payments to verify") records the Payment through
+`recordPaymentForQuotation` — the same path as "Record payment": method UPI, the UTR as its reference, the date the couple paid
+(staff may correct the amount and date to what arrived), idempotency key `sub-<submission id>`. So the 25% rule, the hold, the
+advance-then-balance split and auto-confirmation are unchanged, the same UTR is never counted twice, and a verify that stopped
+half-way is safe to press again. **Not matched** needs a reason, which the couple sees.
+
+### 18.3 Protection
+
+- Public route `POST /api/proposal/[token]/payments`: same per-IP limit as accept / request changes; only on an ACCEPTED proposal;
+  amount whole rupees, at most what is outstanding; UTR 6–35 letters/digits; date not in the future nor older than 90 days; at most
+  **3 open claims** per proposal; a UTR already claimed or already recorded on this agreement is refused; body over ~5 MB refused
+  before it is read.
+- Screenshots are **private** Cloudinary assets (`payment-proofs/`, type `private`): no public URL; staff get a signed link valid
+  for 10 minutes; the couple never gets one back. If saving the claim fails after the upload, the file is deleted.
+- The couple's view is an allow-list (`toProposalPayments`): no staff names, invoice ids, notes or proof files.
+- With `SHAADI_UPI_ID` / `SHAADI_UPI_NAME` unset or malformed: no QR, no "I have paid"; the page says to call us.
+- Every claim and every refusal is on the CRM / wedding timeline (`PAYMENT_SUBMITTED`, `PAYMENT_SUBMISSION_REJECTED`).
+
+**Tests:** `lib/payments/customerPayment.test.ts` (UPI link, claim validation, receipts, the allow-list),
+`services/paymentSubmission.service.test.ts` (a claim is never a payment; duplicates and limits refused before any upload; clean-up;
+verify goes through Money v1 with a fixed key and is idempotent; reject), `services/proposal.service.test.ts`,
+`app/api/proposal/[token]/routes.test.ts`, `lib/quotation/proposalView.test.ts`, `lib/quotation/proposalPage.test.ts`.
+
+**Not in 1.3:** a payment gateway on the link (Razorpay payment links stay staff-only), automatic bank matching, refunds, payment
+reminders, a list of all open claims across customers (they appear on each customer's timeline and Money card), and a Customer
+Portal view. Known gap from §16/§17: the proposal and detailed-quotation views still show the quotation's own *advance* as "Advance to
+confirm"; since Money v1 the amount that confirms is 25% of the total — the Payments view shows the real figure.

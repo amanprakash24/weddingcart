@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { statsService } from '@/services/stats.service';
 import { requireAdmin } from '@/lib/adminAuth';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function GET() {
+async function handleGET() {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -14,3 +15,6 @@ export async function GET() {
     return NextResponse.json({ success: false, error: 'Failed to fetch stats' }, { status: 500 });
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);

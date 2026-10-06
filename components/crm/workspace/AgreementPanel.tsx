@@ -56,6 +56,7 @@ export default function AgreementPanel({
     <AgreementCard
       money={money}
       onRecordPayment={record}
+      onRefresh={async () => { await load(); await onChanged(); }}
       defaultRecording={defaultRecording}
       action={
         money.readyToConfirm ? (

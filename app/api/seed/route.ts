@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/session';
 import { Role } from '@/lib/auth/roles';
 import { seedService } from '@/services/seed.service';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Lockdown per docs/database/postgres-migration-plan.md's "Decision 1 —
 // /api/seed lockdown": never accessible in production regardless of
 // session, SUPER_ADMIN-only elsewhere, and requires an explicit
 // SEED_ENABLED=true env var as a second safeguard so a stray staging
 // deploy or misconfigured session can't trigger a reseed.
-export async function POST() {
+async function handlePOST() {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
   }
@@ -37,6 +38,10 @@ export async function POST() {
   }
 }
 
-export async function GET() {
+async function handleGET() {
   return NextResponse.json({ message: 'Use POST to seed blog posts (categories/vendors are no longer reseeded)' });
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);
+export const GET = platformScoped(handleGET);

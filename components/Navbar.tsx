@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { isProposalPath } from '@/lib/proposalPath';
+import { isProposalPath, isVendorOsPath } from '@/lib/proposalPath';
 import { Menu, X, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Star, Sparkles, FileText, Phone, ArrowRight } from 'lucide-react';
 
 const MEGA_MENU = [
@@ -104,7 +104,7 @@ export default function Navbar() {
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
   const megaRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith('/admin');
+  const isAdmin = pathname.startsWith('/admin') || isVendorOsPath(pathname); // admin and Vendor OS have their own shells
   const isHome = pathname === '/';
 
   useEffect(() => {

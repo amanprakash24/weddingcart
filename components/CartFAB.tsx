@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { usePathname } from 'next/navigation';
-import { isProposalPath } from '@/lib/proposalPath';
+import { isProposalPath, isVendorOsPath } from '@/lib/proposalPath';
 
 export default function CartFAB() {
   const { itemCount } = useCart();
   const pathname = usePathname();
 
-  if (pathname.startsWith('/admin') || isProposalPath(pathname)) return null;
+  if (pathname.startsWith('/admin') || isVendorOsPath(pathname) || isProposalPath(pathname)) return null;
   if (pathname === '/cart') return null;
   if (itemCount === 0) return null;
 

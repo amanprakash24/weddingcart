@@ -5,6 +5,7 @@ import { CheckCircle2, Clock3, AlertTriangle, CircleDashed } from 'lucide-react'
 import type { AgreementMoneyView } from '@/lib/commercial/view';
 import { dateWords } from '@/lib/wedding/controlRoom';
 import { isoFromDateInput } from '@/lib/wedding/planTasks';
+import PaymentSubmissions from '@/components/money/PaymentSubmissions';
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const METHODS: { value: string; label: string }[] = [
@@ -41,7 +42,7 @@ function tone(m: AgreementMoneyView) {
 // Money V1 — one card that answers, at a glance: what was agreed, how much confirms the booking, how much is in, how much is still
 // needed, whether the date is only held or the booking is confirmed, what is outstanding overall, and what to do next (with the
 // invoice it belongs to). Shown in the CRM before the wedding exists and in the wedding's Money tab after — the same numbers.
-export default function AgreementCard({ money, onRecordPayment, action, defaultRecording = false }: { money: AgreementMoneyView; onRecordPayment: (input: RecordPaymentInput) => Promise<PaymentResult | void>; action?: ReactNode; defaultRecording?: boolean }) {
+export default function AgreementCard({ money, onRecordPayment, onRefresh, action, defaultRecording = false }: { money: AgreementMoneyView; onRecordPayment: (input: RecordPaymentInput) => Promise<PaymentResult | void>; onRefresh?: () => Promise<unknown> | void; action?: ReactNode; defaultRecording?: boolean }) {
   const t = tone(money);
   const [recording, setRecording] = useState(defaultRecording);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
@@ -108,6 +109,9 @@ export default function AgreementCard({ money, onRecordPayment, action, defaultR
           }}
         />
       )}
+
+      {/* Roadmap 1.3: the couple's "I have paid" claims, verified here before they count. */}
+      <PaymentSubmissions quotationId={money.quotationId} onChanged={onRefresh} />
 
       {money.payments.length > 0 && (
         <div className="mt-4 overflow-x-auto">

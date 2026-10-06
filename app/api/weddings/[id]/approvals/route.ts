@@ -4,8 +4,9 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { approvalService } from '@/services/approval.service';
 import { handleApiError } from '@/lib/errors';
 import { ApprovalSubjectType } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireRole(ADMIN_ROLES))) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
     const { id } = await params;
@@ -15,7 +16,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -36,3 +37,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(error);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

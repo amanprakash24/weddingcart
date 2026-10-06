@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { vendorService } from '@/services/vendor.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // /vendors/[id] is ISR (revalidate = 3600) and prerendered at build. When a vendor is unpublished, the
 // hourly refresh ends in notFound() and the old page kept being served until the next deploy
@@ -27,7 +28,7 @@ function toResponseShape(vendor: NonNullable<Awaited<ReturnType<typeof vendorSer
   return { ...rest, category: category?.slug ?? null };
 }
 
-export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const vendor = await vendorService.getById(id);
@@ -53,7 +54,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -129,7 +130,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -145,3 +146,8 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const PUT = platformScoped(handlePUT);
+export const DELETE = platformScoped(handleDELETE);

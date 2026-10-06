@@ -8,6 +8,7 @@ import {
   ONBOARDING_UPLOAD_TAGS,
   validateOnboardingImage,
 } from '@/lib/onboardingUpload';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Public, unauthenticated image upload used ONLY by /vendor-onboarding, where a
 // prospective venue has no account yet. The generic POST /api/upload stays
@@ -52,7 +53,7 @@ function fail(status: number, error: string) {
   return NextResponse.json({ success: false, error }, { status });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   if (isCrossOrigin(req)) return fail(403, 'Forbidden');
 
   const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
@@ -109,3 +110,6 @@ export async function POST(req: NextRequest) {
     return fail(500, 'Upload failed');
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

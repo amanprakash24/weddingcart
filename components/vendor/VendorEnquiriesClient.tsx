@@ -67,21 +67,26 @@ function Answer({ enquiry, onSaved }: { enquiry: VendorEnquiryView; onSaved: (e:
   );
 }
 
-export default function VendorEnquiriesClient({ initial }: { initial: VendorEnquiryView[] }) {
+// embedded: shown as the "From Shaadi Shopping" section under the venue's own enquiries (Phase C), inside Vendor OS's shell.
+export default function VendorEnquiriesClient({ initial, embedded = false }: { initial: VendorEnquiryView[]; embedded?: boolean }) {
   const [enquiries, setEnquiries] = useState(initial);
   const [open, setOpen] = useState<string | null>(null);
   const active = enquiries.filter((e) => e.status !== 'WITHDRAWN');
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6">
-      <div className="mx-auto max-w-3xl space-y-5">
+    <main className={embedded ? '' : 'min-h-screen bg-slate-50 px-4 py-8 sm:px-6'}>
+      <div className={embedded ? 'space-y-4' : 'mx-auto max-w-3xl space-y-5'}>
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Vivah OS · Vendor Portal</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">Availability enquiries</h1>
+            {!embedded && <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Vivah OS · Vendor Portal</p>}
+            {embedded ? (
+              <h2 className="text-lg font-bold text-slate-900">From Shaadi Shopping</h2>
+            ) : (
+              <h1 className="mt-1 text-2xl font-bold text-slate-900">Availability enquiries</h1>
+            )}
             <p className="mt-1 text-sm text-slate-600">Shaadi Shopping is asking whether you can take these weddings. Answer when you can.</p>
           </div>
-          <Link href="/vendor" className="text-sm font-medium text-slate-600 underline underline-offset-4">Back to portal</Link>
+          {!embedded && <Link href="/vendor" className="text-sm font-medium text-slate-600 underline underline-offset-4">Back to portal</Link>}
         </header>
 
         {active.length === 0 ? (

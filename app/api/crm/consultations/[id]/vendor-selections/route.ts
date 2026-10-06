@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { consultationVendorSelectionService } from '@/services/consultationVendorSelection.service';
 import { afterVendorLinkChange } from '@/lib/vendorEnquiry/hook';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const selectionSchema = z.object({
   serviceKey: z.string().trim().min(1).max(100),
@@ -18,7 +19,7 @@ const serviceKeySchema = z.object({
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: RouteContext) {
+async function handleGET(_req: NextRequest, { params }: RouteContext) {
   if (!(await requireRole(ADMIN_ROLES))) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -30,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
   }
 }
 
-export async function PUT(req: NextRequest, { params }: RouteContext) {
+async function handlePUT(req: NextRequest, { params }: RouteContext) {
   if (!(await requireRole(ADMIN_ROLES))) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -46,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: RouteContext) {
+async function handleDELETE(req: NextRequest, { params }: RouteContext) {
   if (!(await requireRole(ADMIN_ROLES))) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -60,3 +61,8 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const PUT = platformScoped(handlePUT);
+export const DELETE = platformScoped(handleDELETE);

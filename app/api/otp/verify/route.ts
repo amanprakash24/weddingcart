@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { otpService } from '@/services/otp.service';
 import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   try {
     const { phone, code } = await req.json();
 
@@ -33,3 +34,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: 'Verification failed' }, { status: 500 });
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

@@ -5,6 +5,7 @@ import { Role } from '@/lib/auth/roles';
 import { GuestRsvpStatus } from '@/generated/prisma/enums';
 import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const schema = z.object({
   name: z.string().trim().min(1),
@@ -17,7 +18,7 @@ const schema = z.object({
   functionResponses: z.array(z.object({ weddingEventId: z.string().min(1), status: z.nativeEnum(GuestRsvpStatus) })).default([]),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; guestId: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; guestId: string }> }) {
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -28,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   } catch (error) { return handleApiError(error); }
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string; guestId: string }> }) {
+async function handleDELETE(_req: Request, { params }: { params: Promise<{ id: string; guestId: string }> }) {
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -38,3 +39,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: true });
   } catch (error) { return handleApiError(error); }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);
+export const DELETE = platformScoped(handleDELETE);
