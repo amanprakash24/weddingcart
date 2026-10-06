@@ -493,6 +493,7 @@ model VendorProspect {
 
   @@index([status])
   @@index([phone])
+  partnerReferral PartnerReferral? // the Growth Partner referral it came from, if any
   @@map("vendor_prospects")
 }
 
@@ -685,6 +686,7 @@ model Consultation {
   @@index([pipelineStage])
   @@index([assignedToId, pipelineStage])
   @@index([createdAt])
+  partnerReferral PartnerReferral? // the Growth Partner referral it came from, if any
   // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
   // removes the default and every query is scoped by the logged-in business.
   businessId String   @default("shaadi-shopping")
@@ -1261,6 +1263,9 @@ model Wedding {
 
   customerId    String?
   customer      User?   @relation("WeddingCustomer", fields: [customerId], references: [id])
+  // The couple's mobile (10 digits, from the enquiry / booking it came from). Their OTP login is linked to this wedding by it —
+  // at creation if they already have a login, else the first time they log in (lib/customer/weddingLink.ts).
+  customerPhone String?
   coordinatorId String?
   coordinator   User?   @relation("WeddingCoordinator", fields: [coordinatorId], references: [id])
 
@@ -1284,6 +1289,7 @@ model Wedding {
   approvals          ApprovalRequest[]   @relation("ApprovalWedding")
   guests             Guest[]
 
+  @@index([customerPhone])
   // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
   // removes the default and every query is scoped by the logged-in business.
   businessId String   @default("shaadi-shopping")
@@ -2231,6 +2237,11 @@ model PartnerReferral {
   payoutAmount  Int? // rupees, entered by staff — no automatic rates in V1
   paidAt        DateTime?
   staffNotes    String?
+  // Where the referral went (MASTER-GAP-ANALYSIS §2.4): a couple becomes a CRM consultation, a venue/vendor a vendor prospect.
+  consultationId   String?         @unique
+  consultation     Consultation?   @relation(fields: [consultationId], references: [id], onDelete: SetNull)
+  vendorProspectId String?         @unique
+  vendorProspect   VendorProspect? @relation(fields: [vendorProspectId], references: [id], onDelete: SetNull)
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 

@@ -81,12 +81,14 @@ export const MORE: NavItem[] = [
 // Development / setup only — shown to super admins.
 export const SETUP: NavItem = { key: 'setup', label: 'Setup & seed data', href: '/admin?tab=dashboard', icon: Database, isActive: onTab('dashboard') };
 
+// Only Bookings remains (cart bookings are not in the CRM). The old Enquiries / Consultations / Leads screens were removed on
+// 4 Oct 2026: they edited a second, legacy status the CRM never saw (MASTER-GAP-ANALYSIS §2.4.2). Their URLs go to the CRM
+// (OLD_TAB_REDIRECTS, app/admin/page.tsx).
 export const OLD_SCREENS: NavItem[] = [
   { key: 'old-bookings', label: 'Bookings', href: '/admin?tab=bookings', icon: Receipt, isActive: onTab('bookings') },
-  { key: 'old-enquiries', label: 'Enquiries', href: '/admin?tab=enquiries', icon: Receipt, isActive: onTab('enquiries') },
-  { key: 'old-consultations', label: 'Consultations', href: '/admin?tab=consultations', icon: Receipt, isActive: onTab('consultations') },
-  { key: 'old-leads', label: 'Leads', href: '/admin?tab=leads', icon: Receipt, isActive: onTab('leads') },
 ];
+
+export const OLD_TAB_REDIRECTS: Record<string, string> = { enquiries: '/admin/crm', consultations: '/admin/crm', leads: '/admin/crm' };
 
 // The bottom bar on a phone: the four daily screens, then a More sheet with the rest.
 export const PHONE_BAR = PRIMARY.filter((item) => item.key !== 'invoices');

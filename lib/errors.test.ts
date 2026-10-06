@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   handleApiError,
   NotFoundError,
+  USER_MESSAGES,
   DuplicateError,
   InvalidTransitionError,
   ConversionLockedError,
@@ -16,10 +17,12 @@ async function bodyOf(res: Response) {
 }
 
 describe('handleApiError — shared error-to-HTTP-response mapping', () => {
-  test('NotFoundError maps to 404 with its own message', async () => {
+  test('NotFoundError maps to 404 with a plain sentence — never the id', async () => {
     const res = handleApiError(new NotFoundError('Event', 'abc123'));
     expect(res.status).toBe(404);
-    expect((await bodyOf(res)).error).toBe('Event not found: abc123');
+    expect((await bodyOf(res)).error).toBe('This event could not be found — it may have been removed. Please reload the page.');
+    expect(JSON.stringify(await bodyOf(handleApiError(new NotFoundError('VendorBooking', 'vb-9'))))).not.toContain('vb-9');
+    expect((await bodyOf(handleApiError(new NotFoundError('Vendor booking', 'x')))).error).toContain('This vendor booking could not be found');
   });
 
   test('DuplicateError maps to 409', async () => {
@@ -80,7 +83,7 @@ describe('handleApiError — shared error-to-HTTP-response mapping', () => {
     const res = handleApiError(new Error(sensitiveMessage));
     expect(res.status).toBe(500);
     const body = await bodyOf(res);
-    expect(body.error).toBe('Internal server error');
+    expect(body.error).toBe(USER_MESSAGES.unexpected);
     expect(JSON.stringify(body)).not.toContain(sensitiveMessage);
   });
 
@@ -88,6 +91,6 @@ describe('handleApiError — shared error-to-HTTP-response mapping', () => {
     const res = handleApiError('a raw string throw, e.g. from third-party code');
     expect(res.status).toBe(500);
     const body = await bodyOf(res);
-    expect(body.error).toBe('Internal server error');
+    expect(body.error).toBe(USER_MESSAGES.unexpected);
   });
 });

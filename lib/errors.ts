@@ -8,10 +8,23 @@ import { columnFromIndex, constraintFromMeta, friendlyDuplicateMessage } from '@
 // else propagates unwrapped rather than being silently swallowed.
 
 export class NotFoundError extends Error {
+  readonly entity: string;
   constructor(entity: string, id: string) {
-    super(`${entity} not found: ${id}`);
+    super(`${entity} not found: ${id}`); // the id stays in logs; users get publicMessage (handleApiError)
     this.name = 'NotFoundError';
+    this.entity = entity;
   }
+}
+
+// The words a user sees (MASTER-GAP-ANALYSIS §2.6, brief §19: no technical errors, no ids). Technical details stay in the logs.
+export const USER_MESSAGES = {
+  invalid: 'Some details are missing or not valid — please check and try again.',
+  unexpected: 'Something went wrong — please try again. If it keeps happening, tell the team.',
+} as const;
+
+export function notFoundMessage(entity: string): string {
+  const thing = entity.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  return `This ${thing} could not be found — it may have been removed. Please reload the page.`;
 }
 
 // Sprint 5.3 — a stage change rejected by the pipeline state machine
@@ -99,7 +112,8 @@ export async function withPrismaErrors<T>(entity: string, fn: () => Promise<T>):
 // first real use is the Sprint 5.2 Lead Workspace mutation routes.
 export function handleApiError(err: unknown): NextResponse {
   if (err instanceof NotFoundError) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 404 });
+    console.warn(err.message);
+    return NextResponse.json({ success: false, error: notFoundMessage(err.entity) }, { status: 404 });
   }
   if (err instanceof DuplicateError) {
     if (err.constraint) console.warn(`duplicate: ${err.message} (rule: ${err.constraint})`);
@@ -118,8 +132,9 @@ export function handleApiError(err: unknown): NextResponse {
     return NextResponse.json({ success: false, error: err.message }, { status: 409 });
   }
   if (err instanceof ZodError) {
-    return NextResponse.json({ success: false, error: 'Invalid request', issues: err.issues }, { status: 400 });
+    // `issues` stays for forms that show one message per field (lib/apiFieldErrors.ts).
+    return NextResponse.json({ success: false, error: USER_MESSAGES.invalid, issues: err.issues }, { status: 400 });
   }
   console.error(err);
-  return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  return NextResponse.json({ success: false, error: USER_MESSAGES.unexpected }, { status: 500 });
 }

@@ -180,7 +180,7 @@ describe('POST /api/vendor-applications — request validation', () => {
       expect(res.status).toBe(400);
       expect(create).not.toHaveBeenCalled();
       const body = await res.json();
-      expect(body.error).toBe('Invalid request');
+      expect(body.error).toBe('Some details are missing or not valid — please check and try again.');
       const phoneIssue = (body.issues as { path: string[]; message: string }[]).find((i) => i.path[0] === 'ownerPhone');
       expect(phoneIssue?.message).toContain('10-digit Indian mobile number');
     }

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MORE, OLD_SCREENS, PHONE_BAR, PRIMARY, SETUP, UPCOMING_SECTION, type ActiveContext } from './adminNav';
+import { MORE, OLD_SCREENS, OLD_TAB_REDIRECTS, PHONE_BAR, PRIMARY, SETUP, UPCOMING_SECTION, type ActiveContext } from './adminNav';
 
 // The admin navigation is the product structure: Today / Leads & Quotes / Weddings / Vendors / Invoices, everything else
 // under More. These tests pin that structure and guard against dead links.
@@ -20,7 +20,9 @@ describe('primary navigation', () => {
     for (const old of ['Enquiries', 'Consultations', 'Leads', 'Bookings', 'Categories', 'Special services', 'Blog']) {
       expect(primaryLabels).not.toContain(old);
     }
-    expect(OLD_SCREENS.map((item) => item.label)).toEqual(['Bookings', 'Enquiries', 'Consultations', 'Leads']);
+    expect(OLD_SCREENS.map((item) => item.label)).toEqual(['Bookings']);
+    // The old Enquiries / Consultations / Leads screens edited a second status; their URLs now open the CRM.
+    expect(OLD_TAB_REDIRECTS).toEqual({ enquiries: '/admin/crm', consultations: '/admin/crm', leads: '/admin/crm' });
   });
 
   test('the phone bar is the four daily screens (Invoices goes under More)', () => {
@@ -79,5 +81,21 @@ describe('no dead links', () => {
   test('the Today page has the section the Weddings link scrolls to', () => {
     const source = readFileSync(join(root, 'components', 'crm', 'dashboard', 'CommandCenter.tsx'), 'utf8');
     expect(source).toContain(`id="${UPCOMING_SECTION}"`);
+  });
+});
+
+describe('old CRM screens are retired (MASTER-GAP-ANALYSIS 2.4.2)', () => {
+  test('their URLs redirect to the CRM before the old admin screen renders', () => {
+    const page = readFileSync(join(root, 'app', 'admin', 'page.tsx'), 'utf8');
+    expect(page).toContain('OLD_TAB_REDIRECTS[tab]');
+    expect(page.indexOf('redirect(target)')).toBeLessThan(page.indexOf('<AdminClient'));
+  });
+
+  test('the legacy status routes no longer change anything', () => {
+    for (const kind of ['consultations', 'enquiries']) {
+      const route = readFileSync(join(root, 'app', 'api', kind, '[id]', 'route.ts'), 'utf8');
+      expect(route).toContain('{ status: 410 }');
+      expect(route).not.toMatch(/Service\.update\(/);
+    }
   });
 });
