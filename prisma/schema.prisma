@@ -2237,10 +2237,19 @@ model Business {
   holdWindowDays      Int?
   // The number its customers see on their proposal link (D8). Null = the platform's / the vendor listing's.
   contactPhone        String?
+  // The business profile a vendor completes on first sign-in (6 Oct 2026; lib/venue/profile.ts) — the letterhead of its documents.
+  // logoUrl / videoUrl are our own uploads only (or, for the video, a YouTube / Instagram link). gstin is optional; it becomes
+  // mandatory only where a document charges GST. videoStatus: PENDING until Shaadi Shopping approves the video for the PUBLIC
+  // listing (null = no video) — the business's own documents use it straight away.
+  logoUrl             String?
+  gstin               String?
+  videoUrl            String?
+  videoStatus         BusinessPhotoStatus?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
   members               BusinessMember[]
+  photos                BusinessPhoto[]
   leads                 Lead[]
   enquiries             Enquiry[]
   consultations         Consultation[]
@@ -2258,6 +2267,29 @@ model Business {
 // What a venue offers for each wedding function (Haldi: lawn, decoration, veg plate …), with its starting price — its own price list
 // for the customers it brings itself. Offered as one-tap lines in the venue's quotation form, and shown to the couple when they ask
 // to add a function on their proposal link. Not an owned record: always read and written by the business of the current scope.
+// A photo a business uploaded to its profile (6 Oct 2026). Usable at once on the business's own quotations and proposal links;
+// shown on its PUBLIC Shaadi Shopping listing only after an admin approves it (status APPROVED → copied to Vendor.images).
+// Like BusinessOffering, not an owned table: services/venueProfile.service.ts names the business on every read and write.
+enum BusinessPhotoStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BusinessPhoto {
+  id         String              @id @default(uuid())
+  businessId String
+  business   Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  url        String // our own Cloudinary upload, never an address from a request
+  status     BusinessPhotoStatus @default(PENDING)
+  reviewedAt DateTime?
+  createdAt  DateTime            @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([status, createdAt])
+  @@map("business_photos")
+}
+
 model BusinessOffering {
   id         String           @id @default(uuid())
   businessId String

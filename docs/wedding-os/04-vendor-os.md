@@ -226,8 +226,67 @@ the admin menu (`AdminShell`, read from `GET /api/vendor-applications?status=new
 `app/api/vendor-os/login-code/route.test.ts` (who may call; nothing but dates and flags leaves the server) and
 `tests-db/vendor.login-code.test.ts` (a real database and the real lock).
 
-**Not built yet:** the first-login profile (name, logo, photos, video, GST number), upload limits, and approving a vendor's photos
-before they appear on the public listing — the next slice.
+**Next:** the first-login profile — §11.
+
+## 11. Business profile on first sign-in ("Name, logo, photos, video, GST number") — built 6 Oct 2026
+
+Founder decision, 6 Oct 2026: the registration form stays short; the depth is collected **after** acceptance. The first time a
+vendor signs in, Vendor OS leads to `/vendor/profile` and stays there until the profile has **a name, a logo and at least three
+photos**. A video and a GST number are optional. The profile is the letterhead of the business's documents.
+
+**What the vendor fills**
+- **Business name** — the name on its documents (`Business.name`). The public listing's name stays Shaadi Shopping's to set.
+- **GST number** — optional. Checked against the GSTN's own scheme: 15 characters, a state code 01–38, and the 15th character is
+  a check character over the first 14, so a mistyped number is refused here rather than printed on an invoice.
+- **Logo** — one image.
+- **Photos** — 3 to 12.
+- **Video** — one upload, or a YouTube / Instagram link (no storage used).
+
+**"Keep items so that we do not get too much load"** — every bound is in `PROFILE_LIMITS` (`lib/venue/profile.ts`):
+
+| Item | Limit |
+|---|---|
+| Image file | JPEG / PNG / WebP, decided from the file's own bytes, under 4 MB |
+| Stored photo | scaled down to fit 1600 px before it is kept; logo 600 px |
+| Photos per business | 12 |
+| Video | 60 seconds and 50 MB — measured after it lands; an oversized one is deleted and refused |
+| Uploads | 40 per business per 15 minutes |
+
+A large phone photo is scaled down in the browser before it is sent, so the vendor never has to resize anything by hand.
+
+**Approval before the public listing** (founder's choice): a photo or video is usable at once on the business's **own**
+quotations and proposal links, and appears on its **public** Shaadi Shopping listing only after an admin approves it. New uploads
+are `PENDING`; the admin "Vendor applications" tab shows them grouped by business with Approve / Reject. Approve copies a photo
+into `Vendor.images` (an uploaded video into `Vendor.virtualTourVideo`; a link is only marked approved — the listing plays files).
+Reject keeps it off the listing; the vendor keeps it for their own documents. A decision is final. A vendor who removes an
+approved photo or video takes it off the listing too.
+
+**Rules**
+- Owner only; staff of the business can read the profile.
+- Only **our own uploads** are ever saved: an address must be in our Cloudinary cloud under `shaadishopping/vendor-profile`
+  (`isOwnUpload`). An address a browser merely sends is refused.
+- Nothing is stored before the checks: the upload routes first ask "may this login change the profile, and is there room?".
+- The folder and file name are chosen on the server; nothing about where a file is stored comes from the request.
+- `Business` and `BusinessPhoto` are not owned tables, so `services/venueProfile.service.ts` names the business on every read
+  and write; another business's photo is simply "not found".
+
+**Data:** migration `20261006130000_add_business_profile` — `businesses.logoUrl`, `gstin`, `videoUrl`, `videoStatus`; table
+`business_photos`; enum `BusinessPhotoStatus`. Additive.
+
+**API:** `GET/PUT /api/vendor-os/profile`; `POST …/profile/logo`; `POST …/profile/photos`, `DELETE …/profile/photos/[id]`;
+`POST …/profile/video-signature`, `PUT/DELETE …/profile/video`; admin `GET /api/admin/profile-media`,
+`POST /api/admin/profile-media/photos/[id]`, `POST /api/admin/profile-media/videos/[businessId]`.
+
+**The gate** is in `VendorShell`: it asks for the profile once per screen; with something missing (and an Owner login) it sends
+the vendor to `/vendor/profile` and puts the navigation away. It is a guide, not a lock — the APIs behind the other screens do not
+refuse an incomplete profile.
+
+**Tests:** `lib/venue/profile.test.ts` (GST number, links, own-upload check, completeness), `services/venueProfile.service.test.ts`
+(both halves), `app/api/vendor-os/profile/routes.test.ts` (order of checks, who may call) and `tests-db/venue.profile.test.ts`
+(two real venues and the review).
+
+**Not built yet:** the logo, GST number and photos **on** the quotation and invoice (the quotation rework), areas and
+specifications of a venue, and a GST line on documents.
 
 ## Data model gaps
 
