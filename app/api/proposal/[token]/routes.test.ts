@@ -20,11 +20,13 @@ mock.module('@/lib/prisma', () => ({
 const accept = mock(async () => ({ state: 'ACCEPTED' as const, bookingCreated: true, alreadyAccepted: false }));
 const requestChanges = mock(async () => ({ recorded: true as const }));
 const requestEvent = mock(async () => ({ recorded: true as const }));
-mock.module('@/services/proposal.service', () => ({ proposalService: { accept, requestChanges, requestEvent } }));
+const submitPayment = mock(async (token: string, raw: unknown, proof: unknown) => (void token, void raw, void proof, { submitted: true as const, payments: { received: 0 } }));
+mock.module('@/services/proposal.service', () => ({ proposalService: { accept, requestChanges, requestEvent, submitPayment } }));
 
 const { POST: acceptRoute } = await import('./accept/route');
 const { POST: changesRoute } = await import('./request-changes/route');
 const { POST: addEventRoute } = await import('./add-event/route');
+const { POST: paymentsRoute } = await import('./payments/route');
 
 const TOKEN = 'A'.repeat(43);
 const ctx = { params: Promise.resolve({ token: TOKEN }) };
@@ -119,6 +121,52 @@ describe('POST /api/proposal/[token]/request-changes', () => {
   test('shares the same per-IP limit as accept', async () => {
     for (let i = 0; i < 10; i++) await changesRoute(post({ note: 'x' }, '7.7.7.7'), ctx);
     expect((await changesRoute(post({ note: 'x' }, '7.7.7.7'), ctx)).status).toBe(429);
+  });
+});
+
+describe('POST /api/proposal/[token]/payments (Roadmap 1.3)', () => {
+  const form = (fields: Record<string, string | Blob>, fixedIp?: string) => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+    return new NextRequest(`https://www.shaadishopping.com/api/proposal/${TOKEN}/payments`, { method: 'POST', headers: { 'x-forwarded-for': fixedIp ?? `10.1.0.${++ip}` }, body: fd });
+  };
+
+  test('passes the claim and the screenshot to the service; answers with the fresh payments view', async () => {
+    const res = await paymentsRoute(form({ amount: '50000', utr: '412345678901', paidOn: '2026-10-02', proof: new File([new Uint8Array([1, 2, 3])], 'p.jpg', { type: 'image/jpeg' }) }), ctx);
+    expect(res.status).toBe(201);
+    expect((await res.json()).data).toEqual({ payments: { received: 0 } });
+    const [token, raw, proof] = submitPayment.mock.calls.at(-1) as unknown as [string, Record<string, unknown>, { type: string; size: number; bytes: Buffer }];
+    expect(token).toBe(TOKEN);
+    expect(raw).toEqual({ amount: '50000', utr: '412345678901', paidOn: '2026-10-02', note: undefined });
+    expect(proof).toMatchObject({ type: 'image/jpeg', size: 3 });
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
+  test('no screenshot is fine', async () => {
+    await paymentsRoute(form({ amount: '1000', utr: '412345678901' }), ctx);
+    expect((submitPayment.mock.calls.at(-1) as unknown as unknown[])[2]).toBeNull();
+  });
+
+  test('service refusals keep their message; invalid links get the generic 404', async () => {
+    submitPayment.mockImplementationOnce(async () => { throw new ValidationError('Enter the UTR'); });
+    expect((await paymentsRoute(form({ amount: '1', utr: '' }), ctx)).status).toBe(400);
+    submitPayment.mockImplementationOnce(async () => { throw new ConflictError('Please accept the quotation before paying'); });
+    expect((await paymentsRoute(form({ amount: '1', utr: 'x' }), ctx)).status).toBe(409);
+    submitPayment.mockImplementationOnce(async () => { throw new NotFoundError('Proposal', 'link'); });
+    const res = await paymentsRoute(form({ amount: '1', utr: 'x' }), ctx);
+    expect(res.status).toBe(404);
+    expect((await res.json()).error).toBe('This link is no longer valid');
+  });
+
+  test('an oversized body is refused before it is read', async () => {
+    const req = form({ amount: '1', utr: 'x' });
+    req.headers.set('content-length', String(10 * 1024 * 1024));
+    expect((await paymentsRoute(req, ctx)).status).toBe(413);
+  });
+
+  test('shares the per-IP limit with the other proposal actions', async () => {
+    for (let i = 0; i < 10; i++) await paymentsRoute(form({ amount: '1', utr: 'x' }, '10.9.9.9'), ctx);
+    expect((await paymentsRoute(form({ amount: '1', utr: 'x' }, '10.9.9.9'), ctx)).status).toBe(429);
   });
 });
 

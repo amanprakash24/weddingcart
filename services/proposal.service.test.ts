@@ -69,6 +69,9 @@ const offeringRows: Record<string, { id: string; function: string; name: string;
 };
 const offerings = mock(async (businessId: string) => offeringRows[businessId] ?? []);
 const db = { ...tx, vendor: { findMany: vendorFindMany }, vendorBooking: { findMany: vendorBookingFindMany }, $transaction: mock(async (fn: (t: typeof tx) => unknown) => fn(tx)) };
+const paymentsView = { state: 'NOT_STARTED', received: 0, receipts: [], submissions: [], canSubmit: true };
+const paymentsForProposal = mock(async (id: string) => (void id, paymentsView));
+const paymentSubmit = mock(async () => ({ submitted: true as const }));
 const proposalService = createProposalService({
   db: db as never,
   findByTokenHash: findByCustomerTokenHash as never,
@@ -79,13 +82,14 @@ const proposalService = createProposalService({
   createBooking: createBooking as never,
   logActivity: activityCreate as never,
   applyEvent: applyCommercialEvent as never,
+  payments: { forProposal: paymentsForProposal as never, submit: paymentSubmit as never },
   brand: (async (id: string) => (id === 'venue-1' ? { name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false } : { name: 'Shaadi Shopping', phone: null, isPlatform: true })) as never,
   offerings: offerings as never,
 });
 
 beforeEach(() => {
   row = baseRow();
-  for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany, offerings]) m.mockClear();
+  for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany, paymentsForProposal, paymentSubmit, offerings]) m.mockClear();
   accept.mockImplementation(async () => { row.status = 'ACCEPTED'; return {}; });
   createBooking.mockImplementation(async () => ({ id: 'b1' }));
 });
@@ -256,6 +260,51 @@ describe('requestChanges', () => {
     row.validUntil = PAST;
     await expect(proposalService.requestChanges(TOKEN, 'x')).rejects.toBeInstanceOf(ConflictError);
     await expect(proposalService.requestChanges(newCustomerToken(), 'x')).rejects.toBeInstanceOf(ProposalNotFoundError);
+  });
+});
+
+describe('payments (Roadmap 1.3)', () => {
+  test('an open proposal carries no payments and never reads them', async () => {
+    const view = await proposalService.view(TOKEN);
+    expect(view?.payments).toBeNull();
+    expect(paymentsForProposal).not.toHaveBeenCalled();
+  });
+
+  test('an accepted proposal carries its payments section', async () => {
+    row.status = 'ACCEPTED';
+    row.acceptedAt = new Date();
+    const view = await proposalService.view(TOKEN);
+    expect(paymentsForProposal).toHaveBeenCalledWith('q1');
+    expect(view?.payments).toEqual(paymentsView as never);
+  });
+
+  test('a payments failure never hides the accepted proposal', async () => {
+    row.status = 'ACCEPTED';
+    paymentsForProposal.mockImplementationOnce(async () => { throw new Error('db down'); });
+    const view = await proposalService.view(TOKEN);
+    expect(view?.number).toBe('QTN-202610-0001');
+    expect(view?.payments).toBeNull();
+  });
+
+  test('a venue’s own quotation never shows Shaadi Shopping’s payment details, and takes no "I have paid" here', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    row.acceptedAt = new Date();
+    const view = await proposalService.view(TOKEN);
+    expect(view?.brand.isPlatform).toBe(false);
+    expect(view?.payments).toBeNull();
+    expect(paymentsForProposal).not.toHaveBeenCalled();
+    await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).rejects.toThrow('Please contact Swayamvar Hall about your payment');
+    expect(paymentSubmit).not.toHaveBeenCalled();
+  });
+
+  test('"I have paid" only on an accepted proposal; invalid links get the generic answer', async () => {
+    await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).rejects.toBeInstanceOf(ConflictError);
+    expect(paymentSubmit).not.toHaveBeenCalled();
+    await expect(proposalService.submitPayment(newCustomerToken(), { amount: 1000, utr: '123456789012' }, null)).rejects.toBeInstanceOf(ProposalNotFoundError);
+    row.status = 'ACCEPTED';
+    await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).resolves.toEqual({ submitted: true, payments: paymentsView as never });
+    expect((paymentSubmit.mock.calls.at(-1) as unknown as [{ id: string }])[0].id).toBe('q1');
   });
 });
 

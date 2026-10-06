@@ -1,6 +1,7 @@
 // How the couple's proposal page presents a CustomerProposal (docs/wedding-os/08-quotation.md §16). Pure and client-safe
 // (type-only import), so the page and the tests share one set of rules.
 import type { CustomerProposal } from '@/lib/quotation/proposal';
+import type { ProposalPayments } from '@/lib/payments/customerPayment';
 
 type Item = CustomerProposal['items'][number];
 
@@ -28,8 +29,9 @@ export function groupByFunction(items: Item[]): { title: string | null; items: I
 }
 
 // What happens next, in plain words — only facts the proposal carries (the advance amount), nothing promised beyond it.
-export function nextStep(p: Pick<CustomerProposal, 'state' | 'changesRequested' | 'booked' | 'advanceAmount'> & { brand?: CustomerProposal['brand'] }): string {
+export function nextStep(p: Pick<CustomerProposal, 'state' | 'changesRequested' | 'booked' | 'advanceAmount'> & { brand?: CustomerProposal['brand']; payments?: ProposalPayments | null }): string {
   const rupees = `₹${p.advanceAmount.toLocaleString('en-IN')}`;
+  if (p.state === 'ACCEPTED' && p.payments) return paymentsHeadline(p.payments);
   if (p.state === 'ACCEPTED') {
     if (p.booked) return `Your booking is confirmed. Your ${p.brand?.name ?? 'Shaadi Shopping'} team will be in touch about the next steps.`;
     return p.advanceAmount > 0
@@ -41,12 +43,33 @@ export function nextStep(p: Pick<CustomerProposal, 'state' | 'changesRequested' 
   return 'Take a look at your curated wedding below. When you are ready, review the detailed quotation and accept it there — or tell us what you would like to change.';
 }
 
-// Decision 10 / master doc §45: the proposal and the detailed quotation are separate experiences on the same link.
-export type ProposalTab = 'proposal' | 'quotation';
+// Decision 10 / master doc §45: the proposal and the detailed quotation are separate experiences on the same link. Roadmap 1.3
+// adds "Payments" once the couple has accepted.
+export type ProposalTab = 'proposal' | 'quotation' | 'payments';
 
-// "#quotation" opens the detailed quotation directly (staff can send that link); anything else is the proposal.
-export function tabFromHash(hash: string): ProposalTab {
-  return hash.replace(/^#/, '').toLowerCase() === 'quotation' ? 'quotation' : 'proposal';
+// "#quotation" / "#payments" open those views directly (staff can send that link); anything else is the proposal. Payments
+// falls back to the proposal when the proposal has no payments section (not accepted yet).
+export function tabFromHash(hash: string, hasPayments = false): ProposalTab {
+  const h = hash.replace(/^#/, '').toLowerCase();
+  if (h === 'quotation') return 'quotation';
+  if (h === 'payments' && hasPayments) return 'payments';
+  return 'proposal';
+}
+
+const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const day = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
+
+// Where the couple stands, in one sentence — only facts the payments section carries (Money v1: the confirmation amount, the hold).
+export function paymentsHeadline(m: ProposalPayments, now: Date = new Date()): string {
+  let text: string;
+  if (m.bookingConfirmed) text = m.outstanding > 0 ? `Your booking is confirmed. ${inr(m.received)} received — ${inr(m.outstanding)} balance to pay.` : 'Your booking is confirmed and fully paid. Thank you!';
+  else if (m.state === 'CONFIRMED') text = 'We have received the amount that confirms your booking — our team is confirming it now.';
+  else if (m.state === 'DATE_HELD' && m.dueDate && new Date(m.dueDate) < now) text = `Your date was held until ${day(m.dueDate)}. ${inr(m.remainingToConfirm)} more is needed to confirm your booking — please call us.`;
+  else if (m.state === 'DATE_HELD') text = `Your date is held${m.dueDate ? ` until ${day(m.dueDate)}` : ''}. Pay ${inr(m.remainingToConfirm)} more to confirm your booking.`;
+  else text = `Thank you for accepting. Pay ${inr(m.confirmationAmount)} (${m.confirmationPercent}% of the total) to confirm your booking.`;
+  if (m.inReview > 0) text += ` ${inr(m.inReview)} you sent is being checked by our team.`;
+  else if (!m.upi && m.outstanding > 0 && !m.bookingConfirmed) text += ' Our team will contact you about how to pay.';
+  return text;
 }
 
 // The proposal view carries key commercial information only — never the accounting breakdown.

@@ -17,6 +17,7 @@ import {
   type StatusTone,
 } from '@/lib/quotation/proposalView';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
+import PaymentsPanel from '@/components/proposal/PaymentsPanel';
 
 // The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–17). One link, two separate experiences
 // (Decision 10): the visual, curated PROPOSAL, and the commercially detailed QUOTATION where the couple accepts.
@@ -312,7 +313,8 @@ export default function ProposalClient({
       subscribeHash,
       () => window.location.hash,
       () => ''
-    )
+    ),
+    !!p.payments
   );
 
   function open(next: ProposalTab) {
@@ -320,7 +322,7 @@ export default function ProposalClient({
     window.history.replaceState(
       null,
       '',
-      next === 'quotation' ? '#quotation' : window.location.pathname
+      next === 'proposal' ? window.location.pathname : `#${next}`
     );
     window.dispatchEvent(new HashChangeEvent('hashchange'));
     document.getElementById('views')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -349,12 +351,18 @@ export default function ProposalClient({
   async function accept() {
     if (!agree || busy) return;
     setBusy('accept');
-    if (await post('accept', { agreeToTerms: true }))
+    if (await post('accept', { agreeToTerms: true })) {
       setP((cur) => ({
         ...cur,
         state: 'ACCEPTED',
         acceptedAt: cur.acceptedAt ?? new Date().toISOString(),
       }));
+      // Roadmap 1.3: reload onto the Payments view, which the server adds only for an accepted proposal. Opening a valid link
+      // writes nothing, so the reload is free.
+      window.location.hash = 'payments';
+      window.location.reload();
+      return;
+    }
     setBusy(null);
   }
 
@@ -579,7 +587,8 @@ export default function ProposalClient({
             [
               ['proposal', 'Your proposal'],
               ['quotation', 'Detailed quotation'],
-            ] as const
+              ...(p.payments ? [['payments', 'Payments']] : []),
+            ] as [ProposalTab, string][]
           ).map(([key, label]) => (
             <button
               key={key}
@@ -666,11 +675,22 @@ export default function ProposalClient({
               >
                 {p.state === 'OPEN' ? 'Review quotation & accept' : 'View detailed quotation'}
               </button>
+              {p.payments && (
+                <button
+                  type="button"
+                  onClick={() => open('payments')}
+                  className="mt-3 min-h-[48px] w-full rounded-full border border-[#E8C98A]/60 px-6 text-sm font-semibold text-[#F3D9A4]"
+                >
+                  {p.payments.outstanding > 0 && !p.payments.bookingConfirmed ? 'Pay & confirm your booking' : 'Payments & receipts'}
+                </button>
+              )}
             </section>
 
             {addEventBlock}
             {requestChangesBlock}
           </div>
+        ) : tab === 'payments' && p.payments ? (
+          <PaymentsPanel token={token} number={p.number} coupleName={p.couple.name} weddingDate={p.wedding.date} initial={p.payments} />
         ) : (
           <div role="tabpanel" aria-label="Detailed quotation" className="space-y-6">
             {/* Printed header — the on-screen hero does not print. */}

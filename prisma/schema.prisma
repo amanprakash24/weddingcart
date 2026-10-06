@@ -132,6 +132,7 @@ model User {
   weddingsAsCustomer        Wedding[]           @relation("WeddingCustomer")
   weddingsAsCoordinator     Wedding[]           @relation("WeddingCoordinator")
   paymentsRecorded          Payment[]           @relation("PaymentRecordedBy")
+  paymentSubmissionsReviewed PaymentSubmission[] @relation("PaymentSubmissionReviewedBy")
   leadsAssigned             Lead[]              @relation("LeadAssignedTo")
   leadsAssignedByMe         Lead[]              @relation("LeadAssignedBy")
   enquiriesAssigned         Enquiry[]           @relation("EnquiryAssignedTo")
@@ -1147,6 +1148,7 @@ model Quotation {
   @@index([consultationId])
   @@index([status, validUntil])
   vendorEnquiries VendorEnquiry[]
+  paymentSubmissions PaymentSubmission[] // "I have paid" claims from the proposal link (§18)
 
   // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
   // removes the default and every query is scoped by the logged-in business.
@@ -1667,6 +1669,8 @@ enum ActivityType {
   PROPOSAL_VIEWED // the couple opened the proposal link for the first time
   VENDOR_ENQUIRY_SENT // a vendor linked to this customer was asked for availability (04-vendor-os.md §9)
   VENDOR_ENQUIRY_ANSWERED // the vendor answered (in Vendor OS, or recorded by staff)
+  PAYMENT_SUBMITTED // the couple said they paid (UPI) on the proposal link — staff verify it (08-quotation.md §18)
+  PAYMENT_SUBMISSION_REJECTED // staff could not match a payment the couple submitted
 }
 
 model ActivityLog {
@@ -1814,6 +1818,43 @@ model Payment {
 
   @@index([businessId])
   @@map("payments")
+}
+
+enum PaymentSubmissionStatus {
+  PENDING // the couple says they paid; nothing is counted yet
+  VERIFIED // staff matched it — a Payment was recorded through the normal Money v1 path (receiptId below)
+  REJECTED // staff could not match it (rejectReason is shown to the couple)
+}
+
+// Roadmap 1.3 (08-quotation.md §18) — "I have paid" from the couple's proposal link. A CLAIM, never money: received / Date Held /
+// Confirmed still come only from Payment rows. Verifying records the Payment through recordPaymentForQuotation (UTR as its reference,
+// "sub-<id>" as its idempotency key), so the 25% rule, the hold and auto-confirmation are unchanged.
+model PaymentSubmission {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  amount      Int
+  method      String    @default("UPI")
+  utr         String // the bank / UPI transaction reference, as the couple gave it (spaces removed)
+  paidOn      DateTime? // when the couple says the money moved
+  note        String?
+
+  // Private Cloudinary asset (type "private") — never a public URL; staff get a short-lived signed link.
+  proofPublicId String?
+  proofFormat   String?
+
+  status       PaymentSubmissionStatus @default(PENDING)
+  rejectReason String?
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?                   @relation("PaymentSubmissionReviewedBy", fields: [reviewedById], references: [id])
+  receiptId    String? // the receipt of the Payment recorded on verification
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@index([quotationId, status])
+  @@index([status, createdAt])
+  @@map("payment_submissions")
 }
 
 enum PaymentLinkStatus {

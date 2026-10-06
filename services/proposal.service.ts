@@ -20,6 +20,8 @@ import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { bookingSourceFacts, expireOverdue, quotationService } from '@/services/quotation.service';
 import { applyCommercialEvent } from '@/services/leadStage.service';
 import type { SourceType } from '@/services/leadInbox.service';
+import { paymentSubmissionService, type ProofFile } from '@/services/paymentSubmission.service';
+import type { ProposalPayments } from '@/lib/payments/customerPayment';
 import { proposalBrandFor } from '@/lib/ownership/business';
 import { FUNCTION_TYPE_LABELS, type Offering } from '@/lib/venue/offering';
 
@@ -55,6 +57,7 @@ export interface ProposalDeps {
   createBooking: typeof quotationService.createBooking;
   logActivity: typeof activityLogRepository.create;
   applyEvent: typeof applyCommercialEvent;
+  payments: Pick<typeof paymentSubmissionService, 'forProposal' | 'submit'>;
   brand: typeof proposalBrandFor;
   // The owning venue's "What we offer" list. BusinessOffering is not an owned table, so the business is always named here.
   offerings: (businessId: string) => Promise<Offering[]>;
@@ -70,6 +73,7 @@ const defaultDeps = (): ProposalDeps => ({
   createBooking: (...a) => quotationService.createBooking(...a),
   logActivity: activityLogRepository.create,
   applyEvent: applyCommercialEvent,
+  payments: paymentSubmissionService,
   brand: proposalBrandFor,
   offerings: (businessId) =>
     prisma.businessOffering.findMany({
@@ -135,6 +139,16 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     view.brand = await deps.brand(q.businessId);
     // "Add an event": a venue's own open proposal shows what that venue offers. Shaadi Shopping has no such list.
     if (!view.brand.isPlatform && view.state === 'OPEN') view.addable = toAddable(await deps.offerings(q.businessId));
+    // Roadmap 1.3: totals, receipts and "I have paid" — only once accepted. Read-only; a failure here never hides the proposal.
+    // Shaadi Shopping's own quotations only: the UPI shown is Shaadi Shopping's and its staff verify each claim. A venue's own
+    // customer pays the VENUE, so its link must never show this — the venue's own payee and its own verification come separately.
+    if (q.status === 'ACCEPTED' && view.brand.isPlatform) {
+      try {
+        view.payments = await deps.payments.forProposal(q.id);
+      } catch (err) {
+        console.error(`proposal payments for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
+      }
+    }
     return view;
   }
 
@@ -252,6 +266,20 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
       `The couple asked to add ${FUNCTION_TYPE_LABELS[wanted.function]} on proposal ${q.quotationNumber} (revision ${q.revision})`
     );
     return { recorded: true };
+  },
+
+  // "I have paid" (Roadmap 1.3, §20): only on an accepted proposal. Records a claim for staff to verify — never a payment.
+  async submitPayment(token: unknown, raw: { amount: unknown; utr: unknown; paidOn?: unknown; note?: unknown }, proof: ProofFile | null): Promise<{ submitted: true; payments: ProposalPayments }> {
+    const q = await resolve(token);
+    if (!q) throw new ProposalNotFoundError();
+    const state = proposalState(q, new Date());
+    if (state === 'INVALID') throw new ProposalNotFoundError();
+    if (state !== 'ACCEPTED') throw new ConflictError('Please accept the quotation before paying');
+    // A venue's own customer pays the venue, not Shaadi Shopping (see customerView): nothing is recorded here for them.
+    const brand = await deps.brand(q.businessId);
+    if (!brand.isPlatform) throw new ConflictError(`Please contact ${brand.name} about your payment`);
+    await deps.payments.submit(q, raw, proof);
+    return { submitted: true, payments: await deps.payments.forProposal(q.id) };
   },
   };
 }

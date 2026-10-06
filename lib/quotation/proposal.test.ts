@@ -233,7 +233,7 @@ describe('toCustomerProposal — allow-list only', () => {
       expect(json).not.toContain(secret);
     }
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW)).sort()).toEqual(
-      ['acceptedAt', 'addable', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'brand', 'inclusions', 'items', 'number', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
+      ['acceptedAt', 'addable', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'brand', 'inclusions', 'items', 'number', 'payments', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
     );
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'lineTotal', 'quantity', 'service', 'unitPrice', 'vendor']);
   });

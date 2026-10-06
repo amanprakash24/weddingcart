@@ -12,7 +12,7 @@ real application usage, not assumed. Roadmap order **approved 30 Sep 2026**. Dai
 | Salesperson → Vendor/Venue | 🟡 staff pick vendors; **no vendor enquiry or response** (§43) |
 | Proposal → Quotation → Customer approval | ✅ built (08-quotation.md §15–16) |
 | Booking → Wedding ID → Wedding Workspace | ✅ built |
-| Payment | 🟡 staff record payments (25 % confirmation rule); no customer-side UPI/QR |
+| Payment | 🟡 staff record payments (25 % confirmation rule); couples pay by UPI/QR on the proposal link and staff verify (08-quotation.md §18, 3 Oct 2026) |
 | Event → Completion → Review | 🔴 event-day mode is a placeholder; no completion/review flow (`Review` model unused) |
 
 Not yet run end-to-end with a real customer (worklog: Step 8B-A).
@@ -44,7 +44,8 @@ Decision 18 (work log) started 30 Sep 2026.
    available / With conditions / Another date; never blocks sales; staff alerted on "not available".
 2. **Built 30 Sep 2026 — see 08-quotation.md §17.** Proposal vs. detailed quotation as separate experiences (Decision 10):
    one link, a visual proposal view (photos, key prices) and a detailed quotation view (line items, taxes, terms, Accept, print).
-3. Customer payment: UPI/QR + payment proof; receipts.
+3. **Built 3 Oct 2026 — see 08-quotation.md §18.** Customer payment: UPI/QR + payment proof (UTR, optional screenshot) verified by
+   staff through Money v1; receipts on the proposal link.
 4. Completion & review: wedding completed → review request tied to the booking → reviews on vendor profiles.
 
 **Growth track (added 30 Sep 2026, before 1.2 at the founder's request)** — Growth Partner Program V1: referral partners

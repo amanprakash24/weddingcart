@@ -5,6 +5,7 @@ import type { QuotationStatus } from '@/generated/prisma/enums';
 import { ValidationError } from '@/lib/errors';
 import type { BookingSource } from '@/lib/quotation/booking';
 import { serviceLabel } from '@/lib/serviceLabels';
+import type { ProposalPayments } from '@/lib/payments/customerPayment';
 import { FUNCTION_TYPE_LABELS, groupOfferings, isFunctionType, offeringPriceWords, type FunctionType, type Offering, type OfferingInput } from '@/lib/venue/offering';
 
 // ---- the secret link ----
@@ -184,6 +185,8 @@ export interface CustomerProposal {
   inclusions: string | null;
   exclusions: string | null;
   terms: string | null;
+  // Roadmap 1.3 (§20): only once the couple has accepted — totals, receipts, their own "I have paid" claims, and the UPI payee.
+  payments: ProposalPayments | null;
   // Who the couple sees (D8): Shaadi Shopping, or the venue whose own quotation this is (lib/ownership/business.ts).
   brand: { name: string; phone: string | null; isPlatform: boolean };
   // "Add an event": what the venue offers, function by function — only on a venue's own OPEN proposal, otherwise empty.
@@ -298,6 +301,7 @@ export function toCustomerProposal(
     inclusions: q.inclusions,
     exclusions: q.exclusions,
     terms: q.terms,
+    payments: null, // added by proposal.service for an accepted proposal
     brand: { name: 'Shaadi Shopping', phone: null, isPlatform: true }, // proposal.service sets the owning business's
     addable: [], // proposal.service fills it for a venue's own open proposal
   };
