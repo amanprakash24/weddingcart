@@ -58,3 +58,10 @@ describe('payments (Roadmap 1.3)', () => {
     expect(panel).toContain('Being checked');
   });
 });
+
+describe('reviews (Roadmap 1.4)', () => {
+  test('the Reviews tab exists only when the server sent a reviews section (wedding completed)', () => {
+    expect(src).toContain("...(p.reviews ? [['reviews', 'Reviews']] : [])");
+    expect(src).toContain("tab === 'reviews' && p.reviews");
+  });
+});

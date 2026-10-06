@@ -22,6 +22,8 @@ import { applyCommercialEvent } from '@/services/leadStage.service';
 import type { SourceType } from '@/services/leadInbox.service';
 import { paymentSubmissionService, type ProofFile } from '@/services/paymentSubmission.service';
 import type { ProposalPayments } from '@/lib/payments/customerPayment';
+import { reviewService } from '@/services/review.service';
+import type { ProposalReviews } from '@/lib/reviews/reviewView';
 import { proposalBrandFor } from '@/lib/ownership/business';
 import { FUNCTION_TYPE_LABELS, type Offering } from '@/lib/venue/offering';
 
@@ -58,6 +60,7 @@ export interface ProposalDeps {
   logActivity: typeof activityLogRepository.create;
   applyEvent: typeof applyCommercialEvent;
   payments: Pick<typeof paymentSubmissionService, 'forProposal' | 'submit'>;
+  reviews: Pick<typeof reviewService, 'forProposal' | 'submit'>;
   brand: typeof proposalBrandFor;
   // The owning venue's "What we offer" list. BusinessOffering is not an owned table, so the business is always named here.
   offerings: (businessId: string) => Promise<Offering[]>;
@@ -74,6 +77,7 @@ const defaultDeps = (): ProposalDeps => ({
   logActivity: activityLogRepository.create,
   applyEvent: applyCommercialEvent,
   payments: paymentSubmissionService,
+  reviews: reviewService,
   brand: proposalBrandFor,
   offerings: (businessId) =>
     prisma.businessOffering.findMany({
@@ -147,6 +151,12 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
         view.payments = await deps.payments.forProposal(q.id);
       } catch (err) {
         console.error(`proposal payments for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
+      }
+      // Roadmap 1.4: once the wedding is completed, the vendors they booked, to review. Same rule: never hides the proposal.
+      try {
+        view.reviews = await deps.reviews.forProposal(q.booking?.id, view.couple.name);
+      } catch (err) {
+        console.error(`proposal reviews for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
       }
     }
     return view;
@@ -280,6 +290,19 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     if (!brand.isPlatform) throw new ConflictError(`Please contact ${brand.name} about your payment`);
     await deps.payments.submit(q, raw, proof);
     return { submitted: true, payments: await deps.payments.forProposal(q.id) };
+  },
+
+  // A review of one vendor the couple booked (Roadmap 1.4, §21) — only once their wedding is completed; staff publish it.
+  async submitReview(token: unknown, vendorBookingId: unknown, raw: { rating: unknown; comment?: unknown; authorName?: unknown }): Promise<{ submitted: true; reviews: ProposalReviews | null }> {
+    const q = await resolve(token);
+    if (!q) throw new ProposalNotFoundError();
+    const state = proposalState(q, new Date());
+    if (state === 'INVALID') throw new ProposalNotFoundError();
+    if (state !== 'ACCEPTED') throw new ConflictError('Reviews open once your wedding is completed');
+    // Shaadi Shopping's own quotations only (see customerView): its staff publish each review; a venue's own link has no reviews.
+    if (!(await deps.brand(q.businessId)).isPlatform) throw new ConflictError('Reviews are not available on this proposal');
+    await deps.reviews.submit(q.booking?.id, vendorBookingId, raw);
+    return { submitted: true, reviews: await deps.reviews.forProposal(q.booking?.id, typeof raw.authorName === 'string' ? raw.authorName : null) };
   },
   };
 }

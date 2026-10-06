@@ -133,6 +133,7 @@ model User {
   weddingsAsCoordinator     Wedding[]           @relation("WeddingCoordinator")
   paymentsRecorded          Payment[]           @relation("PaymentRecordedBy")
   paymentSubmissionsReviewed PaymentSubmission[] @relation("PaymentSubmissionReviewedBy")
+  reviewsModerated           Review[]            @relation("ReviewModeratedBy")
   leadsAssigned             Lead[]              @relation("LeadAssignedTo")
   leadsAssignedByMe         Lead[]              @relation("LeadAssignedBy")
   enquiriesAssigned         Enquiry[]           @relation("EnquiryAssignedTo")
@@ -1492,6 +1493,7 @@ model VendorBooking {
   activities ActivityLog[]
   documents  Document[]
   payouts    Payout[]
+  review     Review? // the couple's review of this booking (Roadmap 1.4)
 
   @@map("vendor_bookings")
 }
@@ -1677,6 +1679,7 @@ enum ActivityType {
   VENDOR_ENQUIRY_ANSWERED // the vendor answered (in Vendor OS, or recorded by staff)
   PAYMENT_SUBMITTED // the couple said they paid (UPI) on the proposal link — staff verify it (08-quotation.md §18)
   PAYMENT_SUBMISSION_REJECTED // staff could not match a payment the couple submitted
+  REVIEW_SUBMITTED // the couple reviewed a vendor from the proposal link (Roadmap 1.4) — staff publish or hide it
 }
 
 model ActivityLog {
@@ -2050,17 +2053,35 @@ model VendorAvailability {
   @@map("vendor_availability")
 }
 
-model Review {
-  id         String   @id @default(uuid())
-  vendorId   String
-  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  weddingId  String?
-  wedding    Wedding? @relation(fields: [weddingId], references: [id])
-  authorName String
-  rating     Int // 1-5
-  comment    String?
-  createdAt  DateTime @default(now())
+enum ReviewStatus {
+  PENDING // sent by the couple; not public until staff publish it
+  PUBLISHED // shown on the vendor's public page
+  HIDDEN // staff decided not to show it (kept, never deleted)
+}
 
+// Roadmap 1.4 (08-quotation.md §19) — a couple's review of a vendor they actually booked: one per CONFIRMED/COMPLETED vendor
+// booking on a COMPLETED wedding, sent from the proposal link, public only after staff publish it. Kept apart from
+// Vendor.rating / reviewCount (hand-entered "online rating"), which are never blended with these.
+model Review {
+  id              String         @id @default(uuid())
+  vendorId        String
+  vendor          Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  weddingId       String?
+  wedding         Wedding?       @relation(fields: [weddingId], references: [id])
+  vendorBookingId String?        @unique // the booking it is tied to — at most one review per booking
+  vendorBooking   VendorBooking? @relation(fields: [vendorBookingId], references: [id], onDelete: SetNull)
+  authorName      String // the name the couple chose to show
+  rating          Int // 1-5
+  comment         String?
+  status          ReviewStatus   @default(PENDING)
+  moderatedAt     DateTime?
+  moderatedById   String?
+  moderatedBy     User?          @relation("ReviewModeratedBy", fields: [moderatedById], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @default(now()) @updatedAt
+
+  @@index([vendorId, status])
+  @@index([weddingId])
   @@map("reviews")
 }
 

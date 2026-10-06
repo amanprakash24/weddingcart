@@ -7,6 +7,7 @@ import VendorsToSortOut, { type AssignInput } from '@/components/wedding/plan/Ve
 import type { StaffMember } from '@/components/wedding/plan/CoordinatorPicker';
 import ControlRoomHeader from '@/components/wedding/control-room/ControlRoomHeader';
 import Overview from '@/components/wedding/control-room/Overview';
+import WeddingReviews from '@/components/wedding/workspace/WeddingReviews';
 import ControlRoomTabs, { isTabKey, type TabKey } from '@/components/wedding/control-room/ControlRoomTabs';
 import { buildControlRoom } from '@/lib/wedding/controlRoom';
 import type { ActionTarget } from '@/lib/wedding/stage';
@@ -232,6 +233,8 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
       <ControlRoomTabs active={tab} attention={attention} onChange={changeTab} />
 
       {tab === 'overview' && <Overview view={view} staff={staff} coordinatorId={workspace.wedding.coordinatorId ?? null} onAssignCoordinator={assignCoordinator} onOpen={(target) => changeTab(target === 'overview' ? 'overview' : (target as TabKey))} onTransition={transitionStatus} />}
+      {/* Roadmap 1.4: after the wedding — ask for reviews, then publish or hide them. */}
+      {tab === 'overview' && workspace.wedding.status === 'COMPLETED' && <div className="mt-4"><WeddingReviews weddingId={id} coupleName={workspace.wedding.customerName} /></div>}
 
       {tab === 'plan' && (
         <div className="space-y-4">

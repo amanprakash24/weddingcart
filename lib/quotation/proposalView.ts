@@ -45,14 +45,16 @@ export function nextStep(p: Pick<CustomerProposal, 'state' | 'changesRequested' 
 
 // Decision 10 / master doc §45: the proposal and the detailed quotation are separate experiences on the same link. Roadmap 1.3
 // adds "Payments" once the couple has accepted.
-export type ProposalTab = 'proposal' | 'quotation' | 'payments';
+export type ProposalTab = 'proposal' | 'quotation' | 'payments' | 'reviews';
 
 // "#quotation" / "#payments" open those views directly (staff can send that link); anything else is the proposal. Payments
 // falls back to the proposal when the proposal has no payments section (not accepted yet).
-export function tabFromHash(hash: string, hasPayments = false): ProposalTab {
+// Roadmap 1.4: "#reviews" likewise, only once the wedding is completed.
+export function tabFromHash(hash: string, hasPayments = false, hasReviews = false): ProposalTab {
   const h = hash.replace(/^#/, '').toLowerCase();
   if (h === 'quotation') return 'quotation';
   if (h === 'payments' && hasPayments) return 'payments';
+  if (h === 'reviews' && hasReviews) return 'reviews';
   return 'proposal';
 }
 

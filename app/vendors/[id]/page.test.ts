@@ -18,6 +18,9 @@ mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { fin
 mock.module('@/repositories/category.repository', () => ({ categoryRepository: { findById: mock(async () => ({ slug: 'venue' })) } }));
 mock.module('@/components/VendorDetailClient', () => ({ default: () => null }));
 mock.module('@/components/JsonLd', () => ({ JsonLd: () => null }));
+// Roadmap 1.4: the page reads published couple reviews through review.service. With this empty stub that read fails — and the page
+// must still render (it falls back to no reviews).
+mock.module('@/lib/prisma', () => ({ prisma: {} }));
 
 const page = await import('./page');
 const params = (id: string) => ({ params: Promise.resolve({ id }) });
@@ -45,5 +48,15 @@ describe('/vendors/[id] — only PUBLISHED vendors are public', () => {
     expect(meta.robots).toEqual({ index: false, follow: false });
     const err = await page.default(params('does-not-exist')).then(() => null, (e: unknown) => e as { digest?: string });
     expect(err?.digest).toContain('404');
+  });
+});
+
+describe('/vendors/[id] — couple reviews (Roadmap 1.4)', () => {
+  test('a published vendor still renders when the reviews cannot be read', async () => {
+    rows['published-venue'] = { status: 'PUBLISHED' };
+    const el = (await page.default(params('published-venue'))) as { props: { children: unknown[] } };
+    expect(el).toBeTruthy();
+    const json = JSON.stringify(el, (_k, v) => (typeof v === 'function' ? undefined : v));
+    expect(json).toContain('"verified":null');
   });
 });

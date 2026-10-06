@@ -6,6 +6,7 @@ import { ValidationError } from '@/lib/errors';
 import type { BookingSource } from '@/lib/quotation/booking';
 import { serviceLabel } from '@/lib/serviceLabels';
 import type { ProposalPayments } from '@/lib/payments/customerPayment';
+import type { ProposalReviews } from '@/lib/reviews/reviewView';
 import { FUNCTION_TYPE_LABELS, groupOfferings, isFunctionType, offeringPriceWords, type FunctionType, type Offering, type OfferingInput } from '@/lib/venue/offering';
 
 // ---- the secret link ----
@@ -50,6 +51,10 @@ export function proposalState(q: { status: QuotationStatus; validUntil: Date | n
   }
   return 'INVALID';
 }
+
+// Staff may issue a (new) link while the quotation is open, and after acceptance — the link then carries payments (§20) and
+// reviews (§21). Never for a draft, rejected, superseded or expired one.
+export const canIssueCustomerLink = (state: ProposalState) => state === 'OPEN' || state === 'ACCEPTED';
 
 export const CHANGE_NOTE_MAX = 1000;
 
@@ -187,6 +192,8 @@ export interface CustomerProposal {
   terms: string | null;
   // Roadmap 1.3 (§20): only once the couple has accepted — totals, receipts, their own "I have paid" claims, and the UPI payee.
   payments: ProposalPayments | null;
+  // Roadmap 1.4 (§21): only once the wedding made from this proposal is COMPLETED — the vendors they booked, to review.
+  reviews: ProposalReviews | null;
   // Who the couple sees (D8): Shaadi Shopping, or the venue whose own quotation this is (lib/ownership/business.ts).
   brand: { name: string; phone: string | null; isPlatform: boolean };
   // "Add an event": what the venue offers, function by function — only on a venue's own OPEN proposal, otherwise empty.
@@ -302,6 +309,7 @@ export function toCustomerProposal(
     exclusions: q.exclusions,
     terms: q.terms,
     payments: null, // added by proposal.service for an accepted proposal
+    reviews: null, // added by proposal.service once the wedding is completed
     brand: { name: 'Shaadi Shopping', phone: null, isPlatform: true }, // proposal.service sets the owning business's
     addable: [], // proposal.service fills it for a venue's own open proposal
   };

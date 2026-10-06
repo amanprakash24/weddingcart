@@ -89,6 +89,8 @@ describe('payments view (Roadmap 1.3)', () => {
     expect(tabFromHash('#payments', false)).toBe('proposal');
     expect(tabFromHash('#payments')).toBe('proposal');
     expect(tabFromHash('#quotation', true)).toBe('quotation');
+    expect(tabFromHash('#reviews', true, true)).toBe('reviews');
+    expect(tabFromHash('#reviews', true, false)).toBe('proposal');
   });
 
   test('one honest sentence for each stage', () => {

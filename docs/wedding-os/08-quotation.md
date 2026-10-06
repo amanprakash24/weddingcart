@@ -659,3 +659,55 @@ verify goes through Money v1 with a fixed key and is idempotent; reject), `servi
 reminders, a list of all open claims across customers (they appear on each customer's timeline and Money card), and a Customer
 Portal view. Known gap from §16/§17: the proposal and detailed-quotation views still show the quotation's own *advance* as "Advance to
 confirm"; since Money v1 the amount that confirms is 25% of the total — the Payments view shows the real figure.
+
+## 21. Completion & review (Roadmap 1.4 — 3 Oct 2026)
+
+> **Brought up to date with record ownership on 6 Oct 2026.** Written as §19 before "Add an event" (§18) and the Shaadi Shopping
+> section (§19) existed. Added on merging: reviews are for **Shaadi Shopping's own quotations only** — its staff publish each one, so
+> a venue's own proposal link shows no Reviews view and refuses a review; the couple's route runs as the business that owns the
+> quotation and the staff routes as Shaadi Shopping.
+
+Master doc §71–72: reviews are linked to completed bookings; after completion, customer → review, for each service.
+
+**Decisions (approved 3 Oct 2026):** couples' reviews are **kept apart** from the hand-entered `Vendor.rating` / `reviewCount` and never
+blended; a review is public only **after staff publish it**; couples review **on their proposal link**; only **confirmed vendor bookings**
+can be reviewed, one review each.
+
+### 19.1 The couple
+
+Once the wedding made from their booking is **COMPLETED**, the proposal link gets a **Reviews** tab (`#reviews`) and a "Review your
+vendors" button: one card per vendor booking with status CONFIRMED or COMPLETED on that wedding — stars (1–5), an optional comment
+(under 1,000 characters, no links or phone numbers) and the name to show (their couple name by default). A review can be changed while
+it waits for staff; once published or hidden it is final. Their link keeps working after acceptance, and staff can now issue a new one
+for an **accepted** quotation if it was lost (the old one stops working, as before) — `canIssueCustomerLink`.
+
+### 19.2 Staff
+
+On a completed wedding's Overview, **Reviews**: every review with its stars, comment, author and status (Waiting for you / Published /
+Hidden), **Publish on vendor page** and **Hide** (a hidden review is kept, never deleted, and can be published later), and
+**Copy WhatsApp message asking for reviews** — the message points to the link the couple already has; nothing is sent from the app.
+Each review and each decision is on the wedding timeline (`REVIEW_SUBMITTED`, `STATUS_CHANGED`).
+
+### 19.3 The vendor's public page
+
+- New section **"Reviews from Shaadi Shopping couples"** (`#couple-reviews`): published reviews only, newest first (up to 20), with
+  their own average and count, each marked "booked through Shaadi Shopping". In the hero: "★ 5 · 1 couple review".
+- The hand-entered numbers are labelled **"Online rating"** (`ONLINE_RATING_LABEL`, one constant — change it to "Google rating" only if
+  that is their source) and shown **only when there is a count**. Before this, a vendor with no reviews showed the default "4.5 (0
+  reviews)".
+- If the reviews cannot be read, the page renders without them.
+
+### 19.4 Data
+
+Migration `20261003150000_review_moderation` (additive; `reviews` had 0 rows): `ReviewStatus` (PENDING / PUBLISHED / HIDDEN),
+`reviews.status / vendorBookingId (unique) / moderatedAt / moderatedById / updatedAt`, `ActivityType.REVIEW_SUBMITTED`.
+
+**Tests:** `services/review.service.test.ts` (rules; nothing until completed; only this couple's own bookings; once per booking, editable
+while pending; race; publish / hide; public = published only), `lib/reviews/vendorPage.test.ts` (online rating labelled and gated on a
+count; never blended), `services/proposal.service.test.ts`, `app/api/proposal/[token]/routes.test.ts`, `app/vendors/[id]/page.test.ts`,
+`lib/quotation/proposal.test.ts` (link rule), `lib/quotation/proposalView.test.ts`, `lib/quotation/proposalPage.test.ts`.
+
+**Not in 1.4:** an automatic review request on completion, vendor replies, reviews of Shaadi Shopping itself, photos in reviews,
+relabelling the rating on vendor cards / portfolio / dashboard (they still show the hand-entered number unlabelled), and the vendor
+page's JSON-LD `aggregateRating`, which still uses the hand-entered numbers — Google's review-snippet rules expect ratings collected on
+the site itself, so it should move to the couple reviews (decision pending).
