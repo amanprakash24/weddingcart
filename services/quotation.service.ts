@@ -56,6 +56,7 @@ export interface QuotationItemInput {
   vendorId?: string | null;
   unitPrice: number;
   quantity: number;
+  gstRateBp?: number | null; // GST on this line in hundredths of a percent; null / absent = none (lib/quotation/lineGst.ts)
 }
 
 export interface QuotationInput {
@@ -207,6 +208,7 @@ function itemRows(items: QuotationItemInput[]) {
     vendorId: item.vendorId || null,
     unitPrice: item.unitPrice,
     quantity: item.quantity,
+    gstRateBp: item.gstRateBp ?? null,
   }));
 }
 
@@ -627,6 +629,7 @@ export const quotationService = {
                 vendorId: item.vendorId,
                 unitPrice: item.unitPrice,
                 quantity: item.quantity,
+                gstRateBp: item.gstRateBp,
               })),
             },
           },

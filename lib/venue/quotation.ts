@@ -1,10 +1,11 @@
 // A venue's OWN quotation for one of its own enquiries (Phase C). Deliberately simpler than Shaadi Shopping's quotation screen:
-// plain lines (what, how many, price), a discount, a valid-until date and what is / is not included. No tax line (a tax amount
-// needs the venue's GST number on the quotation, the invoice and the couple's link — that comes together, later) and no other
-// vendors on the lines. The amount that confirms the booking is never typed: it is the venue's own rule (Settings) applied to the
+// plain lines (what, how many, price), a discount, a valid-until date and what is / is not included, and no other vendors on the
+// lines. Each line may carry its own GST rate, typed by the venue — never a default (lib/quotation/lineGst.ts); a quotation that
+// charges GST needs the venue's GST number, which the service checks. The amount that confirms the booking is never typed: it is the venue's own rule (Settings) applied to the
 // total. A line may say which wedding function it is for (Haldi, Reception …) — the couple's page groups by it when every line does.
 // Pure and client-safe: the form and the server share these rules.
 import { isFunctionType, type FunctionType } from './offering';
+import { gstTotals, parseGstPercent } from '@/lib/quotation/lineGst';
 
 export const VENUE_QUOTE_LIMITS = { maxLines: 30, descriptionMax: 200, textMax: 4000, maxUnitPrice: 100_000_000, maxQuantity: 100_000 } as const;
 
@@ -13,6 +14,7 @@ export interface VenueQuoteLine {
   quantity: number;
   unitPrice: number;
   function: FunctionType | null; // the wedding function this line is for (Haldi, Reception …) — optional
+  gstRateBp: number | null; // GST on this line in hundredths of a percent (18% = 1800); null = none
 }
 
 export interface VenueQuoteInput {
@@ -56,7 +58,11 @@ export function validateVenueQuote(input: Record<string, unknown>, today: string
       const fn = str(raw?.function);
       if (fn && !isFunctionType(fn)) errors[`items.${i}.function`] = 'Choose the function from the list';
 
-      items.push({ description, quantity: quantity ?? 1, unitPrice: unitPrice ?? 0, function: isFunctionType(fn) ? fn : null });
+      // The GST box: blank = no GST on this line. Whatever is typed must be a rate — it is never guessed or defaulted.
+      const gstRateBp = parseGstPercent(raw?.gstPercent);
+      if (gstRateBp === undefined) errors[`items.${i}.gstPercent`] = 'Enter the GST rate as a number, like 5, 12 or 18 — or leave it empty';
+
+      items.push({ description, quantity: quantity ?? 1, unitPrice: unitPrice ?? 0, function: isFunctionType(fn) ? fn : null, gstRateBp: gstRateBp ?? null });
     });
   }
 
@@ -65,7 +71,7 @@ export function validateVenueQuote(input: Record<string, unknown>, today: string
   const discount = discountRaw ? whole(discountRaw) : 0;
   if (discount === null) errors.discount = 'Enter the discount in whole rupees, or leave it empty';
   else if (!Object.keys(errors).length && discount > subtotal) errors.discount = 'The discount is more than the total of the lines';
-  if (!Object.keys(errors).length && subtotal - (discount ?? 0) <= 0) errors.items = 'The total must be more than ₹0';
+  if (!Object.keys(errors).length && gstTotals(items, discount ?? 0).total <= 0) errors.items = 'The total must be more than ₹0';
 
   const validUntil = str(input.validUntil);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(validUntil) || Number.isNaN(new Date(`${validUntil}T23:59:59+05:30`).getTime())) errors.validUntil = 'Pick the date this quotation is valid until';

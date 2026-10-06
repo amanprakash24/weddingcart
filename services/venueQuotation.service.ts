@@ -3,7 +3,8 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { requiredConfirmation, type CommercialRules } from '@/lib/commercial/rules';
 import { resolveSourceDate } from '@/lib/quotation/booking';
 import { currentBusiness, rulesOf } from '@/lib/ownership/business';
-import { lineTotal, quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
+import { quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
+import { gstTotals } from '@/lib/quotation/lineGst';
 import { validateVenuePayment, type VenuePaymentErrors } from '@/lib/venue/payment';
 import { FUNCTION_TYPE_LABELS, functionOfLabel, type FunctionType, type Offering } from '@/lib/venue/offering';
 import { quotationService, type QuotationView } from '@/services/quotation.service';
@@ -27,10 +28,14 @@ export interface VenueQuotationView {
   number: string;
   revision: number;
   stage: QuoteStage;
-  items: { description: string; quantity: number; unitPrice: number; lineTotal: number; function: FunctionType | null }[];
+  // lineTotal = how many × price each. taxable = that minus the line's share of the discount; gst = the GST on it (0 without a rate).
+  items: { description: string; quantity: number; unitPrice: number; lineTotal: number; function: FunctionType | null; gstRateBp: number | null; taxable: number; gst: number }[];
   subtotal: number;
   discount: number;
+  gstAmount: number; // the sum of the lines' GST — 0 when no line carries a rate
   total: number;
+  // The top of the document: who it is from. logoUrl / gstin come from the business profile (null = not added yet).
+  letterhead: { name: string; logoUrl: string | null; gstin: string | null };
   toConfirm: number; // what confirms the booking — the venue's rule on the total (frozen in the agreement once accepted)
   confirmationPercent: number;
   validUntil: string | null; // YYYY-MM-DD (IST)
@@ -119,26 +124,36 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
   async function venue() {
     const business = await deps.business();
     if (business.kind !== 'VENDOR') throw new NotFoundError('Business', business.id);
-    const listing = await deps.db.business.findUnique({ where: { id: business.id }, select: { vendorId: true, vendor: { select: { city: true } } } });
-    return { business, rules: rulesOf(business), vendorId: listing?.vendorId ?? null, city: listing?.vendor?.city?.trim() || null };
+    const listing = await deps.db.business.findUnique({ where: { id: business.id }, select: { vendorId: true, logoUrl: true, gstin: true, vendor: { select: { city: true } } } });
+    return {
+      business,
+      rules: rulesOf(business),
+      vendorId: listing?.vendorId ?? null,
+      city: listing?.vendor?.city?.trim() || null,
+      letterhead: { name: business.name, logoUrl: listing?.logoUrl ?? null, gstin: listing?.gstin ?? null },
+    };
   }
 
-  async function toView(q: QuotationView, rules: CommercialRules): Promise<VenueQuotationView | null> {
+  async function toView(q: QuotationView, rules: CommercialRules, letterhead: VenueQuotationView['letterhead']): Promise<VenueQuotationView | null> {
     const stage = quoteStage({ status: q.status, changesRequested: q.changesRequestedAt !== null });
     if (!stage) return null;
     // Once accepted and booked, the agreement holds the rule this deal was made with — never today's setting. (No agreement yet =
     // the booking is not made; the figures are then the quotation's own.)
     const money = stage === 'ACCEPTED' ? await deps.money(q.id, deps.now()) : null;
     const agreement = money?.exists ? money : null;
+    // The per-line figures are worked out again from the stored lines — the same arithmetic that produced the stored totals.
+    const gst = gstTotals(q.items, q.discount);
     return {
       id: q.id,
       number: q.quotationNumber,
       revision: q.revision,
       stage,
-      items: q.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal, function: functionOfLabel(i.functionLabel) })),
+      items: q.items.map((i, n) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal, function: functionOfLabel(i.functionLabel), gstRateBp: i.gstRateBp ?? null, taxable: gst.lines[n].taxable, gst: gst.lines[n].gst })),
       subtotal: q.subtotal,
       discount: q.discount,
+      gstAmount: q.gstAmount,
       total: q.total,
+      letterhead,
       toConfirm: agreement?.confirmationAmount ?? q.advanceAmount,
       confirmationPercent: agreement?.confirmationPercent ?? rules.confirmationPercent,
       validUntil: q.validUntil ? istToday(q.validUntil) : null,
@@ -176,7 +191,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       customer: { name: e.name, phone: e.phone, weddingDate: e.weddingDate || null },
       venueName: v.business.name,
       rules: { confirmationPercent: v.rules.confirmationPercent, holdWindowDays: v.rules.holdWindowDays },
-      quotation: q ? await toView(q, v.rules) : null,
+      quotation: q ? await toView(q, v.rules, v.letterhead) : null,
       packages: packages.map((p) => ({ name: p.name, price: p.price, perPlate: p.isPerPlate })),
       // Not an owned table: the business is named here, from the scope (services/venueOffering.service.ts).
       offerings: await deps.db.businessOffering.findMany({ where: { businessId: v.business.id }, select: { id: true, function: true, name: true, price: true, perPlate: true }, orderBy: [{ function: 'asc' }, { createdAt: 'asc' }] }),
@@ -202,11 +217,16 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       if (!checked.ok) return { errors: checked.errors };
       const v = await venue();
       const value = checked.value;
-      const total = value.items.reduce((sum, l) => sum + lineTotal(l), 0) - value.discount;
+      const money = gstTotals(value.items, value.discount);
+      // A document that charges GST must carry the seller's GST number (founder's rule, 5 Oct 2026) — asked for here, once.
+      if (money.hasGst && !v.letterhead.gstin) return { errors: { gst: 'Add your GST number in your business profile before charging GST on a quotation' } };
       const body = {
-        items: value.items.map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, functionLabel: l.function ? FUNCTION_TYPE_LABELS[l.function] : null })),
+        items: value.items.map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, functionLabel: l.function ? FUNCTION_TYPE_LABELS[l.function] : null, gstRateBp: l.gstRateBp })),
         discount: value.discount,
-        advanceAmount: requiredConfirmation(total, v.rules),
+        gstEnabled: money.gst > 0,
+        gstAmount: money.gst,
+        // What confirms the booking is the venue's rule on the WHOLE total, GST included.
+        advanceAmount: requiredConfirmation(money.total, v.rules),
         validUntil: endOfIstDay(value.validUntil),
         inclusions: value.inclusions,
         exclusions: value.exclusions,

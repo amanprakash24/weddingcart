@@ -9,7 +9,7 @@ describe('validateVenueQuote', () => {
   test('a simple quotation: lines, valid-until; everything else is optional', () => {
     expect(validateVenueQuote(good, TODAY)).toEqual({
       ok: true,
-      value: { items: [{ description: 'Hall hire', quantity: 1, unitPrice: 200000, function: null }], discount: 0, validUntil: '2026-10-12', inclusions: null, exclusions: null, terms: null },
+      value: { items: [{ description: 'Hall hire', quantity: 1, unitPrice: 200000, function: null, gstRateBp: null }], discount: 0, validUntil: '2026-10-12', inclusions: null, exclusions: null, terms: null },
     });
   });
 
@@ -50,7 +50,7 @@ describe('validateVenueQuote', () => {
   test('totals, tax and the amount to confirm are never taken from the request', () => {
     const r = validateVenueQuote({ ...good, total: 1, subtotal: 1, advanceAmount: 1, gstEnabled: true, gstAmount: 36000, items: [{ ...good.items[0], vendorId: 'someone-else', lineTotal: 1 }] }, TODAY);
     expect(r.ok && Object.keys(r.value).sort()).toEqual(['discount', 'exclusions', 'inclusions', 'items', 'terms', 'validUntil']);
-    expect(r.ok && Object.keys(r.value.items[0]).sort()).toEqual(['description', 'function', 'quantity', 'unitPrice']);
+    expect(r.ok && Object.keys(r.value.items[0]).sort()).toEqual(['description', 'function', 'gstRateBp', 'quantity', 'unitPrice']);
   });
 });
 
@@ -74,5 +74,36 @@ describe('quoteShareMessage', () => {
     expect(text).toContain('₹2,50,000');
     expect(text).toContain('https://example.test/proposal/abc');
     expect(text).not.toContain('Shaadi Shopping');
+  });
+});
+
+describe('GST on a line — typed by the venue, never a default', () => {
+  const line = (gstPercent: unknown) => ({ ...good, items: [{ description: 'Decoration', quantity: '1', unitPrice: '100000', gstPercent }] });
+  const rate = (gstPercent: unknown) => {
+    const r = validateVenueQuote(line(gstPercent), TODAY);
+    return r.ok ? r.value.items[0].gstRateBp : r.errors;
+  };
+
+  test('the box left empty means no GST on that line', () => {
+    expect(rate(undefined)).toBeNull();
+    expect(rate('')).toBeNull();
+    expect(rate('  ')).toBeNull();
+  });
+
+  test('whatever rate is typed is the rate — 5, 12, 18, 0.25 …', () => {
+    expect(rate('18')).toBe(1800);
+    expect(rate('5')).toBe(500);
+    expect(rate('12%')).toBe(1200);
+    expect(rate('0.25')).toBe(25);
+  });
+
+  test('something that is not a rate is explained on that line’s box', () => {
+    expect(rate('eighteen')).toEqual({ 'items.0.gstPercent': expect.stringContaining('GST rate') });
+    expect(rate('180')).toEqual({ 'items.0.gstPercent': expect.any(String) });
+  });
+
+  test('each line keeps its own rate', () => {
+    const r = validateVenueQuote({ ...good, items: [{ description: 'Decoration', quantity: '1', unitPrice: '100000', gstPercent: '18' }, { description: 'Veg plate', quantity: '200', unitPrice: '850', gstPercent: '5' }, { description: 'Hall', quantity: '1', unitPrice: '50000' }] }, TODAY);
+    expect(r.ok && r.value.items.map((i) => i.gstRateBp)).toEqual([1800, 500, null]);
   });
 });

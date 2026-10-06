@@ -1174,6 +1174,9 @@ model QuotationItem {
   vendor        Vendor?   @relation(fields: [vendorId], references: [id])
   unitPrice     Int
   quantity      Int       @default(1)
+  // GST on this line, typed by the vendor (6 Oct 2026; lib/quotation/lineGst.ts) — in hundredths of a percent: 18% = 1800.
+  // null = no GST on this line. There is no default rate anywhere. Quotation.gstAmount is the sum of the lines' GST.
+  gstRateBp     Int?
 
   @@index([quotationId])
   @@index([vendorId])
