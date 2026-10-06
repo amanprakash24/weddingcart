@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { LogOut, MoreHorizontal, User, X } from 'lucide-react';
 import { PHONE_BAR, PHONE_MORE, PRIMARY } from './vendorNav';
+import LoginCodeReminder from './LoginCodeReminder';
 
 // Operational shell for Vendor OS — the "Venue Owner" experience reuses this unchanged (a category-filtered
 // view within it, not a separate role/shell, per docs/wedding-os/11-vivah-os-ux-architecture.md §3). Mirrors
@@ -111,6 +112,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
         </button>
       </header>
 
+      <LoginCodeReminder />
       <div className="pb-16 md:pb-0">{children}</div>
 
       {/* Mobile bottom navigation */}

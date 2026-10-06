@@ -193,6 +193,11 @@ model VendorProfile {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   vendorId  String   @unique
   vendor    Vendor   @relation(fields: [vendorId], references: [id])
+  // The vendor's login code (6 Oct 2026): Shaadi Shopping issues a 6-digit code when it accepts the registration; the vendor signs in
+  // with the registered mobile number + this code and may change it. Only a bcrypt hash is kept — the code itself is shown once, to
+  // the admin who issues it. Null = no code yet (cannot sign in with a code). lib/auth/vendorCode.ts
+  loginCodeHash  String?
+  loginCodeSetAt DateTime?
   createdAt DateTime @default(now())
 
   @@map("vendor_profiles")

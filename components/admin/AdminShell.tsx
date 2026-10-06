@@ -16,6 +16,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   const [role, setRole] = useState<'admin' | 'super_admin' | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  // New vendor registrations waiting for review — the count beside "Vendor applications" (founder's choice, 6 Oct 2026: a count in
+  // the menu, no email or WhatsApp). Re-read on every screen change, so it drops as soon as one is approved or rejected.
+  const [newApplications, setNewApplications] = useState(0);
   // The phone sheet remembers which screen it was opened on, so it closes by itself when you navigate.
   const [sheetFor, setSheetFor] = useState<string | null>(null);
   const isLogin = pathname.startsWith('/admin/login');
@@ -27,6 +30,18 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       .then((data) => setRole(data.role ?? null))
       .catch(() => setRole(null));
   }, [isLogin]);
+
+  useEffect(() => {
+    if (isLogin) return;
+    let live = true;
+    fetch('/api/vendor-applications?status=new')
+      .then((res) => res.json())
+      .then((body) => live && setNewApplications(body.success && Array.isArray(body.data) ? body.data.length : 0))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [isLogin, pathname, tab]);
 
   const routeKey = `${pathname}?${tab ?? ''}`;
   const sheetOpen = sheetFor === routeKey;
@@ -69,6 +84,11 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       >
         <Icon className={opts.compact ? 'h-4 w-4 flex-shrink-0' : 'h-5 w-5 flex-shrink-0'} />
         <span>{item.label}</span>
+        {item.key === 'applications' && newApplications > 0 && (
+          <span aria-label={`${newApplications} new`} className="ml-auto rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold leading-none text-gray-900">
+            {newApplications}
+          </span>
+        )}
       </Link>
     );
   };

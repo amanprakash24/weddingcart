@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { NotFoundError, DuplicateError } from '@/lib/errors';
 import { slugify } from '@/lib/slug';
 import { Role } from '@/lib/auth/roles';
+import { hashLoginCode, newLoginCode } from '@/services/vendorLoginCode.service';
 import type { ApplicationStatus, Prisma, WeddingEventType } from '@/generated/prisma/client';
 
 type Tx = Prisma.TransactionClient;
@@ -91,7 +92,9 @@ async function approveVendorApplication(app: VendorApplicationWithCategory, tx: 
 // create the VendorProfile that ties that login to this Vendor. Runs inside
 // the same transaction as the Vendor creation and application update, so a
 // partial failure never leaves an orphaned Vendor or a stuck application.
-async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: Tx) {
+// It also issues the vendor's first login code (6 Oct 2026): the vendor signs in with this mobile number + the code. Only its hash
+// is stored; the code is returned so the admin who accepted the registration can pass it on — it is never readable again.
+async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: Tx): Promise<string> {
   const user = await tx.user.findUnique({
     where: { phone: ownerPhone },
     include: { vendorProfile: true },
@@ -112,9 +115,14 @@ async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: 
     update: {},
   });
 
+  const loginCode = newLoginCode();
+  const code = { loginCodeHash: await hashLoginCode(loginCode), loginCodeSetAt: new Date() };
   if (!user?.vendorProfile) {
-    await tx.vendorProfile.create({ data: { userId: resolvedUser.id, vendorId } });
+    await tx.vendorProfile.create({ data: { userId: resolvedUser.id, vendorId, ...code } });
+  } else {
+    await tx.vendorProfile.update({ where: { id: user.vendorProfile.id }, data: code });
   }
+  return loginCode;
 }
 
 // Copies the application's draft `capabilities` array onto real VendorCapability rows for the newly
@@ -171,7 +179,8 @@ export const vendorApplicationService = {
   // APPROVED only — mirrors the old Mongo guard (status transitioning + no
   // vendorId yet) exactly, so re-approving or re-saving never creates a
   // duplicate Vendor, User, or VendorProfile.
-  async updateStatus(id: string, status: ApplicationStatus) {
+  // On that first approval the answer also carries `issuedLoginCode` — the vendor's first login code, readable only here.
+  async updateStatus(id: string, status: ApplicationStatus): Promise<(VendorApplicationWithCategory & { issuedLoginCode?: string }) | null> {
     const existing = await vendorApplicationRepository.findById(id);
     if (!existing) return null;
 
@@ -186,9 +195,10 @@ export const vendorApplicationService = {
     // rolls everything back, so nothing is left orphaned or half-approved.
     return prisma.$transaction(async (tx) => {
       const vendor = await approveVendorApplication(existing, tx);
-      await provisionVendorAccount(existing.ownerPhone, vendor.id, tx);
+      const issuedLoginCode = await provisionVendorAccount(existing.ownerPhone, vendor.id, tx);
       await provisionVendorCapabilities(existing.capabilities, vendor.id, tx);
-      return vendorApplicationRepository.update(id, { status, vendor: { connect: { id: vendor.id } } }, tx);
+      const updated = await vendorApplicationRepository.update(id, { status, vendor: { connect: { id: vendor.id } } }, tx);
+      return { ...updated, issuedLoginCode };
     });
   },
 

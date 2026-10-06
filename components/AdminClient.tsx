@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import VendorLoginCode from '@/components/admin/VendorLoginCode';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, Users, AtSign, Globe, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle, Send } from 'lucide-react';
 
@@ -392,6 +393,8 @@ export default function AdminClient() {
   const [vendorApplications, setVendorApplications] = useState<AnyRecord[]>([]);
   const [leads, setLeads] = useState<AnyRecord[]>([]);
   const [appFilter, setAppFilter] = useState<'all' | 'new' | 'approved' | 'rejected'>('all');
+  // Login codes just issued by approving a registration, by application id — each is readable only until this page is left.
+  const [freshCodes, setFreshCodes] = useState<Record<string, string>>({});
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [consultationFilter, setConsultationFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
@@ -1304,6 +1307,8 @@ Create a separate standalone invoice anyway?`)) return;
                               <input type="email" value={vendorForm.ownerEmail} onChange={(e) => setVendorForm({ ...vendorForm, ownerEmail: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white" placeholder="ramesh@example.com" />
                             </div>
                           </div>
+                          {/* A vendor that has a login signs in with its mobile number + this code (lib/auth/vendorCode.ts). */}
+                          {editingVendor && <VendorLoginCode key={editingVendor.id} vendorId={editingVendor.id} mobile={vendorForm.ownerPhone || 'the number on its login'} />}
                         </div>
                       </div>
 
@@ -2684,6 +2689,10 @@ Create a separate standalone invoice anyway?`)) return;
                           </a>
                         )}
                       </div>
+
+                      {a.status === 'approved' && a.vendorId && (
+                        <VendorLoginCode key={freshCodes[a._id] ?? 'none'} vendorId={a.vendorId} mobile={a.ownerPhone} firstCode={freshCodes[a._id]} />
+                      )}
                     </div>
 
                     {/* Status actions */}
@@ -2692,11 +2701,13 @@ Create a separate standalone invoice anyway?`)) return;
                         <button key={s}
                           disabled={a.status === s}
                           onClick={async () => {
-                            await fetch(`/api/vendor-applications/${a._id}`, {
+                            const res = await fetch(`/api/vendor-applications/${a._id}`, {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ status: s }),
                             });
+                            const body = await res.json().catch(() => ({}));
+                            if (body.loginCode) setFreshCodes((cur) => ({ ...cur, [a._id]: body.loginCode }));
                             fetchAll();
                           }}
                           className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize disabled:opacity-60 disabled:cursor-default ${

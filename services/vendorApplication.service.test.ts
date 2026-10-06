@@ -44,7 +44,7 @@ function makeMocks(application: ReturnType<typeof fakeApplication>) {
   };
   const vendorRepository = { create: mock(async () => ({ id: 'vendor-1' })) };
 
-  return { prismaMock, vendorApplicationRepository, vendorRepository, vendorCapabilityCreateMany, vendorCreate: vendorRepository.create };
+  return { prismaMock, vendorApplicationRepository, vendorRepository, vendorCapabilityCreateMany, vendorCreate: vendorRepository.create, vendorProfileCreate };
 }
 
 async function loadServiceWith(mocks: ReturnType<typeof makeMocks>) {
@@ -101,5 +101,33 @@ describe('vendorApplicationService.updateStatus — capability copy on approval'
     await service.updateStatus('app-1', 'APPROVED');
 
     expect(mocks.vendorCapabilityCreateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('vendorApplicationService.updateStatus — the vendor’s first login code', () => {
+  test('the first approval issues a 6-digit code, hands it back once, and stores only its hash on the new login', async () => {
+    const mocks = makeMocks(fakeApplication());
+    const service = await loadServiceWith(mocks);
+
+    const result = await service.updateStatus('app-1', 'APPROVED');
+
+    expect(result?.issuedLoginCode).toMatch(/^\d{6}$/);
+    const [args] = mocks.vendorProfileCreate.mock.calls[0] as unknown as [{ data: { userId: string; vendorId: string; loginCodeHash: string; loginCodeSetAt: Date } }];
+    expect(args.data).toMatchObject({ userId: 'user-1', vendorId: 'vendor-1' });
+    expect(args.data.loginCodeSetAt).toBeInstanceOf(Date);
+    expect(args.data.loginCodeHash).toMatch(/^\$2[aby]\$/); // a bcrypt hash …
+    expect(args.data.loginCodeHash).not.toContain(result!.issuedLoginCode!); // … never the code itself
+    const bcrypt = (await import('bcryptjs')).default;
+    expect(await bcrypt.compare(result!.issuedLoginCode!, args.data.loginCodeHash)).toBe(true);
+  });
+
+  test('rejecting, or saving an already-approved application again, issues no code', async () => {
+    const rejected = await (await loadServiceWith(makeMocks(fakeApplication()))).updateStatus('app-1', 'REJECTED');
+    expect(rejected && 'issuedLoginCode' in rejected ? rejected.issuedLoginCode : undefined).toBeUndefined();
+
+    const mocks = makeMocks(fakeApplication({ status: 'APPROVED', vendorId: 'vendor-1' }));
+    const again = await (await loadServiceWith(mocks)).updateStatus('app-1', 'APPROVED');
+    expect(again && 'issuedLoginCode' in again ? again.issuedLoginCode : undefined).toBeUndefined();
+    expect(mocks.vendorProfileCreate).not.toHaveBeenCalled();
   });
 });
