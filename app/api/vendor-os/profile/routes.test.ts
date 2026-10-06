@@ -6,7 +6,7 @@ import { ValidationError } from '@/lib/errors';
 // The vendor's profile routes and Shaadi Shopping's review routes. The services and the storage are faked (their own tests cover
 // the rules); what is checked here is the order of things — nothing is stored before "may this login change the profile, and is
 // there room?" — and who may call what.
-type View = { name: string; canEdit: boolean; photos: { id: string }[]; missing: string[] };
+type View = { name: string; canEdit: boolean; photos: { id: string; url?: string }[]; missing: string[]; logoUrl?: string | null; video?: { url: string } | null };
 let view: View;
 let admin = true;
 const stored: string[] = [];
@@ -27,6 +27,7 @@ const storeProfileImage = mock(async (_file: unknown, kind: string) => {
   return url;
 });
 const checkProfileVideo = mock(async () => undefined);
+const discardProfileUpload = mock(async () => undefined);
 
 // The REAL upload limiter runs, against an in-memory login_attempts table (the same pattern as the other route tests) — the
 // limiter module itself is never mocked, because a module mock would leak into every other test file.
@@ -47,6 +48,7 @@ mock.module('@/lib/ownership/entry', () => ({ platformScoped: <A extends unknown
 mock.module('@/lib/venue/profileUpload', () => ({
   storeProfileImage,
   checkProfileVideo,
+  discardProfileUpload,
   cloudinaryCloudName: () => 'democloud',
   profileVideoSignature: () => ({ timestamp: 1, folder: 'shaadishopping/vendor-profile', tags: 'vendor-profile,video', signature: 'sig', apiKey: 'key', cloudName: 'democloud', maxBytes: 1, maxSeconds: 1 }),
 }));
@@ -58,6 +60,7 @@ mock.module('@/services/venueProfile.service', () => ({
 const profileRoute = await import('./route');
 const { POST: logoRoute } = await import('./logo/route');
 const { POST: photosRoute } = await import('./photos/route');
+const { DELETE: removePhotoRoute } = await import('./photos/[id]/route');
 const { POST: signatureRoute } = await import('./video-signature/route');
 const videoRoute = await import('./video/route');
 const { GET: pendingRoute } = await import('../../admin/profile-media/route');
@@ -77,7 +80,7 @@ beforeEach(() => {
   admin = true;
   stored.length = 0;
   attempts.length = 0;
-  for (const m of [get, setLogo, addPhoto, removePhoto, update, setVideo, removeVideo, pending, reviewPhoto, reviewVideo, storeProfileImage, checkProfileVideo]) m.mockClear();
+  for (const m of [discardProfileUpload, get, setLogo, addPhoto, removePhoto, update, setVideo, removeVideo, pending, reviewPhoto, reviewVideo, storeProfileImage, checkProfileVideo]) m.mockClear();
   update.mockImplementation(async () => view);
   setVideo.mockImplementation(async () => view);
 });
@@ -149,6 +152,39 @@ describe('uploads — nothing is stored before the checks', () => {
     const big = new NextRequest(`${base}/photos`, { method: 'POST', headers: { 'content-length': String(5 * 1024 * 1024) }, body: 'x' });
     expect((await photosRoute(big)).status).toBe(413);
     expect(storeProfileImage).not.toHaveBeenCalled();
+  });
+});
+
+describe('nothing is left in storage', () => {
+  const own = (name: string) => `https://res.cloudinary.com/democloud/image/upload/v1/shaadishopping/vendor-profile/${name}.jpg`;
+  const del = (id: string) => removePhotoRoute(new NextRequest(`${base}/photos/${id}`, { method: 'DELETE' }), { params: Promise.resolve({ id }) });
+
+  test('removing a photo deletes its stored file — the address comes from the profile, never from the request', async () => {
+    view.photos = [{ id: 'ph1', url: own('a1') }, { id: 'ph2', url: own('a2') }];
+    expect((await del('ph1')).status).toBe(200);
+    expect(removePhoto).toHaveBeenCalledWith('ph1');
+    expect(discardProfileUpload).toHaveBeenCalledTimes(1);
+    expect(discardProfileUpload).toHaveBeenCalledWith(own('a1'), 'image');
+  });
+
+  test('a removal that is refused deletes nothing', async () => {
+    view.photos = [{ id: 'ph1', url: own('a1') }];
+    removePhoto.mockImplementationOnce(async () => ({ forbidden: true }));
+    expect((await del('ph1')).status).toBe(403);
+    expect(discardProfileUpload).not.toHaveBeenCalled();
+  });
+
+  test('a new logo replaces the old one in storage too', async () => {
+    view.logoUrl = own('old-logo');
+    expect((await logoRoute(upload('/logo'))).status).toBe(200);
+    expect(discardProfileUpload).toHaveBeenCalledWith(own('old-logo'), 'image');
+  });
+
+  test('removing the video deletes it', async () => {
+    const tour = 'https://res.cloudinary.com/democloud/video/upload/v1/shaadishopping/vendor-profile/tour.mp4';
+    view.video = { url: tour };
+    expect((await videoRoute.DELETE()).status).toBe(200);
+    expect(discardProfileUpload).toHaveBeenCalledWith(tour, 'video');
   });
 });
 

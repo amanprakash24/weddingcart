@@ -1,7 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { ValidationError } from '@/lib/errors';
 import { ONBOARDING_ALLOWED_FORMATS, validateOnboardingImage } from '@/lib/onboardingUpload';
-import { PROFILE_LIMITS, PROFILE_UPLOAD_FOLDER } from '@/lib/venue/profile';
+import { isOwnUpload, PROFILE_LIMITS, PROFILE_UPLOAD_FOLDER } from '@/lib/venue/profile';
 
 // Storing a business's profile media (6 Oct 2026). Server only. "Keep items so that we do not get too much load": every image is
 // checked by its own bytes (JPEG / PNG / WebP, under 4 MB) and stored SCALED DOWN — a 12-megapixel phone photo becomes a 1600px
@@ -85,5 +85,19 @@ export async function checkProfileVideo(url: string): Promise<void> {
   if (tooBig || tooLong) {
     await cloudinary.uploader.destroy(publicId, { resource_type: 'video' }).catch(() => undefined);
     throw new ValidationError(`Please upload a video of up to ${PROFILE_LIMITS.videoSeconds} seconds and ${PROFILE_LIMITS.videoBytes / (1024 * 1024)} MB — or paste a YouTube or Instagram link instead`);
+  }
+}
+
+// When a business removes or replaces a photo, logo or video, the stored file goes too — nothing is left behind to pay for.
+// Best effort: the profile change has already been saved, so a storage hiccup here is logged, never shown to the vendor.
+// Only one of our own uploads is ever deleted (isOwnUpload); a link or any other address is left alone.
+export async function discardProfileUpload(url: string | null | undefined, kind: 'image' | 'video'): Promise<void> {
+  if (!isOwnUpload(url, cloudinaryCloudName(), PROFILE_UPLOAD_FOLDER)) return;
+  const publicId = publicIdOf(url);
+  if (!publicId) return;
+  try {
+    await cloudinary.uploader.destroy(publicId, { resource_type: kind, invalidate: true });
+  } catch (err) {
+    console.error('profile upload could not be deleted from storage:', publicId, err instanceof Error ? err.message : err);
   }
 }

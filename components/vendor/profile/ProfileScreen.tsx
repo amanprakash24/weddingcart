@@ -232,12 +232,12 @@ export default function ProfileScreen() {
           <p className={eyebrow}><span className="h-px w-8 bg-[#C5A46D]" /> Business details</p>
           <div>
             <label htmlFor="profile-name" className={label}>Business name</label>
-            <input id="profile-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={PROFILE_LIMITS.nameMax} disabled={!p.canEdit} placeholder="As your customers know it" className={field} aria-invalid={Boolean(errors.name)} />
+            <input id="profile-name" value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors((cur) => ({ ...cur, name: undefined })); }} maxLength={PROFILE_LIMITS.nameMax} disabled={!p.canEdit} placeholder="As your customers know it" className={field} aria-invalid={Boolean(errors.name)} />
             {errors.name && <p className="mt-1.5 text-xs text-rose-700">{errors.name}</p>}
           </div>
           <div>
             <label htmlFor="profile-gstin" className={label}>GST number <span className="font-normal normal-case tracking-normal text-[#6B5B4D]">(if you have one)</span></label>
-            <input id="profile-gstin" value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15) })} disabled={!p.canEdit} placeholder="15 characters, e.g. 10ABCDE1234F1Z5" className={`${field} tracking-[0.12em] placeholder:tracking-normal`} aria-invalid={Boolean(errors.gstin)} />
+            <input id="profile-gstin" value={form.gstin} onChange={(e) => { setForm({ ...form, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15) }); setErrors((cur) => ({ ...cur, gstin: undefined })); }} disabled={!p.canEdit} placeholder="15 characters, e.g. 10ABCDE1234F1Z5" className={`${field} tracking-[0.12em] placeholder:tracking-normal`} aria-invalid={Boolean(errors.gstin)} />
             <p className={`mt-1.5 text-xs ${errors.gstin ? 'text-rose-700' : 'text-[#6B5B4D]'}`}>{errors.gstin ?? 'Leave it empty if you are not registered for GST. You can add it later.'}</p>
           </div>
           {say('details')}

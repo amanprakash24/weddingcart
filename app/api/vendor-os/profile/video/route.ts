@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { venueScoped } from '@/lib/ownership/venueEntry';
 import { isOwnUpload, PROFILE_UPLOAD_FOLDER } from '@/lib/venue/profile';
 import { profileRoute } from '@/lib/venue/profileHttp';
-import { checkProfileVideo, cloudinaryCloudName } from '@/lib/venue/profileUpload';
+import { checkProfileVideo, cloudinaryCloudName, discardProfileUpload } from '@/lib/venue/profileUpload';
 import { venueProfileService } from '@/services/venueProfile.service';
 
 // PUT    /api/vendor-os/profile/video — { url }: the address of a video just uploaded with the signature, or a YouTube / Instagram
@@ -12,13 +12,23 @@ import { venueProfileService } from '@/services/venueProfile.service';
 async function handlePUT(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   return profileRoute(async () => {
-    if (!(await venueProfileService.get()).canEdit) return { forbidden: true };
+    const before = await venueProfileService.get();
+    if (!before.canEdit) return { forbidden: true };
     if (isOwnUpload(body?.url, cloudinaryCloudName(), PROFILE_UPLOAD_FOLDER)) await checkProfileVideo(body.url);
-    return venueProfileService.setVideo(body?.url);
+    const result = await venueProfileService.setVideo(body?.url);
+    // A replaced upload is deleted from storage.
+    if ('photos' in result && before.video && before.video.url !== result.video?.url) await discardProfileUpload(before.video.url, 'video');
+    return result;
   });
 }
 
-const handleDELETE = () => profileRoute(() => venueProfileService.removeVideo());
+const handleDELETE = () =>
+  profileRoute(async () => {
+    const was = (await venueProfileService.get()).video?.url;
+    const result = await venueProfileService.removeVideo();
+    if ('photos' in result) await discardProfileUpload(was, 'video');
+    return result;
+  });
 
 export const PUT = venueScoped(handlePUT);
 export const DELETE = venueScoped(handleDELETE);
