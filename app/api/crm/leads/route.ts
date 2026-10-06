@@ -4,13 +4,14 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { leadInboxService } from '@/services/leadInbox.service';
 import type { PipelineStage } from '@/generated/prisma/enums';
 import type { SourceType } from '@/services/leadInbox.service';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const VALID_STAGES: PipelineStage[] = [
   'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'QUOTATION_SENT', 'NEGOTIATION', 'ACCEPTED', 'WON', 'LOST', 'ON_HOLD',
 ];
 const VALID_SOURCE_TYPES: SourceType[] = ['LEAD', 'ENQUIRY', 'CONSULTATION'];
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   if (!(await requireRole(ADMIN_ROLES))) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -39,3 +40,6 @@ export async function GET(req: NextRequest) {
     pagination: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) },
   });
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);

@@ -5,7 +5,7 @@ import { Star } from 'lucide-react';
 import type { StaffReview } from '@/services/review.service';
 import { dateWords } from '@/lib/wedding/controlRoom';
 
-// Roadmap 1.4 (08-quotation.md §19) — after a wedding is completed: ask the couple for reviews, then publish or hide each one. Only
+// Roadmap 1.4 (08-quotation.md §21) — after a wedding is completed: ask the couple for reviews, then publish or hide each one. Only
 // published reviews appear on the vendor's public page ("Reviews from Shaadi Shopping couples"); they never change the vendor's
 // hand-entered online rating.
 

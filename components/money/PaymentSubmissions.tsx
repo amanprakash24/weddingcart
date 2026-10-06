@@ -7,7 +7,7 @@ import type { PaymentResult } from '@/components/money/AgreementCard';
 import { dateWords } from '@/lib/wedding/controlRoom';
 import { isoFromDateInput } from '@/lib/wedding/planTasks';
 
-// Roadmap 1.3 (08-quotation.md §18) — the couple's "I have paid" claims on this agreement. A claim is not money: "Verify" records the
+// Roadmap 1.3 (08-quotation.md §20) — the couple's "I have paid" claims on this agreement. A claim is not money: "Verify" records the
 // payment through the same Money v1 path as "Record payment" (so the 25% rule, the hold and auto-confirm apply), after you have found
 // it in the bank. "Not matched" tells the couple why, on their link.
 

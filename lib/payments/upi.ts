@@ -1,4 +1,4 @@
-// The UPI payee and deep link — dependency-free, so the proposal page (client) can import it. Roadmap 1.3, 08-quotation.md §18.
+// The UPI payee and deep link — dependency-free, so the proposal page (client) can import it. Roadmap 1.3, 08-quotation.md §20.
 
 export interface UpiPayee {
   vpa: string; // Shaadi Shopping's own UPI ID — never a vendor's

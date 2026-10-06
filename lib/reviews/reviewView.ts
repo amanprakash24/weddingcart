@@ -1,4 +1,4 @@
-// Roadmap 1.4 (08-quotation.md §19) — how couples' reviews are shown. Dependency-free, so public pages and the proposal page can
+// Roadmap 1.4 (08-quotation.md §21) — how couples' reviews are shown. Dependency-free, so public pages and the proposal page can
 // import it. Verified reviews are NEVER blended with Vendor.rating / reviewCount (the hand-entered "online rating").
 
 // The label for the hand-entered numbers already on vendor pages. Kept in one place: change it to "Google rating" only if that is

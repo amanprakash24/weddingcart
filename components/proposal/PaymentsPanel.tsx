@@ -6,7 +6,7 @@ import type { ProposalPayments, CustomerReceipt } from '@/lib/payments/customerP
 import { upiLink } from '@/lib/payments/upi';
 import { SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 
-// Roadmap 1.3 (docs/wedding-os/08-quotation.md §18) — the couple's Payments view on the proposal link: where they stand (total → paid →
+// Roadmap 1.3 (docs/wedding-os/08-quotation.md §20) — the couple's Payments view on the proposal link: where they stand (total → paid →
 // pending → due date), pay by UPI (QR, or the UPI app on a phone), "I have paid" with the UTR, and their receipts.
 // Everything comes from the server's allow-list (toProposalPayments). A claim is only ever shown as "being checked" — what counts as
 // paid is what staff have verified.

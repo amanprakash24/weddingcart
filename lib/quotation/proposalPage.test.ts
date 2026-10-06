@@ -29,6 +29,15 @@ describe('proposal page — two separate experiences', () => {
   test('the detailed quotation carries every commercial detail and can be printed', () => {
     for (const s of ['<QuotationTable', 'quotationSummary(p)', "What's included", "What's not included", 'window.print()']) expect(quotationPanel).toContain(s);
   });
+
+  test('the Shaadi Shopping section: on a venue’s link only, on the proposal view only, never printed, after the venue’s own contact line', () => {
+    const section = src.slice(src.indexOf('aria-label="Shaadi Shopping"') - 200, src.indexOf('Powered by Vivah OS'));
+    expect(section).toContain("{shaadi && tab === 'proposal' && (");
+    expect(section).toContain('print:hidden');
+    expect(section).toContain('Shaadi Shopping is a separate service');
+    expect(src.indexOf('Questions? Call')).toBeLessThan(src.indexOf('aria-label="Shaadi Shopping"'));
+    expect(src.match(/aria-label="Shaadi Shopping"/g)).toHaveLength(1);
+  });
 });
 
 describe('payments (Roadmap 1.3)', () => {

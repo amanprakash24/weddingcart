@@ -7,6 +7,7 @@ import type { BookingSource } from '@/lib/quotation/booking';
 import { serviceLabel } from '@/lib/serviceLabels';
 import type { ProposalPayments } from '@/lib/payments/customerPayment';
 import type { ProposalReviews } from '@/lib/reviews/reviewView';
+import { FUNCTION_TYPE_LABELS, groupOfferings, isFunctionType, offeringPriceWords, type FunctionType, type Offering, type OfferingInput } from '@/lib/venue/offering';
 
 // ---- the secret link ----
 
@@ -51,8 +52,8 @@ export function proposalState(q: { status: QuotationStatus; validUntil: Date | n
   return 'INVALID';
 }
 
-// Staff may issue a (new) link while the quotation is open, and after acceptance — the link then carries payments (§18) and
-// reviews (§19). Never for a draft, rejected, superseded or expired one.
+// Staff may issue a (new) link while the quotation is open, and after acceptance — the link then carries payments (§20) and
+// reviews (§21). Never for a draft, rejected, superseded or expired one.
 export const canIssueCustomerLink = (state: ProposalState) => state === 'OPEN' || state === 'ACCEPTED';
 
 export const CHANGE_NOTE_MAX = 1000;
@@ -68,6 +69,36 @@ export function validateChangeNote(note: unknown): string {
 export function appendChangeNote(existing: string | null, note: string, at: Date): string {
   const stamped = `[${at.toISOString().slice(0, 10)}] ${note}`;
   return existing ? `${existing}\n\n${stamped}` : stamped;
+}
+
+// ---- "Add an event" (a venue's own quotation only) ----
+// The couple picks a function the venue offers (Haldi, Reception …) and, if they like, what they want for it from the venue's
+// "What we offer" list. It is recorded exactly like "Request changes" (decision D3): the quotation is not touched; the venue
+// answers with a new version.
+
+export const ADD_EVENT_LIMITS = { maxPicks: 12, noteMax: 500 } as const;
+
+export interface EventRequest {
+  function: FunctionType;
+  offeringIds: string[];
+  note: string | null;
+}
+
+export function validateEventRequest(input: unknown): EventRequest {
+  const body = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  if (!isFunctionType(body.function)) throw new ValidationError('Choose the function you would like to add');
+  const ids = Array.isArray(body.offeringIds) ? [...new Set(body.offeringIds.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 64))] : [];
+  if (ids.length > ADD_EVENT_LIMITS.maxPicks) throw new ValidationError(`Please choose up to ${ADD_EVENT_LIMITS.maxPicks}`);
+  const note = typeof body.note === 'string' ? body.note.trim() : '';
+  if (note.length > ADD_EVENT_LIMITS.noteMax) throw new ValidationError(`Please keep it under ${ADD_EVENT_LIMITS.noteMax} characters`);
+  return { function: body.function, offeringIds: ids, note: note || null };
+}
+
+// The sentence the venue reads. Names and prices come from the venue's own list on the server — never from the request.
+export function eventRequestNote(fn: FunctionType, picked: Pick<OfferingInput, 'name' | 'price' | 'perPlate'>[], note: string | null): string {
+  const label = FUNCTION_TYPE_LABELS[fn];
+  const wanted = picked.length ? `Please add ${label}: ${picked.map((o) => `${o.name} (from ${offeringPriceWords(o)})`).join(', ')}.` : `Please add ${label}.`;
+  return note ? `${wanted}\n${note}` : wanted;
 }
 
 // ---- the couple's view (an explicit allow-list — nothing else ever leaves the server) ----
@@ -159,10 +190,19 @@ export interface CustomerProposal {
   inclusions: string | null;
   exclusions: string | null;
   terms: string | null;
-  // Roadmap 1.3 (§18): only once the couple has accepted — totals, receipts, their own "I have paid" claims, and the UPI payee.
+  // Roadmap 1.3 (§20): only once the couple has accepted — totals, receipts, their own "I have paid" claims, and the UPI payee.
   payments: ProposalPayments | null;
-  // Roadmap 1.4 (§19): only once the wedding made from this proposal is COMPLETED — the vendors they booked, to review.
+  // Roadmap 1.4 (§21): only once the wedding made from this proposal is COMPLETED — the vendors they booked, to review.
   reviews: ProposalReviews | null;
+  // Who the couple sees (D8): Shaadi Shopping, or the venue whose own quotation this is (lib/ownership/business.ts).
+  brand: { name: string; phone: string | null; isPlatform: boolean };
+  // "Add an event": what the venue offers, function by function — only on a venue's own OPEN proposal, otherwise empty.
+  // `id` is the row in the venue's own price list; it only says which ones the couple ticked.
+  addable: { function: FunctionType; label: string; items: { id: string; name: string; price: string }[] }[];
+}
+
+export function toAddable(offerings: Offering[]): CustomerProposal['addable'] {
+  return groupOfferings(offerings).map((g) => ({ function: g.function, label: g.label, items: g.items.map((o) => ({ id: o.id, name: o.name, price: offeringPriceWords(o) })) }));
 }
 
 const ABOUT_MAX = 280;
@@ -270,5 +310,7 @@ export function toCustomerProposal(
     terms: q.terms,
     payments: null, // added by proposal.service for an accepted proposal
     reviews: null, // added by proposal.service once the wedding is completed
+    brand: { name: 'Shaadi Shopping', phone: null, isPlatform: true }, // proposal.service sets the owning business's
+    addable: [], // proposal.service fills it for a venue's own open proposal
   };
 }

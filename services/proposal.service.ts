@@ -1,15 +1,18 @@
 import { prisma } from '@/lib/prisma';
 import { ActivityType } from '@/generated/prisma/enums';
-import { ConflictError, NotFoundError } from '@/lib/errors';
+import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { subjectCreateData } from '@/lib/crm/subject';
 import { ONLINE_CHANNEL } from '@/lib/quotation/rules';
 import {
   appendChangeNote,
+  eventRequestNote,
   hashCustomerToken,
   isWellFormedToken,
   proposalState,
+  toAddable,
   toCustomerProposal,
   validateChangeNote,
+  validateEventRequest,
   type CustomerProposal,
 } from '@/lib/quotation/proposal';
 import { quotationRepository, type QuotationWithItems } from '@/repositories/quotation.repository';
@@ -21,6 +24,8 @@ import { paymentSubmissionService, type ProofFile } from '@/services/paymentSubm
 import type { ProposalPayments } from '@/lib/payments/customerPayment';
 import { reviewService } from '@/services/review.service';
 import type { ProposalReviews } from '@/lib/reviews/reviewView';
+import { proposalBrandFor } from '@/lib/ownership/business';
+import { FUNCTION_TYPE_LABELS, type Offering } from '@/lib/venue/offering';
 
 // Wedding Proposal (docs/wedding-os/08-quotation.md §15) — what the couple can do through the secret link.
 // A thin adapter: the token is resolved to ONE quotation revision, and every rule that matters is the existing
@@ -56,6 +61,9 @@ export interface ProposalDeps {
   applyEvent: typeof applyCommercialEvent;
   payments: Pick<typeof paymentSubmissionService, 'forProposal' | 'submit'>;
   reviews: Pick<typeof reviewService, 'forProposal' | 'submit'>;
+  brand: typeof proposalBrandFor;
+  // The owning venue's "What we offer" list. BusinessOffering is not an owned table, so the business is always named here.
+  offerings: (businessId: string) => Promise<Offering[]>;
 }
 
 const defaultDeps = (): ProposalDeps => ({
@@ -70,6 +78,13 @@ const defaultDeps = (): ProposalDeps => ({
   applyEvent: applyCommercialEvent,
   payments: paymentSubmissionService,
   reviews: reviewService,
+  brand: proposalBrandFor,
+  offerings: (businessId) =>
+    prisma.businessOffering.findMany({
+      where: { businessId },
+      select: { id: true, function: true, name: true, price: true, perPlate: true },
+      orderBy: [{ function: 'asc' }, { createdAt: 'asc' }],
+    }),
 });
 
 export function createProposalService(deps: ProposalDeps = defaultDeps()) {
@@ -124,8 +139,14 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
         venueName: c.weddingEvent.venueName,
       })),
     });
+    // D8: the business that owns this quotation — Shaadi Shopping, or the venue whose own customer this is.
+    view.brand = await deps.brand(q.businessId);
+    // "Add an event": a venue's own open proposal shows what that venue offers. Shaadi Shopping has no such list.
+    if (!view.brand.isPlatform && view.state === 'OPEN') view.addable = toAddable(await deps.offerings(q.businessId));
     // Roadmap 1.3: totals, receipts and "I have paid" — only once accepted. Read-only; a failure here never hides the proposal.
-    if (q.status === 'ACCEPTED') {
+    // Shaadi Shopping's own quotations only: the UPI shown is Shaadi Shopping's and its staff verify each claim. A venue's own
+    // customer pays the VENUE, so its link must never show this — the venue's own payee and its own verification come separately.
+    if (q.status === 'ACCEPTED' && view.brand.isPlatform) {
       try {
         view.payments = await deps.payments.forProposal(q.id);
       } catch (err) {
@@ -139,6 +160,33 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
       }
     }
     return view;
+  }
+
+  // What "Request changes" and "Add an event" both do: keep the couple's words on the quotation, log them, and move the lead
+  // Quotation Sent → Negotiation. The quotation's content, prices and status are NOT touched (decision D3).
+  async function recordRequest(q: QuotationWithItems, text: string, summary: string): Promise<void> {
+    const { sourceType, sourceId } = sourceOf(q);
+    const now = new Date();
+    await deps.db.$transaction(async (tx) => {
+      const current = await tx.quotation.findUnique({ where: { id: q.id }, select: { changesRequestNote: true } });
+      // Only while it is still SENT — a staff revision/acceptance in the meantime wins.
+      const updated = await tx.quotation.updateMany({
+        where: { id: q.id, status: 'SENT' },
+        data: { changesRequestedAt: now, changesRequestNote: appendChangeNote(current?.changesRequestNote ?? null, text, now) },
+      });
+      if (updated.count !== 1) throw new ConflictError('This proposal was just updated — please reload the page');
+      await deps.logActivity({ type: ActivityType.QUOTATION_CHANGES_REQUESTED, summary, detail: text, ...subjectCreateData(sourceType, sourceId) }, tx);
+      await deps.applyEvent(tx, sourceType, sourceId, 'CHANGES_REQUESTED', null);
+    });
+  }
+
+  // A link the couple can still act on, or the same answers "Request changes" has always given.
+  async function openProposal(token: unknown): Promise<QuotationWithItems> {
+    const q = await resolve(token);
+    if (!q) throw new ProposalNotFoundError();
+    const state = proposalState(q, new Date());
+    if (state !== 'OPEN') throw state === 'INVALID' ? new ProposalNotFoundError() : new ConflictError(state === 'ACCEPTED' ? 'This proposal has already been accepted' : 'This proposal has expired');
+    return q;
   }
 
   return {
@@ -209,53 +257,50 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
   // (decision D3). The lead moves Quotation Sent → Negotiation; staff answer with a revision.
   async requestChanges(token: unknown, note: unknown): Promise<{ recorded: true }> {
     const text = validateChangeNote(note);
-    const q = await resolve(token);
-    if (!q) throw new ProposalNotFoundError();
-    const state = proposalState(q, new Date());
-    if (state !== 'OPEN') throw state === 'INVALID' ? new ProposalNotFoundError() : new ConflictError(state === 'ACCEPTED' ? 'This proposal has already been accepted' : 'This proposal has expired');
-
-    const { sourceType, sourceId } = sourceOf(q);
-    const now = new Date();
-    await deps.db.$transaction(async (tx) => {
-      const current = await tx.quotation.findUnique({ where: { id: q.id }, select: { changesRequestNote: true } });
-      // Only while it is still SENT — a staff revision/acceptance in the meantime wins.
-      const updated = await tx.quotation.updateMany({
-        where: { id: q.id, status: 'SENT' },
-        data: { changesRequestedAt: now, changesRequestNote: appendChangeNote(current?.changesRequestNote ?? null, text, now) },
-      });
-      if (updated.count !== 1) throw new ConflictError('This proposal was just updated — please reload the page');
-      await deps.logActivity(
-        {
-          type: ActivityType.QUOTATION_CHANGES_REQUESTED,
-          summary: `The couple asked for changes on proposal ${q.quotationNumber} (revision ${q.revision})`,
-          detail: text,
-          ...subjectCreateData(sourceType, sourceId),
-        },
-        tx
-      );
-      await deps.applyEvent(tx, sourceType, sourceId, 'CHANGES_REQUESTED', null);
-    });
+    const q = await openProposal(token);
+    await recordRequest(q, text, `The couple asked for changes on proposal ${q.quotationNumber} (revision ${q.revision})`);
     return { recorded: true };
   },
 
-  // "I have paid" (Roadmap 1.3, §18): only on an accepted proposal. Records a claim for staff to verify — never a payment.
+  // "Add an event": the couple asks the venue to add a function, optionally ticking what they want from the venue's own list.
+  // Only ticks that really are on THIS venue's list for THAT function count — the names and prices written down are the venue's.
+  async requestEvent(token: unknown, input: unknown): Promise<{ recorded: true }> {
+    const wanted = validateEventRequest(input);
+    const q = await openProposal(token);
+    const offered = (await deps.brand(q.businessId)).isPlatform ? [] : (await deps.offerings(q.businessId)).filter((o) => o.function === wanted.function);
+    if (offered.length === 0) throw new ValidationError('That function cannot be added here — please use "Request changes" instead');
+    const picked = offered.filter((o) => wanted.offeringIds.includes(o.id));
+    await recordRequest(
+      q,
+      eventRequestNote(wanted.function, picked, wanted.note),
+      `The couple asked to add ${FUNCTION_TYPE_LABELS[wanted.function]} on proposal ${q.quotationNumber} (revision ${q.revision})`
+    );
+    return { recorded: true };
+  },
+
+  // "I have paid" (Roadmap 1.3, §20): only on an accepted proposal. Records a claim for staff to verify — never a payment.
   async submitPayment(token: unknown, raw: { amount: unknown; utr: unknown; paidOn?: unknown; note?: unknown }, proof: ProofFile | null): Promise<{ submitted: true; payments: ProposalPayments }> {
     const q = await resolve(token);
     if (!q) throw new ProposalNotFoundError();
     const state = proposalState(q, new Date());
     if (state === 'INVALID') throw new ProposalNotFoundError();
     if (state !== 'ACCEPTED') throw new ConflictError('Please accept the quotation before paying');
+    // A venue's own customer pays the venue, not Shaadi Shopping (see customerView): nothing is recorded here for them.
+    const brand = await deps.brand(q.businessId);
+    if (!brand.isPlatform) throw new ConflictError(`Please contact ${brand.name} about your payment`);
     await deps.payments.submit(q, raw, proof);
     return { submitted: true, payments: await deps.payments.forProposal(q.id) };
   },
 
-  // A review of one vendor the couple booked (Roadmap 1.4, §19) — only once their wedding is completed; staff publish it.
+  // A review of one vendor the couple booked (Roadmap 1.4, §21) — only once their wedding is completed; staff publish it.
   async submitReview(token: unknown, vendorBookingId: unknown, raw: { rating: unknown; comment?: unknown; authorName?: unknown }): Promise<{ submitted: true; reviews: ProposalReviews | null }> {
     const q = await resolve(token);
     if (!q) throw new ProposalNotFoundError();
     const state = proposalState(q, new Date());
     if (state === 'INVALID') throw new ProposalNotFoundError();
     if (state !== 'ACCEPTED') throw new ConflictError('Reviews open once your wedding is completed');
+    // Shaadi Shopping's own quotations only (see customerView): its staff publish each review; a venue's own link has no reviews.
+    if (!(await deps.brand(q.businessId)).isPlatform) throw new ConflictError('Reviews are not available on this proposal');
     await deps.reviews.submit(q.booking?.id, vendorBookingId, raw);
     return { submitted: true, reviews: await deps.reviews.forProposal(q.booking?.id, typeof raw.authorName === 'string' ? raw.authorName : null) };
   },

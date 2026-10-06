@@ -45,6 +45,9 @@ function fakeBooking(overrides: Partial<Record<string, unknown>> = {}) {
 // call order (lock acquisitions interleaved with reads) so tests can assert
 // "the lock was taken before the existence check ran", not just that both
 // happened.
+// The couple's login lookup at conversion (lib/customer/weddingLink.ts): none by default.
+const customerLoginMock = mock(async (args?: unknown) => (void args, null as { id: string } | null));
+
 function makePrismaMock({
   booking,
   weddings = {},
@@ -132,6 +135,7 @@ function makePrismaMock({
     vendorBooking: { create: vendorBookingCreateMock },
     task: { create: taskCreateMock },
     activityLog: { create: activityLogCreateMock },
+    user: { findFirst: customerLoginMock }, // the couple's login, looked up by mobile (lib/customer/weddingLink.ts)
     lead: stageDelegate(),
     enquiry: stageDelegate(),
     consultation: stageDelegate(),
@@ -215,6 +219,28 @@ describe('convertBookingToWedding — the failure mode found in production-integ
     expect(weddingEventCreateMock).toHaveBeenCalledTimes(1);
     expect(vendorBookingCreateMock).toHaveBeenCalledTimes(1);
     expect(taskCreateMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('the couple mobile is stored on the wedding, and their existing CUSTOMER login is linked (MASTER-GAP-ANALYSIS §2.4.1)', async () => {
+    const booking = fakeBooking({ phone: '+91 98765 43210' });
+    const { prismaMock, weddingCreateMock } = makePrismaMock({ booking });
+    customerLoginMock.mockImplementationOnce(async () => ({ id: 'user-couple' }));
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+    await convertBookingToWedding('booking-1');
+    const data = (weddingCreateMock.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    expect(data.customerPhone).toBe('9876543210');
+    expect(data.customer).toEqual({ connect: { id: 'user-couple' } });
+    expect((customerLoginMock.mock.calls.at(-1) as unknown as [{ where: unknown }])[0].where).toEqual({ phone: '9876543210', roles: { some: { role: 'CUSTOMER' } } });
+  });
+
+  test('no login yet: only the mobile is stored (the couple is linked when they first log in)', async () => {
+    const booking = fakeBooking({ phone: '98765 43210' });
+    const { prismaMock, weddingCreateMock } = makePrismaMock({ booking });
+    const { convertBookingToWedding } = await loadServiceWith(prismaMock, booking);
+    await convertBookingToWedding('booking-1');
+    const data = (weddingCreateMock.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    expect(data.customerPhone).toBe('9876543210');
+    expect(data.customer).toBeUndefined();
   });
 
   test('calling it again on an already-converted booking returns the existing Wedding, without creating a duplicate', async () => {
@@ -519,6 +545,7 @@ describe('convertLeadToWedding — advisory lock acquisition (concurrency fix)',
       consultation: stageDelegate(),
       timelineMilestone: { createMany: mock(async () => ({ count: 0 })) },
       task: { create: mock(async () => ({ id: 'task-1' })) },
+      user: { findFirst: customerLoginMock },
       $executeRaw: executeRawMock,
     };
     const prismaMock = { ...base, $transaction: mock(async (fn: (tx: typeof base) => unknown) => fn(base)) };

@@ -38,7 +38,8 @@ function tracked(name: string, resolveValue: (where?: Record<string, unknown>) =
 
 function makeTrackedRepositoryMocks() {
   const state: TrackingState = { inFlight: 0, maxInFlight: 0, callOrder: [] };
-  const isNew = (where?: Record<string, unknown>) => where?.status === 'NEW';
+  // Bookings and applications still count their own status; enquiries and consultations count the CRM stage.
+  const isNew = (where?: Record<string, unknown>) => where?.status === 'NEW' || where?.pipelineStage === 'NEW';
 
   const bookingCount = tracked('booking.count', (w) => (isNew(w) ? 0 : 8), state);
   const bookingSumTotal = tracked('booking.sumTotal', () => 500000, state);

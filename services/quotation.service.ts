@@ -35,6 +35,7 @@ import { requiredConfirmation } from '@/lib/commercial/rules';
 import { applyCommercialEvent } from '@/services/leadStage.service';
 import type { CommercialEvent } from '@/lib/crm/stageEvents';
 import type { SourceType } from '@/services/leadInbox.service';
+import { currentBusiness, documentPrefix, rulesOf } from '@/lib/ownership/business';
 
 // Quotation workflow (docs/wedding-os/08-quotation.md).
 //   S1: create / edit / list / delete a DRAFT.
@@ -248,7 +249,7 @@ export async function explainSourceConflict(
 }
 
 async function nextQuotationNumber(tx: Tx): Promise<string> {
-  const bucket = monthBucket('QTN');
+  const bucket = monthBucket(documentPrefix(await currentBusiness(), 'QTN')); // per business (D6): QTN-… / SWA-QTN-…
   await lockNumberBucket(tx, bucket);
   return nextSequenceNumber(bucket, await quotationRepository.findLastNumber(bucket, tx));
 }
@@ -538,12 +539,14 @@ export const quotationService = {
       // Money v1: the agreement is frozen now, and its advance invoice (the 25% needed to confirm) exists from this moment — payment
       // has to be possible BEFORE the booking is confirmed. Same transaction: a booking never exists without its agreement.
       await ensureAgreementInTx(tx, { quotationId: id, booking, actorId });
+      // The business's own rule (a venue may set its own) — the same one ensureAgreementInTx just froze into the agreement.
+      const rules = rulesOf(await currentBusiness());
       await logEvent(
         tx,
         sourceType,
         sourceId,
         ActivityType.STATUS_CHANGED,
-        `Booking created from quotation ${q.quotationNumber} — ${rupees(plan.total)}. It is confirmed once 25% (${rupees(requiredConfirmation(plan.total))}) is received`,
+        `Booking created from quotation ${q.quotationNumber} — ${rupees(plan.total)}. It is confirmed once ${rules.confirmationPercent}% (${rupees(requiredConfirmation(plan.total, rules))}) is received`,
         null,
         actorId
       );
@@ -651,8 +654,8 @@ export const quotationService = {
 
   // ----- Proposal link (08-quotation.md §15, decisions D2/D7) -----
 
-  // A NEW secret link for a SENT, still-valid quotation — or an ACCEPTED one (Roadmap 1.4: the link carries payments §18 and reviews
-  // §19, so a couple who lost it needs a new one). Any previous link for it stops working at once (its hash is replaced). Only the
+  // A NEW secret link for a SENT, still-valid quotation — or an ACCEPTED one (Roadmap 1.4: the link carries payments §20 and reviews
+  // §21, so a couple who lost it needs a new one). Any previous link for it stops working at once (its hash is replaced). Only the
   // hash is stored; the raw token is returned exactly once, to be shown to staff and never again.
   async issueCustomerLink(id: string, actorId: string | null): Promise<{ token: string }> {
     await expireOverdue({ id });

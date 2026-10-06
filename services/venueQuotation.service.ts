@@ -1,0 +1,288 @@
+import { prisma } from '@/lib/prisma';
+import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
+import { requiredConfirmation, type CommercialRules } from '@/lib/commercial/rules';
+import { resolveSourceDate } from '@/lib/quotation/booking';
+import { currentBusiness, rulesOf } from '@/lib/ownership/business';
+import { lineTotal, quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
+import { validateVenuePayment, type VenuePaymentErrors } from '@/lib/venue/payment';
+import { FUNCTION_TYPE_LABELS, functionOfLabel, type FunctionType, type Offering } from '@/lib/venue/offering';
+import { quotationService, type QuotationView } from '@/services/quotation.service';
+import { loadAgreementMoney, recordAgreementPayment } from '@/services/agreement.service';
+import { bookingService } from '@/services/booking.service';
+
+// A venue's OWN quotation for one of its own enquiries (Phase C). A thin adapter: every rule that matters — one open quotation
+// per enquiry, a sent quotation is never edited, revisions, expiry, the couple's link, acceptance, the booking and its agreement —
+// is the existing quotation service, unchanged. Always called inside the venue's scope (lib/ownership/venueEntry.ts): the database
+// guard limits every read and write here to that venue's business, so another business's enquiry or quotation is "not found".
+//
+// What this adds for a venue: the amount that confirms the booking is not typed — it is the venue's own rule (Settings) applied to
+// the total, the same rule the agreement freezes when the couple accepts; and the enquiry gets the venue's city, so the booking
+// can be made the moment the couple accepts.
+
+const istToday = (now: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+const endOfIstDay = (day: string) => new Date(`${day}T23:59:59+05:30`);
+
+export interface VenueQuotationView {
+  id: string;
+  number: string;
+  revision: number;
+  stage: QuoteStage;
+  items: { description: string; quantity: number; unitPrice: number; lineTotal: number; function: FunctionType | null }[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  toConfirm: number; // what confirms the booking — the venue's rule on the total (frozen in the agreement once accepted)
+  confirmationPercent: number;
+  validUntil: string | null; // YYYY-MM-DD (IST)
+  inclusions: string | null;
+  exclusions: string | null;
+  terms: string | null;
+  sentAt: string | null;
+  openedAt: string | null; // first time the couple opened the link
+  changesNote: string | null; // what the couple asked to change
+  acceptedAt: string | null;
+  hasLink: boolean;
+  // After the couple accepts: the booking and its money. null = not made yet (the wedding date is needed).
+  booking: VenueBookingMoney | null;
+}
+
+// Where the booking stands, from the payments actually recorded (lib/commercial/view.ts) under the agreement's frozen rule.
+export interface VenueBookingMoney {
+  holdWindowDays: number;
+  confirmed: boolean; // the booking is confirmed — the amount to confirm was received
+  received: number;
+  toConfirmRemaining: number; // still needed to confirm the booking
+  outstanding: number; // still to be received of the whole agreed total
+  stateLabel: string; // "No payment yet", "Date held — 3 of 5 days left", "Booking confirmed" …
+  holdOver: boolean; // a part payment held the date and the hold period has passed
+  payments: { id: string; amount: number; method: string; reference: string | null; paidAt: string }[];
+}
+
+export interface VenueQuotationState {
+  customer: { name: string; phone: string; weddingDate: string | null };
+  venueName: string;
+  rules: Pick<CommercialRules, 'confirmationPercent' | 'holdWindowDays'>;
+  quotation: VenueQuotationView | null;
+  // The venue's listing packages, offered as one-tap starting lines for a new quotation.
+  packages: { name: string; price: number; perPlate: boolean }[];
+  // What the venue offers for each function (its "What we offer" list) — one-tap lines that carry their function.
+  offerings: Offering[];
+  // Where the venue's own customers pay (Settings, D7) — for the payment details the venue sends them. null = not set.
+  payTo: { upiId: string; upiName: string | null } | null;
+}
+
+export type SaveResult = VenueQuotationState | { errors: VenueQuoteErrors };
+export type PayResult = VenueQuotationState | { errors: VenuePaymentErrors };
+// The couple's link is shown ONCE, when it is made — only its hash is stored (services/quotation.service.ts).
+export type LinkResult = VenueQuotationState & { linkPath: string };
+
+export interface VenueQuotationDeps {
+  db: {
+    consultation: Pick<typeof prisma.consultation, 'findUnique' | 'update'>;
+    business: Pick<typeof prisma.business, 'findUnique'>;
+    vendorPackage: Pick<typeof prisma.vendorPackage, 'findMany'>;
+    businessOffering: Pick<typeof prisma.businessOffering, 'findMany'>;
+  };
+  quotations: Pick<typeof quotationService, 'listForSource' | 'create' | 'update' | 'send' | 'revise' | 'issueCustomerLink' | 'createBooking'>;
+  business: typeof currentBusiness;
+  // Money v1, unchanged (services/agreement.service.ts): the agreement's money, recording a payment, and the one gate that
+  // confirms a booking (services/booking.service.ts — it re-checks the amount itself).
+  money: typeof loadAgreementMoney;
+  recordPayment: typeof recordAgreementPayment;
+  confirmBooking: (bookingId: string) => Promise<unknown>;
+  now: () => Date;
+}
+
+const defaultDeps = (): VenueQuotationDeps => ({
+  db: prisma,
+  quotations: quotationService,
+  business: currentBusiness,
+  money: loadAgreementMoney,
+  recordPayment: recordAgreementPayment,
+  confirmBooking: (bookingId) => bookingService.update(bookingId, { status: 'CONFIRMED' }),
+  now: () => new Date(),
+});
+
+export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDeps()) {
+  async function enquiry(id: string) {
+    const row = await deps.db.consultation.findUnique({ where: { id }, select: { id: true, name: true, phone: true, weddingDate: true, city: true, pipelineStage: true } });
+    if (!row) throw new NotFoundError('Enquiry', id);
+    return row;
+  }
+
+  // The current quotation: the newest one that was not replaced by a revision.
+  async function current(enquiryId: string): Promise<QuotationView | null> {
+    const all = await deps.quotations.listForSource('CONSULTATION', enquiryId);
+    return all.find((q) => q.status !== 'SUPERSEDED') ?? null;
+  }
+
+  async function venue() {
+    const business = await deps.business();
+    if (business.kind !== 'VENDOR') throw new NotFoundError('Business', business.id);
+    const listing = await deps.db.business.findUnique({ where: { id: business.id }, select: { vendorId: true, vendor: { select: { city: true } } } });
+    return { business, rules: rulesOf(business), vendorId: listing?.vendorId ?? null, city: listing?.vendor?.city?.trim() || null };
+  }
+
+  async function toView(q: QuotationView, rules: CommercialRules): Promise<VenueQuotationView | null> {
+    const stage = quoteStage({ status: q.status, changesRequested: q.changesRequestedAt !== null });
+    if (!stage) return null;
+    // Once accepted and booked, the agreement holds the rule this deal was made with — never today's setting. (No agreement yet =
+    // the booking is not made; the figures are then the quotation's own.)
+    const money = stage === 'ACCEPTED' ? await deps.money(q.id, deps.now()) : null;
+    const agreement = money?.exists ? money : null;
+    return {
+      id: q.id,
+      number: q.quotationNumber,
+      revision: q.revision,
+      stage,
+      items: q.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal, function: functionOfLabel(i.functionLabel) })),
+      subtotal: q.subtotal,
+      discount: q.discount,
+      total: q.total,
+      toConfirm: agreement?.confirmationAmount ?? q.advanceAmount,
+      confirmationPercent: agreement?.confirmationPercent ?? rules.confirmationPercent,
+      validUntil: q.validUntil ? istToday(q.validUntil) : null,
+      inclusions: q.inclusions,
+      exclusions: q.exclusions,
+      terms: q.terms,
+      sentAt: q.sentAt?.toISOString() ?? null,
+      openedAt: q.customerViewedAt?.toISOString() ?? null,
+      changesNote: stage === 'CHANGES' ? q.changesRequestNote : null,
+      acceptedAt: q.acceptedAt?.toISOString() ?? null,
+      hasLink: q.hasCustomerLink,
+      booking: agreement
+        ? {
+            holdWindowDays: agreement.holdWindowDays,
+            confirmed: agreement.bookingConfirmed,
+            received: agreement.received,
+            toConfirmRemaining: agreement.remaining,
+            outstanding: agreement.outstanding,
+            stateLabel: agreement.stateLabel,
+            holdOver: agreement.overdue && !agreement.bookingConfirmed,
+            payments: agreement.payments.map((p) => ({ id: p.id, amount: p.amount, method: p.method, reference: p.reference, paidAt: p.paidAt })),
+          }
+        : null,
+    };
+  }
+
+  async function state(enquiryId: string): Promise<VenueQuotationState> {
+    const e = await enquiry(enquiryId);
+    const v = await venue();
+    const q = await current(enquiryId);
+    const packages = v.vendorId
+      ? await deps.db.vendorPackage.findMany({ where: { vendorId: v.vendorId }, select: { name: true, price: true, isPerPlate: true }, orderBy: { price: 'asc' }, take: 20 })
+      : [];
+    return {
+      customer: { name: e.name, phone: e.phone, weddingDate: e.weddingDate || null },
+      venueName: v.business.name,
+      rules: { confirmationPercent: v.rules.confirmationPercent, holdWindowDays: v.rules.holdWindowDays },
+      quotation: q ? await toView(q, v.rules) : null,
+      packages: packages.map((p) => ({ name: p.name, price: p.price, perPlate: p.isPerPlate })),
+      // Not an owned table: the business is named here, from the scope (services/venueOffering.service.ts).
+      offerings: await deps.db.businessOffering.findMany({ where: { businessId: v.business.id }, select: { id: true, function: true, name: true, price: true, perPlate: true }, orderBy: [{ function: 'asc' }, { createdAt: 'asc' }] }),
+      payTo: v.business.upiId ? { upiId: v.business.upiId, upiName: v.business.upiName } : null,
+    };
+  }
+
+  async function requireCurrent(enquiryId: string, what: string): Promise<QuotationView> {
+    await enquiry(enquiryId);
+    const q = await current(enquiryId);
+    if (!q) throw new ConflictError(`There is no quotation to ${what} yet`);
+    return q;
+  }
+
+  return {
+    get: state,
+
+    // Saves the draft: a new quotation, or the draft already there. A sent quotation is never edited — it is revised.
+    async save(enquiryId: string, input: Record<string, unknown>, actorId: string | null): Promise<SaveResult> {
+      const e = await enquiry(enquiryId);
+      if (e.pipelineStage === 'LOST') throw new ConflictError('This enquiry is closed');
+      const checked = validateVenueQuote(input, istToday(deps.now()));
+      if (!checked.ok) return { errors: checked.errors };
+      const v = await venue();
+      const value = checked.value;
+      const total = value.items.reduce((sum, l) => sum + lineTotal(l), 0) - value.discount;
+      const body = {
+        items: value.items.map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, functionLabel: l.function ? FUNCTION_TYPE_LABELS[l.function] : null })),
+        discount: value.discount,
+        advanceAmount: requiredConfirmation(total, v.rules),
+        validUntil: endOfIstDay(value.validUntil),
+        inclusions: value.inclusions,
+        exclusions: value.exclusions,
+        terms: value.terms,
+      };
+      const q = await current(enquiryId);
+      if (q?.status === 'DRAFT') await deps.quotations.update(q.id, body);
+      else if (q?.status === 'SENT') throw new ConflictError('This quotation has been sent — revise it to change it');
+      else await deps.quotations.create('CONSULTATION', enquiryId, body, actorId);
+      // A booking needs a city; a venue's own enquiry has none, and its weddings are at the venue.
+      if (!e.city?.trim() && v.city) await deps.db.consultation.update({ where: { id: enquiryId }, data: { city: v.city } });
+      return state(enquiryId);
+    },
+
+    // Sends the draft and makes the couple's link — one step for the venue.
+    async send(enquiryId: string, actorId: string | null): Promise<LinkResult> {
+      const q = await requireCurrent(enquiryId, 'send');
+      await deps.quotations.send(q.id, actorId);
+      const { token } = await deps.quotations.issueCustomerLink(q.id, actorId);
+      return { ...(await state(enquiryId)), linkPath: `/proposal/${token}` };
+    },
+
+    // A fresh link for the sent quotation (the old one stops working) — for when the first was not shared or was lost.
+    async newLink(enquiryId: string, actorId: string | null): Promise<LinkResult> {
+      const q = await requireCurrent(enquiryId, 'share');
+      const { token } = await deps.quotations.issueCustomerLink(q.id, actorId);
+      return { ...(await state(enquiryId)), linkPath: `/proposal/${token}` };
+    },
+
+    // A new draft from the sent / expired quotation — its link stops working until the new one is sent.
+    async revise(enquiryId: string, actorId: string | null): Promise<VenueQuotationState> {
+      const q = await requireCurrent(enquiryId, 'change');
+      await deps.quotations.revise(q.id, actorId);
+      return state(enquiryId);
+    },
+
+    // The couple accepted but the booking could not be made on its own (no wedding date yet): the venue gives the date.
+    async book(enquiryId: string, input: { weddingDate?: unknown }, actorId: string | null): Promise<VenueQuotationState> {
+      const e = await enquiry(enquiryId);
+      const q = await requireCurrent(enquiryId, 'book');
+      if (q.status !== 'ACCEPTED') throw new ConflictError('The couple has not accepted this quotation yet');
+      const raw = typeof input.weddingDate === 'string' ? input.weddingDate.trim() : '';
+      const weddingDate = raw ? resolveSourceDate(raw) : null;
+      if (raw && !weddingDate) throw new ValidationError('Pick the wedding date');
+      if (!weddingDate && !resolveSourceDate(e.weddingDate)) throw new ValidationError('Pick the wedding date');
+      const v = await venue();
+      await deps.quotations.createBooking(q.id, { weddingDate: weddingDate ?? undefined, city: e.city?.trim() ? undefined : (v.city ?? undefined) }, actorId);
+      if (weddingDate && !e.weddingDate) await deps.db.consultation.update({ where: { id: enquiryId }, data: { weddingDate: raw } });
+      return state(enquiryId);
+    },
+
+    // Money received from the venue's own customer — cash, UPI, bank transfer or cheque. A part payment holds the date for the
+    // agreement's hold days; once the amount to confirm is in, the booking is confirmed (anything above it goes to the balance).
+    // The payment is its own transaction: it is never undone because the confirmation that follows could not be completed.
+    // No wedding is created here — the venue's own Weddings come in a later slice.
+    async pay(enquiryId: string, input: Record<string, unknown>, actorId: string | null): Promise<PayResult> {
+      const q = await requireCurrent(enquiryId, 'take a payment for');
+      if (q.status !== 'ACCEPTED') throw new ConflictError('The couple has not accepted this quotation yet');
+      const before = await deps.money(q.id, deps.now());
+      if (!before.exists || !before.bookingId) throw new ConflictError('Make the booking first — then record the payment');
+      const checked = validateVenuePayment(input, istToday(deps.now()));
+      if (!checked.ok) return { errors: checked.errors };
+      const p = checked.value;
+      const key = typeof input.idempotencyKey === 'string' && /^[\w-]{8,64}$/.test(input.idempotencyKey) ? input.idempotencyKey : null;
+      await deps.recordPayment(q.id, { amount: p.amount, method: p.method, reference: p.reference, paidAt: p.paidOn ? new Date(`${p.paidOn}T12:00:00+05:30`) : null, idempotencyKey: key }, actorId);
+      const after = await deps.money(q.id, deps.now());
+      if (after.readyToConfirm && after.bookingId) {
+        try {
+          await deps.confirmBooking(after.bookingId);
+        } catch (err) {
+          console.error(`venue payment: booking for ${q.quotationNumber} not confirmed —`, err instanceof Error ? err.message : err);
+        }
+      }
+      return state(enquiryId);
+    },
+  };
+}
+
+export const venueQuotationService = createVenueQuotationService();

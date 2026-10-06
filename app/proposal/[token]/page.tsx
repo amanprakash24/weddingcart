@@ -6,6 +6,7 @@ import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { gateProposalView } from '@/lib/quotation/proposalViewGate';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import ProposalClient from '@/components/proposal/ProposalClient';
+import { proposalPageScoped } from '@/lib/quotation/proposalEntry';
 
 // The couple's proposal page (docs/wedding-os/08-quotation.md §15). The secret token in the URL is the only key.
 // Always rendered fresh (never cached), never indexed, and the URL is never sent on as a Referer.
@@ -32,7 +33,7 @@ function Notice({ title, children }: { title: string; children: React.ReactNode 
   );
 }
 
-export default async function ProposalPage({ params }: { params: Promise<{ token: string }> }) {
+async function ProposalPage({ params }: { params: Promise<{ token: string }> }) {
   const h = await headers();
   const { token } = await params;
   // Only a link that doesn't work is recorded for rate limiting — opening a valid link writes nothing (§15.5).
@@ -48,3 +49,6 @@ export default async function ProposalPage({ params }: { params: Promise<{ token
   }
   return <ProposalClient token={token} initial={result.proposal} />;
 }
+
+// Record ownership: runs as the business that owns the quotation behind this link (lib/quotation/proposalEntry.ts).
+export default proposalPageScoped(ProposalPage);

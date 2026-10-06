@@ -3,6 +3,7 @@ import { blogService } from '@/services/blog.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { Blog } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Same response shaping as app/api/blogs/route.ts — kept local rather than
 // shared, matching how the categories/vendors [id] routes each own their
@@ -15,7 +16,7 @@ function toResponseShape(blog: Blog) {
   };
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+async function handleGET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;
     const blog = await blogService.getBySlugOrId(slug);
@@ -26,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -57,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -70,3 +71,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const PATCH = platformScoped(handlePATCH);
+export const DELETE = platformScoped(handleDELETE);

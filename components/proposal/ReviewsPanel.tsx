@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Star } from 'lucide-react';
 import { RATING_WORDS, type ProposalReviews } from '@/lib/reviews/reviewView';
 
-// Roadmap 1.4 (docs/wedding-os/08-quotation.md §19) — after the wedding, the couple reviews each vendor they booked. One review per
+// Roadmap 1.4 (docs/wedding-os/08-quotation.md §21) — after the wedding, the couple reviews each vendor they booked. One review per
 // booking; it appears on the vendor's page only after the Shaadi Shopping team publishes it, and can be changed until then.
 
 const serif = { fontFamily: 'var(--font-playfair), serif' };

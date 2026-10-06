@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
-import { Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 
 export default function AdminLoginClient() {
   const [email, setEmail] = useState('');
@@ -36,10 +37,7 @@ export default function AdminLoginClient() {
       <div className="w-full max-w-md">
         {/* Logo / brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white px-5 py-2.5 rounded-full text-sm font-bold mb-4 shadow-lg">
-            <Sparkles className="w-4 h-4" />
-            ShaadiShopping
-          </div>
+          <Image src="/logo.png" alt="ShaadiShopping" width={240} height={150} className="mx-auto mb-4 h-28 w-auto object-contain" priority />
           <h1 className="text-3xl font-bold text-gray-900 font-playfair">Admin Panel</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to manage your wedding planning platform</p>
         </div>

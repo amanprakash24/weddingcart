@@ -3,6 +3,7 @@ import { blogService } from '@/services/blog.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { Blog } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Admin/public callers still expect the legacy Mongo shape: lowercase
 // 'draft'/'published' (Prisma's BlogStatus enum is uppercase) and an `_id`
@@ -16,7 +17,7 @@ function toResponseShape(blog: Blog) {
   };
 }
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get('category');
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -74,3 +75,7 @@ export async function POST(req: NextRequest) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

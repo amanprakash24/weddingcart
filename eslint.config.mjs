@@ -15,6 +15,24 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // Known debt, frozen when CI started (3 Oct 2026): these older screens set state synchronously inside an effect (15 places).
+  // Rewriting them is its own change; until then the rule is a warning HERE ONLY, and stays an error for every other file, so no
+  // new code adds to it. Remove a file from this list when it is fixed — never add one.
+  {
+    files: [
+      "components/AdminBlogClient.tsx",
+      "components/AdminCategoryDetailClient.tsx",
+      "components/AdminClient.tsx",
+      "components/AdminVendorFormClient.tsx",
+      "components/AdminVendorListClient.tsx",
+      "components/AdminVendorProspectsClient.tsx",
+      "components/CategoryPageClient.tsx",
+      "components/PlanPageClient.tsx",
+      "components/admin/EventAdminClient.tsx",
+      "components/homepage/FeaturedVendorsSection.tsx",
+    ],
+    rules: { "react-hooks/set-state-in-effect": "warn" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

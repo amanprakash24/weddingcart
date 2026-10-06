@@ -15,12 +15,14 @@
 // correct up to 9,999 numbers per bucket (per month for invoices, per year for weddings).
 import type { Prisma } from '@/generated/prisma/client';
 import { lockNumberBucket, monthBucket, nextSequenceNumber, yearBucket } from '@/lib/numbering';
+import { currentBusiness, documentPrefix } from '@/lib/ownership/business';
 
 type Tx = Prisma.TransactionClient;
 
 // INV-YYYYMM-NNNN, sequential within the month — the same format already live in the database.
+// Per business (D6): Shaadi Shopping's INV-…, a venue's SWA-INV-… — each business counts its own.
 export async function generateInvoiceNumber(tx: Tx): Promise<string> {
-  const bucket = monthBucket('INV');
+  const bucket = monthBucket(documentPrefix(await currentBusiness(), 'INV'));
   await lockNumberBucket(tx, bucket);
   const [last] = await tx.invoice.findMany({
     where: { invoiceNumber: { startsWith: bucket } },
@@ -33,7 +35,7 @@ export async function generateInvoiceNumber(tx: Tx): Promise<string> {
 
 // WED-YYYY-NNNN, sequential within the year.
 export async function generateWeddingNumber(tx: Tx): Promise<string> {
-  const bucket = yearBucket('WED');
+  const bucket = yearBucket(documentPrefix(await currentBusiness(), 'WED'));
   await lockNumberBucket(tx, bucket);
   const [last] = await tx.wedding.findMany({
     where: { weddingNumber: { startsWith: bucket } },

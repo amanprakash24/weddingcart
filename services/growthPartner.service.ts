@@ -93,7 +93,13 @@ export function createGrowthPartnerService(deps: GrowthPartnerDeps) {
         where: { ...(filters.status ? { status: filters.status } : {}), ...(filters.type ? { type: filters.type } : {}), ...(filters.partnerId ? { partnerId: filters.partnerId } : {}) },
         orderBy: { createdAt: 'desc' },
         take: 500,
-        include: { partner: { select: { id: true, code: true, name: true, phone: true } }, assignedTo: { select: { id: true, name: true } } },
+        include: {
+          partner: { select: { id: true, code: true, name: true, phone: true } },
+          assignedTo: { select: { id: true, name: true } },
+          // Where it went (MASTER-GAP-ANALYSIS §2.4.3): the CRM stage and, once booked, the wedding.
+          consultation: { select: { id: true, pipelineStage: true, wedding: { select: { weddingNumber: true } } } },
+          vendorProspect: { select: { id: true, status: true } },
+        },
       });
     },
 

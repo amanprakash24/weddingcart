@@ -156,6 +156,8 @@ model User {
   notifications             Notification[]
   paymentLinks              PaymentLink[]
 
+  businessMemberships BusinessMember[] // the businesses this login works in (Owner / Staff)
+
   @@map("users")
 }
 
@@ -193,6 +195,11 @@ model VendorProfile {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   vendorId  String   @unique
   vendor    Vendor   @relation(fields: [vendorId], references: [id])
+  // The vendor's login code (6 Oct 2026): Shaadi Shopping issues a 6-digit code when it accepts the registration; the vendor signs in
+  // with the registered mobile number + this code and may change it. Only a bcrypt hash is kept — the code itself is shown once, to
+  // the admin who issues it. Null = no code yet (cannot sign in with a code). lib/auth/vendorCode.ts
+  loginCodeHash  String?
+  loginCodeSetAt DateTime?
   createdAt DateTime @default(now())
 
   @@map("vendor_profiles")
@@ -362,6 +369,8 @@ model Vendor {
   // clause (city/category page, sitemap, /api/vendors search); rating stays
   // last since it's usually a sort key layered on top, not a filter.
   @@index([categoryId, city, status, rating])
+  business Business? // the Vivah OS business behind this public listing, once it uses Vivah OS
+
   @@map("vendors")
 }
 
@@ -485,6 +494,7 @@ model VendorProspect {
 
   @@index([status])
   @@index([phone])
+  partnerReferral PartnerReferral? // the Growth Partner referral it came from, if any
   @@map("vendor_prospects")
 }
 
@@ -537,6 +547,12 @@ model Lead {
   @@index([pipelineStage])
   @@index([assignedToId, pipelineStage])
   @@index([createdAt])
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("leads")
 }
 
@@ -598,6 +614,12 @@ model Enquiry {
   @@index([assignedToId, pipelineStage])
   @@index([createdAt])
   @@index([consultationId])
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("enquiries")
 }
 
@@ -617,6 +639,13 @@ model Consultation {
   venueType      String             @default("")
   preferredTime  String?
   message        String?
+  // Where the enquiry came from (docs/wedding-os/15-record-ownership.md §4.4): null = Shaadi Shopping's website (the /plan wizard);
+  // a venue's own enquiry records its channel — PHONE, WALK_IN, WHATSAPP, INSTAGRAM, GOOGLE, REFERENCE, EXISTING_CUSTOMER, OTHER.
+  channel        String?
+  // A venue's own enquiry for a couple Shaadi Shopping already brought to THAT venue (decision D4): the Shaadi Shopping record it
+  // was linked to — "ENQUIRY:<id>", "CONSULTATION:<id>", "LEAD:<id>" or "BOOKING:<id>" — so commission applies to its booking.
+  platformMatch     String?
+  platformMatchedAt DateTime?
   cartItems      Json?
   totalBudget    Int?
   budgetRange    String?
@@ -658,6 +687,13 @@ model Consultation {
   @@index([pipelineStage])
   @@index([assignedToId, pipelineStage])
   @@index([createdAt])
+  partnerReferral PartnerReferral? // the Growth Partner referral it came from, if any
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("consultations")
 }
 
@@ -738,6 +774,12 @@ model Booking {
 
   @@index([enquiryId])
   @@index([consultationId])
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("bookings")
 }
 
@@ -812,6 +854,12 @@ model Invoice {
   @@index([weddingId, createdAt])
   @@index([quotationId])
   @@index([bookingId])
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("invoices")
 }
 
@@ -1105,6 +1153,12 @@ model Quotation {
   vendorEnquiries VendorEnquiry[]
   paymentSubmissions PaymentSubmission[] // "I have paid" claims from the proposal link (§18)
 
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("quotations")
 }
 
@@ -1210,6 +1264,9 @@ model Wedding {
 
   customerId    String?
   customer      User?   @relation("WeddingCustomer", fields: [customerId], references: [id])
+  // The couple's mobile (10 digits, from the enquiry / booking it came from). Their OTP login is linked to this wedding by it —
+  // at creation if they already have a login, else the first time they log in (lib/customer/weddingLink.ts).
+  customerPhone String?
   coordinatorId String?
   coordinator   User?   @relation("WeddingCoordinator", fields: [coordinatorId], references: [id])
 
@@ -1233,6 +1290,13 @@ model Wedding {
   approvals          ApprovalRequest[]   @relation("ApprovalWedding")
   guests             Guest[]
 
+  @@index([customerPhone])
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("weddings")
 }
 
@@ -1756,6 +1820,12 @@ model Payment {
   idempotencyKey String? @unique
 
   @@index([receiptId])
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("payments")
 }
 
@@ -1845,6 +1915,12 @@ model CommercialAgreement {
   confirmedAt          DateTime?
   createdAt            DateTime  @default(now())
 
+  // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
+  // removes the default and every query is scoped by the logged-in business.
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
   @@map("commercial_agreements")
 }
 
@@ -2182,6 +2258,11 @@ model PartnerReferral {
   payoutAmount  Int? // rupees, entered by staff — no automatic rates in V1
   paidAt        DateTime?
   staffNotes    String?
+  // Where the referral went (MASTER-GAP-ANALYSIS §2.4): a couple becomes a CRM consultation, a venue/vendor a vendor prospect.
+  consultationId   String?         @unique
+  consultation     Consultation?   @relation(fields: [consultationId], references: [id], onDelete: SetNull)
+  vendorProspectId String?         @unique
+  vendorProspect   VendorProspect? @relation(fields: [vendorProspectId], references: [id], onDelete: SetNull)
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 
@@ -2189,4 +2270,125 @@ model PartnerReferral {
   @@index([status])
   @@index([type])
   @@map("partner_referrals")
+}
+
+// ---------- Record ownership (docs/wedding-os/15-record-ownership.md, approved 4 Oct 2026) ----------
+
+enum BusinessKind {
+  PLATFORM // Shaadi Shopping itself — exactly one, id "shaadi-shopping"
+  VENDOR // a venue or vendor running its own business in Vivah OS
+}
+
+// Blueprint §13: the vendor's commercial relationship, as structured data. Null for the platform.
+enum CommercialStatus {
+  COMMISSION_PARTNER
+  SAAS
+  BOTH
+  MARKETPLACE_ONLY
+  INACTIVE
+}
+
+enum BusinessRole {
+  OWNER // everything, including money, staff and settings
+  STAFF // enquiries, quotations, weddings — not settings or payouts
+}
+
+// Every customer record belongs to exactly one Business (D1). A venue's own records are private to it (D3).
+model Business {
+  id               String            @id @default(uuid())
+  name             String
+  kind             BusinessKind
+  commercialStatus CommercialStatus?
+  vendorId         String?           @unique // its public listing, if it has one
+  vendor           Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  numberPrefix     String?           @unique // per-business document numbers (D6); null = the platform's QTN- / INV- / WED-
+  upiId            String? // where its customers pay (D7); the platform still uses SHAADI_UPI_ID until Phase D
+  upiName          String?
+  // The business's own commercial rule for ITS customers (venues set their own; approved 4 Oct 2026). Null = the platform rule
+  // (lib/commercial/rules.ts: 25% confirms, 7-day hold). Frozen into each agreement when it is made, like the platform rule.
+  confirmationPercent Int?
+  holdWindowDays      Int?
+  // The number its customers see on their proposal link (D8). Null = the platform's / the vendor listing's.
+  contactPhone        String?
+  // The business profile a vendor completes on first sign-in (6 Oct 2026; lib/venue/profile.ts) — the letterhead of its documents.
+  // logoUrl / videoUrl are our own uploads only (or, for the video, a YouTube / Instagram link). gstin is optional; it becomes
+  // mandatory only where a document charges GST. videoStatus: PENDING until Shaadi Shopping approves the video for the PUBLIC
+  // listing (null = no video) — the business's own documents use it straight away.
+  logoUrl             String?
+  gstin               String?
+  videoUrl            String?
+  videoStatus         BusinessPhotoStatus?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  members               BusinessMember[]
+  photos                BusinessPhoto[]
+  leads                 Lead[]
+  enquiries             Enquiry[]
+  consultations         Consultation[]
+  offerings             BusinessOffering[]
+  quotations            Quotation[]
+  bookings              Booking[]
+  commercialAgreements  CommercialAgreement[]
+  weddings              Wedding[]
+  invoices              Invoice[]
+  payments              Payment[]
+
+  @@map("businesses")
+}
+
+// What a venue offers for each wedding function (Haldi: lawn, decoration, veg plate …), with its starting price — its own price list
+// for the customers it brings itself. Offered as one-tap lines in the venue's quotation form, and shown to the couple when they ask
+// to add a function on their proposal link. Not an owned record: always read and written by the business of the current scope.
+// A photo a business uploaded to its profile (6 Oct 2026). Usable at once on the business's own quotations and proposal links;
+// shown on its PUBLIC Shaadi Shopping listing only after an admin approves it (status APPROVED → copied to Vendor.images).
+// Like BusinessOffering, not an owned table: services/venueProfile.service.ts names the business on every read and write.
+enum BusinessPhotoStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BusinessPhoto {
+  id         String              @id @default(uuid())
+  businessId String
+  business   Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  url        String // our own Cloudinary upload, never an address from a request
+  status     BusinessPhotoStatus @default(PENDING)
+  reviewedAt DateTime?
+  createdAt  DateTime            @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([status, createdAt])
+  @@map("business_photos")
+}
+
+model BusinessOffering {
+  id         String           @id @default(uuid())
+  businessId String
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  function   WeddingEventType
+  name       String
+  price      Int // whole rupees
+  perPlate   Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([businessId, function])
+  @@map("business_offerings")
+}
+
+// A login working in a business (D2: venues can have several). Nothing reads this until Phase B.
+model BusinessMember {
+  id         String       @id @default(uuid())
+  businessId String
+  business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       BusinessRole
+  createdAt  DateTime     @default(now())
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@map("business_members")
 }

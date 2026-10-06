@@ -532,7 +532,79 @@ appears once, in the quotation, after the terms; the quotation has the table, su
 **Not in 1.2:** vendor package lists on the proposal (their listed prices would differ from the quoted price), a
 server-generated PDF, "show interest" per vendor, and readiness checks before sending (§46).
 
-## 18. Customer payment by UPI, payment proof and receipts (Roadmap 1.3 — 3 Oct 2026)
+## 18. "Add an event" on a venue's own proposal (Phase C — 5 Oct 2026)
+
+A venue lists what it offers for each wedding function on its **What we offer** screen (`/vendor/offerings`,
+table `business_offerings`). On the couple's link for **that venue's own quotation**, while the proposal is open,
+the "Your proposal" view shows an **Add an event** card above "Request changes":
+
+1. The couple taps a function the venue has something listed for (Haldi, Reception …).
+2. They see the venue's list for it with **starting prices** ("from ₹25,000", "from ₹450 per plate") and tick what
+   they want. Ticking nothing is allowed; a short note is optional (500 characters).
+3. "Ask to add Haldi" sends it to `POST /api/proposal/[token]/add-event` — body `{ function, offeringIds?, note? }`.
+
+**It is a change request, nothing more** (decision D3 still holds). The quotation's lines, prices and status are not
+touched. The request is written the same way "Request changes" is: appended to `changesRequestNote`, one
+`QUOTATION_CHANGES_REQUESTED` timeline entry ("The couple asked to add Haldi on proposal …"), and the stage moves to
+Negotiation. The venue sees it on the enquiry as "asked for changes" and answers with a new version, where the
+one-tap lines of the quotation form already carry the function. **No migration.**
+
+**Rules**
+- Only a venue's own quotation shows the card. A Shaadi Shopping proposal has no price list, so `addable` is empty
+  and the endpoint refuses.
+- Only an OPEN proposal: an accepted or expired one shows nothing and answers 409; a dead link answers the one
+  generic 404.
+- The sentence the venue reads is built on the server from **the venue's own rows**: a ticked id counts only if it is
+  on this venue's list for that function. Another venue's row, another function's row or a made-up id is ignored, and
+  no name or price is ever taken from the request.
+- A function the venue has nothing listed for is refused (400) — the couple uses "Request changes" for that.
+- Same protection as the other two actions: the shared per-IP limit, `no-store`, `noindex`, and the route runs as the
+  business that owns the quotation.
+
+**Allow-list:** `CustomerProposal.addable` — per function: its label and, for each offering, the name, the price in
+words and the row id (used only to say which ones were ticked).
+
+**Tests:** `lib/quotation/proposal.test.ts` (grouping, request validation, the sentence),
+`services/proposal.service.test.ts` (what each kind of proposal shows; the request is recorded without touching the
+quotation; foreign and made-up ticks ignored; closed and dead links), `app/api/proposal/[token]/routes.test.ts`
+(status codes, headers, rate limit) and `tests-db/venue.offerings.test.ts` (two real venues: the couple sees only this
+venue's list, a tampered tick for the other venue's row is dropped, the venue sees the request).
+
+**Not built:** adding the lines to the quotation automatically, and choosing a quantity or a date per function.
+
+## 19. The Shaadi Shopping section on a venue's own proposal (Phase C — 5 Oct 2026)
+
+A venue's own proposal link is the venue's page: its name in the header and its own number for questions (D8). At the
+bottom of the "Your proposal" view, below the venue's "Questions?" line and above "Powered by Vivah OS", there is one
+clearly separate card, **The rest of your wedding** — Shaadi Shopping's offer to plan everything around the venue
+(decoration, photography, mehndi, makeup …) around the couple's guests and budget.
+
+- **Two actions only:** "WhatsApp Shaadi Shopping" and "Call +91 76460 28228". This card is the only place a venue's
+  link carries Shaadi Shopping's number; every other call or WhatsApp link on the page stays the venue's.
+- **What the WhatsApp message says:** "Namaste Shaadi Shopping, I am planning my wedding with ‹venue› and would like
+  help with the rest of it." It names the venue only — never the couple, the quotation number or the link.
+- **It says who is who:** "Shaadi Shopping is a separate service. Your quotation on this page is with ‹venue› — for
+  anything about it, please contact ‹venue›."
+- **Where it shows:** on a venue's own proposal in every state (open, accepted, expired), on the proposal view only —
+  never beside the detailed quotation's numbers, and never in print. A Shaadi Shopping proposal has no such card.
+- **No data, no request, no migration:** the card is built on the page from the brand already on the allow-list
+  (`shaadiSection` in `lib/quotation/proposalView.ts`). Tapping it records nothing.
+
+**Tests:** `lib/quotation/proposalView.test.ts` (none for Shaadi Shopping's own proposal; always Shaadi Shopping's
+number, never the venue's; the message) and `lib/quotation/proposalPage.test.ts` (venue links only, proposal view only,
+not printed, after the venue's contact line).
+
+**Not built:** a way for a venue to turn the card off, and counting how many couples tap it.
+
+## 20. Customer payment by UPI, payment proof and receipts (Roadmap 1.3 — 3 Oct 2026)
+
+> **Brought up to date with record ownership on 6 Oct 2026.** This section was written as §18 before venues had their own
+> quotations; "Add an event" and the Shaadi Shopping section took §18 and §19. Two rules were added when it was merged:
+> - **Shaadi Shopping's own quotations only.** The UPI payee shown is Shaadi Shopping's (`SHAADI_UPI_ID`) and its staff verify
+>   each claim, so the Payments view and "I have paid" never appear on a **venue's own** proposal link — a venue's customer pays
+>   the venue. The venue's own payee (its UPI ID from Settings) on its link, and verification inside Vendor OS, are not built.
+> - **Ownership:** `PaymentSubmission` is a child of `Quotation` in the ownership guard (`lib/ownership/owned.ts`); the couple's
+>   route runs as the business that owns the quotation and the staff routes as Shaadi Shopping.
 
 Master doc §27 (the couple sees Total → Advance → Paid → Pending → Due date, receipts and transaction history). Built on the
 proposal link and on Money v1 (`10-commercial-flow-v1.md`, the 25% rule) — **no second payment architecture**.
@@ -588,7 +660,12 @@ reminders, a list of all open claims across customers (they appear on each custo
 Portal view. Known gap from §16/§17: the proposal and detailed-quotation views still show the quotation's own *advance* as "Advance to
 confirm"; since Money v1 the amount that confirms is 25% of the total — the Payments view shows the real figure.
 
-## 19. Completion & review (Roadmap 1.4 — 3 Oct 2026)
+## 21. Completion & review (Roadmap 1.4 — 3 Oct 2026)
+
+> **Brought up to date with record ownership on 6 Oct 2026.** Written as §19 before "Add an event" (§18) and the Shaadi Shopping
+> section (§19) existed. Added on merging: reviews are for **Shaadi Shopping's own quotations only** — its staff publish each one, so
+> a venue's own proposal link shows no Reviews view and refuses a review; the couple's route runs as the business that owns the
+> quotation and the staff routes as Shaadi Shopping.
 
 Master doc §71–72: reviews are linked to completed bookings; after completion, customer → review, for each service.
 

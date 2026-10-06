@@ -23,7 +23,7 @@ export async function vendorForUser(userId: string) {
 }
 
 function bookingView(booking: {
-  id: string; status: string; venueStatus: VenueBookingStatus; agreedPrice: number;
+  id: string; status: string; venueStatus: VenueBookingStatus; agreedPrice: number; respondedAt: Date | null;
   weddingEvent: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; venueAddress: string | null; city: string; wedding: { id: string; weddingNumber: string; weddingType: string | null; guestCount: number | null; customer: { name: string | null } | null; events: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; city: string }[] } };
   vendorPackage: { name: string; description: string } | null;
   tasks: { id: string; title: string; status: string; dueAt: Date | null }[];
@@ -33,6 +33,9 @@ function bookingView(booking: {
     bookingStatus: booking.status,
     venueStatus: booking.venueStatus,
     amount: booking.agreedPrice,
+    // Already fetched (no `select` narrows this query, so every VendorBooking scalar column is returned by
+    // default) — just wasn't exposed until the Vendor -> Today screen needed a real "recent activity" source.
+    respondedAt: booking.respondedAt?.toISOString() ?? null,
     event: {
       id: booking.weddingEvent.wedding.id,
       name: booking.weddingEvent.wedding.customer?.name || booking.weddingEvent.wedding.weddingNumber,
@@ -49,6 +52,38 @@ function bookingView(booking: {
     },
     requirements: booking.vendorPackage ? { name: booking.vendorPackage.name, description: booking.vendorPackage.description } : null,
     tasks: booking.tasks.map((task) => ({ ...task, dueAt: task.dueAt?.toISOString() ?? null })),
+  };
+}
+
+// Vendor OS §23 (docs/wedding-os/11-vivah-os-ux-architecture.md) — the vendor-scoped payout read the
+// §14 audit identified as missing. Reuses bookingView/bookingInclude for the wedding/event context
+// instead of a second query shape, same discipline as everything else in this file.
+function payoutView(payout: {
+  id: string;
+  grossAmount: number;
+  commissionRate: number;
+  commissionAmount: number;
+  netAmount: number;
+  status: string;
+  paidAt: Date | null;
+  createdAt: Date;
+  vendorBooking: Parameters<typeof bookingView>[0];
+}) {
+  const booking = bookingView(payout.vendorBooking);
+  return {
+    id: payout.id,
+    bookingId: booking.id,
+    weddingName: booking.event.name,
+    weddingReference: booking.event.reference,
+    function: booking.event.function,
+    eventDate: booking.event.date,
+    grossAmount: payout.grossAmount,
+    commissionRate: payout.commissionRate,
+    commissionAmount: payout.commissionAmount,
+    netAmount: payout.netAmount,
+    status: payout.status,
+    paidAt: payout.paidAt?.toISOString() ?? null,
+    createdAt: payout.createdAt.toISOString(),
   };
 }
 
@@ -82,12 +117,14 @@ export const venuePortalService = {
       orderBy: { createdAt: 'desc' },
     }) : [];
     const availability = await prisma.vendorAvailability.findMany({ where: { vendorId: profile.vendorId, date: { gte: new Date() } }, select: { date: true, status: true, note: true }, orderBy: { date: 'asc' }, take: 90 });
+    const payouts = await prisma.payout.findMany({ where: { vendorId: profile.vendorId }, include: { vendorBooking: { include: bookingInclude } }, orderBy: { createdAt: 'desc' } });
     return {
       vendor: profile.vendor,
       bookings: bookings.map(bookingView),
       documents: documents.map((document) => ({ ...document, createdAt: document.createdAt.toISOString() })),
       availability: availability.map((item) => ({ ...item, date: item.date.toISOString() })),
       approvals: approvals.map((approval) => ({ ...approval, title: approval.title || 'Client approval', weddingEventId: approval.weddingEventId })),
+      payouts: payouts.map(payoutView),
     };
   },
 

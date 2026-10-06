@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { Role, ADMIN_ROLES } from '@/lib/auth/roles';
 import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
+import { linkWeddingsOnLogin } from '@/lib/customer/weddingLink';
+import { vendorLoginCodeService } from '@/services/vendorLoginCode.service';
 
 // Auth.js v4 (stable/GA), not v5 — see docs/postgres-migration-plan.md for why
 // v5 (beta-only as of this migration) was rejected for production auth.
@@ -58,6 +60,20 @@ export const authOptions: AuthOptions = {
         return { id: user.id, email: user.email, name: user.name, roles, sessionVersion: user.sessionVersion };
       },
     }),
+    // Vendor — the registered mobile number + the 6-digit login code Shaadi Shopping issued when it accepted the registration
+    // (6 Oct 2026). All the checking — the 5-wrong-tries lock, the hash compare, "no code yet" — is in the service; null is the one
+    // answer for every kind of "no".
+    CredentialsProvider({
+      id: 'vendor-code',
+      name: 'Mobile number and login code',
+      credentials: {
+        phone: { label: 'Mobile number', type: 'text' },
+        code: { label: 'Login code', type: 'password' },
+      },
+      async authorize(credentials) {
+        return vendorLoginCodeService.verify(credentials?.phone, credentials?.code);
+      },
+    }),
     // Vendor / Customer — phone + OTP. Structurally complete against the
     // Postgres `Otp` table, but NOT independently testable yet: /api/otp/send
     // and /api/otp/verify still write to MongoDB today (not migrated — see
@@ -109,6 +125,9 @@ export const authOptions: AuthOptions = {
             include: { roles: true, vendorProfile: true },
           });
         }
+
+        // The couple's wedding(s) with this mobile become theirs (MASTER-GAP-ANALYSIS §2.4.1). Never fails the login.
+        await linkWeddingsOnLogin(user.id, credentials.phone);
 
         return {
           id: user.id,

@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import { bookingCreateSchema } from './schema';
 import type { Booking } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
 // ('new'/'contacted'/'confirmed'/'closed', Prisma's BookingStatus enum is
@@ -13,7 +14,7 @@ function toResponseShape<T extends Pick<Booking, 'id' | 'status'>>(booking: T) {
   return { ...booking, _id: booking.id, status: booking.status.toLowerCase() };
 }
 
-export async function GET() {
+async function handleGET() {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -26,7 +27,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const { name, phone, city, items, total, weddingDate, weddingType, guestCount, enquiryId, consultationId } =
       bookingCreateSchema.parse(await req.json());
@@ -47,3 +48,7 @@ export async function POST(req: NextRequest) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

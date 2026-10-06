@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
 
-// Payment proof screenshots (Roadmap 1.3, 08-quotation.md §18). They can show the couple's bank name, account and balance, so they are
+// Payment proof screenshots (Roadmap 1.3, 08-quotation.md §20). They can show the couple's bank name, account and balance, so they are
 // uploaded as PRIVATE Cloudinary assets: there is no public URL. Staff get a signed link that expires in minutes; the couple never
 // gets one back.
 

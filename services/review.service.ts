@@ -6,7 +6,7 @@ import { reviewSummary, toPublicReview, type ProposalReviews, type PublicReview 
 import { resolveUserNames } from '@/lib/users';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 
-// Roadmap 1.4 (docs/wedding-os/08-quotation.md §19) — completion & review.
+// Roadmap 1.4 (docs/wedding-os/08-quotation.md §21) — completion & review.
 //
 // Once a wedding is COMPLETED, the couple can review each vendor they actually booked (a CONFIRMED / COMPLETED vendor booking on that
 // wedding), once per booking, from their proposal link. A review is PENDING until staff publish it; only PUBLISHED reviews ever reach a
