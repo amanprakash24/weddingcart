@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { runInScope } from '@/lib/ownership/scope';
+import { runAsSystem, runInScope } from '@/lib/ownership/scope';
 import { dbDescribe, loadApp, type App } from './helpers/app';
 import { createFixtures, type Fixtures } from './helpers/fixtures';
 
@@ -42,7 +42,11 @@ dbDescribe('people, memberships and workspaces (real database)', () => {
 
   afterAll(async () => {
     if (!app) return;
-    await app.prisma.consultation.deleteMany({ where: { businessId: { in: businessIds } } });
+    await runAsSystem('test clean-up', async () => {
+      await app.prisma.activityLog.deleteMany({ where: { consultation: { businessId: { in: businessIds } } } });
+      await app.prisma.task.deleteMany({ where: { consultation: { businessId: { in: businessIds } } } });
+      await app.prisma.consultation.deleteMany({ where: { businessId: { in: businessIds } } });
+    });
     await app.prisma.businessMember.deleteMany({ where: { businessId: { in: businessIds } } });
     await app.prisma.business.deleteMany({ where: { id: { in: businessIds } } });
     await app.prisma.vendorProfile.deleteMany({ where: { userId: { in: owners } } });
