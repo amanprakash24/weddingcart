@@ -101,10 +101,10 @@ dbDescribe('per-business numbers, rules and proposal links (real database)', () 
   test('…and shows that business: the venue’s name and number, or Shaadi Shopping', async () => {
     const venueView = await runInScope(await scopeForProposalToken(first[0].token), () => proposalService.view(first[0].token));
     expect(venueView?.number).toBe(first[0].number);
-    expect(venueView?.brand).toEqual({ name: venues[0].name, phone: '9876500000', isPlatform: false });
+    expect(venueView?.brand).toEqual({ name: venues[0].name, phone: '9876500000', isPlatform: false, logoUrl: null, gstin: null });
     // No number of its own and no listing: none is shown — never Shaadi Shopping's.
     const noPhone = await runInScope(await scopeForProposalToken(first[1].token), () => proposalService.view(first[1].token));
-    expect(noPhone?.brand).toEqual({ name: venues[1].name, phone: null, isPlatform: false });
+    expect(noPhone?.brand).toEqual({ name: venues[1].name, phone: null, isPlatform: false, logoUrl: null, gstin: null });
     const platformView = await runInScope(await scopeForProposalToken(platformToken), () => proposalService.view(platformToken));
     expect(platformView?.brand).toEqual({ name: 'Shaadi Shopping', phone: null, isPlatform: true });
   });

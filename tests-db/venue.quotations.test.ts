@@ -222,7 +222,8 @@ dbDescribe('a venue’s own quotations (real database)', () => {
     expect(saved.quotation.items.map((i) => [i.gstRateBp, i.gst])).toEqual([[1800, 18000], [500, 8500], [null, 0]]);
 
     // Stored on the lines and on the quotation itself.
-    const row = await app.prisma.quotation.findUniqueOrThrow({ where: { id: saved.quotation.id }, select: { gstEnabled: true, gstAmount: true, total: true, items: { orderBy: { sortOrder: 'asc' }, select: { gstRateBp: true } } } });
+    const quotationId = saved.quotation.id;
+    const row = await inB(() => app.prisma.quotation.findUniqueOrThrow({ where: { id: quotationId }, select: { gstEnabled: true, gstAmount: true, total: true, items: { orderBy: { sortOrder: 'asc' }, select: { gstRateBp: true } } } }));
     expect(row).toEqual({ gstEnabled: true, gstAmount: 26500, total: 346500, items: [{ gstRateBp: 1800 }, { gstRateBp: 500 }, { gstRateBp: null }] });
 
     // The couple's page: the venue's GST number, and the GST on each line.
