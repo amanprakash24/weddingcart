@@ -5,12 +5,13 @@ import { handleApiError } from '@/lib/errors';
 import { quotationService } from '@/services/quotation.service';
 import { afterVendorLinkChange, sourceOfQuotation } from '@/lib/vendorEnquiry/hook';
 import { updateQuotationSchema } from '../schema';
+import { platformScoped } from '@/lib/ownership/entry';
 
 type Params = { params: Promise<{ id: string }> };
 
 const unauthorized = () => NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
-export async function GET(_req: NextRequest, { params }: Params) {
+async function handleGET(_req: NextRequest, { params }: Params) {
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
     return NextResponse.json({ success: true, data: await quotationService.getById((await params).id) });
@@ -20,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 // PATCH — edit a DRAFT (409 once it has been sent).
-export async function PATCH(req: NextRequest, { params }: Params) {
+async function handlePATCH(req: NextRequest, { params }: Params) {
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
     const input = updateQuotationSchema.parse(await req.json());
@@ -35,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 // DELETE — remove a DRAFT (409 for anything that was sent; those are kept as history).
-export async function DELETE(_req: NextRequest, { params }: Params) {
+async function handleDELETE(_req: NextRequest, { params }: Params) {
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
     const id = (await params).id;
@@ -55,3 +56,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const PATCH = platformScoped(handlePATCH);
+export const DELETE = platformScoped(handleDELETE);

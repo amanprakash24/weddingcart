@@ -3,10 +3,11 @@ import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { quotationService } from '@/services/quotation.service';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // POST /api/quotations/[id]/send — DRAFT → SENT. 400 if it has no lines or no future valid-until date,
 // 409 if it is not a draft. `stageAdvanced` says whether the CRM stage moved to Quotation Sent too.
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -16,3 +17,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

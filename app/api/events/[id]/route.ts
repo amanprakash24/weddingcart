@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
 import { eventService } from '@/services/event.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const event = await eventService.getById(id);
   if (!event) {
@@ -18,7 +19,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   return NextResponse.json({ success: true, data: event });
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -45,7 +46,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -59,3 +60,8 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   await eventService.update(id, { status: 'CANCELLED' });
   return NextResponse.json({ success: true, data: { id } });
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const PUT = platformScoped(handlePUT);
+export const DELETE = platformScoped(handleDELETE);

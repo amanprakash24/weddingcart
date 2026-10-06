@@ -179,6 +179,115 @@ after the save, best-effort (`lib/vendorEnquiry/hook.ts`). **Staff alerts** (in-
 lead's "Vendor availability" card warns on *Not available* and *another date*; the timeline records "Enquiry sent" and
 "<vendor> answered …". **The customer never sees any of it** (guard test on the proposal page and its data).
 
+## 10. Vendor login code ("Mobile number + 6-digit code") — built 6 Oct 2026
+
+Founder decision, 6 Oct 2026: registration stays short; when Shaadi Shopping accepts it, the system issues a **6-digit login
+code**; the team shares it with the vendor together with the terms paper; the vendor signs in at `/vendor/login` with **the
+mobile number given at registration + the code**. No message is sent and nothing is paid per sign-in.
+
+**Where the code comes from**
+- **On acceptance** ("Approve & List" on a registration): the code is issued in the same transaction that creates the vendor and
+  its login, and comes back **once** in the answer (`loginCode`, beside the application, never inside it). The admin card shows
+  it with a copy button and says it will not be shown again.
+- **Later** (a lost code, or a vendor from before codes existed): "New login code" on the same card —
+  `POST /api/vendors/[id]/login-code` (admin only). The old code stops working and the vendor is signed out on every device
+  (`User.sessionVersion` + 1).
+- There is no self-service reset: a vendor who forgets the code calls Shaadi Shopping.
+
+**Changing it:** Settings → "Login code": current code, new code twice (`POST /api/vendor-os/login-code`). The vendor stays signed
+in. A code may not be one digit repeated or a straight run (111111, 123456, 654321). Changing is **optional**: once a code is
+30 days old every Vendor OS screen shows one line, "Your login code is more than 30 days old. Change it now", which can be put
+away until the browser is closed. Nothing is ever blocked.
+
+**Protection**
+- Only a **bcrypt hash** is stored (`VendorProfile.loginCodeHash`, `loginCodeSetAt`); the code is readable only in the one answer
+  that issues it. A six-digit code has a million possibilities, so the hash alone would not survive a leaked database — the
+  protection that matters is the lock below, and the code is one of two things needed (with the registered number).
+- **Five wrong tries in 15 minutes lock that number** (`vendor-code:<mobile>` in `login_attempts`); a locked number is refused
+  before anything is looked up, even with the right code. Changing a code has its own lock (`vendor-code-change:<user>`).
+- One answer for every kind of "no" — wrong code, unknown number, a number with no code, a customer's number, a locked number —
+  so the page never reveals which numbers are registered.
+- Codes are drawn from `crypto.randomInt`.
+
+**Data:** migration `20261006100000_add_vendor_login_code` — two nullable columns on `vendor_profiles`; additive. Existing vendor
+logins have no code until an admin issues one. **Sign-in:** NextAuth provider `vendor-code` (`lib/auth/auth.ts`); the session is
+the same as before (roles, `vendorId`, session version).
+
+**What changed for existing logins:** `/vendor/login` no longer offers the WhatsApp one-time code. The `otp` provider itself is
+unchanged (customers use it), so a vendor's number can still receive a one-time code on the customer login page.
+
+**New-registration notice:** the founder chose a count inside the admin dashboard and no email or WhatsApp send. The dashboard
+already had a banner for new registrations (`stats.newOutsideVendors`); this slice adds the count beside "Vendor applications" in
+the admin menu (`AdminShell`, read from `GET /api/vendor-applications?status=new` on every screen change).
+
+**Tests:** `lib/auth/vendorCode.test.ts` (number and code shapes, guessable codes, the change form, the reminder),
+`services/vendorLoginCode.service.test.ts` (sign-in, every "no", the lock, issue, change, status),
+`services/vendorApplication.service.test.ts` (acceptance issues a code and stores only its hash),
+`app/api/vendor-os/login-code/route.test.ts` (who may call; nothing but dates and flags leaves the server) and
+`tests-db/vendor.login-code.test.ts` (a real database and the real lock).
+
+**Next:** the first-login profile — §11.
+
+## 11. Business profile on first sign-in ("Name, logo, photos, video, GST number") — built 6 Oct 2026
+
+Founder decision, 6 Oct 2026: the registration form stays short; the depth is collected **after** acceptance. The first time a
+vendor signs in, Vendor OS leads to `/vendor/profile` and stays there until the profile has **a name, a logo and at least three
+photos**. A video and a GST number are optional. The profile is the letterhead of the business's documents.
+
+**What the vendor fills**
+- **Business name** — the name on its documents (`Business.name`). The public listing's name stays Shaadi Shopping's to set.
+- **GST number** — optional. Checked against the GSTN's own scheme: 15 characters, a state code 01–38, and the 15th character is
+  a check character over the first 14, so a mistyped number is refused here rather than printed on an invoice.
+- **Logo** — one image.
+- **Photos** — 3 to 12.
+- **Video** — one upload, or a YouTube / Instagram link (no storage used).
+
+**"Keep items so that we do not get too much load"** — every bound is in `PROFILE_LIMITS` (`lib/venue/profile.ts`):
+
+| Item | Limit |
+|---|---|
+| Image file | JPEG / PNG / WebP, decided from the file's own bytes, under 4 MB |
+| Stored photo | scaled down to fit 1600 px before it is kept; logo 600 px |
+| Photos per business | 12 |
+| Video | 60 seconds and 50 MB — measured after it lands; an oversized one is deleted and refused |
+| Uploads | 40 per business per 15 minutes |
+
+A large phone photo is scaled down in the browser before it is sent, so the vendor never has to resize anything by hand.
+
+**Approval before the public listing** (founder's choice): a photo or video is usable at once on the business's **own**
+quotations and proposal links, and appears on its **public** Shaadi Shopping listing only after an admin approves it. New uploads
+are `PENDING`; the admin "Vendor applications" tab shows them grouped by business with Approve / Reject. Approve copies a photo
+into `Vendor.images` (an uploaded video into `Vendor.virtualTourVideo`; a link is only marked approved — the listing plays files).
+Reject keeps it off the listing; the vendor keeps it for their own documents. A decision is final. A vendor who removes an
+approved photo or video takes it off the listing too.
+
+**Rules**
+- Owner only; staff of the business can read the profile.
+- Only **our own uploads** are ever saved: an address must be in our Cloudinary cloud under `shaadishopping/vendor-profile`
+  (`isOwnUpload`). An address a browser merely sends is refused.
+- Nothing is stored before the checks: the upload routes first ask "may this login change the profile, and is there room?".
+- The folder and file name are chosen on the server; nothing about where a file is stored comes from the request.
+- `Business` and `BusinessPhoto` are not owned tables, so `services/venueProfile.service.ts` names the business on every read
+  and write; another business's photo is simply "not found".
+
+**Data:** migration `20261006130000_add_business_profile` — `businesses.logoUrl`, `gstin`, `videoUrl`, `videoStatus`; table
+`business_photos`; enum `BusinessPhotoStatus`. Additive.
+
+**API:** `GET/PUT /api/vendor-os/profile`; `POST …/profile/logo`; `POST …/profile/photos`, `DELETE …/profile/photos/[id]`;
+`POST …/profile/video-signature`, `PUT/DELETE …/profile/video`; admin `GET /api/admin/profile-media`,
+`POST /api/admin/profile-media/photos/[id]`, `POST /api/admin/profile-media/videos/[businessId]`.
+
+**The gate** is in `VendorShell`: it asks for the profile once per screen; with something missing (and an Owner login) it sends
+the vendor to `/vendor/profile` and puts the navigation away. It is a guide, not a lock — the APIs behind the other screens do not
+refuse an incomplete profile.
+
+**Tests:** `lib/venue/profile.test.ts` (GST number, links, own-upload check, completeness), `services/venueProfile.service.test.ts`
+(both halves), `app/api/vendor-os/profile/routes.test.ts` (order of checks, who may call) and `tests-db/venue.profile.test.ts`
+(two real venues and the review).
+
+**Not built yet:** the logo, GST number and photos **on** the quotation and invoice (the quotation rework), areas and
+specifications of a venue, and a GST line on documents.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |

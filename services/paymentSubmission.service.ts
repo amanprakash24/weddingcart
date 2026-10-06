@@ -19,7 +19,7 @@ import { loadAgreementMoney } from '@/services/agreement.service';
 import { recordPaymentForQuotation, type PaymentOutcome } from '@/services/commercialFlow.service';
 import type { SourceType } from '@/services/leadInbox.service';
 
-// Roadmap 1.3 (docs/wedding-os/08-quotation.md §18) — "I have paid" from the couple's proposal link, and staff verifying it.
+// Roadmap 1.3 (docs/wedding-os/08-quotation.md §20) — "I have paid" from the couple's proposal link, and staff verifying it.
 //
 // A submission is a claim. It never counts as money, never starts the 7-day hold and never confirms anything. Verifying it records the
 // Payment through recordPaymentForQuotation — the same path as a payment staff type in — with the UTR as its reference and

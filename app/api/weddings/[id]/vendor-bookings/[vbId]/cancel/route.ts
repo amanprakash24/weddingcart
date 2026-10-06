@@ -4,11 +4,12 @@ import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // The wedding team drops this vendor. The service goes back to "needs a vendor". Nothing is sent to the vendor.
 const bodySchema = z.object({ reason: z.string().trim().max(300).default('') });
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -23,3 +24,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { isProposalPath } from '@/lib/proposalPath';
+import { isProposalPath, isVendorOsPath } from '@/lib/proposalPath';
 import { Heart, Phone, Mail, MapPin, CheckCircle } from 'lucide-react';
 import { BIHAR_CITIES } from '@/data/biharCities';
 
@@ -93,8 +93,8 @@ export default function Footer() {
     setEmail('');
   };
 
-  // The admin has its own navigation shell (like Navbar, CartFAB and ContactBanner, the public footer stays out of it).
-  if (pathname.startsWith('/admin') || isProposalPath(pathname)) return null;
+  // The admin and Vendor OS have their own navigation shells (like Navbar, CartFAB and ContactBanner, the public footer stays out of it).
+  if (pathname.startsWith('/admin') || isVendorOsPath(pathname) || isProposalPath(pathname)) return null;
 
   return (
     <footer style={{ background: '#2A1F1B' }} className="text-gray-400">

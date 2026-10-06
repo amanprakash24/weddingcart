@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { VendorApplicationWithCategory } from '@/repositories/vendorApplication.repository';
 import type { ApplicationStatus } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 function toResponseShape(app: VendorApplicationWithCategory) {
   const { category, ...rest } = app;
@@ -17,7 +18,7 @@ function toApplicationStatus(status: unknown): ApplicationStatus | undefined {
   return undefined;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -32,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -44,16 +45,21 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
     }
 
-    const application = await vendorApplicationService.updateStatus(id, status);
-    if (!application) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    const result = await vendorApplicationService.updateStatus(id, status);
+    if (!result) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 
-    return NextResponse.json({ success: true, data: toResponseShape(application) });
+    // On the first approval the vendor's login code comes back once, beside the application — never inside it, never stored.
+    const { issuedLoginCode, ...application } = result;
+    return NextResponse.json(
+      { success: true, data: toResponseShape(application), ...(issuedLoginCode ? { loginCode: issuedLoginCode } : {}) },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (err) {
     return handleApiError(err);
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -65,3 +71,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const PUT = platformScoped(handlePUT);
+export const DELETE = platformScoped(handleDELETE);

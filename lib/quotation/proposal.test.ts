@@ -11,6 +11,9 @@ import {
   appendChangeNote,
   toCustomerProposal,
   toProposalVendor,
+  toAddable,
+  validateEventRequest,
+  eventRequestNote,
   type ProposalQuotationInput,
   type ProposalVendorInput,
 } from './proposal';
@@ -230,12 +233,44 @@ describe('toCustomerProposal — allow-list only', () => {
       expect(json).not.toContain(secret);
     }
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW)).sort()).toEqual(
-      ['acceptedAt', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'inclusions', 'items', 'number', 'payments', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
+      ['acceptedAt', 'addable', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'brand', 'inclusions', 'items', 'number', 'payments', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
     );
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'lineTotal', 'quantity', 'service', 'unitPrice', 'vendor']);
   });
 
   test('GST is shown when charged', () => {
     expect(toCustomerProposal({ ...quotation, gstEnabled: true }, source, vendors, NOW).gstAmount).toBe(999);
+  });
+});
+
+describe('Add an event', () => {
+  test('toAddable: grouped in the order a wedding runs, only functions with something, only name and price words', () => {
+    const groups = toAddable([
+      { id: 'r1', function: 'RECEPTION', name: 'Banquet hall', price: 150000, perPlate: false },
+      { id: 'h1', function: 'HALDI', name: 'Veg plate', price: 450, perPlate: true },
+    ]);
+    expect(groups).toEqual([
+      { function: 'HALDI', label: 'Haldi', items: [{ id: 'h1', name: 'Veg plate', price: '₹450 per plate' }] },
+      { function: 'RECEPTION', label: 'Reception', items: [{ id: 'r1', name: 'Banquet hall', price: '₹1,50,000' }] },
+    ]);
+  });
+
+  test('validateEventRequest: a known function is required; ticks are de-duplicated and non-strings dropped; the note is trimmed', () => {
+    expect(validateEventRequest({ function: 'HALDI', offeringIds: ['a', 'a', 7, '', 'b'], note: '  150 guests  ' })).toEqual({ function: 'HALDI', offeringIds: ['a', 'b'], note: '150 guests' });
+    expect(validateEventRequest({ function: 'OTHER' })).toEqual({ function: 'OTHER', offeringIds: [], note: null });
+    for (const bad of [null, 'HALDI', {}, { function: 'haldi' }, { function: 'PARTY' }]) expect(() => validateEventRequest(bad)).toThrow('Choose the function');
+  });
+
+  test('validateEventRequest: too many ticks or too long a note is refused', () => {
+    expect(() => validateEventRequest({ function: 'HALDI', offeringIds: Array.from({ length: 13 }, (_, i) => `o${i}`) })).toThrow('up to 12');
+    expect(() => validateEventRequest({ function: 'HALDI', note: 'x'.repeat(501) })).toThrow('under 500');
+    expect(validateEventRequest({ function: 'HALDI', note: 'x'.repeat(500) }).note).toHaveLength(500);
+  });
+
+  test('eventRequestNote: the sentence the venue reads', () => {
+    expect(eventRequestNote('HALDI', [], null)).toBe('Please add Haldi.');
+    expect(eventRequestNote('HALDI', [{ name: 'Lawn', price: 25000, perPlate: false }, { name: 'Veg plate', price: 450, perPlate: true }], 'About 150 guests')).toBe(
+      'Please add Haldi: Lawn (from ₹25,000), Veg plate (from ₹450 per plate).\nAbout 150 guests'
+    );
   });
 });

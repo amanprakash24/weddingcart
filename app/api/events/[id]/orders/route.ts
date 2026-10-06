@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { eventService } from '@/services/event.service';
 import { handleApiError } from '@/lib/errors';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Public, unauthenticated POST that creates a real Razorpay payment link on
 // every request (external API cost, not just a local write) — unthrottled,
@@ -35,7 +36,7 @@ const schema = z.object({
   notes: z.string().optional(),
 });
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
     if (await isRequestRateLimited(rateLimitId)) {
@@ -71,3 +72,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(error);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

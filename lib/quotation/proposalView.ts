@@ -29,11 +29,11 @@ export function groupByFunction(items: Item[]): { title: string | null; items: I
 }
 
 // What happens next, in plain words — only facts the proposal carries (the advance amount), nothing promised beyond it.
-export function nextStep(p: Pick<CustomerProposal, 'state' | 'changesRequested' | 'booked' | 'advanceAmount'> & { payments?: ProposalPayments | null }): string {
+export function nextStep(p: Pick<CustomerProposal, 'state' | 'changesRequested' | 'booked' | 'advanceAmount'> & { brand?: CustomerProposal['brand']; payments?: ProposalPayments | null }): string {
   const rupees = `₹${p.advanceAmount.toLocaleString('en-IN')}`;
   if (p.state === 'ACCEPTED' && p.payments) return paymentsHeadline(p.payments);
   if (p.state === 'ACCEPTED') {
-    if (p.booked) return 'Your booking is confirmed. Your Shaadi Shopping team will be in touch about the next steps.';
+    if (p.booked) return `Your booking is confirmed. Your ${p.brand?.name ?? 'Shaadi Shopping'} team will be in touch about the next steps.`;
     return p.advanceAmount > 0
       ? `Thank you for accepting. Our team will contact you about the advance of ${rupees} to confirm your booking.`
       : 'Thank you for accepting. Our team will contact you to confirm your booking.';
@@ -100,3 +100,36 @@ export const REQUEST_CHOICES: { label: string; start: string }[] = [
   { label: 'I have a question', start: 'I have a question: ' },
   { label: 'Change something else', start: 'Please change ' },
 ];
+
+// Who the couple calls and messages from this link (D8): Shaadi Shopping's number for its own quotations; the venue's own number
+// for a venue's quotation. A venue with no usable number gets no call / WhatsApp links — never Shaadi Shopping's in its place.
+export interface ProposalContact {
+  name: string;
+  isPlatform: boolean;
+  phone: { tel: string; display: string; whatsApp: (message: string) => string } | null;
+}
+
+export function proposalContact(brand: CustomerProposal['brand'], platform: { phone: string; display: string }): ProposalContact {
+  const whatsApp = (e164: string) => (message: string) => `https://wa.me/${e164}?text=${encodeURIComponent(message)}`;
+  if (brand.isPlatform) return { name: brand.name, isPlatform: true, phone: { tel: platform.phone, display: platform.display, whatsApp: whatsApp(platform.phone) } };
+  if (!brand.phone || !/^[6-9]\d{9}$/.test(brand.phone)) return { name: brand.name, isPlatform: false, phone: null };
+  const e164 = `+91${brand.phone}`;
+  return { name: brand.name, isPlatform: false, phone: { tel: e164, display: `+91 ${brand.phone.slice(0, 5)} ${brand.phone.slice(5)}`, whatsApp: whatsApp(e164) } };
+}
+
+// The Shaadi Shopping section on a venue's own proposal link (Phase C): a separate, clearly labelled offer to help with the rest
+// of the wedding. It is the only place a venue's link carries Shaadi Shopping's number — questions about THIS quotation still go
+// to the venue (proposalContact). A Shaadi Shopping proposal is already Shaadi Shopping's, so it has no such section. The message
+// the couple sends names the venue only: never the couple, the quotation number or the link.
+export interface ShaadiSection {
+  venueName: string;
+  tel: string;
+  display: string;
+  whatsApp: string;
+}
+
+export function shaadiSection(brand: CustomerProposal['brand'], platform: { phone: string; display: string }): ShaadiSection | null {
+  if (brand.isPlatform) return null;
+  const message = `Namaste Shaadi Shopping, I am planning my wedding with ${brand.name} and would like help with the rest of it.`;
+  return { venueName: brand.name, tel: platform.phone, display: platform.display, whatsApp: `https://wa.me/${platform.phone}?text=${encodeURIComponent(message)}` };
+}

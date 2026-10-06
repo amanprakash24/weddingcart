@@ -5,10 +5,11 @@ import { handleApiError } from '@/lib/errors';
 import { recordPaymentBody } from '@/lib/commercial/paymentSchema';
 import type { ManualPaymentMethod } from '@/lib/invoice/lifecycle';
 import { recordPaymentForWedding } from '@/services/commercialFlow.service';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // POST /api/weddings/[id]/payments — money received against the wedding's accepted agreement. It is applied to the advance invoice
 // first and the rest to the balance invoice, so a payment larger than the 25% is fine and every invoice stays exact.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -23,3 +24,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

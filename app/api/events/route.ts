@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
 import { eventService } from '@/services/event.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function GET() {
+async function handleGET() {
   const events = await eventService.listPublished();
   return NextResponse.json({ success: true, data: events });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -34,3 +35,7 @@ export async function POST(req: NextRequest) {
     return handleApiError(error);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { leadWorkspaceService } from '@/services/leadWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Status-only — not full task editing (title/dueAt/priority edits are out of
 // scope this sprint, per the plan's "we'll expand later as editing is added").
@@ -12,7 +13,7 @@ const bodySchema = z.object({
   status: z.enum(['DONE', 'CANCELLED']),
 });
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   { params }: { params: Promise<{ sourceType: string; id: string; taskId: string }> }
 ) {
@@ -33,3 +34,6 @@ export async function PATCH(
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);

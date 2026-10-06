@@ -1,4 +1,4 @@
-// Roadmap 1.3 — the couple pays by UPI from the proposal link and says "I have paid" (docs/wedding-os/08-quotation.md §18).
+// Roadmap 1.3 — the couple pays by UPI from the proposal link and says "I have paid" (docs/wedding-os/08-quotation.md §20).
 //
 // A submission is a CLAIM, never money: what was received, Date Held and Confirmed still come only from Payment rows
 // (lib/commercial/view.ts). Staff verify a claim, and only then is a Payment recorded — through the normal Money v1 path.

@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { InvoiceWithDetails } from '@/repositories/invoice.repository';
 import type { Prisma, InvoiceStatus } from '@/generated/prisma/client';
+import { platformScoped } from '@/lib/ownership/entry';
 
 function toResponseShape(invoice: InvoiceWithDetails) {
   const { weddingId: _weddingId, payments: _payments, paymentLinks: _paymentLinks, ...rest } = invoice;
@@ -17,7 +18,7 @@ function toInvoiceStatus(status: unknown): InvoiceStatus | undefined {
   return undefined;
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -38,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 // touches the other fields. invoiceNumber is never accepted from the body —
 // system-generated, matches the original route's explicit protection
 // (`const { invoiceNumber: _removed, ...safeUpdate } = body`).
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -86,7 +87,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -98,3 +99,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const PUT = platformScoped(handlePUT);
+export const DELETE = platformScoped(handleDELETE);

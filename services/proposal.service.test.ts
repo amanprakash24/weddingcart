@@ -23,6 +23,7 @@ const baseRow = (): Row => ({
   changesRequestNote: null,
   customerViewedAt: null,
   customerTokenHash: hashCustomerToken(TOKEN),
+  businessId: 'shaadi-shopping',
   subtotal: 100000, discount: 0, gstEnabled: false, gstAmount: 0, total: 100000, advanceAmount: 25000,
   terms: null, inclusions: null, exclusions: null, notes: 'internal',
   consultationId: 'c1', enquiryId: null, leadId: null,
@@ -57,6 +58,16 @@ const confirmedRows = [
   { vendor: { name: 'Artistic Mehndi Studio', category: { name: 'Mehndi' } }, weddingEvent: { type: 'WEDDING', label: null, date: new Date('2026-11-18T12:00:00Z'), venueName: null } },
 ];
 const vendorBookingFindMany = mock(async (args?: unknown) => (void args, confirmedRows));
+// "What we offer" lists, by business. BusinessOffering is not an owned table — the service must always name the business.
+const offeringRows: Record<string, { id: string; function: string; name: string; price: number; perPlate: boolean }[]> = {
+  'venue-1': [
+    { id: 'o-lawn', function: 'HALDI', name: 'Lawn', price: 25000, perPlate: false },
+    { id: 'o-plate', function: 'HALDI', name: 'Veg plate', price: 450, perPlate: true },
+    { id: 'o-hall', function: 'RECEPTION', name: 'Banquet hall', price: 150000, perPlate: false },
+  ],
+  'venue-2': [{ id: 'o-other', function: 'HALDI', name: 'Another venue’s lawn', price: 1, perPlate: false }],
+};
+const offerings = mock(async (businessId: string) => offeringRows[businessId] ?? []);
 const db = { ...tx, vendor: { findMany: vendorFindMany }, vendorBooking: { findMany: vendorBookingFindMany }, $transaction: mock(async (fn: (t: typeof tx) => unknown) => fn(tx)) };
 const paymentsView = { state: 'NOT_STARTED', received: 0, receipts: [], submissions: [], canSubmit: true };
 const paymentsForProposal = mock(async (id: string) => (void id, paymentsView));
@@ -72,11 +83,13 @@ const proposalService = createProposalService({
   logActivity: activityCreate as never,
   applyEvent: applyCommercialEvent as never,
   payments: { forProposal: paymentsForProposal as never, submit: paymentSubmit as never },
+  brand: (async (id: string) => (id === 'venue-1' ? { name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false } : { name: 'Shaadi Shopping', phone: null, isPlatform: true })) as never,
+  offerings: offerings as never,
 });
 
 beforeEach(() => {
   row = baseRow();
-  for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany, paymentsForProposal, paymentSubmit]) m.mockClear();
+  for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany, paymentsForProposal, paymentSubmit, offerings]) m.mockClear();
   accept.mockImplementation(async () => { row.status = 'ACCEPTED'; return {}; });
   createBooking.mockImplementation(async () => ({ id: 'b1' }));
 });
@@ -273,6 +286,18 @@ describe('payments (Roadmap 1.3)', () => {
     expect(view?.payments).toBeNull();
   });
 
+  test('a venue’s own quotation never shows Shaadi Shopping’s payment details, and takes no "I have paid" here', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    row.acceptedAt = new Date();
+    const view = await proposalService.view(TOKEN);
+    expect(view?.brand.isPlatform).toBe(false);
+    expect(view?.payments).toBeNull();
+    expect(paymentsForProposal).not.toHaveBeenCalled();
+    await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).rejects.toThrow('Please contact Swayamvar Hall about your payment');
+    expect(paymentSubmit).not.toHaveBeenCalled();
+  });
+
   test('"I have paid" only on an accepted proposal; invalid links get the generic answer', async () => {
     await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).rejects.toBeInstanceOf(ConflictError);
     expect(paymentSubmit).not.toHaveBeenCalled();
@@ -280,5 +305,107 @@ describe('payments (Roadmap 1.3)', () => {
     row.status = 'ACCEPTED';
     await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).resolves.toEqual({ submitted: true, payments: paymentsView as never });
     expect((paymentSubmit.mock.calls.at(-1) as unknown as [{ id: string }])[0].id).toBe('q1');
+  });
+});
+
+describe('brand on the couple’s link (D8)', () => {
+  test('Shaadi Shopping’s quotation shows Shaadi Shopping', async () => {
+    expect((await proposalService.view(TOKEN))?.brand).toEqual({ name: 'Shaadi Shopping', phone: null, isPlatform: true });
+  });
+
+  test('a venue’s own quotation shows the venue and its number', async () => {
+    row.businessId = 'venue-1';
+    expect((await proposalService.view(TOKEN))?.brand).toEqual({ name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false });
+  });
+});
+
+describe('Add an event — what the couple sees', () => {
+  test('a venue’s own open proposal lists what THAT venue offers, function by function, with starting prices', async () => {
+    row.businessId = 'venue-1';
+    const p = await proposalService.view(TOKEN);
+    expect(offerings).toHaveBeenCalledWith('venue-1');
+    expect(p?.addable).toEqual([
+      { function: 'HALDI', label: 'Haldi', items: [{ id: 'o-lawn', name: 'Lawn', price: '₹25,000' }, { id: 'o-plate', name: 'Veg plate', price: '₹450 per plate' }] },
+      { function: 'RECEPTION', label: 'Reception', items: [{ id: 'o-hall', name: 'Banquet hall', price: '₹1,50,000' }] },
+    ]);
+  });
+
+  test('Shaadi Shopping’s proposal has nothing to add and reads no price list', async () => {
+    expect((await proposalService.view(TOKEN))?.addable).toEqual([]);
+    expect(offerings).not.toHaveBeenCalled();
+  });
+
+  test('an accepted or expired venue proposal no longer offers it', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    expect((await proposalService.view(TOKEN))?.addable).toEqual([]);
+    row = baseRow();
+    row.businessId = 'venue-1';
+    row.validUntil = PAST;
+    expect((await proposalService.view(TOKEN))?.addable).toEqual([]);
+    expect(offerings).not.toHaveBeenCalled();
+  });
+});
+
+describe('requestEvent', () => {
+  test('records the function and the ticked offerings in the venue’s own words and prices — the quotation is not touched', async () => {
+    row.businessId = 'venue-1';
+    const before = { ...row, items: [...(row.items as unknown[])] };
+    await proposalService.requestEvent(TOKEN, { function: 'HALDI', offeringIds: ['o-plate', 'o-lawn'], note: ' About 150 guests ' });
+    expect(row.changesRequestNote).toContain('Please add Haldi: Lawn (from ₹25,000), Veg plate (from ₹450 per plate).\nAbout 150 guests');
+    expect(row.changesRequestedAt).toBeInstanceOf(Date);
+    for (const field of ['status', 'total', 'subtotal', 'discount', 'advanceAmount', 'terms', 'validUntil']) expect(row[field]).toEqual((before as Record<string, unknown>)[field]);
+    expect(row.items).toEqual(before.items);
+    const data = (updateMany.mock.calls.at(-1) as unknown as [{ data: Record<string, unknown> }])[0].data;
+    expect(Object.keys(data).sort()).toEqual(['changesRequestNote', 'changesRequestedAt']);
+    expect((activityCreate.mock.calls.at(-1) as unknown[])[0]).toMatchObject({
+      type: 'QUOTATION_CHANGES_REQUESTED',
+      summary: 'The couple asked to add Haldi on proposal QTN-202610-0001 (revision 2)',
+    });
+    expect(applyCommercialEvent).toHaveBeenCalledWith(tx, 'CONSULTATION', 'c1', 'CHANGES_REQUESTED', null);
+    expect(accept).not.toHaveBeenCalled();
+  });
+
+  test('nothing ticked is fine: the venue is asked for the function alone', async () => {
+    row.businessId = 'venue-1';
+    await proposalService.requestEvent(TOKEN, { function: 'RECEPTION' });
+    expect(row.changesRequestNote).toContain('Please add Reception.');
+  });
+
+  test('a tick that is not on THIS venue’s list for THAT function is ignored — another venue’s row, another function’s row, a made-up id', async () => {
+    row.businessId = 'venue-1';
+    await proposalService.requestEvent(TOKEN, { function: 'HALDI', offeringIds: ['o-other', 'o-hall', 'made-up', 'o-lawn'] });
+    expect(offerings).toHaveBeenCalledWith('venue-1');
+    expect(row.changesRequestNote).toContain('Please add Haldi: Lawn (from ₹25,000).');
+    expect(row.changesRequestNote).not.toContain('Another venue');
+    expect(row.changesRequestNote).not.toContain('Banquet hall');
+  });
+
+  test('a function the venue has nothing listed for, or any function on a Shaadi Shopping proposal, is refused before anything is written', async () => {
+    row.businessId = 'venue-1';
+    await expect(proposalService.requestEvent(TOKEN, { function: 'MEHNDI' })).rejects.toBeInstanceOf(ValidationError);
+    row = baseRow();
+    await expect(proposalService.requestEvent(TOKEN, { function: 'HALDI' })).rejects.toBeInstanceOf(ValidationError);
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(activityCreate).not.toHaveBeenCalled();
+  });
+
+  test('a bad request is refused before the link is even looked up', async () => {
+    await expect(proposalService.requestEvent(TOKEN, { function: 'PARTY' })).rejects.toBeInstanceOf(ValidationError);
+    await expect(proposalService.requestEvent(TOKEN, null)).rejects.toBeInstanceOf(ValidationError);
+    await expect(proposalService.requestEvent(TOKEN, { function: 'HALDI', note: 'x'.repeat(501) })).rejects.toBeInstanceOf(ValidationError);
+    expect(findByCustomerTokenHash).not.toHaveBeenCalled();
+  });
+
+  test('accepted or expired proposals cannot add an event; invalid links get the generic answer', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    await expect(proposalService.requestEvent(TOKEN, { function: 'HALDI' })).rejects.toBeInstanceOf(ConflictError);
+    row = baseRow();
+    row.businessId = 'venue-1';
+    row.validUntil = PAST;
+    await expect(proposalService.requestEvent(TOKEN, { function: 'HALDI' })).rejects.toBeInstanceOf(ConflictError);
+    await expect(proposalService.requestEvent(newCustomerToken(), { function: 'HALDI' })).rejects.toBeInstanceOf(ProposalNotFoundError);
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });

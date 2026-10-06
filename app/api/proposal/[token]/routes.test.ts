@@ -8,6 +8,8 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 const rows: { identifier: string; success: boolean; createdAt: Date }[] = [];
 mock.module('@/lib/prisma', () => ({
   prisma: {
+    // The proposal entry asks whose quotation a token is (lib/quotation/proposalEntry.ts); none here → runs as Shaadi Shopping.
+    quotation: { findFirst: mock(async () => null) },
     loginAttempt: {
       count: mock(async (a: { where: { identifier: string; createdAt: { gt: Date } } }) =>
         rows.filter((r) => r.identifier === a.where.identifier && r.createdAt > a.where.createdAt.gt).length),
@@ -17,11 +19,13 @@ mock.module('@/lib/prisma', () => ({
 }));
 const accept = mock(async () => ({ state: 'ACCEPTED' as const, bookingCreated: true, alreadyAccepted: false }));
 const requestChanges = mock(async () => ({ recorded: true as const }));
+const requestEvent = mock(async () => ({ recorded: true as const }));
 const submitPayment = mock(async (token: string, raw: unknown, proof: unknown) => (void token, void raw, void proof, { submitted: true as const, payments: { received: 0 } }));
-mock.module('@/services/proposal.service', () => ({ proposalService: { accept, requestChanges, submitPayment } }));
+mock.module('@/services/proposal.service', () => ({ proposalService: { accept, requestChanges, requestEvent, submitPayment } }));
 
 const { POST: acceptRoute } = await import('./accept/route');
 const { POST: changesRoute } = await import('./request-changes/route');
+const { POST: addEventRoute } = await import('./add-event/route');
 const { POST: paymentsRoute } = await import('./payments/route');
 
 const TOKEN = 'A'.repeat(43);
@@ -38,6 +42,8 @@ beforeEach(() => {
   rows.length = 0;
   accept.mockClear();
   requestChanges.mockClear();
+  requestEvent.mockClear();
+  requestEvent.mockImplementation(async () => ({ recorded: true as const }));
   accept.mockImplementation(async () => ({ state: 'ACCEPTED' as const, bookingCreated: true, alreadyAccepted: false }));
   requestChanges.mockImplementation(async () => ({ recorded: true as const }));
 });
@@ -161,5 +167,37 @@ describe('POST /api/proposal/[token]/payments (Roadmap 1.3)', () => {
   test('shares the per-IP limit with the other proposal actions', async () => {
     for (let i = 0; i < 10; i++) await paymentsRoute(form({ amount: '1', utr: 'x' }, '10.9.9.9'), ctx);
     expect((await paymentsRoute(form({ amount: '1', utr: 'x' }, '10.9.9.9'), ctx)).status).toBe(429);
+  });
+});
+
+describe('POST /api/proposal/[token]/add-event', () => {
+  test('hands the token and the body to the service; the answer is never cached or indexed', async () => {
+    const body = { function: 'HALDI', offeringIds: ['o1'], note: 'About 150 guests' };
+    const res = await addEventRoute(post(body), ctx);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true });
+    expect(requestEvent).toHaveBeenCalledWith(TOKEN, body);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(res.headers.get('x-robots-tag')).toContain('noindex');
+  });
+
+  test('a refused request → 400 with its sentence; a dead link → the one generic 404; a closed proposal → 409', async () => {
+    requestEvent.mockImplementation(async () => { throw new ValidationError('Choose the function you would like to add'); });
+    const bad = await addEventRoute(post({}), ctx);
+    expect(bad.status).toBe(400);
+    expect((await bad.json()).error).toBe('Choose the function you would like to add');
+    requestEvent.mockImplementation(async () => { throw new NotFoundError('Proposal', 'link'); });
+    const gone = await addEventRoute(post({ function: 'HALDI' }), ctx);
+    expect(gone.status).toBe(404);
+    expect((await gone.json()).error).toBe('This link is no longer valid');
+    requestEvent.mockImplementation(async () => { throw new ConflictError('This proposal has expired'); });
+    expect((await addEventRoute(post({ function: 'HALDI' }), ctx)).status).toBe(409);
+  });
+
+  test('shares the same per-IP limit, checked before the service is called', async () => {
+    for (let i = 0; i < 10; i++) await addEventRoute(post({ function: 'HALDI' }, '8.8.4.4'), ctx);
+    requestEvent.mockClear();
+    expect((await addEventRoute(post({ function: 'HALDI' }, '8.8.4.4'), ctx)).status).toBe(429);
+    expect(requestEvent).not.toHaveBeenCalled();
   });
 });

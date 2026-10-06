@@ -4,10 +4,11 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { quotationService } from '@/services/quotation.service';
 import { afterVendorLinkChange, sourceOfQuotation } from '@/lib/vendorEnquiry/hook';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // POST /api/quotations/[id]/revise — copy a sent / rejected / expired quotation into a new DRAFT
 // (revision + 1). The original is kept as history; 409 if it cannot be revised (e.g. already accepted).
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -20,3 +21,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

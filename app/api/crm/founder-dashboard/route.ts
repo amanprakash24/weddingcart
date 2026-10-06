@@ -3,8 +3,9 @@ import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { founderDashboardService } from '@/services/founderDashboard.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   if (!(await requireRole(ADMIN_ROLES))) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -20,3 +21,6 @@ export async function GET(req: NextRequest) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);

@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { InvoiceWithDetails } from '@/repositories/invoice.repository';
 import { findWeddingsForClientPhone, standaloneInvoiceWarning } from '@/services/invoiceWorkflow.service';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
 // ('draft'/'sent'/'paid', Prisma's InvoiceStatus enum is uppercase) and an
@@ -17,7 +18,7 @@ function toResponseShape(invoice: InvoiceWithDetails) {
   return { ...rest, _id: invoice.id, status: invoice.status.toLowerCase() };
 }
 
-export async function GET() {
+async function handleGET() {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -30,7 +31,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -66,3 +67,7 @@ export async function POST(req: NextRequest) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

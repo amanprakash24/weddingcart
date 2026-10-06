@@ -7,6 +7,7 @@ import { handleApiError } from '@/lib/errors';
 import { consultationCreateSchema } from './schema';
 import type { Consultation, ConsultationStatus } from '@/generated/prisma/client';
 import { SERVICE_LABELS } from '@/lib/serviceLabels';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Public, unauthenticated POST that sends a WhatsApp message to the admin's
 // own phone on every submission — unthrottled, this is spammable for real
@@ -40,7 +41,7 @@ function toConsultationStatus(status: string | null): ConsultationStatus | undef
   return undefined;
 }
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -166,7 +167,7 @@ function buildUserMessage(data: Record<string, unknown>, expertName: string) {
 
 // ── POST ─────────────────────────────────────────────────────────────────────
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const rateLimitId = `${RATE_LIMIT_PREFIX}${clientIp(req)}`;
     if (await isRequestRateLimited(rateLimitId)) {
@@ -201,3 +202,7 @@ export async function POST(req: NextRequest) {
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

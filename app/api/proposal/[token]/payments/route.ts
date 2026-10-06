@@ -2,11 +2,12 @@ import type { NextRequest } from 'next/server';
 import { proposalService } from '@/services/proposal.service';
 import { proposalError, proposalJson, proposalRateLimited } from '@/lib/quotation/proposalHttp';
 import { PROOF_MAX_BYTES } from '@/lib/payments/customerPayment';
+import { proposalScoped } from '@/lib/quotation/proposalEntry';
 
-// POST /api/proposal/[token]/payments — "I have paid" (Roadmap 1.3, 08-quotation.md §18). Public; the secret token is the only key.
+// POST /api/proposal/[token]/payments — "I have paid" (Roadmap 1.3, 08-quotation.md §20). Public; the secret token is the only key.
 // multipart/form-data: amount, utr, paidOn (YYYY-MM-DD, optional), note (optional), proof (photo or PDF, optional).
 // Records a claim for staff to verify. It is NOT a payment: nothing is counted, held or confirmed until staff verify it.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   if (await proposalRateLimited(req)) return proposalJson({ success: false, error: 'Too many attempts — please try again later' }, 429);
   // Refuse an oversized body before reading it (the screenshot limit plus room for the text fields).
   if (Number(req.headers.get('content-length') ?? 0) > PROOF_MAX_BYTES + 64 * 1024) return proposalJson({ success: false, error: 'The screenshot must be under 5 MB' }, 413);
@@ -22,3 +23,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     return proposalError(err);
   }
 }
+
+// Record ownership: runs as the business that owns the quotation behind this link (lib/quotation/proposalEntry.ts).
+export const POST = proposalScoped(handlePOST);

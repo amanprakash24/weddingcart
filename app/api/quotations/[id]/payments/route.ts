@@ -5,11 +5,12 @@ import { handleApiError } from '@/lib/errors';
 import { recordPaymentBody } from '@/lib/commercial/paymentSchema';
 import type { ManualPaymentMethod } from '@/lib/invoice/lifecycle';
 import { recordPaymentForQuotation } from '@/services/commercialFlow.service';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // POST /api/quotations/[id]/payments — money received for an ACCEPTED quotation (cash / UPI / bank transfer / cheque), recorded by staff.
 // Works before the booking is confirmed and before any wedding exists: this is how a partial payment holds the date and how the 25%
 // needed to confirm the booking arrives. Nothing is sent to the customer and no payment provider is called.
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
@@ -24,3 +25,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

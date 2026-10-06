@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/razorpay';
 import { paymentService } from '@/services/payment.service';
 import { eventService } from '@/services/event.service';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Razorpay calls this directly — no session, no requireRole. Trust comes
 // entirely from the HMAC-SHA256 signature over the raw request body, so the
 // raw text must be read (and verified) before any JSON parsing or DB access.
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get('x-razorpay-signature');
 
@@ -36,3 +37,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Webhook processing failed' }, { status: 500 });
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

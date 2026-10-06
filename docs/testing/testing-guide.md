@@ -84,3 +84,21 @@ The guard runs before anything imports Prisma. It **refuses** to run when:
 - **Do not use `expect(promise).rejects.toThrow()`** against these services under Bun: it hung for the full timeout on a Prisma-backed rejection. Capture the error instead: `const error = await call.then(() => null, (e: Error) => e)` and assert on `error?.name` / `error?.message`.
 - Assert what really happens, not what you expect from another path. Example: the booking → wedding path seeds one confirmation task per vendor booking; the umbrella "Confirm venue & vendor bookings" task and milestones come only from the CRM path.
 - Keep concurrency fan-out modest (3–8). The pool is small and the pooler is remote; more proves nothing extra.
+
+## CI (GitHub Actions, since 3 Oct 2026)
+
+`.github/workflows/ci.yml` runs on **every pull request** and on every push to `main`. Two jobs:
+
+| Job | What it runs |
+|---|---|
+| **Type check, lint, unit tests** | `bun install --frozen-lockfile` → `tsc --noEmit` → `bun run lint` (whole repo) → `bun test` |
+| **Migrations + database tests** | a throwaway `postgres:16` that exists only for that run → `prisma migrate deploy` (every migration, from empty) → `bun run test:db` |
+
+- No secrets are used. The database job's `TEST_DATABASE_URL` is the CI container, allowed explicitly with
+  `TEST_DATABASE_ALLOWED_REFS=localhost:5432/vivah_ci`; the guard above still refuses every production project.
+- Applying all migrations to an empty database also proves each migration file is valid SQL in order — the class of failure that
+  once reached production (a stray dotenv line inside `migration.sql`).
+- **Lint debt:** `react-hooks/set-state-in-effect` is a warning only for the 10 older files listed in `eslint.config.mjs` (15
+  places when CI started). It is an error everywhere else. `lib/ciConfig.test.ts` fails if a file is ever added to that list.
+- To block merging on red CI, the repository owner turns on branch protection for `main` (Settings → Branches → require the two
+  CI checks). Collaborator accounts cannot change that setting.

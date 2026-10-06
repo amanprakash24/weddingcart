@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
+import { platformScoped } from '@/lib/ownership/entry';
 
 // Vercel serverless functions cap request bodies at 4.5 MB, too small for
 // wedding-tour videos — so video files upload directly from the browser to
@@ -12,7 +13,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function POST() {
+async function handlePOST() {
   if (!(await requireAdmin())) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -33,3 +34,6 @@ export async function POST() {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
   });
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

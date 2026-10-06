@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { categoryService } from '@/services/category.service';
 import { requireAdmin } from '@/lib/adminAuth';
+import { platformScoped } from '@/lib/ownership/entry';
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     if (searchParams.get('options') === 'true') {
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json(
       { success: false, error: 'Unauthorized' },
@@ -57,3 +58,7 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const GET = platformScoped(handleGET);
+export const POST = platformScoped(handlePOST);

@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { leadWorkspaceService } from '@/services/leadWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const bodySchema = z.object({
   title: z.string().trim().min(1, 'Title is required'),
@@ -14,7 +15,7 @@ const bodySchema = z.object({
   assignedToId: z.string().min(1).optional(),
 });
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ sourceType: string; id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ sourceType: string; id: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -40,3 +41,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ sou
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const POST = platformScoped(handlePOST);

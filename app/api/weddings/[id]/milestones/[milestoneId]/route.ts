@@ -4,12 +4,13 @@ import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
+import { platformScoped } from '@/lib/ownership/entry';
 
 const bodySchema = z.object({
   status: z.enum(['PENDING', 'IN_PROGRESS', 'DONE', 'BLOCKED']),
 });
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; milestoneId: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; milestoneId: string }> }) {
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -24,3 +25,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return handleApiError(err);
   }
 }
+
+// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+export const PATCH = platformScoped(handlePATCH);
