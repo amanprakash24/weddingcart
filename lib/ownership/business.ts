@@ -90,11 +90,14 @@ export interface ProposalBrand {
   name: string;
   phone: string | null; // 10 digits
   isPlatform: boolean;
+  // The letterhead of a venue's own document (its business profile). Absent / null = none to show.
+  logoUrl?: string | null;
+  gstin?: string | null;
 }
 
 export async function proposalBrandFor(businessId: string): Promise<ProposalBrand> {
   if (businessId === PLATFORM_BUSINESS_ID) return { name: 'Shaadi Shopping', phone: null, isPlatform: true }; // the page uses SHAADI_PHONE
-  const b = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true, contactPhone: true, vendor: { select: { ownerPhone: true } } } });
+  const b = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true, contactPhone: true, logoUrl: true, gstin: true, vendor: { select: { ownerPhone: true } } } });
   const raw = (b?.contactPhone || b?.vendor?.ownerPhone || '').replace(/\D/g, '').slice(-10);
-  return { name: b?.name ?? 'Vivah OS', phone: /^[6-9]\d{9}$/.test(raw) ? raw : null, isPlatform: false };
+  return { name: b?.name ?? 'Vivah OS', phone: /^[6-9]\d{9}$/.test(raw) ? raw : null, isPlatform: false, logoUrl: b?.logoUrl ?? null, gstin: b?.gstin ?? null };
 }

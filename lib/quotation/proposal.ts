@@ -5,6 +5,7 @@ import type { QuotationStatus } from '@/generated/prisma/enums';
 import { ValidationError } from '@/lib/errors';
 import type { BookingSource } from '@/lib/quotation/booking';
 import { serviceLabel } from '@/lib/serviceLabels';
+import { gstPercentText, gstTotals } from '@/lib/quotation/lineGst';
 import type { ProposalPayments } from '@/lib/payments/customerPayment';
 import type { ProposalReviews } from '@/lib/reviews/reviewView';
 import { FUNCTION_TYPE_LABELS, groupOfferings, isFunctionType, offeringPriceWords, type FunctionType, type Offering, type OfferingInput } from '@/lib/venue/offering';
@@ -119,7 +120,7 @@ export interface ProposalQuotationInput {
   terms: string | null;
   inclusions: string | null;
   exclusions: string | null;
-  items: { sortOrder: number; description: string; category: string | null; functionLabel: string | null; vendorId: string | null; unitPrice: number; quantity: number }[];
+  items: { sortOrder: number; description: string; category: string | null; functionLabel: string | null; vendorId: string | null; unitPrice: number; quantity: number; gstRateBp?: number | null }[];
 }
 
 // A linked vendor's PUBLIC profile — only what already shows on their public page on the site (Step 7, §16). Never the
@@ -180,7 +181,7 @@ export interface CustomerProposal {
   couple: { name: string | null };
   wedding: { date: string | null; guestCount: number | null; city: string | null; eventType: string | null };
   venueName: string | null; // only when exactly one venue line names a vendor
-  items: { service: string | null; functionLabel: string | null; description: string; vendor: ProposalVendor | null; quantity: number; unitPrice: number; lineTotal: number }[];
+  items: { service: string | null; functionLabel: string | null; description: string; vendor: ProposalVendor | null; quantity: number; unitPrice: number; lineTotal: number; gstPercent: string | null; gst: number }[]; // gstPercent: the line's own rate as typed ("18"), null = no GST on it
   confirmedVendors: { name: string; category: string; function: string; date: string; venueName: string | null }[];
   subtotal: number;
   discount: number;
@@ -195,7 +196,7 @@ export interface CustomerProposal {
   // Roadmap 1.4 (§21): only once the wedding made from this proposal is COMPLETED — the vendors they booked, to review.
   reviews: ProposalReviews | null;
   // Who the couple sees (D8): Shaadi Shopping, or the venue whose own quotation this is (lib/ownership/business.ts).
-  brand: { name: string; phone: string | null; isPlatform: boolean };
+  brand: { name: string; phone: string | null; isPlatform: boolean; logoUrl?: string | null; gstin?: string | null };
   // "Add an event": what the venue offers, function by function — only on a venue's own OPEN proposal, otherwise empty.
   // `id` is the row in the venue's own price list; it only says which ones the couple ticked.
   addable: { function: FunctionType; label: string; items: { id: string; name: string; price: string }[] }[];
@@ -252,9 +253,11 @@ export function toCustomerProposal(
   now: Date,
   after: { booked: boolean; confirmedVendors: ConfirmedVendorInput[] } = { booked: false, confirmedVendors: [] }
 ): CustomerProposal {
-  const items = [...q.items]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((i) => {
+  // GST line by line (lib/quotation/lineGst.ts) — the same arithmetic that produced the stored GST total.
+  const sorted = [...q.items].sort((a, b) => a.sortOrder - b.sortOrder);
+  const gst = gstTotals(sorted, q.discount);
+  const items = sorted
+    .map((i, n) => {
       const v = i.vendorId ? vendors.get(i.vendorId) : undefined;
       return {
         // Older lines stored the raw service key ("venue") — shown by its name ("Venue"); stored data is unchanged.
@@ -265,6 +268,8 @@ export function toCustomerProposal(
         quantity: i.quantity,
         unitPrice: i.unitPrice,
         lineTotal: i.unitPrice * i.quantity,
+        gstPercent: i.gstRateBp ? gstPercentText(i.gstRateBp) : null,
+        gst: gst.lines[n].gst,
       };
     });
   // A venue line: its service is "Venue", or its linked vendor is in the Venues category.

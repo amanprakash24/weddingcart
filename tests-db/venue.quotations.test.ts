@@ -203,4 +203,39 @@ dbDescribe('a venue’s own quotations (real database)', () => {
     expect('quotation' in saved && saved.quotation?.number).toMatch(new RegExp(`^${prefixB}-QTN-\\d{6}-0001$`));
     expect((await outcome(inA(() => quotes.get(id))))?.name).toBe('NotFoundError');
   });
+
+  // GST line by line (6 Oct 2026): venue B charges GST on its own quotation. The rate is whatever it types on each line; charging
+  // GST needs its GST number; the totals, the invoice the couple's acceptance creates and the couple's page all carry the GST.
+  test('GST per line: needs the venue’s GST number; each line keeps its own rate; the couple’s page and the booking carry it', async () => {
+    const id = ((await inB(() => enquiries.create({ name: 'Neha Verma', phone: '98765 43213', weddingDate: later(50), channel: 'PHONE' }, users[1]))) as { id: string }).id;
+    const lines = { items: [{ description: 'Decoration', quantity: '1', unitPrice: '100000', gstPercent: '18' }, { description: 'Veg plate', quantity: '200', unitPrice: '850', gstPercent: '5' }, { description: 'Hall hire', quantity: '1', unitPrice: '50000' }], validUntil: later(7) };
+
+    // No GST number yet → refused, nothing saved.
+    expect(await inB(() => quotes.save(id, lines, users[1]))).toEqual({ errors: { gst: expect.stringContaining('GST number') } });
+    expect((await inB(() => quotes.get(id))).quotation).toBeNull();
+
+    await app.prisma.business.update({ where: { id: scopeB.businessId }, data: { gstin: '27AAPFU0939F1ZV' } });
+    const saved = await inB(() => quotes.save(id, lines, users[1]));
+    if (!('quotation' in saved) || !saved.quotation) throw new Error(JSON.stringify(saved));
+    // 1,00,000 @18% = 18,000 · 1,70,000 @5% = 8,500 · 50,000 with no rate → GST 26,500 on 3,20,000
+    expect(saved.quotation).toMatchObject({ subtotal: 320000, discount: 0, gstAmount: 26500, total: 346500, toConfirm: 86625, letterhead: { gstin: '27AAPFU0939F1ZV' } });
+    expect(saved.quotation.items.map((i) => [i.gstRateBp, i.gst])).toEqual([[1800, 18000], [500, 8500], [null, 0]]);
+
+    // Stored on the lines and on the quotation itself.
+    const row = await app.prisma.quotation.findUniqueOrThrow({ where: { id: saved.quotation.id }, select: { gstEnabled: true, gstAmount: true, total: true, items: { orderBy: { sortOrder: 'asc' }, select: { gstRateBp: true } } } });
+    expect(row).toEqual({ gstEnabled: true, gstAmount: 26500, total: 346500, items: [{ gstRateBp: 1800 }, { gstRateBp: 500 }, { gstRateBp: null }] });
+
+    // The couple's page: the venue's GST number, and the GST on each line.
+    const token = (await inB(() => quotes.send(id, users[1]))).linkPath.slice('/proposal/'.length);
+    const asCouple = async <T>(fn: () => Promise<T>) => runInScope(await scopeForProposalToken(token), fn);
+    const page = await asCouple(() => proposalService.view(token));
+    expect(page?.brand.gstin).toBe('27AAPFU0939F1ZV');
+    expect(page?.items.map((i) => [i.gstPercent, i.gst])).toEqual([['18', 18000], ['5', 8500], [null, 0]]);
+    expect(page).toMatchObject({ gstAmount: 26500, total: 346500 });
+
+    // A revision keeps every line's rate.
+    const revised = await inB(() => quotes.revise(id, users[1]));
+    expect(revised.quotation?.items.map((i) => i.gstRateBp)).toEqual([1800, 500, null]);
+    expect(revised.quotation).toMatchObject({ gstAmount: 26500, total: 346500 });
+  });
 });

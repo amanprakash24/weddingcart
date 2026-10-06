@@ -235,7 +235,7 @@ describe('toCustomerProposal — allow-list only', () => {
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW)).sort()).toEqual(
       ['acceptedAt', 'addable', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'brand', 'inclusions', 'items', 'number', 'payments', 'reviews', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
     );
-    expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'lineTotal', 'quantity', 'service', 'unitPrice', 'vendor']);
+    expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'gst', 'gstPercent', 'lineTotal', 'quantity', 'service', 'unitPrice', 'vendor']);
   });
 
   test('GST is shown when charged', () => {
@@ -282,5 +282,32 @@ describe('Add an event', () => {
     expect(eventRequestNote('HALDI', [{ name: 'Lawn', price: 25000, perPlate: false }, { name: 'Veg plate', price: 450, perPlate: true }], 'About 150 guests')).toBe(
       'Please add Haldi: Lawn (from ₹25,000), Veg plate (from ₹450 per plate).\nAbout 150 guests'
     );
+  });
+});
+
+describe('GST line by line on the couple’s view', () => {
+  const q = (items: { unitPrice: number; quantity: number; gstRateBp?: number | null }[], discount = 0): ProposalQuotationInput => {
+    const subtotal = items.reduce((a, i) => a + i.unitPrice * i.quantity, 0);
+    return {
+      quotationNumber: 'SWA-QTN-202610-0001', revision: 1, status: 'SENT', validUntil: FUTURE, acceptedAt: null, changesRequestedAt: null,
+      subtotal, discount, gstEnabled: true, gstAmount: 0, total: subtotal - discount, advanceAmount: 0, terms: null, inclusions: null, exclusions: null,
+      items: items.map((i, n) => ({ sortOrder: n + 1, description: `Line ${n + 1}`, category: null, functionLabel: null, vendorId: null, ...i })),
+    };
+  };
+
+  test('each line shows its own rate and the GST on it; a line with no rate shows none', () => {
+    const p = toCustomerProposal(q([{ unitPrice: 100000, quantity: 1, gstRateBp: 1800 }, { unitPrice: 850, quantity: 200, gstRateBp: 500 }, { unitPrice: 50000, quantity: 1 }]), null, new Map(), NOW);
+    expect(p.items.map((i) => [i.gstPercent, i.gst])).toEqual([['18', 18000], ['5', 8500], [null, 0]]);
+  });
+
+  test('the discount comes off before GST, in the order the lines are shown', () => {
+    const input = q([{ unitPrice: 100000, quantity: 1, gstRateBp: 500 }, { unitPrice: 100000, quantity: 1, gstRateBp: 1800 }], 10000);
+    input.items.reverse(); // stored out of order — sortOrder decides
+    const p = toCustomerProposal(input, null, new Map(), NOW);
+    expect(p.items.map((i) => [i.description, i.gstPercent, i.gst])).toEqual([['Line 1', '5', 4750], ['Line 2', '18', 17100]]);
+  });
+
+  test('Shaadi Shopping’s own proposal carries no letterhead logo or GST number by default', () => {
+    expect(toCustomerProposal(q([{ unitPrice: 1000, quantity: 1 }]), null, new Map(), NOW).brand).toEqual({ name: 'Shaadi Shopping', phone: null, isPlatform: true });
   });
 });
