@@ -313,6 +313,17 @@ describe('payments (Roadmap 1.3)', () => {
 });
 
 describe('reviews (Roadmap 1.4)', () => {
+  test('a venue’s own quotation shows no reviews and takes none — Shaadi Shopping’s staff could not publish them', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    row.acceptedAt = new Date();
+    row.booking = { id: 'b1', status: 'CONFIRMED' };
+    expect((await proposalService.view(TOKEN))?.reviews).toBeNull();
+    expect(reviewsForProposal).not.toHaveBeenCalled();
+    await expect(proposalService.submitReview(TOKEN, 'vb1', { rating: 5, authorName: 'Priya' })).rejects.toThrow('Reviews are not available on this proposal');
+    expect(reviewSubmit).not.toHaveBeenCalled();
+  });
+
   test('an open proposal never reads reviews', async () => {
     const view = await proposalService.view(TOKEN);
     expect(view?.reviews).toBeNull();
