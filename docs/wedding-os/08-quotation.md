@@ -600,10 +600,10 @@ not printed, after the venue's contact line).
 
 > **Brought up to date with record ownership on 6 Oct 2026.** This section was written as §18 before venues had their own
 > quotations; "Add an event" and the Shaadi Shopping section took §18 and §19. Two rules were added when it was merged:
-> - **Shaadi Shopping's own quotations only.** The UPI payee shown is Shaadi Shopping's () and its staff verify
+> - **Shaadi Shopping's own quotations only.** The UPI payee shown is Shaadi Shopping's (`SHAADI_UPI_ID`) and its staff verify
 >   each claim, so the Payments view and "I have paid" never appear on a **venue's own** proposal link — a venue's customer pays
 >   the venue. The venue's own payee (its UPI ID from Settings) on its link, and verification inside Vendor OS, are not built.
-> - **Ownership:**  is a child of  in the ownership guard (); the couple's
+> - **Ownership:** `PaymentSubmission` is a child of `Quotation` in the ownership guard (`lib/ownership/owned.ts`); the couple's
 >   route runs as the business that owns the quotation and the staff routes as Shaadi Shopping.
 
 Master doc §27 (the couple sees Total → Advance → Paid → Pending → Due date, receipts and transaction history). Built on the
