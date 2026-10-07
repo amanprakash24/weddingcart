@@ -12,14 +12,17 @@ import Link from 'next/link';
 import { whatsappTo } from '@/lib/venue/enquiry';
 import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS, groupOfferings, offeringPriceWords, type FunctionType, type Offering } from '@/lib/venue/offering';
 import { QUOTE_STAGE_LABEL, quoteShareMessage, VENUE_QUOTE_LIMITS, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
+import { gstPercentText, gstTotals, parseGstPercent } from '@/lib/quotation/lineGst';
 import type { VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
 import BookingMoney from './BookingMoney';
 
 // The venue's own quotation for one of its own enquiries (Phase C): write it, send it with the couple's link on WhatsApp, and see
 // what the couple did — opened it, asked for changes, accepted. Phone-first. No totals are typed: the total is the lines minus the
-// discount, and the amount that confirms the booking is the venue's own rule (Settings).
+// discount plus GST, and the amount that confirms the booking is the venue's own rule (Settings).
+// GST (6 Oct 2026): each line has its own "GST %" box, empty until the venue types a rate — there is no default. The form shows the
+// GST and the line total as they type, worked out by the same code the server uses (lib/quotation/lineGst.ts).
 
-type Line = { description: string; quantity: string; unitPrice: string; function: FunctionType | '' };
+type Line = { description: string; quantity: string; unitPrice: string; function: FunctionType | ''; gstPercent: string };
 type Form = { items: Line[]; discount: string; validUntil: string; inclusions: string; exclusions: string; terms: string };
 
 const TONE: Record<QuoteStage, PillStatus> = { DRAFT: 'dateHeld', SENT: 'info', CHANGES: 'overdue', ACCEPTED: 'confirmed', ENDED: 'neutral' };
@@ -33,10 +36,10 @@ const dayWords = (value: string) => new Intl.DateTimeFormat('en-IN', { day: 'num
 const num = (raw: string) => Number(raw.replace(/[₹,\s]/g, '')) || 0;
 
 const FUNCTION_OPTIONS = [{ value: '', label: 'Not for one function' }, ...FUNCTION_TYPES.map((fn) => ({ value: fn, label: FUNCTION_TYPE_LABELS[fn] }))];
-const emptyLine = (): Line => ({ description: '', quantity: '1', unitPrice: '', function: '' });
+const emptyLine = (): Line => ({ description: '', quantity: '1', unitPrice: '', function: '', gstPercent: '' });
 const blankForm = (): Form => ({ items: [emptyLine()], discount: '', validUntil: istDay(7), inclusions: '', exclusions: '', terms: '' });
 const formOf = (q: VenueQuotationView): Form => ({
-  items: q.items.map((i) => ({ description: i.description, quantity: String(i.quantity), unitPrice: String(i.unitPrice), function: i.function ?? '' })),
+  items: q.items.map((i) => ({ description: i.description, quantity: String(i.quantity), unitPrice: String(i.unitPrice), function: i.function ?? '', gstPercent: i.gstRateBp === null ? '' : gstPercentText(i.gstRateBp) })),
   discount: q.discount ? String(q.discount) : '',
   validUntil: q.validUntil && q.validUntil >= istDay() ? q.validUntil : istDay(7),
   inclusions: q.inclusions ?? '',
@@ -88,7 +91,8 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
         return b.data;
       }
       setErrors(b.fieldErrors ?? {});
-      setError(b.fieldErrors ? 'Please check the highlighted boxes.' : (b.error ?? 'Something went wrong. It was not saved — please try again.'));
+      const onlyGstNumber = b.fieldErrors && Object.keys(b.fieldErrors).length === 1 && 'gst' in b.fieldErrors;
+      setError(onlyGstNumber ? null : b.fieldErrors ? 'Please check the highlighted boxes.' : (b.error ?? 'Something went wrong. It was not saved — please try again.'));
     } catch {
       setError('Could not reach Vivah OS. It was not saved — please check your connection.');
     }
@@ -104,7 +108,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
 
   const setLine = (i: number, key: keyof Line, value: string) => {
     setForm((f) => ({ ...f, items: f.items.map((l, n) => (n === i ? { ...l, [key]: value } : l)) }));
-    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== `items.${i}.${key}` && k !== 'items')));
+    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== `items.${i}.${key}` && k !== 'items' && k !== 'gst')));
   };
   const setField = (key: Exclude<keyof Form, 'items'>, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -113,13 +117,13 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
   // One tap adds a line from the venue's "What we offer" list — it carries its function (Haldi, Reception …).
   const addOffering = (o: Offering) =>
     setForm((f) => {
-      const line: Line = { description: o.perPlate ? `${o.name} (per plate)` : o.name, quantity: '1', unitPrice: String(o.price), function: o.function };
+      const line: Line = { description: o.perPlate ? `${o.name} (per plate)` : o.name, quantity: '1', unitPrice: String(o.price), function: o.function, gstPercent: '' };
       const only = f.items.length === 1 && !f.items[0].description.trim() && !f.items[0].unitPrice.trim();
       return { ...f, items: only ? [line] : [...f.items, line] };
     });
   const addPackage = (p: VenueQuotationState['packages'][number]) =>
     setForm((f) => {
-      const line: Line = { description: p.perPlate ? `${p.name} (per plate)` : p.name, quantity: '1', unitPrice: String(p.price), function: '' };
+      const line: Line = { description: p.perPlate ? `${p.name} (per plate)` : p.name, quantity: '1', unitPrice: String(p.price), function: '', gstPercent: '' };
       const only = f.items.length === 1 && !f.items[0].description.trim() && !f.items[0].unitPrice.trim();
       return { ...f, items: only ? [line] : [...f.items, line] };
     });
@@ -155,8 +159,8 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
     }
   }
 
-  const subtotal = form.items.reduce((sum, l) => sum + num(l.quantity) * num(l.unitPrice), 0);
-  const total = Math.max(0, subtotal - num(form.discount));
+  const money = gstTotals(form.items.map((l) => ({ quantity: num(l.quantity), unitPrice: num(l.unitPrice), gstRateBp: parseGstPercent(l.gstPercent) ?? null })), num(form.discount));
+  const total = money.total;
 
   const heading = (
     <div className="flex items-center justify-between gap-2">
@@ -212,6 +216,15 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
                     <Trash2 className="h-5 w-5" aria-hidden />
                   </button>
                 </div>
+                <div className="grid grid-cols-[7rem_1fr] items-start gap-3">
+                  <Input label="GST %" inputMode="decimal" value={l.gstPercent} onChange={(ev) => setLine(i, 'gstPercent', ev.target.value.replace(/[^0-9.]/g, '').slice(0, 5))} error={errors[`items.${i}.gstPercent`] ?? (parseGstPercent(l.gstPercent) === undefined ? 'Enter a rate like 5, 12 or 18' : undefined)} placeholder="e.g. 18" helperText="Empty = no GST" className="min-h-12 text-base" />
+                  <dl className="mt-6 space-y-0.5 rounded-lg bg-[var(--color-bg-surface-muted)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
+                    <div className="flex justify-between"><dt>Amount</dt><dd>{inr(money.lines[i].amount)}</dd></div>
+                    {money.lines[i].discount > 0 && <div className="flex justify-between"><dt>After discount</dt><dd>{inr(money.lines[i].taxable)}</dd></div>}
+                    <div className="flex justify-between"><dt>GST{money.lines[i].gstRateBp ? ` at ${gstPercentText(money.lines[i].gstRateBp as number)}%` : ''}</dt><dd>{money.lines[i].gstRateBp ? inr(money.lines[i].gst) : '—'}</dd></div>
+                    <div className="flex justify-between font-semibold text-[var(--color-text-primary)]"><dt>Line total</dt><dd>{inr(money.lines[i].taxable + money.lines[i].gst)}</dd></div>
+                  </dl>
+                </div>
               </li>
             ))}
           </ul>
@@ -231,10 +244,18 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
           <Textarea label="Terms (optional)" value={form.terms} onChange={(ev) => setField('terms', ev.target.value)} error={errors.terms} rows={3} placeholder="Balance before the event, cancellation…" />
 
           <dl className="space-y-1 rounded-lg bg-[var(--color-bg-subtle,transparent)] text-sm">
-            <div className="flex justify-between font-semibold text-[var(--color-text-primary)]"><dt>Total</dt><dd>{inr(total)}</dd></div>
+            <div className="flex justify-between text-[var(--color-text-secondary)]"><dt>Subtotal</dt><dd>{inr(money.subtotal)}</dd></div>
+            {money.discount > 0 && <div className="flex justify-between text-[var(--color-text-secondary)]"><dt>Discount</dt><dd>− {inr(money.discount)}</dd></div>}
+            {money.gst > 0 && <div className="flex justify-between text-[var(--color-text-secondary)]"><dt>GST</dt><dd>+ {inr(money.gst)}</dd></div>}
+            <div className="flex justify-between border-t border-[var(--color-border-subtle)] pt-1 font-semibold text-[var(--color-text-primary)]"><dt>Total</dt><dd>{inr(total)}</dd></div>
             <div className="flex justify-between text-[var(--color-text-secondary)]"><dt>To confirm the booking ({percent}%)</dt><dd>{inr(requiredConfirmation(total, { confirmationPercent: percent }))}</dd></div>
           </dl>
 
+          {errors.gst && (
+            <p role="alert" className="rounded-lg border border-[var(--color-danger-default)]/40 p-3 text-sm text-[var(--color-danger-text)]">
+              {errors.gst}. <Link href="/vendor/profile" className="font-semibold underline underline-offset-2">Open your business profile</Link>
+            </p>
+          )}
           {error && <p role="alert" className="text-sm text-[var(--color-danger-text)]">{error}</p>}
           <button type="button" disabled={busy} onClick={save} className={primary}>{busy ? 'Saving…' : 'Save quotation'}</button>
           <button type="button" disabled={busy} onClick={() => { setEditing(false); setError(null); setErrors({}); }} className={secondary}>Cancel</button>
@@ -262,16 +283,34 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
     <section aria-label="Quotation" className="space-y-3">
       {heading}
       <Card className="space-y-4">
+        {/* Who the quotation is from — what the customer sees at the top of the document. */}
+        <div className="flex items-center gap-3 border-b border-[var(--color-border-subtle)] pb-3">
+          {q.letterhead.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- the business's own logo, an address we stored ourselves
+            <img src={q.letterhead.logoUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-[var(--color-border-subtle)] bg-white object-contain p-1" />
+          ) : (
+            <Link href="/vendor/profile" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-[var(--color-border-default)] text-center text-[10px] leading-tight text-[var(--color-text-muted)]">Add logo</Link>
+          )}
+          <div className="min-w-0">
+            <p className="truncate font-playfair text-base font-bold text-[var(--color-text-primary)]">{q.letterhead.name}</p>
+            <p className="text-xs text-[var(--color-text-muted)]">{q.letterhead.gstin ? `GSTIN ${q.letterhead.gstin}` : 'No GST number on this quotation'}</p>
+          </div>
+        </div>
         <ul className="space-y-2 text-sm">
           {q.items.map((i, n) => (
             <li key={n} className="flex justify-between gap-3">
               <span className="text-[var(--color-text-primary)]">{i.function && <span className="text-[var(--color-text-muted)]">{FUNCTION_TYPE_LABELS[i.function]} · </span>}{i.description}{i.quantity > 1 && <span className="text-[var(--color-text-muted)]"> · {i.quantity.toLocaleString('en-IN')} × {inr(i.unitPrice)}</span>}</span>
-              <span className="shrink-0 text-[var(--color-text-primary)]">{inr(i.lineTotal)}</span>
+              <span className="shrink-0 text-right text-[var(--color-text-primary)]">
+                {inr(i.lineTotal)}
+                {i.gstRateBp !== null && i.gstRateBp > 0 && <span className="block text-xs text-[var(--color-text-muted)]">+ GST {gstPercentText(i.gstRateBp)}%{i.taxable !== i.lineTotal && <> on {inr(i.taxable)}</>} {inr(i.gst)}</span>}
+              </span>
             </li>
           ))}
         </ul>
         <dl className="space-y-1 border-t border-[var(--color-border-subtle)] pt-3 text-sm">
+          {(q.discount > 0 || q.gstAmount > 0) && <div className="flex justify-between text-[var(--color-text-secondary)]"><dt>Subtotal</dt><dd>{inr(q.subtotal)}</dd></div>}
           {q.discount > 0 && <div className="flex justify-between text-[var(--color-text-secondary)]"><dt>Discount</dt><dd>− {inr(q.discount)}</dd></div>}
+          {q.gstAmount > 0 && <div className="flex justify-between text-[var(--color-text-secondary)]"><dt>GST</dt><dd>+ {inr(q.gstAmount)}</dd></div>}
           <div className="flex justify-between font-semibold text-[var(--color-text-primary)]"><dt>Total</dt><dd>{inr(q.total)}</dd></div>
           <div className="flex justify-between text-[var(--color-text-secondary)]"><dt>To confirm the booking ({q.confirmationPercent}%)</dt><dd>{inr(q.toConfirm)}</dd></div>
         </dl>

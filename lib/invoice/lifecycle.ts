@@ -5,6 +5,8 @@
 // Status is never guessed: it is DERIVED from what actually happened — was it issued, and how much has been received. That is
 // what fixes the invoice that stayed DRAFT forever after its payment link went out. (No void/cancel exists in the schema, so none
 // is invented here.)
+import { balanceInvoiceGst } from './gstShare';
+
 export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID';
 
 // The status an invoice should have, given whether it has been issued and how much has been received.
@@ -63,7 +65,7 @@ export function checkBalanceInvoice(input: {
 }
 
 export function planBalanceInvoice(input: {
-  quotation: { quotationNumber: string; total: number; advanceAmount: number };
+  quotation: { quotationNumber: string; total: number; advanceAmount: number; gstAmount?: number | null; sellerGstin?: string | null };
   wedding: { primaryDate: Date | null; weddingType: string | null };
   client: { name: string; phone: string; email?: string | null; city?: string | null };
   advance?: number; // Money v1: the agreement's frozen confirmation amount, when there is one
@@ -71,6 +73,8 @@ export function planBalanceInvoice(input: {
   const { quotation, wedding, client } = input;
   const advance = input.advance ?? quotation.advanceAmount;
   const { balance } = agreementFigures({ total: quotation.total, advanceAmount: advance });
+  // The GST the first invoice did not carry (lib/invoice/gstShare.ts) — none unless the quotation charges GST under a frozen GST number.
+  const tax = balanceInvoiceGst(balance, advance, quotation);
   return {
     invoice: {
       clientName: client.name,
@@ -79,12 +83,13 @@ export function planBalanceInvoice(input: {
       clientCity: client.city?.trim() || null,
       eventDate: wedding.primaryDate ? wedding.primaryDate.toISOString().slice(0, 10) : null,
       eventType: wedding.weddingType,
-      subtotal: balance,
+      subtotal: tax.taxable,
       discount: 0,
-      gstEnabled: false as const,
-      gstAmount: 0 as const,
+      gstEnabled: tax.gst > 0,
+      gstAmount: tax.gst,
+      sellerGstin: tax.sellerGstin,
       total: balance,
-      notes: `Balance against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}, advance ${inr(advance)}). No tax applied.`,
+      notes: `Balance against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}, advance ${inr(advance)}). ${tax.gst > 0 ? `Includes GST ${inr(tax.gst)} (GSTIN ${tax.sellerGstin}).` : 'No tax applied.'}`,
     },
     items: [{ description: `Balance — ${quotation.quotationNumber}`, amount: balance, quantity: 1 as const }],
   };

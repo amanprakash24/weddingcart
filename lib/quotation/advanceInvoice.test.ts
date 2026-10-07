@@ -46,6 +46,18 @@ describe('planAdvanceInvoice — what the automatic invoice looks like', () => {
     expect(plan.invoice.discount).toBe(0);
   });
 
+  test('a quotation that charges GST under a frozen GST number: the invoice carries its share of the GST and the number', () => {
+    const plan = planAdvanceInvoice({ ...input, quotation: { quotationNumber: 'ABC-QTN-202610-0001', total: 170500, advanceAmount: 42625, gstAmount: 20500, sellerGstin: '10ABCDE1234F1Z5' } });
+    expect(plan.invoice).toMatchObject({ subtotal: 37500, gstEnabled: true, gstAmount: 5125, total: 42625, sellerGstin: '10ABCDE1234F1Z5' });
+    expect(plan.invoice.notes).toContain('Includes GST ₹5,125 (GSTIN 10ABCDE1234F1Z5)');
+    expect(plan.items).toEqual([{ description: 'Advance — ABC-QTN-202610-0001', amount: 42625, quantity: 1 }]);
+  });
+
+  test('GST on the quotation but no frozen GST number (Shaadi Shopping’s own quotations): still no tax line', () => {
+    const plan = planAdvanceInvoice({ ...input, quotation: { ...input.quotation, gstAmount: 30000, sellerGstin: null } });
+    expect(plan.invoice).toMatchObject({ subtotal: 200000, gstEnabled: false, gstAmount: 0, total: 200000, sellerGstin: null });
+  });
+
   test('NO TAX in V1 (decision Q4): tax is off and zero — nothing about GST is invented', () => {
     const plan = planAdvanceInvoice(input);
     expect(plan.invoice.gstEnabled).toBe(false);

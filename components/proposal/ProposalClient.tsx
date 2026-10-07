@@ -270,6 +270,11 @@ function QuotationTable({ items }: { items: Item[] }) {
                 </td>
                 <td className="py-3 text-right font-medium tabular-nums text-[#2A1F1B]">
                   {rupees(item.lineTotal)}
+                  {item.gstPercent && (
+                    <span className="block text-xs font-normal text-[#7A6556]">
+                      + GST {item.gstPercent}%{item.taxable !== item.lineTotal && <> on {rupees(item.taxable)}</>} {rupees(item.gst)}
+                    </span>
+                  )}
                 </td>
               </tr>
             );
@@ -529,7 +534,11 @@ export default function ProposalClient({
       {/* Brand bar */}
       <div className="border-b border-[#C5A46D]/20 bg-[#1E0510] px-5 py-3 print:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <p className="text-lg tracking-wide text-[#F3D9A4]" style={serif}>
+          <p className="flex items-center gap-3 text-lg tracking-wide text-[#F3D9A4]" style={serif}>
+            {p.brand.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- the business's own logo, an address stored by our own upload route
+              <img src={p.brand.logoUrl} alt="" className="h-9 w-9 rounded-md bg-white object-contain p-0.5" />
+            )}
             {contact.name}
           </p>
           {contact.phone && (
@@ -721,6 +730,7 @@ export default function ProposalClient({
                 Version {p.version}
                 {validUntil && <> · Valid until {validUntil}</>}
                 {contact.phone && <> · {contact.phone.display}</>}
+                {p.brand.gstin && <> · GSTIN {p.brand.gstin}</>}
               </p>
             </div>
 
@@ -742,6 +752,11 @@ export default function ProposalClient({
                 </button>
               </div>
 
+              {p.brand.gstin && (
+                <p className="mt-3 text-xs text-[#7A6556] print:hidden">
+                  {contact.name} · GSTIN <span className="font-medium tracking-wide text-[#4A3F38]">{p.brand.gstin}</span>
+                </p>
+              )}
               <div className="mt-4">
                 <QuotationTable items={p.items} />
               </div>

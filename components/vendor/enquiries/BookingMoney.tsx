@@ -92,6 +92,32 @@ export default function BookingMoney({
         </ul>
       )}
 
+      {money.invoices.length > 0 && (
+        <section aria-label="Invoices" className="space-y-2 border-t border-[var(--color-border-subtle)] pt-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Invoices</h4>
+          <ul className="space-y-2">
+            {money.invoices.map((i) => (
+              <li key={i.number} className="rounded-lg border border-[var(--color-border-subtle)] p-3 text-sm">
+                <p className="flex justify-between gap-3 font-semibold text-[var(--color-text-primary)]">
+                  <span>{i.number} · {i.kind === 'ADVANCE' ? 'To confirm the booking' : 'Balance'}</span>
+                  <span className="shrink-0">{inr(i.total)}</span>
+                </p>
+                {i.gst > 0 ? (
+                  <dl className="mt-1 space-y-0.5 text-xs text-[var(--color-text-secondary)]">
+                    <div className="flex justify-between"><dt>Taxable value</dt><dd>{inr(i.taxable)}</dd></div>
+                    <div className="flex justify-between"><dt>GST</dt><dd>+ {inr(i.gst)}</dd></div>
+                    <div className="flex justify-between"><dt>GSTIN</dt><dd className="tracking-wide">{i.gstin ?? '—'}</dd></div>
+                  </dl>
+                ) : (
+                  <p className="mt-1 text-xs text-[var(--color-text-muted)]">No GST on this invoice</p>
+                )}
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">{i.paid >= i.total ? 'Paid' : i.paid > 0 ? `${inr(i.paid)} received` : 'Nothing received yet'}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {open ? (
         <div className="space-y-3 rounded-lg border border-[var(--color-border-subtle)] p-3">
           <Input label="Amount received (₹)" inputMode="numeric" value={amount} onChange={(ev) => setAmount(ev.target.value)} error={errors.amount} className="min-h-12 text-base" />

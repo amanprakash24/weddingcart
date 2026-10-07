@@ -4,11 +4,13 @@
 //
 // Pure — the service that runs it inside the conversion transaction is services/advanceInvoice.service.ts.
 //
-// V1 applies NO TAX to this invoice (decision Q4): gstEnabled is false and gstAmount is 0. Nothing about
-// GST is invented here; it can be revisited after accounting/CA confirmation. The Razorpay payment link is
+// Tax (decision Q4, extended 7 Oct 2026): the invoice has no tax line unless its quotation charges GST AND carries the seller's
+// frozen GST number — then it carries its share of that GST (lib/invoice/gstShare.ts). Nothing about GST is invented here: a
+// quotation without a GST number (every Shaadi Shopping quotation today) gives the invoice it always gave. The Razorpay payment link is
 // deliberately NOT created here — it is an external call that must never run inside a database
 // transaction — so staff create it afterwards from the wedding's Finance panel, as they do today.
 import type { QuotationStatus } from '@/generated/prisma/enums';
+import { advanceInvoiceGst } from '@/lib/invoice/gstShare';
 
 export type AdvanceInvoiceDecision =
   | { action: 'CREATE' }
@@ -43,8 +45,9 @@ export interface AdvanceInvoicePlan {
     eventType: string | null;
     subtotal: number;
     discount: number;
-    gstEnabled: false;
-    gstAmount: 0;
+    gstEnabled: boolean;
+    gstAmount: number;
+    sellerGstin: string | null;
     total: number;
     notes: string;
   };
@@ -54,7 +57,7 @@ export interface AdvanceInvoicePlan {
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
 export function planAdvanceInvoice(input: {
-  quotation: { quotationNumber: string; total: number; advanceAmount: number };
+  quotation: { quotationNumber: string; total: number; advanceAmount: number; gstAmount?: number | null; sellerGstin?: string | null };
   wedding: { primaryDate: Date | null; weddingType: string | null };
   client: AdvanceInvoiceClient;
   // Money v1: the booking-confirmation amount the agreement froze (25% of the accepted total). When given, it is what the invoice is
@@ -63,6 +66,8 @@ export function planAdvanceInvoice(input: {
 }): AdvanceInvoicePlan {
   const { quotation, wedding, client } = input;
   const amount = input.confirmationAmount ?? quotation.advanceAmount;
+  const tax = advanceInvoiceGst(amount, quotation);
+  const taxNote = tax.gst > 0 ? `Includes GST ${inr(tax.gst)} (GSTIN ${tax.sellerGstin}).` : 'No tax applied.';
   return {
     invoice: {
       clientName: client.name,
@@ -71,15 +76,16 @@ export function planAdvanceInvoice(input: {
       clientCity: client.city?.trim() || null,
       eventDate: wedding.primaryDate ? wedding.primaryDate.toISOString().slice(0, 10) : null,
       eventType: wedding.weddingType,
-      subtotal: amount,
+      subtotal: tax.taxable,
       discount: 0,
-      gstEnabled: false,
-      gstAmount: 0,
+      gstEnabled: tax.gst > 0,
+      gstAmount: tax.gst,
+      sellerGstin: tax.sellerGstin,
       total: amount,
       notes:
         input.confirmationAmount !== undefined
-          ? `Booking confirmation amount against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}). No tax applied.`
-          : `Advance against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}). No tax applied.`,
+          ? `Booking confirmation amount against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}). ${taxNote}`
+          : `Advance against quotation ${quotation.quotationNumber} (quotation total ${inr(quotation.total)}). ${taxNote}`,
     },
     items: [{ description: `Advance — ${quotation.quotationNumber}`, amount, quantity: 1 }],
   };

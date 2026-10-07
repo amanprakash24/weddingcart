@@ -24,6 +24,8 @@ let agreement: { confirmationPercent: number; confirmationAmount: number; holdWi
 let payments: { id: string; amount: number; method: string; status: string; paidAt: Date; reference: string | null }[];
 let bookingStatus: 'NEW' | 'CONFIRMED';
 let confirmFails = false;
+// The business profile: what the letterhead of its documents shows.
+let profile: { logoUrl: string | null; gstin: string | null };
 
 const money = mock(async (quotationId: string, now?: Date) =>
   buildAgreementMoney({
@@ -45,9 +47,9 @@ const confirmBooking = mock(async (_bookingId: string) => {
 });
 
 const consultationUpdate = mock(async ({ where, data }: { where: { id: string }; data: Record<string, string> }) => Object.assign(enquiries[where.id], data));
-const body = (input: { items: { description: string; quantity: number; unitPrice: number; functionLabel?: string | null }[]; discount: number; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
+const body = (input: { items: { description: string; quantity: number; unitPrice: number; functionLabel?: string | null; gstRateBp?: number | null }[]; discount: number; gstEnabled?: boolean; gstAmount?: number; sellerGstin?: string | null; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
   const subtotal = input.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  return { items: input.items.map((i) => ({ ...i, lineTotal: i.quantity * i.unitPrice })), subtotal, discount: input.discount, total: subtotal - input.discount, advanceAmount: input.advanceAmount, validUntil: input.validUntil, inclusions: input.inclusions, exclusions: input.exclusions, terms: input.terms };
+  return { items: input.items.map((i) => ({ ...i, lineTotal: i.quantity * i.unitPrice })), subtotal, discount: input.discount, gstEnabled: input.gstEnabled ?? false, gstAmount: input.gstAmount ?? 0, sellerGstin: input.sellerGstin ?? null, total: subtotal - input.discount + (input.gstAmount ?? 0), advanceAmount: input.advanceAmount, validUntil: input.validUntil, inclusions: input.inclusions, exclusions: input.exclusions, terms: input.terms };
 };
 const create = mock(async (_type: string, _id: string, input: Parameters<typeof body>[0]) => {
   quotes.unshift({ id: `q${quotes.length + 1}`, quotationNumber: `SWA-QTN-202610-000${quotes.length + 1}`, revision: 1, status: 'DRAFT', changesRequestedAt: null, changesRequestNote: null, sentAt: null, customerViewedAt: null, acceptedAt: null, hasCustomerLink: false, ...body(input) });
@@ -72,7 +74,7 @@ const offeringFindMany = mock(async (_args: { where: { businessId: string } }) =
 const service = createVenueQuotationService({
   db: {
     consultation: { findUnique: mock(async ({ where }: { where: { id: string } }) => enquiries[where.id] ?? null) as never, update: consultationUpdate as never },
-    business: { findUnique: mock(async () => ({ vendorId: 'v1', vendor: { city: 'Patna' } })) as never },
+    business: { findUnique: mock(async () => ({ vendorId: 'v1', vendor: { city: 'Patna' }, ...profile })) as never },
     vendorPackage: { findMany: mock(async () => [{ name: 'Gold package', price: 150000, isPerPlate: false }, { name: 'Veg plate', price: 900, isPerPlate: true }]) as never },
     businessOffering: { findMany: offeringFindMany as never },
   },
@@ -92,6 +94,7 @@ beforeEach(() => {
   payments = [];
   bookingStatus = 'NEW';
   confirmFails = false;
+  profile = { logoUrl: null, gstin: null };
   enquiries = { e1: { id: 'e1', name: 'Rahul Kumar', phone: '9876543210', weddingDate: '2026-12-09', city: null, pipelineStage: 'NEW' } };
   quotes = [];
   agreement = null;
@@ -130,8 +133,8 @@ describe('a venue’s own quotation', () => {
   test('a line’s function is stored as its label, and read back as the function', async () => {
     await service.save('e1', { ...good, items: [{ description: 'Haldi decoration', quantity: '1', unitPrice: '25000', function: 'HALDI' }, { description: 'Hall hire', quantity: '1', unitPrice: '200000' }] }, 'u1');
     expect(create.mock.calls[0][2].items).toEqual([
-      { description: 'Haldi decoration', quantity: 1, unitPrice: 25000, functionLabel: 'Haldi' },
-      { description: 'Hall hire', quantity: 1, unitPrice: 200000, functionLabel: null },
+      { description: 'Haldi decoration', quantity: 1, unitPrice: 25000, functionLabel: 'Haldi', gstRateBp: null },
+      { description: 'Hall hire', quantity: 1, unitPrice: 200000, functionLabel: null, gstRateBp: null },
     ]);
     Object.assign(quotes[0].items[0], { functionLabel: 'Haldi' });
     expect((await service.get('e1')).quotation?.items.map((i) => i.function)).toEqual(['HALDI', null]);
@@ -320,5 +323,67 @@ describe('a venue’s own quotation', () => {
     expect((await outcome(service.get('e1')))?.name).toBe('NotFoundError');
     expect((await outcome(service.save('e1', good, 'u1')))?.name).toBe('NotFoundError');
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('GST line by line, and the letterhead', () => {
+  const withGst = { items: [{ description: 'Decoration', quantity: '1', unitPrice: '100000', gstPercent: '18' }, { description: 'Veg plate', quantity: '200', unitPrice: '850', gstPercent: '5' }, { description: 'Hall hire', quantity: '1', unitPrice: '50000' }], validUntil: '2026-10-12' };
+
+  test('a quotation with no GST typed is exactly as before: no tax, and no GST number needed', async () => {
+    const saved = await service.save('e1', good, 'u1');
+    expect(create.mock.calls[0][2]).toMatchObject({ gstEnabled: false, gstAmount: 0, advanceAmount: 60000 });
+    expect('quotation' in saved && saved.quotation).toMatchObject({ gstAmount: 0, total: 200000, items: [{ gstRateBp: null, taxable: 200000, gst: 0 }] });
+  });
+
+  test('charging GST needs the business’s GST number first — nothing is saved without it', async () => {
+    expect(await service.save('e1', withGst, 'u1')).toEqual({ errors: { gst: expect.stringContaining('GST number') } });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test('with a GST number: each line’s own rate, GST added on top, and the booking amount is the rule on the whole total', async () => {
+    profile.gstin = '27AAPFU0939F1ZV';
+    const saved = await service.save('e1', withGst, 'u1');
+    // 1,00,000 @18% = 18,000 · 1,70,000 @5% = 8,500 · 50,000 with no rate = 0 → GST 26,500; total 3,20,000 + 26,500
+    expect(create.mock.calls[0][2]).toMatchObject({
+      items: [{ description: 'Decoration', gstRateBp: 1800 }, { description: 'Veg plate', gstRateBp: 500 }, { description: 'Hall hire', gstRateBp: null }],
+      gstEnabled: true,
+      gstAmount: 26500,
+      advanceAmount: 103950, // 30% of 3,46,500
+    });
+    if (!('quotation' in saved) || !saved.quotation) throw new Error('no quotation');
+    expect(saved.quotation).toMatchObject({ subtotal: 320000, discount: 0, gstAmount: 26500, total: 346500, toConfirm: 103950 });
+    expect(saved.quotation.items.map((i) => [i.gstRateBp, i.taxable, i.gst])).toEqual([[1800, 100000, 18000], [500, 170000, 8500], [null, 50000, 0]]);
+  });
+
+  test('a discount comes off before GST', async () => {
+    profile.gstin = '27AAPFU0939F1ZV';
+    const saved = await service.save('e1', { items: [{ description: 'Decoration', quantity: '1', unitPrice: '100000', gstPercent: '18' }, { description: 'Lighting', quantity: '1', unitPrice: '100000', gstPercent: '5' }], discount: '10000', validUntil: '2026-10-12' }, 'u1');
+    if (!('quotation' in saved) || !saved.quotation) throw new Error('no quotation');
+    expect(saved.quotation.items.map((i) => [i.taxable, i.gst])).toEqual([[95000, 17100], [95000, 4750]]);
+    expect(saved.quotation).toMatchObject({ subtotal: 200000, discount: 10000, gstAmount: 21850, total: 211850 });
+  });
+
+  test('a rate that is not a rate is explained on its line, and nothing is saved', async () => {
+    profile.gstin = '27AAPFU0939F1ZV';
+    expect(await service.save('e1', { ...good, items: [{ description: 'Hall hire', quantity: '1', unitPrice: '200000', gstPercent: 'gst' }] }, 'u1')).toEqual({ errors: { 'items.0.gstPercent': expect.any(String) } });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test('the GST number is frozen on the quotation when it is saved — the letterhead shows that one, not today’s profile', async () => {
+    profile.gstin = '27AAPFU0939F1ZV';
+    const saved = await service.save('e1', withGst, 'u1');
+    expect(create.mock.calls[0][2]).toMatchObject({ sellerGstin: '27AAPFU0939F1ZV' });
+    if (!('quotation' in saved) || !saved.quotation) throw new Error('not saved');
+    // The business then changes (or removes) its GST number: the quotation that exists keeps the one it was saved with.
+    profile.gstin = null;
+    expect((await service.get('e1')).quotation?.letterhead.gstin).toBe('27AAPFU0939F1ZV');
+    profile.gstin = '10ABCDE1234F1Z5';
+    expect((await service.get('e1')).quotation?.letterhead.gstin).toBe('27AAPFU0939F1ZV');
+  });
+
+  test('the letterhead is the business profile: its name, logo and GST number', async () => {
+    profile = { logoUrl: 'https://res.cloudinary.com/demo/image/upload/v1/shaadishopping/vendor-profile/logo.png', gstin: '27AAPFU0939F1ZV' };
+    const saved = await service.save('e1', good, 'u1');
+    expect('quotation' in saved && saved.quotation?.letterhead).toEqual({ name: 'Swayamvar Hall', logoUrl: profile.logoUrl, gstin: '27AAPFU0939F1ZV' });
   });
 });

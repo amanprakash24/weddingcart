@@ -818,6 +818,9 @@ model Invoice {
   discount      Int           @default(0)
   gstEnabled    Boolean       @default(true)
   gstAmount     Int           @default(0)
+  // The seller's GST number as it stood on the quotation this invoice came from (7 Oct 2026) — copied, never looked up again.
+  // null = the invoice charges no GST. With it set, subtotal is the taxable value and gstAmount this invoice's share of the GST.
+  sellerGstin   String?
   total         Int
   amountPaid    Int           @default(0)
   notes         String?
@@ -1110,6 +1113,9 @@ model Quotation {
   discount      Int             @default(0)
   gstEnabled    Boolean         @default(false) // NOT defaulted on — a compliance question, see 06-finance.md §5
   gstAmount     Int             @default(0) // typed by staff, like Invoice.gstAmount
+  // The business's GST number, frozen on the quotation when it is saved (founder, 7 Oct 2026): a later change to the business
+  // profile never changes a quotation that already exists. null = the business had none (and then no line may carry GST).
+  sellerGstin   String?
   total         Int // subtotal − discount + gstAmount (server-computed)
   advanceAmount Int             @default(0) // 0 ≤ advance ≤ total; balance is derived, never stored
   validUntil    DateTime?
@@ -1179,6 +1185,9 @@ model QuotationItem {
   vendor        Vendor?   @relation(fields: [vendorId], references: [id])
   unitPrice     Int
   quantity      Int       @default(1)
+  // GST on this line, typed by the vendor (6 Oct 2026; lib/quotation/lineGst.ts) — in hundredths of a percent: 18% = 1800.
+  // null = no GST on this line. There is no default rate anywhere. Quotation.gstAmount is the sum of the lines' GST.
+  gstRateBp     Int?
 
   @@index([quotationId])
   @@index([vendorId])

@@ -92,7 +92,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   test('accepted and booked: nothing received yet; ₹60,000 (30%) confirms; where to pay comes from Settings', async () => {
     const state = await inA(() => quotes.get(enquiryId));
     expect(state.quotation).toMatchObject({ stage: 'ACCEPTED', total: 200000, toConfirm: 60000, confirmationPercent: 30 });
-    expect(state.quotation?.booking).toEqual({ holdWindowDays: 5, confirmed: false, received: 0, toConfirmRemaining: 60000, outstanding: 200000, stateLabel: 'No payment yet', holdOver: false, payments: [] });
+    expect(state.quotation?.booking).toEqual({ holdWindowDays: 5, confirmed: false, received: 0, toConfirmRemaining: 60000, outstanding: 200000, stateLabel: 'No payment yet', holdOver: false, payments: [], invoices: [{ number: expect.any(String), kind: 'ADVANCE', taxable: 60000, gst: 0, total: 60000, paid: 0, gstin: null }] });
     expect(state.payTo).toEqual({ upiId: 'dbtest@okhdfcbank', upiName: 'DBTEST Pay Venue' });
     expect(await nextKind()).toBe('QUOTE_ACCEPTED');
     expect(await bookingStatus()).toBe('NEW');

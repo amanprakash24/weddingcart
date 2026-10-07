@@ -13,6 +13,10 @@ export interface AgreementMoneyInvoice {
   kind: 'ADVANCE' | 'BALANCE' | 'OTHER';
   status: string;
   total: number;
+  // The invoice's own tax line (lib/invoice/gstShare.ts). Absent on the callers that do not show it.
+  subtotal?: number;
+  gstAmount?: number;
+  sellerGstin?: string | null;
   payments: { id: string; amount: number; method: string; status: string; paidAt: Date | string; reference?: string | null; recordedByName?: string | null; receiptId?: string | null }[];
 }
 
@@ -44,7 +48,7 @@ export interface AgreementMoneyView {
   readyToConfirm: boolean; // enough is received, the booking has not been confirmed yet
   message: string;
   stateLabel: string; // "Date held — 5 of 7 days left", "Booking confirmed", …
-  invoices: { id: string; invoiceNumber: string; kind: 'ADVANCE' | 'BALANCE' | 'OTHER'; status: string; total: number; paid: number; outstanding: number }[];
+  invoices: { id: string; invoiceNumber: string; kind: 'ADVANCE' | 'BALANCE' | 'OTHER'; status: string; total: number; paid: number; outstanding: number; taxable: number; gst: number; sellerGstin: string | null }[]; // taxable + gst = total; gst is 0 and sellerGstin null on an invoice with no tax line
   payments: { id: string; invoiceNumber: string; kind: string; amount: number; method: string; reference: string | null; paidAt: string; recordedByName: string | null; receiptId: string | null }[];
   next: MoneyNext;
 }
@@ -80,7 +84,7 @@ export function buildAgreementMoney(input: {
     .filter((i) => i.kind !== 'OTHER')
     .map((i) => {
       const paid = i.payments.filter((p) => p.status === 'SUCCESS').reduce((s, p) => s + p.amount, 0);
-      return { id: i.id, invoiceNumber: i.invoiceNumber, kind: i.kind, status: i.status, total: i.total, paid, outstanding: Math.max(0, i.total - paid) };
+      return { id: i.id, invoiceNumber: i.invoiceNumber, kind: i.kind, status: i.status, total: i.total, paid, outstanding: Math.max(0, i.total - paid), taxable: (i.gstAmount ?? 0) > 0 ? (i.subtotal ?? i.total) : i.total, gst: i.gstAmount ?? 0, sellerGstin: (i.gstAmount ?? 0) > 0 ? (i.sellerGstin ?? null) : null };
     });
   const received = invoices.reduce((s, i) => s + i.paid, 0);
   const payments = input.invoices

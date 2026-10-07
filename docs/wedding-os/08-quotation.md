@@ -711,3 +711,89 @@ count; never blended), `services/proposal.service.test.ts`, `app/api/proposal/[t
 relabelling the rating on vendor cards / portfolio / dashboard (they still show the hand-entered number unlabelled), and the vendor
 page's JSON-LD `aggregateRating`, which still uses the hand-entered numbers — Google's review-snippet rules expect ratings collected on
 the site itself, so it should move to the couple reviews (decision pending).
+
+## 22. GST line by line, and the letterhead (Vivah OS — 6 Oct 2026)
+
+Founder decision, 6 Oct 2026: **GST is not one rate for the whole quotation.** Every line has its own "GST %" box, **empty until
+the vendor types a rate** (5, 12, 18, 0.25 …). No rate is hardcoded or defaulted anywhere. The system works out the GST and the
+total. Built on a venue's own quotation (`services/venueQuotation.service.ts`); the shared quotation service only carries the rate.
+
+**The arithmetic** (`lib/quotation/lineGst.ts` — one function, used by the form, the server and the couple's page):
+
+| | |
+|---|---|
+| Amount | how many × price each |
+| Discount | the quotation's one discount, **taken off before GST** and spread over the lines in proportion to their amounts (whole rupees that add up exactly) |
+| Taxable | amount − the line's share of the discount |
+| GST | taxable × the line's rate, rounded to the nearest rupee — **added on top of the price**, never inside it |
+| Total | Σ taxable + Σ GST |
+
+Example (the founder's): Decoration ₹1,00,000 at 18% → GST ₹18,000 → ₹1,18,000.
+
+> **Business rule, pending the CA's confirmation (founder, 7 Oct 2026: keep it for now).** The discount coming off before GST, its
+> spread across the lines in proportion, GST rounded per line to the nearest rupee, and the split of GST across the invoices (§22.2)
+> are how the system works today. They follow the founder's example and ordinary practice. **None of this is confirmed as tax law —
+> do not describe it as legally confirmed** to a vendor or a customer until the CA has signed it off.
+
+**Data:** migration `20261006200000_add_quotation_item_gst_rate` — `quotation_items.gstRateBp` (nullable). A rate is stored in
+hundredths of a percent (18% = 1800, 0.25% = 25), so no fraction is stored as a float. `null` = no GST on that line. The existing
+`Quotation.gstEnabled` / `gstAmount` now hold the **sum of the lines' GST**, so the agreement, the invoice and the 25% rule keep
+working unchanged: what confirms the booking is the business's rule on the whole total, GST included.
+
+**The GST number rule** (founder, 5 Oct 2026): a quotation that charges GST cannot be saved until the business has a GST number in
+its profile (§04-vendor-os.md §11). The form says so and links to the profile. A quotation with no rate typed needs none.
+
+**The letterhead:** a venue's quotation now opens with who it is from — logo, business name and GST number, from the business
+profile — on the venue's own screen, in the bar at the top of the couple's page, above the detailed quotation, and on the printed
+header. A line that carries GST shows "+ GST 18% ₹18,000" under its amount, on both sides.
+
+**The form** (phone-first): under each line, a "GST %" box and a small panel that updates as they type — Amount, After discount (when
+there is one), GST at x%, Line total. Below the lines: Subtotal, Discount, GST, Total, To confirm the booking.
+
+**Allow-list:** each item on the couple's view gains `gstPercent` (the rate as typed, or null) and `gst`; `brand` gains `logoUrl`
+and `gstin` for a venue's own quotation.
+
+**Tests:** `lib/quotation/lineGst.test.ts` (the arithmetic, including the founder's example and discount shares that always add
+up), `lib/venue/quotation.test.ts` (the box: blank, valid, not a rate), `services/venueQuotation.service.test.ts` (the GST number
+rule, totals, the letterhead), `lib/quotation/proposal.test.ts` (the couple's view) and `tests-db/venue.quotations.test.ts` (a real
+venue: refused without a GST number, stored per line, shown to the couple, kept by a revision).
+
+### 22.1 The GST number is frozen on the quotation (founder, 7 Oct 2026)
+
+Every time a venue's quotation is saved, the GST number in the business profile at that moment is copied onto the quotation
+(`Quotation.sellerGstin`). The venue's document, the couple's link and the invoices read it **from the quotation** — never from the
+profile again. So changing or removing the GST number in the profile later does not change a quotation that already exists. A sent
+quotation is never saved again, so its number never moves; a draft takes the profile's number each time it is saved; a revision
+starts with its original's number and takes the profile's when it is saved.
+
+A quotation saved before this existed has no frozen number and shows "No GST number on this quotation" — nothing is looked up or
+back-filled for it.
+
+### 22.2 GST on the invoices (founder, 7 Oct 2026)
+
+A quotation's invoices each bill a **part** of its total — the amount that confirms the booking, then the balance — and the total
+already has the GST inside it. Each invoice therefore carries its part of the GST (`lib/invoice/gstShare.ts`):
+
+| | |
+|---|---|
+| GST on the first invoice | its amount × the quotation's GST ÷ the quotation's total, to the nearest rupee |
+| GST on the balance invoice | the quotation's GST − what the first invoice carried (the two add up exactly) |
+| Taxable value | the invoice's amount − its GST |
+
+Stored on the invoice: `subtotal` = taxable value, `gstEnabled`, `gstAmount`, `total`, and `sellerGstin` (the quotation's frozen
+number, copied). The venue sees it under **Invoices** on the booking: number, Taxable value, GST, GSTIN, and what has been received.
+
+It applies **only** when the quotation charges GST and carries a frozen GST number. Otherwise the invoice is exactly what it was
+("No tax applied") — which today includes every Shaadi Shopping (CRM) quotation: decision Q4 stands for those until the CA decides.
+
+**Data:** migration `20261007200000_add_seller_gstin` — `quotations.sellerGstin` and `invoices.sellerGstin`, both nullable,
+additive. Order as always: backup → `prisma migrate deploy` → merge. Merged without it, every quotation and invoice read errors.
+
+**Tests:** `lib/invoice/gstShare.test.ts`, `lib/quotation/advanceInvoice.test.ts`, `lib/invoice/lifecycle.test.ts`,
+`services/venueQuotation.service.test.ts` (frozen number) and `tests-db/venue.quotations.test.ts` (a real venue changes then
+removes its GST number — the quotation and the couple's link keep the frozen one).
+
+**Not built yet:** GST on Shaadi Shopping's own (CRM) quotation form, which still takes one typed GST amount, and GST on its
+invoices; a printable invoice document for a venue's customer, and invoices on the couple's link for a venue's quotation (the
+couple's link shows payments only for Shaadi Shopping's own quotations today); a per-rate table on the invoice; HSN/SAC codes;
+CGST/SGST/IGST split; rental pricing basis, catering menus and the venue's own UPI on its link (the next slices).
