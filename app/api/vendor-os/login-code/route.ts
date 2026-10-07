@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth/session';
 import { Role } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { vendorLoginCodeService } from '@/services/vendorLoginCode.service';
-import { venueScoped } from '@/lib/ownership/venueEntry';
+import { MEMBER, venueScoped } from '@/lib/ownership/venueEntry';
 
 // GET  /api/vendor-os/login-code — does this login have a code, when was it set, and is it time for the monthly reminder.
 // POST /api/vendor-os/login-code — the vendor changes their own code: { current, next, confirm }.
@@ -37,5 +37,5 @@ async function handlePOST(req: NextRequest) {
 
 // Vendor logins only, running as the vendor's own business (lib/ownership/venueEntry.ts). The code belongs to the login, not to the
 // business's records — the handlers read the user from the session themselves.
-export const GET = venueScoped(handleGET);
-export const POST = venueScoped(handlePOST);
+export const GET = venueScoped(handleGET, MEMBER);
+export const POST = venueScoped(handlePOST, MEMBER);

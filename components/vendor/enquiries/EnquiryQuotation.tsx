@@ -357,7 +357,9 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
             <p className="text-sm text-[var(--color-text-secondary)]">
               {first} accepted{q.acceptedAt && <> on {dayWords(q.acceptedAt)}</>}. {inr(q.toConfirm)} ({q.confirmationPercent}%) confirms the booking.
             </p>
-            {q.booking ? (
+            {q.moneyHidden ? (
+              <p className="text-sm text-[var(--color-text-secondary)]">The booking is made. Payments for it are kept by the owner of the business.</p>
+            ) : q.booking ? (
               <BookingMoney q={q} money={q.booking} state={state} busy={busy} errors={errors} onPay={async (body) => (await call('/payments', body)) !== null} />
             ) : (
               <>

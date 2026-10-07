@@ -3,6 +3,8 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { requiredConfirmation, type CommercialRules } from '@/lib/commercial/rules';
 import { resolveSourceDate } from '@/lib/quotation/booking';
 import { currentBusiness, rulesOf } from '@/lib/ownership/business';
+import { effectiveScope } from '@/lib/ownership/scope';
+import { can } from '@/lib/auth/permissions';
 import { quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
 import { gstTotals } from '@/lib/quotation/lineGst';
 import { validateVenuePayment, type VenuePaymentErrors } from '@/lib/venue/payment';
@@ -34,7 +36,8 @@ export interface VenueQuotationView {
   discount: number;
   gstAmount: number; // the sum of the lines' GST — 0 when no line carries a rate
   total: number;
-  // The top of the document: who it is from. logoUrl / gstin come from the business profile (null = not added yet).
+  // The top of the document: who it is from. The name and logo are the business profile's (null = not added yet). The GST number is
+  // the one FROZEN on this quotation when it was saved (Quotation.sellerGstin) — the profile changing later never changes it.
   letterhead: { name: string; logoUrl: string | null; gstin: string | null };
   toConfirm: number; // what confirms the booking — the venue's rule on the total (frozen in the agreement once accepted)
   confirmationPercent: number;
@@ -49,6 +52,9 @@ export interface VenueQuotationView {
   hasLink: boolean;
   // After the couple accepts: the booking and its money. null = not made yet (the wedding date is needed).
   booking: VenueBookingMoney | null;
+  // true when the booking exists but this member may not see its money (lib/auth/permissions.ts: view_financials) — `booking` is
+  // then null, and the screen says the payments are with the owner.
+  moneyHidden: boolean;
 }
 
 // Where the booking stands, from the payments actually recorded (lib/commercial/view.ts) under the agreement's frozen rule.
@@ -61,6 +67,8 @@ export interface VenueBookingMoney {
   stateLabel: string; // "No payment yet", "Date held — 3 of 5 days left", "Booking confirmed" …
   holdOver: boolean; // a part payment held the date and the hold period has passed
   payments: { id: string; amount: number; method: string; reference: string | null; paidAt: string }[];
+  // The invoices of this booking, each with its own tax line: taxable + gst = total. gst is 0 (and gstin null) with no GST charged.
+  invoices: { number: string; kind: 'ADVANCE' | 'BALANCE' | 'OTHER'; taxable: number; gst: number; total: number; paid: number; gstin: string | null }[];
 }
 
 export interface VenueQuotationState {
@@ -141,6 +149,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
     // the booking is not made; the figures are then the quotation's own.)
     const money = stage === 'ACCEPTED' ? await deps.money(q.id, deps.now()) : null;
     const agreement = money?.exists ? money : null;
+    const seesMoney = can(effectiveScope(), 'view_financials');
     // The per-line figures are worked out again from the stored lines — the same arithmetic that produced the stored totals.
     const gst = gstTotals(q.items, q.discount);
     return {
@@ -153,7 +162,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       discount: q.discount,
       gstAmount: q.gstAmount,
       total: q.total,
-      letterhead,
+      letterhead: { ...letterhead, gstin: q.sellerGstin ?? null },
       toConfirm: agreement?.confirmationAmount ?? q.advanceAmount,
       confirmationPercent: agreement?.confirmationPercent ?? rules.confirmationPercent,
       validUntil: q.validUntil ? istToday(q.validUntil) : null,
@@ -165,7 +174,8 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       changesNote: stage === 'CHANGES' ? q.changesRequestNote : null,
       acceptedAt: q.acceptedAt?.toISOString() ?? null,
       hasLink: q.hasCustomerLink,
-      booking: agreement
+      moneyHidden: !!agreement && !seesMoney,
+      booking: agreement && seesMoney
         ? {
             holdWindowDays: agreement.holdWindowDays,
             confirmed: agreement.bookingConfirmed,
@@ -175,6 +185,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
             stateLabel: agreement.stateLabel,
             holdOver: agreement.overdue && !agreement.bookingConfirmed,
             payments: agreement.payments.map((p) => ({ id: p.id, amount: p.amount, method: p.method, reference: p.reference, paidAt: p.paidAt })),
+            invoices: agreement.invoices.map((i) => ({ number: i.invoiceNumber, kind: i.kind, taxable: i.taxable, gst: i.gst, total: i.total, paid: i.paid, gstin: i.sellerGstin })),
           }
         : null,
     };
@@ -195,7 +206,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       packages: packages.map((p) => ({ name: p.name, price: p.price, perPlate: p.isPerPlate })),
       // Not an owned table: the business is named here, from the scope (services/venueOffering.service.ts).
       offerings: await deps.db.businessOffering.findMany({ where: { businessId: v.business.id }, select: { id: true, function: true, name: true, price: true, perPlate: true }, orderBy: [{ function: 'asc' }, { createdAt: 'asc' }] }),
-      payTo: v.business.upiId ? { upiId: v.business.upiId, upiName: v.business.upiName } : null,
+      payTo: v.business.upiId && can(effectiveScope(), 'view_financials') ? { upiId: v.business.upiId, upiName: v.business.upiName } : null,
     };
   }
 
@@ -225,6 +236,9 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
         discount: value.discount,
         gstEnabled: money.gst > 0,
         gstAmount: money.gst,
+        // Frozen on the quotation (founder, 7 Oct 2026): the GST number as it is in the business profile at this save. The
+        // document, the couple's link and its invoices read it from the quotation from here on — never from the profile again.
+        sellerGstin: v.letterhead.gstin,
         // What confirms the booking is the venue's rule on the WHOLE total, GST included.
         advanceAmount: requiredConfirmation(money.total, v.rules),
         validUntil: endOfIstDay(value.validUntil),

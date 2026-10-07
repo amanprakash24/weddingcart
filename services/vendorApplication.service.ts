@@ -7,7 +7,7 @@ import { vendorRepository } from '@/repositories/vendor.repository';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, DuplicateError } from '@/lib/errors';
 import { slugify } from '@/lib/slug';
-import { Role } from '@/lib/auth/roles';
+import { ADMIN_ROLES, Role } from '@/lib/auth/roles';
 import { hashLoginCode, newLoginCode } from '@/services/vendorLoginCode.service';
 import type { ApplicationStatus, Prisma, WeddingEventType } from '@/generated/prisma/client';
 
@@ -94,10 +94,15 @@ async function approveVendorApplication(app: VendorApplicationWithCategory, tx: 
 // partial failure never leaves an orphaned Vendor or a stuck application.
 // It also issues the vendor's first login code (6 Oct 2026): the vendor signs in with this mobile number + the code. Only its hash
 // is stored; the code is returned so the admin who accepted the registration can pass it on — it is never readable again.
-async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: Tx): Promise<string> {
+//
+// It NEVER replaces a code: if the mobile number already belongs to a person who has a login code — another vendor's owner, a
+// manager somewhere, a member of Shaadi Shopping's own team — that person keeps their code and signs in with it; nothing is issued
+// and nothing is shown. (Otherwise a registration typed with someone else's number would, on approval, hand their login to
+// whoever approved it.) The same holds for any login on the internal team, code or not. Returns null in those cases.
+async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: Tx): Promise<string | null> {
   const user = await tx.user.findUnique({
     where: { phone: ownerPhone },
-    include: { vendorProfile: true },
+    include: { vendorProfile: true, roles: true },
   });
 
   // Never reassign an existing VendorProfile to a different vendor — fail
@@ -115,13 +120,16 @@ async function provisionVendorAccount(ownerPhone: string, vendorId: string, tx: 
     update: {},
   });
 
-  const loginCode = newLoginCode();
-  const code = { loginCodeHash: await hashLoginCode(loginCode), loginCodeSetAt: new Date() };
   if (!user?.vendorProfile) {
-    await tx.vendorProfile.create({ data: { userId: resolvedUser.id, vendorId, ...code } });
-  } else {
-    await tx.vendorProfile.update({ where: { id: user.vendorProfile.id }, data: code });
+    await tx.vendorProfile.create({ data: { userId: resolvedUser.id, vendorId } });
   }
+  // An existing person with a code, or anyone on the internal team: their sign-in is theirs. Nothing is issued here.
+  const onTeam = (user?.roles ?? []).some((r) => ADMIN_ROLES.includes(r.role));
+  if (user?.loginCodeHash || onTeam) return null;
+
+  // The code belongs to the person (7 Oct 2026) — the same code signs them in wherever they are a member.
+  const loginCode = newLoginCode();
+  await tx.user.update({ where: { id: resolvedUser.id }, data: { loginCodeHash: await hashLoginCode(loginCode), loginCodeSetAt: new Date() } });
   return loginCode;
 }
 
@@ -179,8 +187,9 @@ export const vendorApplicationService = {
   // APPROVED only — mirrors the old Mongo guard (status transitioning + no
   // vendorId yet) exactly, so re-approving or re-saving never creates a
   // duplicate Vendor, User, or VendorProfile.
-  // On that first approval the answer also carries `issuedLoginCode` — the vendor's first login code, readable only here.
-  async updateStatus(id: string, status: ApplicationStatus): Promise<(VendorApplicationWithCategory & { issuedLoginCode?: string }) | null> {
+  // On that first approval the answer also carries `issuedLoginCode` — the vendor's first login code, readable only here — or
+  // `existingLogin: true` when that mobile number already had a sign-in of its own (its code is never replaced).
+  async updateStatus(id: string, status: ApplicationStatus): Promise<(VendorApplicationWithCategory & { issuedLoginCode?: string; existingLogin?: boolean }) | null> {
     const existing = await vendorApplicationRepository.findById(id);
     if (!existing) return null;
 
@@ -198,7 +207,7 @@ export const vendorApplicationService = {
       const issuedLoginCode = await provisionVendorAccount(existing.ownerPhone, vendor.id, tx);
       await provisionVendorCapabilities(existing.capabilities, vendor.id, tx);
       const updated = await vendorApplicationRepository.update(id, { status, vendor: { connect: { id: vendor.id } } }, tx);
-      return { ...updated, issuedLoginCode };
+      return issuedLoginCode ? { ...updated, issuedLoginCode } : { ...updated, existingLogin: true };
     });
   },
 

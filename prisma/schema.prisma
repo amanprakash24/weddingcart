@@ -112,6 +112,11 @@ model User {
   // Logout-everywhere: every session token carries the version it was issued with; logging out increments this,
   // which invalidates ALL of this user's tokens on every device (lib/auth/sessionVersion.ts).
   sessionVersion Int @default(0)
+  // The person's own 6-digit login code (7 Oct 2026; lib/auth/vendorCode.ts): mobile number + this code signs ANY person in —
+  // founder, manager, employee or vendor owner. Only a bcrypt hash is kept. Null = no code yet. (It first lived on VendorProfile,
+  // when only vendor owners had one; those were copied here and the old columns are no longer read.)
+  loginCodeHash  String?
+  loginCodeSetAt DateTime?
   image        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -2293,7 +2298,9 @@ enum CommercialStatus {
 
 enum BusinessRole {
   OWNER // everything, including money, staff and settings
-  STAFF // enquiries, quotations, weddings — not settings or payouts
+  STAFF // enquiries, quotations, weddings — not settings or payouts (the role before MANAGER / EMPLOYEE existed)
+  MANAGER // the day-to-day work — no money unless the owner allows it for that person
+  EMPLOYEE // their own assigned work, plus whatever the owner allows
 }
 
 // Every customer record belongs to exactly one Business (D1). A venue's own records are private to it (D3).
@@ -2389,6 +2396,13 @@ model BusinessMember {
   userId     String
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role       BusinessRole
+  // 7 Oct 2026 — Person → Membership → Role → Permissions (lib/auth/permissions.ts). What this person may do in this business is
+  // the role's defaults, plus `grants`, minus `denies` (permission names). removedAt: no longer in the team — kept so that
+  // what they did still names them.
+  jobTitle   String?
+  grants     String[]     @default([])
+  denies     String[]     @default([])
+  removedAt  DateTime?
   createdAt  DateTime     @default(now())
 
   @@unique([businessId, userId])

@@ -7,12 +7,12 @@ import { ConflictError, NotFoundError } from '@/lib/errors';
 mock.module('@/lib/prisma', () => ({ prisma: {} }));
 const { createVendorLoginCodeService } = await import('./vendorLoginCode.service');
 
-const NOW = new Date('2026-10-06T10:00:00Z');
+const NOW = new Date('2026-10-07T10:00:00Z');
 const hash = async (code: string) => `hash(${code})`;
 const compare = async (code: string, stored: string) => stored === `hash(${code})`;
 
-type Profile = { id: string; userId: string; vendorId: string; loginCodeHash: string | null; loginCodeSetAt: Date | null };
-type UserRow = { id: string; name: string | null; phone: string; sessionVersion: number; roles: { role: string }[] };
+type UserRow = { id: string; name: string | null; phone: string | null; sessionVersion: number; loginCodeHash: string | null; loginCodeSetAt: Date | null; roles: { role: string }[] };
+type Profile = { userId: string; vendorId: string };
 
 let users: UserRow[];
 let profiles: Profile[];
@@ -20,32 +20,27 @@ let attempts: { identifier: string; success: boolean }[];
 let lockedIds: Set<string>;
 let nextCode: string;
 
-const profileOf = (where: { vendorId?: string; userId?: string; id?: string }) => profiles.find((p) => (where.vendorId ? p.vendorId === where.vendorId : where.userId ? p.userId === where.userId : p.id === where.id)) ?? null;
-
 const db = {
   user: {
-    findUnique: mock(async (a: { where: { phone: string } }) => {
-      const u = users.find((x) => x.phone === a.where.phone);
-      return u ? { ...u, vendorProfile: profileOf({ userId: u.id }) } : null;
+    findUnique: mock(async (a: { where: { phone?: string; id?: string } }) => {
+      const u = users.find((x) => (a.where.id ? x.id === a.where.id : x.phone === a.where.phone));
+      return u ? { ...u, vendorProfile: profiles.find((p) => p.userId === u.id) ?? null } : null;
     }),
-    update: mock((a: { where: { id: string }; data: { sessionVersion: { increment: number } } }) => ({ kind: 'user', a })),
+    update: mock(async (a: { where: { id: string }; data: { loginCodeHash?: string; loginCodeSetAt?: Date; sessionVersion?: { increment: number } } }) => {
+      const u = users.find((x) => x.id === a.where.id)!;
+      const { sessionVersion, ...rest } = a.data;
+      Object.assign(u, rest);
+      if (sessionVersion) u.sessionVersion += sessionVersion.increment;
+      return u;
+    }),
   },
   vendorProfile: {
-    findUnique: mock(async (a: { where: { vendorId?: string; userId?: string } }) => {
-      const p = profileOf(a.where);
-      const u = p && users.find((x) => x.id === p.userId);
-      return p ? { ...p, user: { phone: u?.phone ?? null } } : null;
+    findUnique: mock(async (a: { where: { vendorId: string } }) => {
+      const p = profiles.find((x) => x.vendorId === a.where.vendorId);
+      return p ? { ...p, user: { roles: users.find((u) => u.id === p.userId)!.roles } } : null;
     }),
-    update: mock((a: { where: { id: string }; data: Partial<Profile> }) => ({ kind: 'profile', a })),
   },
-  // Applies the two writes together, as the real transaction does.
-  $transaction: mock(async (ops: unknown[]) => Promise.all(ops.map((op) => apply(op as Op)))),
 };
-type Op = { kind: 'user'; a: { where: { id: string }; data: { sessionVersion: { increment: number } } } } | { kind: 'profile'; a: { where: { id: string }; data: Partial<Profile> } };
-async function apply(op: Op) {
-  if (op.kind === 'user') users.find((u) => u.id === op.a.where.id)!.sessionVersion += op.a.data.sessionVersion.increment;
-  else Object.assign(profileOf({ id: op.a.where.id })!, op.a.data);
-}
 
 const service = createVendorLoginCodeService({
   db: db as never,
@@ -59,29 +54,30 @@ const service = createVendorLoginCodeService({
 
 beforeEach(() => {
   users = [
-    { id: 'u1', name: 'Kush', phone: '9876543210', sessionVersion: 3, roles: [{ role: 'VENDOR' }] },
-    { id: 'u2', name: null, phone: '9000000002', sessionVersion: 0, roles: [{ role: 'VENDOR' }] }, // a login from before codes existed
-    { id: 'u3', name: 'A customer', phone: '9111111111', sessionVersion: 0, roles: [{ role: 'CUSTOMER' }] }, // no vendor profile
+    // A vendor's owner, with a code.
+    { id: 'u1', name: 'Kush', phone: '9876543210', sessionVersion: 3, loginCodeHash: 'hash(482913)', loginCodeSetAt: new Date('2026-10-01T00:00:00Z'), roles: [{ role: 'VENDOR' }] },
+    // A vendor's owner from before codes existed.
+    { id: 'u2', name: null, phone: '9000000002', sessionVersion: 0, loginCodeHash: null, loginCodeSetAt: null, roles: [{ role: 'VENDOR' }] },
+    // The founder: no vendor at all — the code is the person's, not a vendor's.
+    { id: 'u3', name: 'Founder', phone: '9111111111', sessionVersion: 1, loginCodeHash: 'hash(730518)', loginCodeSetAt: new Date('2026-10-05T00:00:00Z'), roles: [{ role: 'SUPER_ADMIN' }] },
+    // An internal account with an email only — no mobile number yet.
+    { id: 'u4', name: 'Sales', phone: null, sessionVersion: 0, loginCodeHash: null, loginCodeSetAt: null, roles: [{ role: 'SALES' }] },
   ];
-  profiles = [
-    { id: 'p1', userId: 'u1', vendorId: 'v1', loginCodeHash: 'hash(482913)', loginCodeSetAt: new Date('2026-10-01T00:00:00Z') },
-    { id: 'p2', userId: 'u2', vendorId: 'v2', loginCodeHash: null, loginCodeSetAt: null },
-  ];
+  profiles = [{ userId: 'u1', vendorId: 'v1' }, { userId: 'u2', vendorId: 'v2' }];
   attempts = [];
   lockedIds = new Set();
-  nextCode = '730518';
-  for (const m of [db.user.findUnique, db.user.update, db.vendorProfile.findUnique, db.vendorProfile.update, db.$transaction]) m.mockClear();
-  // update() inside change() is awaited directly, not through $transaction — make that path apply the write too.
-  db.vendorProfile.update.mockImplementation((a) => {
-    const op = { kind: 'profile' as const, a };
-    return Object.assign(apply(op).then(() => op), op);
-  });
+  nextCode = '815204';
+  for (const m of [db.user.findUnique, db.user.update, db.vendorProfile.findUnique]) m.mockClear();
 });
 
-describe('verify — signing in', () => {
-  test('the registered mobile number + the right code signs in as that vendor', async () => {
+describe('verify — signing in with mobile number + code', () => {
+  test('a vendor’s owner signs in as themselves; the session still knows the vendor they own', async () => {
     expect(await service.verify('+91 98765 43210', '482913')).toEqual({ id: 'u1', name: 'Kush', roles: ['VENDOR'], vendorId: 'v1', sessionVersion: 3 });
     expect(attempts).toEqual([{ identifier: 'vendor-code:9876543210', success: true }]);
+  });
+
+  test('a person with no vendor at all signs in the same way — the founder, a manager, an employee', async () => {
+    expect(await service.verify('9111111111', '730518')).toEqual({ id: 'u3', name: 'Founder', roles: ['SUPER_ADMIN'], vendorId: undefined, sessionVersion: 1 });
   });
 
   test('a wrong code is "no", and is counted against that number', async () => {
@@ -89,11 +85,15 @@ describe('verify — signing in', () => {
     expect(attempts).toEqual([{ identifier: 'vendor-code:9876543210', success: false }]);
   });
 
-  test('every other kind of "no" looks the same: unknown number, a login with no code, a customer’s number', async () => {
+  test('one person’s code does not open another person’s account', async () => {
+    expect(await service.verify('9876543210', '730518')).toBeNull(); // the founder's code with the vendor owner's number
+    expect(await service.verify('9111111111', '482913')).toBeNull();
+  });
+
+  test('every other kind of "no" looks the same: an unknown number, a person with no code', async () => {
     expect(await service.verify('9222222222', '482913')).toBeNull();
     expect(await service.verify('9000000002', '482913')).toBeNull();
-    expect(await service.verify('9111111111', '482913')).toBeNull();
-    expect(attempts.map((a) => a.success)).toEqual([false, false, false]);
+    expect(attempts.map((a) => a.success)).toEqual([false, false]);
   });
 
   test('a locked number is refused before anything is looked up — even with the right code', async () => {
@@ -112,67 +112,76 @@ describe('verify — signing in', () => {
   });
 });
 
-describe('issue — an admin makes a new code', () => {
-  test('returns the code once, stores only its hash, and signs the vendor out everywhere', async () => {
-    expect(await service.issue('v1')).toEqual({ code: '730518', mobile: '9876543210' });
-    expect(profiles[0]).toMatchObject({ loginCodeHash: 'hash(730518)', loginCodeSetAt: NOW });
-    expect(JSON.stringify(profiles)).not.toContain('"730518"');
-    expect(users[0].sessionVersion).toBe(4);
-    expect(db.$transaction).toHaveBeenCalledTimes(1);
+describe('issuing a code', () => {
+  test('for a person: returned once, only its hash stored, and they are signed out everywhere', async () => {
+    expect(await service.issueForUser('u3')).toEqual({ code: '815204', mobile: '9111111111' });
+    expect(users[2]).toMatchObject({ loginCodeHash: 'hash(815204)', loginCodeSetAt: NOW, sessionVersion: 2 });
+    expect(JSON.stringify(users)).not.toContain('"815204"');
+    expect(await service.verify('9111111111', '730518')).toBeNull(); // the old code is dead
+    expect((await service.verify('9111111111', '815204'))?.id).toBe('u3');
   });
 
-  test('the old code stops working; the new one works', async () => {
-    await service.issue('v1');
-    expect(await service.verify('9876543210', '482913')).toBeNull();
-    expect((await service.verify('9876543210', '730518'))?.vendorId).toBe('v1');
+  test('for a vendor’s owner, by vendor — the admin’s "New login code"', async () => {
+    expect(await service.issue('v2')).toEqual({ code: '815204', mobile: '9000000002' });
+    expect((await service.verify('9000000002', '815204'))?.vendorId).toBe('v2');
   });
 
-  test('a vendor from before codes existed gets their first one', async () => {
-    await service.issue('v2');
-    expect((await service.verify('9000000002', '730518'))?.vendorId).toBe('v2');
+  test('a vendor login that is ALSO on Shaadi Shopping’s own team is never given a new code from here — it would hand over the Command Center', async () => {
+    for (const role of ['SUPER_ADMIN', 'SALES', 'OPERATIONS']) {
+      users[0].roles = [{ role: 'VENDOR' }, { role }];
+      await expect(service.issue('v1')).rejects.toBeInstanceOf(ConflictError);
+    }
+    expect(users[0]).toMatchObject({ loginCodeHash: 'hash(482913)', sessionVersion: 3 });
+    expect(db.user.update).not.toHaveBeenCalled();
+    expect((await service.verify('9876543210', '482913'))?.id).toBe('u1'); // their own code still works
   });
 
-  test('a vendor with no login at all cannot be given a code', async () => {
+  test('a person with no mobile number cannot be given a code — the code is only half of the sign-in', async () => {
+    await expect(service.issueForUser('u4')).rejects.toBeInstanceOf(ConflictError);
+    expect(users[3].loginCodeHash).toBeNull();
+  });
+
+  test('someone who does not exist, or a vendor with no login, is not found', async () => {
+    await expect(service.issueForUser('nobody')).rejects.toBeInstanceOf(NotFoundError);
     await expect(service.issue('v-none')).rejects.toBeInstanceOf(NotFoundError);
-    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(db.user.update).not.toHaveBeenCalled();
   });
 });
 
-describe('change — the vendor changes their own code', () => {
-  const input = { current: '482913', next: '730518', confirm: '730518' };
+describe('change — a person changes their own code', () => {
+  const input = { current: '482913', next: '730519', confirm: '730519' };
 
   test('with the right current code: the new hash is stored, the date moves, and they stay signed in', async () => {
     expect(await service.change('u1', input)).toEqual({ changed: true });
-    expect(profiles[0]).toMatchObject({ loginCodeHash: 'hash(730518)', loginCodeSetAt: NOW });
-    expect(users[0].sessionVersion).toBe(3);
+    expect(users[0]).toMatchObject({ loginCodeHash: 'hash(730519)', loginCodeSetAt: NOW, sessionVersion: 3 });
     expect(attempts).toEqual([{ identifier: 'vendor-code-change:u1', success: true }]);
   });
 
   test('a wrong current code changes nothing and is counted', async () => {
     expect(await service.change('u1', { ...input, current: '000417' })).toEqual({ errors: { current: 'That is not your current code' } });
-    expect(profiles[0].loginCodeHash).toBe('hash(482913)');
+    expect(users[0].loginCodeHash).toBe('hash(482913)');
     expect(attempts).toEqual([{ identifier: 'vendor-code-change:u1', success: false }]);
   });
 
   test('a badly formed request is explained before anything is read or counted', async () => {
     expect(await service.change('u1', { current: '482913', next: '111111', confirm: '111111' })).toEqual({ errors: { next: expect.any(String) } });
-    expect(db.vendorProfile.findUnique).not.toHaveBeenCalled();
+    expect(db.user.findUnique).not.toHaveBeenCalled();
     expect(attempts).toEqual([]);
   });
 
   test('after too many wrong tries it is paused — even with the right current code', async () => {
     lockedIds.add('vendor-code-change:u1');
     await expect(service.change('u1', input)).rejects.toBeInstanceOf(ConflictError);
-    expect(profiles[0].loginCodeHash).toBe('hash(482913)');
+    expect(users[0].loginCodeHash).toBe('hash(482913)');
   });
 
-  test('a login with no code cannot "change" one into existence', async () => {
+  test('a person with no code cannot "change" one into existence', async () => {
     expect(await service.change('u2', input)).toEqual({ errors: { current: 'That is not your current code' } });
-    expect(profiles[1].loginCodeHash).toBeNull();
+    expect(users[1].loginCodeHash).toBeNull();
   });
 
-  test('someone who is not a vendor login is not found', async () => {
-    await expect(service.change('u3', input)).rejects.toBeInstanceOf(NotFoundError);
+  test('someone who does not exist is not found', async () => {
+    await expect(service.change('nobody', input)).rejects.toBeInstanceOf(NotFoundError);
   });
 });
 
@@ -182,12 +191,12 @@ describe('status — for the dashboard', () => {
   });
 
   test('a code 30 days old: reminder', async () => {
-    profiles[0].loginCodeSetAt = new Date('2026-09-01T00:00:00Z');
+    users[0].loginCodeSetAt = new Date('2026-09-01T00:00:00Z');
     expect((await service.status('u1')).reminder).toBe(true);
   });
 
   test('no code: nothing to remind about', async () => {
     expect(await service.status('u2')).toEqual({ hasCode: false, setAt: null, reminder: false });
-    expect(await service.status('u3')).toEqual({ hasCode: false, setAt: null, reminder: false });
+    expect(await service.status('nobody')).toEqual({ hasCode: false, setAt: null, reminder: false });
   });
 });

@@ -19,4 +19,4 @@ async function handlePOST() {
   }
 }
 
-export const POST = venueScoped(handlePOST);
+export const POST = venueScoped(handlePOST, 'settings');

@@ -114,7 +114,10 @@ export default function AdminLoginClient() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-sm mt-6">
+          <a href="/admin/login" className="font-semibold text-rose-600 hover:underline">Sign in with mobile number and code</a>
+        </p>
+        <p className="text-center text-xs text-gray-400 mt-3">
           ShaadiShopping Admin · Restricted Access
         </p>
       </div>

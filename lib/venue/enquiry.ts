@@ -116,3 +116,11 @@ export const ACTION_ORDER: NextAction['kind'][] = ['QUOTE_ACCEPTED', 'QUOTE_CHAN
 // Opens a chat with the venue's OWN customer, from the venue's own tool. (Public marketplace pages are different: there every
 // contact link must be Shaadi Shopping's number, never a venue's.)
 export const whatsappTo = (phone: string, text: string) => `https://wa.me/91${phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`;
+
+// History lines that say what has been paid or invoiced. A member without `view_financials` (a manager, by default) does not get
+// them from the server — the same rule as the payments on the quotation (services/venueQuotation.service.ts `moneyHidden`).
+export const MONEY_HISTORY_TYPES: readonly string[] = ['PAYMENT_RECEIVED', 'INVOICE_CREATED'];
+
+export function historyFor<T extends { type: string }>(history: T[], seesMoney: boolean): T[] {
+  return seesMoney ? history : history.filter((h) => !MONEY_HISTORY_TYPES.includes(h.type));
+}

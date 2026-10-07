@@ -1,3 +1,4 @@
+import type { MemberRole, Permission } from '@/lib/auth/permissions';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { PLATFORM_BUSINESS_ID } from './owned';
 
@@ -12,10 +13,13 @@ import { PLATFORM_BUSINESS_ID } from './owned';
 //   'error' — refused (fail-closed; the target for production once its logs show no warnings)
 //   'warn'  — the default: logged once per model and operation, and run as Shaadi Shopping (today's behaviour)
 
-export type BusinessRoleName = 'OWNER' | 'STAFF';
+// The member's role in the business, and — when the entry point knows them — the person and exactly what they may do there
+// (lib/auth/permissions.ts: Person → Membership → Role → Permissions). A scope without `permissions` (the platform's own entry
+// points, a couple's proposal link) is judged by its role's defaults.
+export type BusinessRoleName = MemberRole;
 
 export type Scope =
-  | { kind: 'BUSINESS'; businessId: string; role: BusinessRoleName }
+  | { kind: 'BUSINESS'; businessId: string; role: BusinessRoleName; permissions?: readonly Permission[]; userId?: string }
   | { kind: 'SYSTEM'; reason: string };
 
 const storage = new AsyncLocalStorage<Scope>();

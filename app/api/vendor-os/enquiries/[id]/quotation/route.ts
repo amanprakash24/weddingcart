@@ -27,5 +27,5 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
   }
 }
 
-export const GET = venueScoped(handleGET);
-export const PUT = venueScoped(handlePUT);
+export const GET = venueScoped(handleGET, 'quotations');
+export const PUT = venueScoped(handlePUT, 'quotations');

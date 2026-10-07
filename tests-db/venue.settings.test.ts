@@ -121,7 +121,7 @@ dbDescribe('a venue’s own settings (real database)', () => {
   });
 
   test('staff see the settings but cannot change them', async () => {
-    const staff: Scope = { ...scopeA, role: 'STAFF' };
+    const staff: Scope = { kind: 'BUSINESS', businessId: scopeA.businessId, role: 'STAFF' }; // a member with the STAFF role's own (default) permissions
     expect(await runInScope(staff, () => settings.get())).toMatchObject({ confirmationPercent: 30, canEdit: false });
     expect(await runInScope(staff, () => settings.update({ confirmationPercent: '50' }))).toEqual({ forbidden: true });
     expect((await inA(() => settings.get())).confirmationPercent).toBe(30);

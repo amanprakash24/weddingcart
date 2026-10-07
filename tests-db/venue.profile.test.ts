@@ -140,7 +140,7 @@ dbDescribe('the business profile and its review (real database)', () => {
   });
 
   test('staff of the business can read the profile but not change it', async () => {
-    const asStaff = <T>(fn: () => Promise<T>) => runInScope({ ...scopeA, role: 'STAFF' }, fn);
+    const asStaff = <T>(fn: () => Promise<T>) => runInScope({ kind: 'BUSINESS', businessId: scopeA.businessId, role: 'STAFF' }, fn);
     expect((await asStaff(() => profile.get())).canEdit).toBe(false);
     expect(await asStaff(() => profile.update({ name: 'Hacked' }))).toEqual({ forbidden: true });
     expect(await asStaff(() => profile.addPhoto(image('staff')))).toEqual({ forbidden: true });

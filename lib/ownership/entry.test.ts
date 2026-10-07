@@ -106,6 +106,7 @@ describe('every entry point states its business', () => {
   const EXEMPT_ROUTES: Record<string, string> = {
     'app/api/health/route.ts': 'returns a constant; no database',
     'app/api/auth/[...nextauth]/route.ts': 'logins only (users, OTPs) — not owned records',
+    'app/api/workspace/route.ts': 'the signed-in person’s own memberships only — not owned records; it is what CHOOSES the scope',
   };
 
   test('every API route exports its handlers through a scope wrapper', () => {

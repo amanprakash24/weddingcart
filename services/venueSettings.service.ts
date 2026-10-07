@@ -3,6 +3,7 @@ import { NotFoundError } from '@/lib/errors';
 import { COMMERCIAL_RULES } from '@/lib/commercial/rules';
 import { businessById, proposalBrandFor } from '@/lib/ownership/business';
 import { effectiveScope } from '@/lib/ownership/scope';
+import { can } from '@/lib/auth/permissions';
 import { validateVenueSettings, type SettingsField, type VenueSettingsValue } from '@/lib/venue/settings';
 
 // A venue's own business settings (Phase C): the number its own couples see on their proposal link (D8) and the rule its own
@@ -35,11 +36,11 @@ export function createVenueSettingsService(deps: VenueSettingsDeps = defaultDeps
     if (scope.kind !== 'BUSINESS') throw new NotFoundError('Business', 'current');
     const business = await deps.business(scope.businessId);
     if (business.kind !== 'VENDOR') throw new NotFoundError('Business', scope.businessId);
-    return { business, role: scope.role };
+    return { business, mayChange: can(scope, 'settings') };
   }
 
   async function get(): Promise<VenueSettingsView> {
-    const { business: b, role } = await venue();
+    const { business: b, mayChange } = await venue();
     return {
       businessName: b.name,
       numberPrefix: b.numberPrefix,
@@ -50,7 +51,7 @@ export function createVenueSettingsService(deps: VenueSettingsDeps = defaultDeps
       upiName: b.upiName,
       shownPhone: (await deps.brand(b.id)).phone,
       defaults: { confirmationPercent: COMMERCIAL_RULES.confirmationPercent, holdWindowDays: COMMERCIAL_RULES.holdWindowDays },
-      canEdit: role === 'OWNER',
+      canEdit: mayChange,
     };
   }
 
@@ -58,8 +59,8 @@ export function createVenueSettingsService(deps: VenueSettingsDeps = defaultDeps
     get,
 
     async update(input: Partial<Record<SettingsField, unknown>>): Promise<UpdateResult> {
-      const { business, role } = await venue();
-      if (role !== 'OWNER') return { forbidden: true };
+      const { business, mayChange } = await venue();
+      if (!mayChange) return { forbidden: true };
       const checked = validateVenueSettings(input);
       if (!checked.ok) return { errors: checked.errors };
       await deps.db.business.update({ where: { id: business.id }, data: checked.value });

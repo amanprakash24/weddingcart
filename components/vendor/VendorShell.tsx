@@ -4,7 +4,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { LogOut, MoreHorizontal, Store, User, X } from 'lucide-react';
+import { ArrowLeftRight, LogOut, MoreHorizontal, Store, User, X } from 'lucide-react';
+import { canSeeScreen, screenOf, type WorkspaceView } from '@/lib/auth/workspaceView';
 import { PHONE_BAR, PHONE_MORE, PRIMARY } from './vendorNav';
 import LoginCodeReminder from './LoginCodeReminder';
 
@@ -24,6 +25,9 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   // /vendor/profile and the navigation is put away. 'checking' shows nothing of the page behind it, so a new vendor never sees a
   // dashboard flash by. A login that is not a vendor business (the API answers "no") is simply let through.
   const [gate, setGate] = useState<'checking' | 'setup' | 'open'>('checking');
+  // The business this person is working in, and what they may see of it (7 Oct 2026). Until the server has said, the menu shows
+  // nothing rather than everything. null after loading = the older single-owner case could not be read: the full menu, as before.
+  const [ws, setWs] = useState<(WorkspaceView & { name: string; home: string; several: boolean }) | null | undefined>(undefined);
   const onProfile = pathname.startsWith('/vendor/profile');
   const onLogin = pathname.startsWith('/vendor/login');
 
@@ -34,6 +38,8 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       .then((r) => r.json())
       .then((b) => {
         if (!live) return;
+        // A member of several businesses who has not said which one they are working in.
+        if (b.chooseWorkspace) return void window.location.replace('/workspace');
         const setup = Boolean(b.success && b.data?.canEdit && b.data.missing?.length > 0);
         if (setup && !onProfile) window.location.replace('/vendor/profile');
         else setGate(setup ? 'setup' : 'open');
@@ -44,9 +50,37 @@ export default function VendorShell({ children }: { children: ReactNode }) {
     };
   }, [pathname, onLogin, onProfile]);
 
+  useEffect(() => {
+    if (onLogin) return;
+    let live = true;
+    fetch('/api/workspace')
+      .then((r) => r.json())
+      .then((b) => {
+        if (!live) return;
+        const w = b.success ? b.data?.working : null;
+        setWs(w ? { ...w, several: b.data.workspaces.filter((x: { kind: string }) => x.kind === 'VENDOR').length > 1 } : null);
+      })
+      .catch(() => live && setWs(null));
+    return () => {
+      live = false;
+    };
+  }, [onLogin]);
+
+  // A screen this person cannot use here (a manager typing /vendor/settings, or a screen that belongs to their OTHER business):
+  // send them to where this workspace opens. The server refuses the data either way.
+  const screen = screenOf(pathname);
+  const misplaced = Boolean(ws && screen && !canSeeScreen(screen, ws));
+  useEffect(() => {
+    if (misplaced && ws) window.location.replace(ws.home);
+  }, [misplaced, ws]);
+
   const isLogin = pathname.startsWith('/vendor/login');
-  const active = PRIMARY.find((item) => item.isActive(pathname));
-  const inMore = PHONE_MORE.some((item) => item.isActive(pathname));
+  const shown = (items: typeof PRIMARY) => (ws === undefined ? [] : ws === null ? items : items.filter((item) => canSeeScreen(item.key, ws)));
+  const primary = shown(PRIMARY);
+  const phoneBar = shown(PHONE_BAR);
+  const phoneMore = shown(PHONE_MORE);
+  const active = primary.find((item) => item.isActive(pathname));
+  const inMore = phoneMore.some((item) => item.isActive(pathname));
 
   const logout = () => signOut({ callbackUrl: '/vendor/login' });
 
@@ -54,12 +88,17 @@ export default function VendorShell({ children }: { children: ReactNode }) {
 
   const vendorName = session?.user?.name ?? 'Vendor';
 
-  if (gate === 'checking') return <div className="min-h-screen bg-[#FFFAF5]" aria-busy="true" />;
+  if (gate === 'checking' || misplaced) return <div className="min-h-screen bg-[#FFFAF5]" aria-busy="true" />;
   // Setting up: the profile page alone, with a way out.
   if (gate === 'setup') {
     return (
       <div className="min-h-screen bg-[#FFFAF5]">
-        <div className="flex h-12 items-center justify-end bg-[#1E0510] px-5">
+        <div className="flex h-12 items-center justify-end gap-5 bg-[#1E0510] px-5">
+          {ws?.several && (
+            <a href="/workspace" className="flex items-center gap-1.5 text-xs font-medium text-[#E9D9C3]/80 hover:text-white">
+              <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Switch business
+            </a>
+          )}
           <button type="button" onClick={logout} className="flex items-center gap-1.5 text-xs font-medium text-[#E9D9C3]/80 hover:text-white">
             <LogOut className="h-3.5 w-3.5" aria-hidden /> Log out
           </button>
@@ -96,7 +135,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       {/* Desktop header */}
       <header className="sticky top-0 z-30 hidden border-b border-[var(--color-border-subtle)] bg-white/95 backdrop-blur md:block">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-6">
-          <Link href="/vendor/today" className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+          <Link href={ws?.home ?? '/vendor/today'} className="flex shrink-0 items-center gap-2 whitespace-nowrap">
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Vendor OS</span>
             <span className="text-[11px] text-[var(--color-text-muted)]">by ShaadiShopping</span>
           </Link>
@@ -110,7 +149,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
           )}
 
           <nav aria-label="Vendor" className="ml-auto flex items-center gap-1">
-            {PRIMARY.map((item) => navLink(item, false, true))}
+            {primary.map((item) => navLink(item, false, true))}
           </nav>
 
           {/* Account / profile access */}
@@ -125,7 +164,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-bg-inverse)] text-white">
                 <User className="h-4 w-4" />
               </span>
-              <span className="max-w-[140px] truncate">{vendorName}</span>
+              <span className="max-w-[160px] truncate">{ws?.name ?? vendorName}</span>
             </button>
             {moreOpen && (
               <div role="menu" className="absolute right-0 top-full mt-1 w-52 rounded-lg border border-[var(--color-border-subtle)] bg-white p-1 shadow-lg">
@@ -136,6 +175,11 @@ export default function VendorShell({ children }: { children: ReactNode }) {
                 >
                   <Store className="h-4 w-4" /> Business profile
                 </Link>
+                {ws?.several && (
+                  <a href="/workspace" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-muted)]">
+                    <ArrowLeftRight className="h-4 w-4" /> Switch business
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={logout}
@@ -151,7 +195,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
 
       {/* Mobile top strip — identity + account only, no inline nav (that's the bottom bar) */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--color-border-subtle)] bg-white/95 px-4 backdrop-blur md:hidden">
-        <span className="text-sm font-bold text-[var(--color-text-primary)]">{active?.label ?? 'Vendor OS'}</span>
+        <span className="min-w-0 truncate text-sm font-bold text-[var(--color-text-primary)]">{active?.label ?? 'Vendor OS'}{ws?.several ? ` · ${ws.name}` : ''}</span>
         <button type="button" onClick={logout} aria-label="Log out" className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-surface-muted)]">
           <LogOut className="h-5 w-5" />
         </button>
@@ -162,8 +206,8 @@ export default function VendorShell({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom navigation */}
       <nav aria-label="Vendor" className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border-subtle)] bg-white/95 backdrop-blur md:hidden">
-        <div className="grid grid-cols-5">
-          {PHONE_BAR.map((item) => navLink(item, true))}
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${phoneBar.length + 1}, minmax(0, 1fr))` }}>
+          {phoneBar.map((item) => navLink(item, true))}
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
@@ -187,10 +231,15 @@ export default function VendorShell({ children }: { children: ReactNode }) {
               </button>
             </div>
             <div className="space-y-0.5">
-              {PHONE_MORE.map((item) => navLink(item))}
+              {phoneMore.map((item) => navLink(item))}
               <Link href="/vendor/profile" onClick={() => setMoreOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]">
                 <Store className="h-4 w-4" /> Business profile
               </Link>
+              {ws?.several && (
+                <a href="/workspace" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]">
+                  <ArrowLeftRight className="h-4 w-4" /> Switch business
+                </a>
+              )}
               <button
                 type="button"
                 onClick={logout}
