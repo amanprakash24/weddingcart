@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
-import { normalizeMobile } from '@/lib/auth/vendorCode';
+import { isWellFormedCode, normalizeMobile } from '@/lib/auth/vendorCode';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { vendorLoginCodeService } from '@/services/vendorLoginCode.service';
 
@@ -11,15 +11,19 @@ import { vendorLoginCodeService } from '@/services/vendorLoginCode.service';
 // and gets their own 6-digit code, so they can sign in the way everyone does (mobile number + code). The number is typed on a
 // screen, by the person, while they are signed in; it is never written in the source code. Email + password keeps working.
 //
-// Safety, because this hands out Command Center access:
-//   - only a signed-in member of the internal team, and only for THEMSELVES (never "give access to someone else's account");
-//   - their current password is asked again (when they have one), with the usual 5-wrong-tries lock;
-//   - a number that already belongs to another person (say, the same founder's vendor login) is linked only after they are told
-//     whose it is and confirm — and that person's access is the SAME as theirs, never more;
-//   - a fresh code is always issued, so only the person at this screen knows it — an older code on that number stops working.
+// THE RULE THIS FILE EXISTS TO KEEP: nobody's login code is ever replaced, and nobody's login is ever given more access, without
+// proof from the person it belongs to.
+//   - Only a signed-in member of the internal team, and only for THEMSELVES.
+//   - They prove it is them again: their password, or — for a login that has no password — their own current code.
+//   - A number NOBODY has: it becomes theirs, and they get a new code (there was no code to replace).
+//   - A number that is ALREADY SOMEONE'S LOGIN (often the same human's vendor login): it is linked only if they also enter THAT
+//     login's current code — proof that they hold it. Its code is NOT changed and no code is shown. Without that code, nothing
+//     happens: a team member cannot attach themselves to, or take over, a number they merely know.
+//   - A login with no code cannot be linked here at all (there is nothing to prove with).
+//   - Every wrong try — password or code — counts against the same 5-in-15-minutes lock.
 //
 // What "linking" means: the person with that mobile number is given the same internal roles and the same membership of the Shaadi
-// Shopping business as the team member. One person, several memberships — not a second account that is the same human.
+// Shopping business as the team member — the same access, never more. One person, several memberships.
 
 const mask = (mobile: string) => `${mobile.slice(0, 2)}******${mobile.slice(-2)}`;
 
@@ -27,7 +31,7 @@ export interface TeamLoginDeps {
   db: Pick<typeof prisma, 'user' | 'userRole' | 'businessMember'>;
   isLocked: typeof isRateLimited;
   record: typeof recordLoginAttempt;
-  comparePassword: (password: string, hash: string) => Promise<boolean>;
+  compare: (secret: string, hash: string) => Promise<boolean>; // bcrypt — passwords and codes alike
   issueCode: (userId: string) => Promise<{ code: string; mobile: string | null }>;
 }
 
@@ -35,18 +39,21 @@ const defaultDeps = (): TeamLoginDeps => ({
   db: prisma,
   isLocked: isRateLimited,
   record: recordLoginAttempt,
-  comparePassword: (password, hash) => bcrypt.compare(password, hash),
+  compare: (secret, hash) => bcrypt.compare(secret, hash),
   issueCode: (userId) => vendorLoginCodeService.issueForUser(userId),
 });
 
+export type LinkErrors = Partial<Record<'mobile' | 'password' | 'myCode' | 'theirCode', string>>;
+
 export type LinkResult =
-  | { code: string; mobile: string } // done — the code is shown once
-  | { confirm: { mobile: string; belongsTo: string } } // that number is another person's: say so and ask
-  | { errors: Partial<Record<'mobile' | 'password', string>> };
+  | { code: string; mobile: string } // a new number, or my own again — my code, shown once
+  | { linked: true; mobile: string } // an existing login, proven mine — its code is unchanged and not shown
+  | { needsTheirCode: { mobile: string; belongsTo: string } } // that number is already a login: prove it is yours
+  | { errors: LinkErrors };
 
 export function createTeamLoginService(deps: TeamLoginDeps = defaultDeps()) {
   async function teamMember(userId: string) {
-    const me = await deps.db.user.findUnique({ where: { id: userId }, select: { id: true, name: true, phone: true, passwordHash: true, loginCodeSetAt: true, roles: { select: { role: true } } } });
+    const me = await deps.db.user.findUnique({ where: { id: userId }, select: { id: true, name: true, phone: true, passwordHash: true, loginCodeHash: true, roles: { select: { role: true } } } });
     if (!me) throw new NotFoundError('Login', userId);
     const internal = me.roles.map((r) => r.role).filter((r) => ADMIN_ROLES.includes(r));
     if (internal.length === 0) throw new NotFoundError('Login', userId); // not the internal team — nothing here is for them
@@ -57,46 +64,60 @@ export function createTeamLoginService(deps: TeamLoginDeps = defaultDeps()) {
     // What the "My sign-in" card shows. The number is masked — the screen never needs the whole of it.
     async status(userId: string): Promise<{ mobile: string | null; hasCode: boolean; hasPassword: boolean }> {
       const me = await teamMember(userId);
-      return { mobile: me.phone ? mask(me.phone) : null, hasCode: me.loginCodeSetAt !== null, hasPassword: me.passwordHash !== null };
+      return { mobile: me.phone ? mask(me.phone) : null, hasCode: me.loginCodeHash !== null, hasPassword: me.passwordHash !== null };
     },
 
-    // Register (or change) my mobile number and get my code.
-    async linkMobile(userId: string, input: { mobile?: unknown; password?: unknown; confirmExisting?: unknown }): Promise<LinkResult> {
+    // Register (or change) my mobile number.
+    //   password  — my current password (asked when I have one)
+    //   myCode    — my own current login code (asked when I have no password)
+    //   theirCode — the current code of the login that already holds that number (asked only then)
+    async linkMobile(userId: string, input: { mobile?: unknown; password?: unknown; myCode?: unknown; theirCode?: unknown }): Promise<LinkResult> {
       const me = await teamMember(userId);
       const mobile = normalizeMobile(input.mobile);
       if (!mobile) return { errors: { mobile: 'Enter your 10-digit mobile number' } };
 
-      // Their password again — this screen gives out a way in to the Command Center.
+      const lock = `team-login-link:${userId}`;
+      if (await deps.isLocked(lock)) throw new ConflictError('Too many wrong tries — please wait 15 minutes and try again');
+
+      // 1. It is really me, again. A login with neither a password nor a code cannot prove that, so it cannot use this screen.
       if (me.passwordHash) {
-        const lock = `team-login-link:${userId}`;
-        if (await deps.isLocked(lock)) throw new ConflictError('Too many wrong tries — please wait 15 minutes and try again');
-        const ok = typeof input.password === 'string' && input.password.length > 0 && (await deps.comparePassword(input.password, me.passwordHash));
+        const ok = typeof input.password === 'string' && input.password.length > 0 && (await deps.compare(input.password, me.passwordHash));
         await deps.record(lock, ok);
         if (!ok) return { errors: { password: 'That is not your current password' } };
+      } else if (me.loginCodeHash) {
+        const ok = isWellFormedCode(input.myCode) && (await deps.compare(input.myCode, me.loginCodeHash));
+        await deps.record(lock, ok);
+        if (!ok) return { errors: { myCode: 'That is not your current login code' } };
+      } else {
+        throw new ConflictError('This login has no password or code to confirm it is you');
       }
 
-      const holder = await deps.db.user.findUnique({ where: { phone: mobile }, select: { id: true, name: true, vendorProfile: { select: { vendor: { select: { name: true } } } } } });
+      const holder = await deps.db.user.findUnique({ where: { phone: mobile }, select: { id: true, name: true, loginCodeHash: true, vendorProfile: { select: { vendor: { select: { name: true } } } } } });
 
-      // Nobody has this number: it becomes mine, on my own account.
+      // 2a. Nobody has this number: it becomes mine, on my own account, with a new code. (No code existed to be replaced.)
       if (!holder) {
         await deps.db.user.update({ where: { id: me.id }, data: { phone: mobile } });
         const issued = await deps.issueCode(me.id);
         return { code: issued.code, mobile: mask(mobile) };
       }
 
-      // It is already mine: just a fresh code.
+      // 2b. It is already mine: a fresh code for myself — I have just proved who I am.
       if (holder.id === me.id) {
         const issued = await deps.issueCode(me.id);
         return { code: issued.code, mobile: mask(mobile) };
       }
 
-      // It is another person's (often the same human's vendor or customer login). Say whose, and go on only when told to.
-      if (input.confirmExisting !== true) {
-        const belongsTo = holder.vendorProfile?.vendor.name ? `the login of ${holder.vendorProfile.vendor.name}` : holder.name ? `${holder.name}’s login` : 'an existing login';
-        return { confirm: { mobile: mask(mobile), belongsTo } };
+      // 2c. It is ALREADY ANOTHER LOGIN. Knowing a number proves nothing — only that login's own current code does.
+      const belongsTo = holder.vendorProfile?.vendor.name ? `the login of ${holder.vendorProfile.vendor.name}` : holder.name ? `${holder.name}’s login` : 'an existing login';
+      if (!holder.loginCodeHash) {
+        throw new ConflictError(`${mask(mobile)} is already ${belongsTo}, and it has no login code to confirm it is yours. It cannot be linked here.`);
       }
+      if (input.theirCode === undefined || input.theirCode === null || input.theirCode === '') return { needsTheirCode: { mobile: mask(mobile), belongsTo } };
+      const proven = isWellFormedCode(input.theirCode) && (await deps.compare(input.theirCode, holder.loginCodeHash));
+      await deps.record(lock, proven);
+      if (!proven) return { errors: { theirCode: 'That is not the current code of that login' } };
 
-      // Link: that person gets MY internal roles and MY place in the Shaadi Shopping business — the same access, never more.
+      // Proven. That person gets MY internal roles and MY place in the Shaadi Shopping business — the same access, never more.
       for (const role of me.internal) {
         await deps.db.userRole.upsert({ where: { userId_role: { userId: holder.id, role } }, create: { userId: holder.id, role }, update: {} });
       }
@@ -108,13 +129,11 @@ export function createTeamLoginService(deps: TeamLoginDeps = defaultDeps()) {
           update: { role: mine.role, jobTitle: mine.jobTitle, grants: mine.grants, denies: mine.denies, removedAt: null },
         });
       }
-      // Always a NEW code: whatever code that number had before stops working, so only the person at this screen has it.
-      const issued = await deps.issueCode(holder.id);
-      console.info(`[team-login] internal access (${me.internal.join(', ')}) linked from user ${me.id} to the existing login ${holder.id}`);
-      return { code: issued.code, mobile: mask(mobile) };
+      // Its code is untouched: the person who holds that login keeps signing in exactly as before.
+      console.info(`[team-login] internal access (${me.internal.join(', ')}) linked from user ${me.id} to the existing login ${holder.id}, proven with that login's code`);
+      return { linked: true, mobile: mask(mobile) };
     },
   };
 }
 
 export const teamLoginService = createTeamLoginService();
-

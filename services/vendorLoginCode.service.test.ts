@@ -34,7 +34,12 @@ const db = {
       return u;
     }),
   },
-  vendorProfile: { findUnique: mock(async (a: { where: { vendorId: string } }) => profiles.find((p) => p.vendorId === a.where.vendorId) ?? null) },
+  vendorProfile: {
+    findUnique: mock(async (a: { where: { vendorId: string } }) => {
+      const p = profiles.find((x) => x.vendorId === a.where.vendorId);
+      return p ? { ...p, user: { roles: users.find((u) => u.id === p.userId)!.roles } } : null;
+    }),
+  },
 };
 
 const service = createVendorLoginCodeService({
@@ -119,6 +124,16 @@ describe('issuing a code', () => {
   test('for a vendor’s owner, by vendor — the admin’s "New login code"', async () => {
     expect(await service.issue('v2')).toEqual({ code: '815204', mobile: '9000000002' });
     expect((await service.verify('9000000002', '815204'))?.vendorId).toBe('v2');
+  });
+
+  test('a vendor login that is ALSO on Shaadi Shopping’s own team is never given a new code from here — it would hand over the Command Center', async () => {
+    for (const role of ['SUPER_ADMIN', 'SALES', 'OPERATIONS']) {
+      users[0].roles = [{ role: 'VENDOR' }, { role }];
+      await expect(service.issue('v1')).rejects.toBeInstanceOf(ConflictError);
+    }
+    expect(users[0]).toMatchObject({ loginCodeHash: 'hash(482913)', sessionVersion: 3 });
+    expect(db.user.update).not.toHaveBeenCalled();
+    expect((await service.verify('9876543210', '482913'))?.id).toBe('u1'); // their own code still works
   });
 
   test('a person with no mobile number cannot be given a code — the code is only half of the sign-in', async () => {

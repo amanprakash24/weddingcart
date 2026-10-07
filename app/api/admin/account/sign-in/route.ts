@@ -6,11 +6,12 @@ import { platformScoped } from '@/lib/ownership/entry';
 import { teamLoginService } from '@/services/teamLogin.service';
 
 // GET  /api/admin/account/sign-in — my own sign-in: the mobile number on it (masked), whether I have a code and a password.
-// POST /api/admin/account/sign-in — { mobile, password, confirmExisting? }: register MY mobile number and get MY 6-digit code.
+// POST /api/admin/account/sign-in — { mobile, password | myCode, theirCode? }: register MY mobile number.
 //
 // For a signed-in member of Shaadi Shopping's own team, about THEMSELVES only — the person comes from the session, never from
-// the request. The code is in the one answer that issues it and is never readable again. services/teamLogin.service.ts has the
-// safety rules (the password again, the lock, the confirmation when a number already belongs to another login).
+// the request. services/teamLogin.service.ts has the rules: prove it is me again (password, or my own code); a number that is
+// already someone's login is linked only with THAT login's current code, and its code is never replaced. A new code is shown only
+// for a number nobody had, or for my own — in the one answer that issues it.
 const noStore = { headers: { 'Cache-Control': 'no-store' } };
 
 async function me(): Promise<string | null> {
@@ -33,9 +34,10 @@ async function handlePOST(req: NextRequest) {
   if (!userId) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401, ...noStore });
   try {
     const body = await req.json().catch(() => ({}));
-    const result = await teamLoginService.linkMobile(userId, { mobile: body?.mobile, password: body?.password, confirmExisting: body?.confirmExisting === true });
+    const result = await teamLoginService.linkMobile(userId, { mobile: body?.mobile, password: body?.password, myCode: body?.myCode, theirCode: body?.theirCode });
     if ('errors' in result) return NextResponse.json({ success: false, error: 'Please check the highlighted fields', fieldErrors: result.errors }, { status: 400, ...noStore });
-    if ('confirm' in result) return NextResponse.json({ success: false, confirm: result.confirm }, { status: 409, ...noStore });
+    if ('needsTheirCode' in result) return NextResponse.json({ success: false, needsTheirCode: result.needsTheirCode }, { status: 409, ...noStore });
+    if ('linked' in result) return NextResponse.json({ success: true, linked: true, mobile: result.mobile }, noStore);
     return NextResponse.json({ success: true, loginCode: result.code, mobile: result.mobile }, noStore);
   } catch (err) {
     return handleApiError(err);

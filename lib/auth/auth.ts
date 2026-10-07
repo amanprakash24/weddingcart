@@ -2,7 +2,7 @@ import type { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-import { Role, ADMIN_ROLES } from '@/lib/auth/roles';
+import { Role, ADMIN_ROLES, withoutInternalRoles } from '@/lib/auth/roles';
 import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
 import { linkWeddingsOnLogin } from '@/lib/customer/weddingLink';
 import { vendorLoginCodeService } from '@/services/vendorLoginCode.service';
@@ -131,10 +131,13 @@ export const authOptions: AuthOptions = {
         // The couple's wedding(s) with this mobile become theirs (MASTER-GAP-ANALYSIS §2.4.1). Never fails the login.
         await linkWeddingsOnLogin(user.id, credentials.phone);
 
+        // A one-time code sent to a phone never opens the Command Center (7 Oct 2026). Once a member of Shaadi Shopping's own team
+        // registers their mobile number, this sign-in would otherwise be a second way in that skips their login code — whoever
+        // holds the phone for a minute would be the founder. Internal roles come only from the login code or the password.
         return {
           id: user.id,
           name: user.name,
-          roles: user.roles.map((r) => r.role),
+          roles: withoutInternalRoles(user.roles.map((r) => r.role)),
           vendorId: user.vendorProfile?.vendorId ?? undefined,
           sessionVersion: user.sessionVersion,
         };

@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
-import type { Role } from '@/lib/auth/roles';
+import { ADMIN_ROLES, type Role } from '@/lib/auth/roles';
 import { codeNeedsReminder, generateLoginCode, isWellFormedCode, normalizeMobile, validateCodeChange, type NewCodeErrors } from '@/lib/auth/vendorCode';
 
 // The login code (built 6 Oct 2026 for vendor owners; since 7 Oct 2026 for EVERY person). A person signs in with their own mobile
@@ -86,11 +86,17 @@ export function createVendorLoginCodeService(deps: VendorLoginCodeDeps = default
 
     issueForUser,
 
-    // An admin issues a new code for a vendor's owner (a lost code, or a vendor from before codes existed). Returns the code —
-    // the only time it is ever readable.
+    // The FOUNDER issues a new code for a vendor's owner (a lost code, or a vendor from before codes existed) — the route allows
+    // SUPER_ADMIN only. Returns the code — the only time it is ever readable.
     async issue(vendorId: string): Promise<{ code: string; mobile: string | null }> {
-      const profile = await deps.db.vendorProfile.findUnique({ where: { vendorId }, select: { userId: true } });
+      const profile = await deps.db.vendorProfile.findUnique({ where: { vendorId }, select: { userId: true, user: { select: { roles: { select: { role: true } } } } } });
       if (!profile) throw new NotFoundError('Vendor login', vendorId);
+      // Whoever issues a code can sign in with it. A login that is ALSO a member of Shaadi Shopping's own team would hand over
+      // Command Center access with it — so that person's code is never replaced from here, by anyone. They change it themselves
+      // (Settings, with their current code) or get a new one from "My sign-in" (with their password).
+      if (profile.user.roles.some((r) => ADMIN_ROLES.includes(r.role))) {
+        throw new ConflictError('This login also belongs to a member of the Shaadi Shopping team. Only that person can change its code — from My sign-in.');
+      }
       return issueForUser(profile.userId);
     },
 

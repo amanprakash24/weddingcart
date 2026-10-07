@@ -218,9 +218,25 @@ not say. Inside a service, `can(scope, …)` decides finer points: a manager see
 `/admin/login` is the same mobile + code screen. **Email and password is kept** at `/admin/login?with=password` until the code
 sign-in is proven for founder, vendor owner, manager and employee (founder's decision). A team member registers **their own**
 mobile number at Admin → More → **My sign-in** (`services/teamLogin.service.ts`): the number is typed on that screen, never in
-source code; their password is asked again; the code is shown once. If the number already belongs to another login (the same
-person's vendor login, say), they are told whose it is and must confirm — that person then gets the **same** access, never more,
-and a fresh code.
+source code; their password is asked again (or their own current code, if they have no password); the code is shown once.
+
+**Nobody's login code is replaced, and nobody's login is given more access, without proof from the person it belongs to.**
+Knowing a mobile number proves nothing. The ways a code is ever set, and who may:
+
+| Where | Who | What stops a takeover |
+|---|---|---|
+| Change my code (`vendorLoginCodeService.change`) | the signed-in person, for themselves | needs their current code; 5 wrong tries pause it |
+| My sign-in, a number nobody has | a team member, for themselves | password / own code again; no code existed to replace |
+| My sign-in, a number that is **already another login** | a team member | needs **that login's current code** as well; its code is **not** changed and nothing is shown; a login with no code cannot be linked at all; wrong tries count against the same pause |
+| Accepting a registration (`provisionVendorAccount`) | the team | a code is issued only for a number with **no** code that is **not** on the internal team; otherwise nothing is issued or shown (`existingLogin`) — a registration typed with someone else's number cannot hand over their login |
+| New login code for a vendor (`POST /api/vendors/[id]/login-code`) | **the founder only** (SUPER_ADMIN; 403 for everyone else) | refused for any login that is also on the internal team — that would hand over the Command Center |
+
+The WhatsApp one-time code (`otp` sign-in) never carries an internal role (`withoutInternalRoles`), so a registered team
+number is not a second way into the Command Center that skips the login code.
+
+Still true, and intended: the founder can issue a new code for a vendor's owner (a lost code) and so could sign in as that
+vendor. That is the founder's support power; the vendor's old code stops working and they are signed out everywhere, so it
+cannot happen unnoticed. There is no audit log of it yet.
 
 ### 8.3 What changed in the database (additive; nothing dropped)
 
