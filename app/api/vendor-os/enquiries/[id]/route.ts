@@ -13,4 +13,4 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export const GET = venueScoped(handleGET);
+export const GET = venueScoped(handleGET, 'enquiries');

@@ -230,6 +230,34 @@ describe('a venue’s own quotation', () => {
     expect(recordPayment).not.toHaveBeenCalled();
   });
 
+  test('money is shown only to a member who may see it: a manager gets the quotation, not what was paid or where to pay', async () => {
+    business.upiId = 'swayamvar@okaxis';
+    await acceptedAndBooked();
+    payments = [{ id: 'p1', amount: 20000, method: 'UPI', status: 'SUCCESS', paidAt: NOW, reference: 'UTR1' }];
+    const { runInScope } = await import('@/lib/ownership/scope');
+    const { effectivePermissions } = await import('@/lib/auth/permissions');
+    const as = <T>(role: 'OWNER' | 'MANAGER', grants: string[], fn: () => Promise<T>) =>
+      runInScope({ kind: 'BUSINESS', businessId: 'venue-1', role, permissions: effectivePermissions({ role, grants }), userId: 'u1' }, fn);
+
+    const owner = await as('OWNER', [], () => service.get('e1'));
+    expect(owner.quotation).toMatchObject({ moneyHidden: false, booking: { received: 20000 } });
+    expect(owner.payTo).toEqual({ upiId: 'swayamvar@okaxis', upiName: null });
+
+    const manager = await as('MANAGER', [], () => service.get('e1'));
+    // The quotation itself — its lines and its total — is the manager's work …
+    expect(manager.quotation).toMatchObject({ total: 200000, items: [{ description: 'Hall hire' }] });
+    // … but not the money received, and not the payment details.
+    expect(manager.quotation?.booking).toBeNull();
+    expect(manager.quotation?.moneyHidden).toBe(true);
+    expect(manager.payTo).toBeNull();
+    expect(JSON.stringify(manager)).not.toContain('UTR1');
+    expect(JSON.stringify(manager)).not.toContain('swayamvar@okaxis');
+
+    // The owner let this one manager see money.
+    const trusted = await as('MANAGER', ['view_financials'], () => service.get('e1'));
+    expect(trusted.quotation).toMatchObject({ moneyHidden: false, booking: { received: 20000 } });
+  });
+
   test('a wrong payment is explained and nothing is recorded', async () => {
     await acceptedAndBooked();
     expect(await service.pay('e1', { amount: '', method: 'CARD' }, 'u1')).toEqual({ errors: { amount: expect.any(String), method: expect.any(String) } });

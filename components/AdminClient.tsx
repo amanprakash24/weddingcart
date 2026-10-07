@@ -396,6 +396,8 @@ export default function AdminClient() {
   const [appFilter, setAppFilter] = useState<'all' | 'new' | 'approved' | 'rejected'>('all');
   // Login codes just issued by approving a registration, by application id — each is readable only until this page is left.
   const [freshCodes, setFreshCodes] = useState<Record<string, string>>({});
+  // Registrations just approved whose mobile number already had a sign-in of its own — no code was issued; theirs is unchanged.
+  const [existingLogins, setExistingLogins] = useState<Set<string>>(new Set());
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
   const [consultationFilter, setConsultationFilter] = useState<'all' | 'new' | 'contacted' | 'closed'>('all');
@@ -2694,7 +2696,7 @@ Create a separate standalone invoice anyway?`)) return;
                       </div>
 
                       {a.status === 'approved' && a.vendorId && (
-                        <VendorLoginCode key={freshCodes[a._id] ?? 'none'} vendorId={a.vendorId} mobile={a.ownerPhone} firstCode={freshCodes[a._id]} />
+                        <VendorLoginCode key={freshCodes[a._id] ?? 'none'} vendorId={a.vendorId} mobile={a.ownerPhone} firstCode={freshCodes[a._id]} existingLogin={existingLogins.has(a._id)} />
                       )}
                     </div>
 
@@ -2711,6 +2713,7 @@ Create a separate standalone invoice anyway?`)) return;
                             });
                             const body = await res.json().catch(() => ({}));
                             if (body.loginCode) setFreshCodes((cur) => ({ ...cur, [a._id]: body.loginCode }));
+                            if (body.existingLogin) setExistingLogins((cur) => new Set(cur).add(a._id));
                             fetchAll();
                           }}
                           className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize disabled:opacity-60 disabled:cursor-default ${

@@ -7,5 +7,5 @@ export const metadata = {
 
 // Vendors sign in with their registered mobile number + the 6-digit login code Shaadi Shopping issued (lib/auth/vendorCode.ts).
 export default function VendorLoginPage() {
-  return <VendorCodeLoginClient redirectPath="/vendor" />;
+  return <VendorCodeLoginClient />;
 }

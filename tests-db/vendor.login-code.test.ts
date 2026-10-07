@@ -15,7 +15,7 @@ dbDescribe('vendor login code (real database)', () => {
   let code = '';
 
   const outcome = (p: Promise<unknown>) => p.then(() => null, (e: Error) => e);
-  const profile = () => app.prisma.vendorProfile.findUniqueOrThrow({ where: { vendorId } });
+  const person = () => app.prisma.user.findUniqueOrThrow({ where: { id: userId } });
   const identifiers = () => [`vendor-code:${phone}`, `vendor-code-change:${userId}`];
 
   beforeAll(async () => {
@@ -55,7 +55,7 @@ dbDescribe('vendor login code (real database)', () => {
     code = issued.code;
     expect(code).toMatch(/^\d{6}$/);
     expect(issued.mobile).toBe(phone);
-    const row = await profile();
+    const row = await person();
     expect(row.loginCodeHash).toMatch(/^\$2[aby]\$/);
     expect(row.loginCodeHash).not.toContain(code);
     expect(row.loginCodeSetAt).toBeInstanceOf(Date);
@@ -81,7 +81,7 @@ dbDescribe('vendor login code (real database)', () => {
   });
 
   test('a code 30 days old brings the reminder', async () => {
-    await app.prisma.vendorProfile.update({ where: { vendorId }, data: { loginCodeSetAt: new Date(Date.now() - 31 * 86_400_000) } });
+    await app.prisma.user.update({ where: { id: userId }, data: { loginCodeSetAt: new Date(Date.now() - 31 * 86_400_000) } });
     expect((await codes.status(userId)).reminder).toBe(true);
   });
 

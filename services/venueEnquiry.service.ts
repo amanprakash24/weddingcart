@@ -1,9 +1,10 @@
 import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
-import { ACTION_ORDER, CHANNEL_LABEL, nextAction, validateNewEnquiry, type Channel, type FollowUp, type NextAction } from '@/lib/venue/enquiry';
+import { ACTION_ORDER, CHANNEL_LABEL, historyFor, nextAction, validateNewEnquiry, type Channel, type FollowUp, type NextAction } from '@/lib/venue/enquiry';
 import { quoteStage } from '@/lib/venue/quotation';
 import { effectiveScope } from '@/lib/ownership/scope';
+import { can } from '@/lib/auth/permissions';
 import { platformMatchService } from '@/services/platformMatch.service';
 
 // A venue's OWN enquiries (Phase C, docs/wedding-os/15-record-ownership.md §5). Always called inside the venue's scope
@@ -121,8 +122,10 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
         .map(({ need: _need, followUps: _f, history: _h, ...item }) => item);
     },
 
+    // The history leaves out what has been paid and invoiced for a member who may not see money (a manager, by default).
     async get(id: string): Promise<VenueEnquiryDetail> {
-      return view(await load(id), deps.now());
+      const detail = view(await load(id), deps.now());
+      return { ...detail, history: historyFor(detail.history, can(effectiveScope(), 'view_financials')) };
     },
 
     // "+ New Enquiry" — the record is created in the venue's business by the guard.

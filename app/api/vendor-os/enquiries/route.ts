@@ -26,5 +26,5 @@ async function handlePOST(req: NextRequest) {
   }
 }
 
-export const GET = venueScoped(handleGET);
-export const POST = venueScoped(handlePOST);
+export const GET = venueScoped(handleGET, 'enquiries');
+export const POST = venueScoped(handlePOST, 'enquiries');

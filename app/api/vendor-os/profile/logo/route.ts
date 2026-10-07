@@ -30,4 +30,4 @@ async function handlePOST(req: NextRequest) {
   }
 }
 
-export const POST = venueScoped(handlePOST);
+export const POST = venueScoped(handlePOST, 'settings');

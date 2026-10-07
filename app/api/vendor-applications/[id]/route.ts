@@ -49,9 +49,9 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
     if (!result) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 
     // On the first approval the vendor's login code comes back once, beside the application — never inside it, never stored.
-    const { issuedLoginCode, ...application } = result;
+    const { issuedLoginCode, existingLogin, ...application } = result;
     return NextResponse.json(
-      { success: true, data: toResponseShape(application), ...(issuedLoginCode ? { loginCode: issuedLoginCode } : {}) },
+      { success: true, data: toResponseShape(application), ...(issuedLoginCode ? { loginCode: issuedLoginCode } : {}), ...(existingLogin ? { existingLogin: true } : {}) },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (err) {

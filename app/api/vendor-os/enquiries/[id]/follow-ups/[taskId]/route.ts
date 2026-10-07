@@ -13,4 +13,4 @@ async function handlePATCH(_req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-export const PATCH = venueScoped(handlePATCH);
+export const PATCH = venueScoped(handlePATCH, 'enquiries');

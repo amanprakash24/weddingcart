@@ -6,13 +6,13 @@ import { signIn } from 'next-auth/react';
 import { KeyRound, Phone } from 'lucide-react';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 
-// Vendor sign-in (6 Oct 2026): the mobile number given at registration + the 6-digit login code Shaadi Shopping shared with the
-// terms paper. One step, no message is sent. Every kind of "no" gets the same sentence — a wrong code, an unknown number, a number
+// Sign-in for every person (vendor owners since 6 Oct 2026; founder, managers and employees since 7 Oct): their own mobile number
+// + their own 6-digit login code. Afterwards they go to "Choose Workspace", which opens by itself when they belong to one business. One step, no message is sent. Every kind of "no" gets the same sentence — a wrong code, an unknown number, a number
 // locked after too many tries — so the page never says which numbers are registered.
 const field =
   'w-full rounded-xl border border-[#E8DCC8] bg-[#FFFCF7] py-3.5 pl-11 pr-4 text-base text-[#2A1F1B] outline-none transition placeholder:text-[#B5A898] focus:border-[#C5A46D] focus:bg-white focus:ring-2 focus:ring-[#C5A46D]/25';
 
-export default function VendorCodeLoginClient({ redirectPath }: { redirectPath: string }) {
+export default function VendorCodeLoginClient({ redirectPath = '/workspace', team = false }: { redirectPath?: string; team?: boolean }) {
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,7 @@ export default function VendorCodeLoginClient({ redirectPath }: { redirectPath: 
     setBusy(true);
     setError(null);
     try {
-      const res = await signIn('vendor-code', { phone, code, redirect: false });
+      const res = await signIn('code', { phone, code, redirect: false });
       if (res?.ok) {
         window.location.href = redirectPath;
         return;
@@ -51,10 +51,13 @@ export default function VendorCodeLoginClient({ redirectPath }: { redirectPath: 
             <span className="h-px w-8 bg-[#E8C98A]/70" /> Vivah OS
           </p>
           <h1 className="mt-4 font-playfair text-3xl leading-tight text-[#FFF7EA] sm:text-4xl lg:text-5xl">
-            Your enquiries, quotations
-            <br className="hidden sm:block" /> and bookings, in one place.
+            {team ? (
+              <>The Shaadi Shopping<br className="hidden sm:block" /> Command Center.</>
+            ) : (
+              <>Your enquiries, quotations<br className="hidden sm:block" /> and bookings, in one place.</>
+            )}
           </h1>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-[#E9D9C3]/80">For venues and wedding professionals working with Shaadi Shopping.</p>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-[#E9D9C3]/80">{team ? 'For the Shaadi Shopping team.' : 'For venues and wedding professionals working with Shaadi Shopping.'}</p>
         </div>
         <p className="relative mt-8 hidden text-xs text-[#E9D9C3]/50 lg:block">Powered by Vivah OS</p>
       </div>
@@ -127,12 +130,21 @@ export default function VendorCodeLoginClient({ redirectPath }: { redirectPath: 
               </a>{' '}
               and we will give you a new one.
             </p>
-            <p>
-              Not registered yet?{' '}
-              <a href="/vendor-onboarding" className="font-semibold text-[#8B1A4A]">
-                Register your business
-              </a>
-            </p>
+            {team ? (
+              <p>
+                {/* The older sign-in stays until the code sign-in is proven for everyone (founder's decision, 7 Oct 2026). */}
+                <a href="/admin/login?with=password" className="font-semibold text-[#8B1A4A]">
+                  Sign in with email and password instead
+                </a>
+              </p>
+            ) : (
+              <p>
+                Not registered yet?{' '}
+                <a href="/vendor-onboarding" className="font-semibold text-[#8B1A4A]">
+                  Register your business
+                </a>
+              </p>
+            )}
           </div>
         </div>
       </div>

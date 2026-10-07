@@ -17,4 +17,4 @@ async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ i
   });
 }
 
-export const DELETE = venueScoped(handleDELETE);
+export const DELETE = venueScoped(handleDELETE, 'settings');

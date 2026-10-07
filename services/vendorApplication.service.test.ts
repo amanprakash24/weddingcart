@@ -22,15 +22,18 @@ function fakeApplication(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeMocks(application: ReturnType<typeof fakeApplication>) {
+type ExistingUser = { id: string; phone: string; loginCodeHash: string | null; roles: { role: string }[]; vendorProfile: { vendorId: string } | null };
+
+function makeMocks(application: ReturnType<typeof fakeApplication>, existingUser: ExistingUser | null = null) {
   const vendorCapabilityCreateMany = mock(async (args: { data: unknown[] }) => ({ count: args.data.length }));
-  const userFindUnique = mock(async () => null);
+  const userFindUnique = mock(async () => existingUser);
   const userCreate = mock(async () => ({ id: 'user-1' }));
+  const userUpdate = mock(async (args: { where: { id: string }; data: { loginCodeHash: string; loginCodeSetAt: Date } }) => args);
   const userRoleUpsert = mock(async () => ({}));
   const vendorProfileCreate = mock(async () => ({}));
 
   const tx = {
-    user: { findUnique: userFindUnique, create: userCreate },
+    user: { findUnique: userFindUnique, create: userCreate, update: userUpdate },
     userRole: { upsert: userRoleUpsert },
     vendorProfile: { create: vendorProfileCreate },
     vendorCapability: { createMany: vendorCapabilityCreateMany },
@@ -44,7 +47,7 @@ function makeMocks(application: ReturnType<typeof fakeApplication>) {
   };
   const vendorRepository = { create: mock(async () => ({ id: 'vendor-1' })) };
 
-  return { prismaMock, vendorApplicationRepository, vendorRepository, vendorCapabilityCreateMany, vendorCreate: vendorRepository.create, vendorProfileCreate };
+  return { prismaMock, vendorApplicationRepository, vendorRepository, vendorCapabilityCreateMany, vendorCreate: vendorRepository.create, vendorProfileCreate, userUpdate };
 }
 
 async function loadServiceWith(mocks: ReturnType<typeof makeMocks>) {
@@ -112,13 +115,40 @@ describe('vendorApplicationService.updateStatus — the vendor’s first login c
     const result = await service.updateStatus('app-1', 'APPROVED');
 
     expect(result?.issuedLoginCode).toMatch(/^\d{6}$/);
-    const [args] = mocks.vendorProfileCreate.mock.calls[0] as unknown as [{ data: { userId: string; vendorId: string; loginCodeHash: string; loginCodeSetAt: Date } }];
-    expect(args.data).toMatchObject({ userId: 'user-1', vendorId: 'vendor-1' });
+    // The owner link carries no code any more; the code is the person's.
+    expect((mocks.vendorProfileCreate.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data).toEqual({ userId: 'user-1', vendorId: 'vendor-1' });
+    const [args] = mocks.userUpdate.mock.calls[0] as unknown as [{ where: { id: string }; data: { loginCodeHash: string; loginCodeSetAt: Date } }];
+    expect(args.where).toEqual({ id: 'user-1' });
     expect(args.data.loginCodeSetAt).toBeInstanceOf(Date);
     expect(args.data.loginCodeHash).toMatch(/^\$2[aby]\$/); // a bcrypt hash …
     expect(args.data.loginCodeHash).not.toContain(result!.issuedLoginCode!); // … never the code itself
     const bcrypt = (await import('bcryptjs')).default;
     expect(await bcrypt.compare(result!.issuedLoginCode!, args.data.loginCodeHash)).toBe(true);
+  });
+
+  // A registration can be typed with ANY mobile number. If approving it replaced that number's code and showed the new one to
+  // the approver, a registration would be a way to take over someone else's login.
+  test('a mobile number that already has a login code keeps it: nothing is replaced, nothing is shown', async () => {
+    const owner: ExistingUser = { id: 'user-9', phone: '9876543210', loginCodeHash: 'existing-hash', roles: [{ role: 'VENDOR' }], vendorProfile: null };
+    const mocks = makeMocks(fakeApplication(), owner);
+    const result = await (await loadServiceWith(mocks)).updateStatus('app-1', 'APPROVED');
+
+    expect(result?.issuedLoginCode).toBeUndefined();
+    expect(result?.existingLogin).toBe(true);
+    expect(mocks.userUpdate).not.toHaveBeenCalled();
+    // They still become this vendor's owner — with the sign-in they already have.
+    expect((mocks.vendorProfileCreate.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data).toEqual({ userId: 'user-9', vendorId: 'vendor-1' });
+  });
+
+  test('a mobile number that belongs to Shaadi Shopping’s own team is never given a code by an approval — even if it has none', async () => {
+    for (const role of ['SUPER_ADMIN', 'SALES', 'OPERATIONS']) {
+      const teamMember: ExistingUser = { id: 'user-9', phone: '9876543210', loginCodeHash: null, roles: [{ role }], vendorProfile: null };
+      const mocks = makeMocks(fakeApplication(), teamMember);
+      const result = await (await loadServiceWith(mocks)).updateStatus('app-1', 'APPROVED');
+      expect(result?.issuedLoginCode).toBeUndefined();
+      expect(result?.existingLogin).toBe(true);
+      expect(mocks.userUpdate).not.toHaveBeenCalled();
+    }
   });
 
   test('rejecting, or saving an already-approved application again, issues no code', async () => {
@@ -129,5 +159,6 @@ describe('vendorApplicationService.updateStatus — the vendor’s first login c
     const again = await (await loadServiceWith(mocks)).updateStatus('app-1', 'APPROVED');
     expect(again && 'issuedLoginCode' in again ? again.issuedLoginCode : undefined).toBeUndefined();
     expect(mocks.vendorProfileCreate).not.toHaveBeenCalled();
+    expect(mocks.userUpdate).not.toHaveBeenCalled();
   });
 });

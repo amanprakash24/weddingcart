@@ -25,5 +25,5 @@ async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ i
   }
 }
 
-export const PUT = venueScoped(handlePUT);
-export const DELETE = venueScoped(handleDELETE);
+export const PUT = venueScoped(handlePUT, 'catalog');
+export const DELETE = venueScoped(handleDELETE, 'catalog');

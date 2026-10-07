@@ -6,7 +6,10 @@ import { Check, Copy, KeyRound } from 'lucide-react';
 // The vendor's 6-digit login code, on an approved registration (6 Oct 2026). The vendor signs in at /vendor/login with the mobile
 // number given at registration + this code. It is shown ONCE — when the registration is approved (`firstCode`) or when an admin
 // asks for a new one here — because only its hash is stored. A new code ends the old one and signs the vendor out everywhere.
-export default function VendorLoginCode({ vendorId, mobile, firstCode }: { vendorId: string; mobile: string; firstCode?: string }) {
+//
+// `existingLogin`: the registration's mobile number already had a sign-in of its own, so approving it issued NO code — that
+// person keeps the code they have. Making a new code is the founder's alone (the server refuses everyone else).
+export default function VendorLoginCode({ vendorId, mobile, firstCode, existingLogin }: { vendorId: string; mobile: string; firstCode?: string; existingLogin?: boolean }) {
   const [code, setCode] = useState<string | null>(firstCode ?? null);
   // The number on the login itself, once the server has said it — it can differ from the contact number typed on a listing.
   const [loginMobile, setLoginMobile] = useState(mobile);
@@ -75,9 +78,14 @@ export default function VendorLoginCode({ vendorId, mobile, firstCode }: { vendo
             </button>
           </div>
         </div>
+      ) : existingLogin ? (
+        <p>
+          <span className="font-semibold text-gray-900">This mobile number already has a sign-in.</span> No new code was made — the vendor signs in at <span className="font-medium">/vendor/login</span> with mobile{' '}
+          <span className="font-medium">{loginMobile}</span> and the code they already have, then chooses this business.
+        </p>
       ) : (
         <button type="button" onClick={() => setAsking(true)} className="inline-flex items-center gap-1.5 font-medium text-gray-700 hover:text-gray-900">
-          <KeyRound className="h-3.5 w-3.5" aria-hidden /> New login code (lost code, or a vendor who never had one)
+          <KeyRound className="h-3.5 w-3.5" aria-hidden /> New login code (lost code, or a vendor who never had one) — founder only
         </button>
       )}
       {error && <p role="alert" className="mt-2 text-red-600">{error}</p>}
