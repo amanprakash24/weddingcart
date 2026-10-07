@@ -47,9 +47,9 @@ const confirmBooking = mock(async (_bookingId: string) => {
 });
 
 const consultationUpdate = mock(async ({ where, data }: { where: { id: string }; data: Record<string, string> }) => Object.assign(enquiries[where.id], data));
-const body = (input: { items: { description: string; quantity: number; unitPrice: number; functionLabel?: string | null; gstRateBp?: number | null }[]; discount: number; gstEnabled?: boolean; gstAmount?: number; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
+const body = (input: { items: { description: string; quantity: number; unitPrice: number; functionLabel?: string | null; gstRateBp?: number | null }[]; discount: number; gstEnabled?: boolean; gstAmount?: number; sellerGstin?: string | null; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
   const subtotal = input.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  return { items: input.items.map((i) => ({ ...i, lineTotal: i.quantity * i.unitPrice })), subtotal, discount: input.discount, gstEnabled: input.gstEnabled ?? false, gstAmount: input.gstAmount ?? 0, total: subtotal - input.discount + (input.gstAmount ?? 0), advanceAmount: input.advanceAmount, validUntil: input.validUntil, inclusions: input.inclusions, exclusions: input.exclusions, terms: input.terms };
+  return { items: input.items.map((i) => ({ ...i, lineTotal: i.quantity * i.unitPrice })), subtotal, discount: input.discount, gstEnabled: input.gstEnabled ?? false, gstAmount: input.gstAmount ?? 0, sellerGstin: input.sellerGstin ?? null, total: subtotal - input.discount + (input.gstAmount ?? 0), advanceAmount: input.advanceAmount, validUntil: input.validUntil, inclusions: input.inclusions, exclusions: input.exclusions, terms: input.terms };
 };
 const create = mock(async (_type: string, _id: string, input: Parameters<typeof body>[0]) => {
   quotes.unshift({ id: `q${quotes.length + 1}`, quotationNumber: `SWA-QTN-202610-000${quotes.length + 1}`, revision: 1, status: 'DRAFT', changesRequestedAt: null, changesRequestNote: null, sentAt: null, customerViewedAt: null, acceptedAt: null, hasCustomerLink: false, ...body(input) });
@@ -367,6 +367,18 @@ describe('GST line by line, and the letterhead', () => {
     profile.gstin = '27AAPFU0939F1ZV';
     expect(await service.save('e1', { ...good, items: [{ description: 'Hall hire', quantity: '1', unitPrice: '200000', gstPercent: 'gst' }] }, 'u1')).toEqual({ errors: { 'items.0.gstPercent': expect.any(String) } });
     expect(create).not.toHaveBeenCalled();
+  });
+
+  test('the GST number is frozen on the quotation when it is saved — the letterhead shows that one, not today’s profile', async () => {
+    profile.gstin = '27AAPFU0939F1ZV';
+    const saved = await service.save('e1', withGst, 'u1');
+    expect(create.mock.calls[0][2]).toMatchObject({ sellerGstin: '27AAPFU0939F1ZV' });
+    if (!('quotation' in saved) || !saved.quotation) throw new Error('not saved');
+    // The business then changes (or removes) its GST number: the quotation that exists keeps the one it was saved with.
+    profile.gstin = null;
+    expect((await service.get('e1')).quotation?.letterhead.gstin).toBe('27AAPFU0939F1ZV');
+    profile.gstin = '10ABCDE1234F1Z5';
+    expect((await service.get('e1')).quotation?.letterhead.gstin).toBe('27AAPFU0939F1ZV');
   });
 
   test('the letterhead is the business profile: its name, logo and GST number', async () => {

@@ -235,7 +235,7 @@ describe('toCustomerProposal — allow-list only', () => {
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW)).sort()).toEqual(
       ['acceptedAt', 'addable', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'brand', 'inclusions', 'items', 'number', 'payments', 'reviews', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding'].sort()
     );
-    expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'gst', 'gstPercent', 'lineTotal', 'quantity', 'service', 'unitPrice', 'vendor']);
+    expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'gst', 'gstPercent', 'lineTotal', 'quantity', 'service', 'taxable', 'unitPrice', 'vendor']);
   });
 
   test('GST is shown when charged', () => {

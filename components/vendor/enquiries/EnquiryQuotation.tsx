@@ -302,7 +302,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
               <span className="text-[var(--color-text-primary)]">{i.function && <span className="text-[var(--color-text-muted)]">{FUNCTION_TYPE_LABELS[i.function]} · </span>}{i.description}{i.quantity > 1 && <span className="text-[var(--color-text-muted)]"> · {i.quantity.toLocaleString('en-IN')} × {inr(i.unitPrice)}</span>}</span>
               <span className="shrink-0 text-right text-[var(--color-text-primary)]">
                 {inr(i.lineTotal)}
-                {i.gstRateBp !== null && i.gstRateBp > 0 && <span className="block text-xs text-[var(--color-text-muted)]">+ GST {gstPercentText(i.gstRateBp)}% {inr(i.gst)}</span>}
+                {i.gstRateBp !== null && i.gstRateBp > 0 && <span className="block text-xs text-[var(--color-text-muted)]">+ GST {gstPercentText(i.gstRateBp)}%{i.taxable !== i.lineTotal && <> on {inr(i.taxable)}</>} {inr(i.gst)}</span>}
               </span>
             </li>
           ))}

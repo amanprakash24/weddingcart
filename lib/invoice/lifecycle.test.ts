@@ -69,4 +69,10 @@ describe('the invoices of an accepted agreement', () => {
     expect(plan.invoice.notes).toContain('QTN-202609-0003');
     expect(plan.items).toEqual([{ description: 'Balance — QTN-202609-0003', amount: 60_000, quantity: 1 }]);
   });
+  test('planBalanceInvoice: a quotation that charges GST under a frozen GST number — the balance carries the GST the first invoice did not', () => {
+    // total 1,70,500 with GST 20,500; 42,625 confirmed the booking and carried GST 5,125 → the balance 1,27,875 carries 15,375.
+    const plan = planBalanceInvoice({ quotation: { quotationNumber: 'ABC-QTN-202610-0001', total: 170_500, advanceAmount: 42_625, gstAmount: 20_500, sellerGstin: '10ABCDE1234F1Z5' }, wedding: { primaryDate: null, weddingType: null }, client: { name: 'Rahul', phone: '900' } });
+    expect(plan.invoice).toMatchObject({ subtotal: 112_500, gstEnabled: true, gstAmount: 15_375, total: 127_875, sellerGstin: '10ABCDE1234F1Z5' });
+    expect(plan.invoice.notes).toContain('Includes GST ₹15,375 (GSTIN 10ABCDE1234F1Z5)');
+  });
 });

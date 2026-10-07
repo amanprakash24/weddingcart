@@ -234,6 +234,16 @@ dbDescribe('a venue’s own quotations (real database)', () => {
     expect(page?.items.map((i) => [i.gstPercent, i.gst])).toEqual([['18', 18000], ['5', 8500], [null, 0]]);
     expect(page).toMatchObject({ gstAmount: 26500, total: 346500 });
 
+    // Frozen (7 Oct 2026): the business changes, then removes, its GST number — the quotation that exists keeps the one it was saved with.
+    expect((await inB(() => app.prisma.quotation.findUniqueOrThrow({ where: { id: quotationId }, select: { sellerGstin: true } }))).sellerGstin).toBe('27AAPFU0939F1ZV');
+    await app.prisma.business.update({ where: { id: scopeB.businessId }, data: { gstin: '10ABCDE1234F1Z5' } });
+    expect((await inB(() => quotes.get(id))).quotation?.letterhead.gstin).toBe('27AAPFU0939F1ZV');
+    expect((await asCouple(() => proposalService.view(token)))?.brand.gstin).toBe('27AAPFU0939F1ZV');
+    await app.prisma.business.update({ where: { id: scopeB.businessId }, data: { gstin: null } });
+    expect((await inB(() => quotes.get(id))).quotation?.letterhead.gstin).toBe('27AAPFU0939F1ZV');
+    expect((await asCouple(() => proposalService.view(token)))?.brand.gstin).toBe('27AAPFU0939F1ZV');
+    await app.prisma.business.update({ where: { id: scopeB.businessId }, data: { gstin: '27AAPFU0939F1ZV' } });
+
     // A revision keeps every line's rate.
     const revised = await inB(() => quotes.revise(id, users[1]));
     expect(revised.quotation?.items.map((i) => i.gstRateBp)).toEqual([1800, 500, null]);

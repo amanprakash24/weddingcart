@@ -364,7 +364,7 @@ describe('brand on the couple’s link (D8)', () => {
 
   test('a venue’s own quotation shows the venue and its number', async () => {
     row.businessId = 'venue-1';
-    expect((await proposalService.view(TOKEN))?.brand).toEqual({ name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false });
+    expect((await proposalService.view(TOKEN))?.brand).toEqual({ name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false, gstin: null }); // the GST number is the quotation's own frozen one — none here
   });
 });
 

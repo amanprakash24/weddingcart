@@ -272,7 +272,7 @@ function QuotationTable({ items }: { items: Item[] }) {
                   {rupees(item.lineTotal)}
                   {item.gstPercent && (
                     <span className="block text-xs font-normal text-[#7A6556]">
-                      + GST {item.gstPercent}% {rupees(item.gst)}
+                      + GST {item.gstPercent}%{item.taxable !== item.lineTotal && <> on {rupees(item.taxable)}</>} {rupees(item.gst)}
                     </span>
                   )}
                 </td>

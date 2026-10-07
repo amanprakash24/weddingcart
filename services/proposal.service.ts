@@ -141,6 +141,8 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     });
     // D8: the business that owns this quotation — Shaadi Shopping, or the venue whose own customer this is.
     view.brand = await deps.brand(q.businessId);
+    // The GST number the couple sees is the one frozen on THIS quotation (Quotation.sellerGstin), never today's business profile.
+    if (!view.brand.isPlatform) view.brand = { ...view.brand, gstin: q.sellerGstin ?? null };
     // "Add an event": a venue's own open proposal shows what that venue offers. Shaadi Shopping has no such list.
     if (!view.brand.isPlatform && view.state === 'OPEN') view.addable = toAddable(await deps.offerings(q.businessId));
     // Roadmap 1.3: totals, receipts and "I have paid" — only once accepted. Read-only; a failure here never hides the proposal.

@@ -64,6 +64,8 @@ export interface QuotationInput {
   discount?: number;
   gstEnabled?: boolean;
   gstAmount?: number;
+  // The business's GST number to freeze on this quotation (a venue's own quotation; services/venueQuotation.service.ts). Absent = none.
+  sellerGstin?: string | null;
   advanceAmount?: number;
   validUntil?: Date | null;
   terms?: string | null;
@@ -319,6 +321,7 @@ export const quotationService = {
             discount: totals.discount,
             gstEnabled,
             gstAmount: totals.gstAmount,
+            sellerGstin: input.sellerGstin?.trim() || null,
             total: totals.total,
             advanceAmount: totals.advanceAmount,
             validUntil: input.validUntil ?? null,
@@ -358,6 +361,8 @@ export const quotationService = {
           discount: totals.discount,
           gstEnabled,
           gstAmount: totals.gstAmount,
+          // A draft is still being written: saving it again takes the GST number as it is now. Once sent it is never saved again.
+          sellerGstin: input.sellerGstin?.trim() || null,
           total: totals.total,
           advanceAmount: totals.advanceAmount,
           validUntil: input.validUntil ?? null,
@@ -610,6 +615,7 @@ export const quotationService = {
             discount: q.discount,
             gstEnabled: q.gstEnabled,
             gstAmount: q.gstAmount,
+            sellerGstin: q.sellerGstin,
             total: q.total,
             advanceAmount: q.advanceAmount,
             validUntil: null, // a revision must be given a fresh valid-until date before it is sent

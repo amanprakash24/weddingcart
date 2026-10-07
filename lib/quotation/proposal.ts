@@ -181,7 +181,7 @@ export interface CustomerProposal {
   couple: { name: string | null };
   wedding: { date: string | null; guestCount: number | null; city: string | null; eventType: string | null };
   venueName: string | null; // only when exactly one venue line names a vendor
-  items: { service: string | null; functionLabel: string | null; description: string; vendor: ProposalVendor | null; quantity: number; unitPrice: number; lineTotal: number; gstPercent: string | null; gst: number }[]; // gstPercent: the line's own rate as typed ("18"), null = no GST on it
+  items: { service: string | null; functionLabel: string | null; description: string; vendor: ProposalVendor | null; quantity: number; unitPrice: number; lineTotal: number; gstPercent: string | null; gst: number; taxable: number }[]; // gstPercent: the line's own rate as typed ("18"), null = no GST on it
   confirmedVendors: { name: string; category: string; function: string; date: string; venueName: string | null }[];
   subtotal: number;
   discount: number;
@@ -270,6 +270,7 @@ export function toCustomerProposal(
         lineTotal: i.unitPrice * i.quantity,
         gstPercent: i.gstRateBp ? gstPercentText(i.gstRateBp) : null,
         gst: gst.lines[n].gst,
+        taxable: gst.lines[n].taxable, // the line after its share of the discount — what its GST is worked out on
       };
     });
   // A venue line: its service is "Venue", or its linked vendor is in the Venues category.

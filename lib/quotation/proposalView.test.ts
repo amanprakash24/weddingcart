@@ -2,7 +2,7 @@
 import { describe, test, expect } from 'bun:test';
 import { groupByFunction, proposalContact, nextStep, paymentsHeadline, proposalHighlights, proposalStatus, quotationSummary, REQUEST_CHOICES, shaadiSection, tabFromHash } from './proposalView';
 
-const item = (functionLabel: string | null, description = 'x') => ({ service: null, functionLabel, description, vendor: null, quantity: 1, unitPrice: 1, lineTotal: 1, gstPercent: null, gst: 0 });
+const item = (functionLabel: string | null, description = 'x') => ({ service: null, functionLabel, description, vendor: null, quantity: 1, unitPrice: 1, lineTotal: 1, gstPercent: null, gst: 0, taxable: 1 });
 
 describe('proposalStatus', () => {
   test('plain words for every state', () => {
