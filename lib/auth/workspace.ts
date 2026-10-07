@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { vendorHome, type WorkspaceView } from '@/lib/auth/workspaceView';
 
 // The workspace a signed-in person chose (7 Oct 2026): one person may be a member of several businesses — "Rahul: Venue A, manager;
 // Decorator B, coordinator" — and after signing in they choose which one they are working in. The choice is remembered in a
@@ -24,5 +25,6 @@ export async function chosenWorkspace(): Promise<string | null> {
   }
 }
 
-// Where each kind of workspace opens.
-export const workspaceHome = (kind: 'PLATFORM' | 'VENDOR') => (kind === 'PLATFORM' ? '/admin' : '/vendor/today');
+// Where a workspace opens: the Command Center for Shaadi Shopping's own team; for a vendor business, the first screen this
+// person can use there (lib/auth/workspaceView.ts).
+export const workspaceHome = (kind: 'PLATFORM' | 'VENDOR', view: WorkspaceView) => (kind === 'PLATFORM' ? '/admin' : vendorHome(view));

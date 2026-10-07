@@ -12,8 +12,8 @@ import { effectiveScope } from './scope';
 mock.module('@/lib/prisma', () => ({ prisma: {} }));
 const { createVenueScoped, MEMBER } = await import('./venueEntry');
 
-type W = { businessId: string; name: string; kind: 'VENDOR' | 'PLATFORM'; role: MemberRole; jobTitle: string | null; permissions: Permission[] };
-const workspace = (businessId: string, role: MemberRole, grants: Permission[] = [], kind: 'VENDOR' | 'PLATFORM' = 'VENDOR'): W => ({ businessId, name: businessId, kind, role, jobTitle: null, permissions: effectivePermissions({ role, grants }) });
+type W = { businessId: string; name: string; kind: 'VENDOR' | 'PLATFORM'; vendorId: string | null; role: MemberRole; jobTitle: string | null; permissions: Permission[] };
+const workspace = (businessId: string, role: MemberRole, grants: Permission[] = [], kind: 'VENDOR' | 'PLATFORM' = 'VENDOR'): W => ({ businessId, name: businessId, kind, vendorId: null, role, jobTitle: null, permissions: effectivePermissions({ role, grants }) });
 
 function entry(opts: { userId?: string | null; chosen?: string | null; workspaces?: W[] }) {
   const all = opts.workspaces ?? [];

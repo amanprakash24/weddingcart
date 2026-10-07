@@ -114,6 +114,9 @@ export default function MySignIn() {
             </div>
             <p>Sign in at <span className="font-medium">/admin/login</span> with mobile <span className="font-medium">{issued.mobile}</span> and this code.</p>
             <p className="font-medium text-amber-800">Shown only now. Keep it somewhere safe — it cannot be shown again, only replaced. You can change it after you sign in.</p>
+            {/* A new code signs this login out everywhere, this window included — say so, and offer the way back in. */}
+            <p>A new code signs you out on every device, including this one. Note the code first, then sign in again.</p>
+            <a href="/admin/login" className="inline-flex rounded-full bg-gray-900 px-4 py-2 text-xs font-semibold text-white">I have noted it — sign in</a>
           </div>
         ) : linked ? (
           <div className="mt-4 space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">

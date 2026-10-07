@@ -32,12 +32,13 @@ export interface Workspace {
   businessId: string;
   name: string;
   kind: 'PLATFORM' | 'VENDOR';
+  vendorId: string | null; // the vendor this business is, if it is one — to tell a person's OWN vendor from another they work in
   role: MemberRole;
   jobTitle: string | null;
   permissions: Permission[];
 }
 
-const memberSelect = { role: true, jobTitle: true, grants: true, denies: true, business: { select: { id: true, name: true, kind: true } } } as const;
+const memberSelect = { role: true, jobTitle: true, grants: true, denies: true, business: { select: { id: true, name: true, kind: true, vendorId: true } } } as const;
 
 export function createVenueBusinessService(deps: VenueBusinessDeps = defaultDeps()) {
   // The owner link from before memberships: a login tied to a vendor by VendorProfile owns that vendor's business. Makes the
@@ -72,6 +73,7 @@ export function createVenueBusinessService(deps: VenueBusinessDeps = defaultDeps
       businessId: m.business.id,
       name: m.business.name,
       kind: m.business.kind,
+      vendorId: m.business.vendorId,
       role: m.role,
       jobTitle: m.jobTitle,
       permissions: effectivePermissions({ role: m.role, grants: m.grants, denies: m.denies }),

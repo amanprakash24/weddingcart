@@ -92,7 +92,7 @@ export default function WorkspaceChooser() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-base font-semibold text-[#2A1F1B]">{w.name}</span>
-                        <span className="block truncate text-xs text-[#6B5B4D]">{[ROLE_WORDS[w.role] ?? w.role, w.jobTitle].filter(Boolean).join(' · ')}</span>
+                        <span className="block truncate text-xs text-[#6B5B4D]">{[ROLE_WORDS[w.role] ?? w.role, w.jobTitle].filter((word, i, all) => word && all.indexOf(word) === i).join(' · ')}</span>
                       </span>
                       {opening === w.businessId ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#8B1A4A]" aria-hidden /> : <ChevronRight className="h-4 w-4 shrink-0 text-[#B08D55]" aria-hidden />}
                     </button>

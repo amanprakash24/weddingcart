@@ -213,6 +213,13 @@ code, and reading the business profile. A CI test (`lib/ownership/venuePermissio
 not say. Inside a service, `can(scope, …)` decides finer points: a manager sees a quotation but not what has been paid on it
 (`moneyHidden`), nor the business's payment details.
 
+**What a member sees** (`lib/auth/workspaceView.ts`, found in the staging browser test of 7 Oct 2026). The Vendor OS menu follows
+the chosen workspace: a screen is offered only with its permission, and the screens still read through the owner link (Today,
+Weddings, Services, Availability, Payments — §8.4) are offered only in the vendor the person owns, because anywhere else they
+would show the wrong business. A member who opens such a path is sent to where their workspace opens. The header names the
+business and offers "Switch business". An enquiry's history leaves out payment and invoice lines for a member without
+`view_financials` (`historyFor`, `lib/venue/enquiry.ts`) — filtered on the server, not in the screen.
+
 ### 8.2 Sign-in for Shaadi Shopping's own team
 
 `/admin/login` is the same mobile + code screen. **Email and password is kept** at `/admin/login?with=password` until the code

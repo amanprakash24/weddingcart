@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { ACTION_ORDER, CHANNELS, nextAction, validateNewEnquiry, whatsappTo, type FollowUp } from './enquiry';
+import { ACTION_ORDER, CHANNELS, nextAction, validateNewEnquiry, whatsappTo, type FollowUp, historyFor } from './enquiry';
 
 // A venue's own enquiries (Phase C). Pure.
 const TODAY = '2026-10-04';
@@ -87,5 +87,22 @@ describe('what to do next — one action', () => {
 
   test('WhatsApp opens a chat with the customer’s own number', () => {
     expect(whatsappTo('98765 43210', 'Namaste Rahul')).toBe('https://wa.me/919876543210?text=Namaste%20Rahul');
+  });
+});
+
+describe('historyFor — what has been paid is not for everyone', () => {
+  const history = [
+    { type: 'PAYMENT_RECEIVED', summary: 'Payment recorded: ₹20,000 by UPI' },
+    { type: 'INVOICE_CREATED', summary: 'Booking confirmation invoice created' },
+    { type: 'QUOTATION_SENT', summary: 'Quotation sent' },
+    { type: 'CALL', summary: 'Called' },
+  ];
+
+  test('with view_financials: everything', () => {
+    expect(historyFor(history, true)).toEqual(history);
+  });
+
+  test('without it: payments and invoices are left out; the rest of the story stays', () => {
+    expect(historyFor(history, false).map((h) => h.type)).toEqual(['QUOTATION_SENT', 'CALL']);
   });
 });
