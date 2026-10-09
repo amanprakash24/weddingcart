@@ -6,14 +6,15 @@ import { createFixtures, type Fixtures } from './helpers/fixtures';
 
 // Phase C: payments on a venue's OWN booking, on a real database, through the real services and two real vendor logins.
 // The couple accepts venue A's quotation (30% confirms, a part payment holds the date for 5 days); the venue records what it
-// receives: a part payment holds the date, the amount to confirm confirms the booking, the rest goes to the balance. No wedding is
-// created yet. Venue B and Shaadi Shopping never see any of it.
+// receives: a part payment holds the date, the amount to confirm confirms the booking — which becomes the venue's OWN wedding, with
+// the functions its quotation names — and the rest goes to the balance. Venue B and Shaadi Shopping never see any of it.
 dbDescribe('payments on a venue’s own booking (real database)', () => {
   let app: App;
   let fx: Fixtures;
   let enquiries: typeof import('@/services/venueEnquiry.service').venueEnquiryService;
   let quotes: typeof import('@/services/venueQuotation.service').venueQuotationService;
   let settings: typeof import('@/services/venueSettings.service').venueSettingsService;
+  let weddings: typeof import('@/services/venueWedding.service').venueWeddingService;
   let businessSvc: typeof import('@/services/venueBusiness.service').venueBusinessService;
   let proposalService: typeof import('@/services/proposal.service').proposalService;
   let scopeForProposalToken: typeof import('@/lib/quotation/proposalEntry').scopeForProposalToken;
@@ -41,6 +42,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     enquiries = (await import('@/services/venueEnquiry.service')).venueEnquiryService;
     quotes = (await import('@/services/venueQuotation.service')).venueQuotationService;
     settings = (await import('@/services/venueSettings.service')).venueSettingsService;
+    weddings = (await import('@/services/venueWedding.service')).venueWeddingService;
     businessSvc = (await import('@/services/venueBusiness.service')).venueBusinessService;
     proposalService = (await import('@/services/proposal.service')).proposalService;
     scopeForProposalToken = (await import('@/lib/quotation/proposalEntry')).scopeForProposalToken;
@@ -61,7 +63,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
 
     // Venue A's own couple: enquiry → quotation of ₹2,00,000 → sent → the couple accepts on their link → the booking is made.
     enquiryId = ((await inA(() => enquiries.create({ name: 'Rahul Kumar', phone: '98765 43210', weddingDate: later(60), guestCount: '300', channel: 'PHONE' }, users[0]))) as { id: string }).id;
-    await inA(() => quotes.save(enquiryId, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '200000' }], validUntil: later(7) }, users[0]));
+    await inA(() => quotes.save(enquiryId, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '150000', function: 'WEDDING' }, { description: 'Haldi decoration', quantity: '2', unitPrice: '25000', function: 'HALDI' }], validUntil: later(7) }, users[0]));
     const sent = await inA(() => quotes.send(enquiryId, users[0]));
     quotationId = sent.quotation!.id;
     const token = sent.linkPath.slice('/proposal/'.length);
@@ -75,6 +77,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
       // Same order as fixtures.purge(): agreements, invoices (payments cascade), bookings, quotations, then the couple.
       await app.prisma.commercialAgreement.deleteMany({ where: { businessId: { in: ids } } });
       await app.prisma.invoice.deleteMany({ where: { businessId: { in: ids } } });
+      await app.prisma.wedding.deleteMany({ where: { businessId: { in: ids } } }); // cascades its functions, tasks and history
       await app.prisma.booking.deleteMany({ where: { businessId: { in: ids } } });
       await app.prisma.quotation.deleteMany({ where: { businessId: { in: ids } } });
       await app.prisma.activityLog.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
@@ -125,15 +128,71 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect((await money())?.received).toBe(20000);
   });
 
-  test('the rest of the amount to confirm arrives: the booking is confirmed — and no wedding is created', async () => {
+  test('a part payment makes no wedding, and "Create the wedding" is refused', async () => {
+    expect(await runAsSystem('test check', () => app.prisma.wedding.count({ where: { businessId: scopeA.businessId } }))).toBe(0);
+    expect((await inA(() => quotes.get(enquiryId))).quotation).toMatchObject({ wedding: null, canCreateWedding: false });
+    expect((await outcome(inA(() => quotes.createWedding(enquiryId))))?.message).toContain('not confirmed yet');
+    expect(await inA(() => weddings.list())).toEqual([]);
+  });
+
+  test('the rest of the amount to confirm arrives: the booking is confirmed — and becomes the venue’s own wedding', async () => {
     await inA(() => quotes.pay(enquiryId, { amount: '40000', method: 'CASH', paidOn: later(0) }, users[0]));
     expect(await money()).toMatchObject({ confirmed: true, received: 60000, toConfirmRemaining: 0, outstanding: 140000, stateLabel: 'Booking confirmed' });
     expect(await bookingStatus()).toBe('CONFIRMED');
     expect(await nextKind()).toBe('BOOKED');
-    expect(await runAsSystem('test check', () => app.prisma.wedding.count({ where: { businessId: scopeA.businessId } }))).toBe(0);
+    const all = await runAsSystem('test check', () => app.prisma.wedding.findMany({ where: { sourceBooking: { quotationId } }, select: { id: true, businessId: true, weddingNumber: true, status: true } }));
+    expect(all).toHaveLength(1);
+    expect(all[0]).toMatchObject({ businessId: scopeA.businessId, status: 'PLANNING' });
+    expect(all[0].weddingNumber).toMatch(new RegExp(`^${prefix}-WED-\\d{4}-0001$`));
+    expect((await inA(() => quotes.get(enquiryId))).quotation).toMatchObject({ wedding: { id: all[0].id, number: all[0].weddingNumber }, canCreateWedding: false });
     // Still the venue's open enquiry — not closed, not handed to anyone else.
     expect((await runAsSystem('test check', () => app.prisma.consultation.findUniqueOrThrow({ where: { id: enquiryId }, select: { pipelineStage: true, businessId: true } })))).toMatchObject({ businessId: scopeA.businessId });
     expect((await inA(() => enquiries.list())).find((e) => e.id === enquiryId)?.next.kind).toBe('BOOKED');
+  });
+
+  test('the wedding: the functions the quotation names, what was agreed, the money — and nothing about finding a vendor', async () => {
+    const [item] = await inA(() => weddings.list());
+    expect(item).toMatchObject({ customerName: 'Rahul Kumar', date: later(60), guestCount: 300, stage: 'PLANNING', stageLabel: 'Planning', functions: ['Haldi', 'Wedding'] });
+    const w = await inA(() => weddings.get(item.id));
+    expect(w).toMatchObject({ enquiryId, city: 'Patna', moneyHidden: false, money: { total: 200000, received: 60000, outstanding: 140000 } });
+    expect(w.functionList.map((f) => [f.type, f.date])).toEqual([['HALDI', later(60)], ['WEDDING', later(60)]]);
+    expect(w.agreed).toEqual([
+      { description: 'Hall hire', quantity: 1, unitPrice: 150000, lineTotal: 150000, function: 'Wedding' },
+      { description: 'Haldi decoration', quantity: 2, unitPrice: 25000, lineTotal: 50000, function: 'Haldi' },
+    ]);
+    expect(w.agreedTotals).toEqual({ discount: 0, gst: 0, total: 200000 });
+    // The business provides its own lines: no vendor booking, no "assign a vendor" task.
+    expect(w.tasks).toEqual([]);
+    expect(await runAsSystem('test check', () => app.prisma.vendorBooking.count({ where: { weddingEvent: { weddingId: item.id } } }))).toBe(0);
+    // Every record of the wedding belongs to venue A; the agreement's invoice and its payments moved to the wedding untouched.
+    const owned = await runAsSystem('test check', () => app.prisma.invoice.findMany({ where: { quotationId }, select: { weddingId: true, businessId: true } }));
+    expect(owned.length).toBeGreaterThan(0);
+    expect(owned.every((i) => i.weddingId === item.id && i.businessId === scopeA.businessId)).toBe(true);
+    expect(await paymentCount()).toBe(2);
+    expect(await runAsSystem('test check', () => app.prisma.commercialAgreement.count({ where: { quotationId } }))).toBe(1);
+  });
+
+  test('a manager without money permission sees the wedding, not the money', async () => {
+    const { effectivePermissions } = await import('@/lib/auth/permissions');
+    const manager = { ...scopeA, role: 'MANAGER' as const, permissions: effectivePermissions({ role: 'MANAGER', grants: [] }) };
+    const [item] = await runInScope(manager, () => weddings.list());
+    expect(await runInScope(manager, () => weddings.get(item.id))).toMatchObject({ customerName: 'Rahul Kumar', money: null, moneyHidden: true });
+  });
+
+  test('"Create the wedding" again keeps the one wedding', async () => {
+    await inA(() => quotes.createWedding(enquiryId));
+    await inA(() => quotes.createWedding(enquiryId));
+    expect(await runAsSystem('test check', () => app.prisma.wedding.count({ where: { businessId: scopeA.businessId } }))).toBe(1);
+    expect(await runAsSystem('test check', () => app.prisma.weddingEvent.count({ where: { wedding: { businessId: scopeA.businessId } } }))).toBe(2);
+  });
+
+  test('another venue and Shaadi Shopping never see the wedding', async () => {
+    const [item] = await inA(() => weddings.list());
+    expect(await inB(() => weddings.list())).toEqual([]);
+    expect((await outcome(inB(() => weddings.get(item.id))))?.name).toBe('NotFoundError');
+    expect((await outcome(inB(() => quotes.createWedding(enquiryId))))?.name).toBe('NotFoundError');
+    expect(await app.prisma.wedding.count({ where: { id: item.id } })).toBe(0); // as Shaadi Shopping
+    expect(await app.prisma.weddingEvent.count({ where: { weddingId: item.id } })).toBe(0);
   });
 
   test('money after confirmation goes to the balance, on the venue’s own invoice numbers', async () => {
@@ -162,5 +221,9 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     await inA(() => quotes.book(id, { weddingDate: later(90) }, users[0]));
     const paid = await inA(() => quotes.pay(id, { amount: '30000', method: 'CASH' }, users[0]));
     expect('quotation' in paid && paid.quotation?.booking).toMatchObject({ confirmed: true, received: 30000, outstanding: 70000 });
+    // A quotation whose lines name no function gives the one "Wedding" function; the venue's wedding numbers run on.
+    expect('quotation' in paid && paid.quotation?.wedding?.number).toMatch(new RegExp(`^${prefix}-WED-\\d{4}-0002$`));
+    const second = (await inA(() => weddings.list())).find((w) => w.customerName === 'Priya Singh');
+    expect(second).toMatchObject({ date: later(90), functions: ['Wedding'] });
   });
 });

@@ -24,6 +24,9 @@ let agreement: { confirmationPercent: number; confirmationAmount: number; holdWi
 let payments: { id: string; amount: number; method: string; status: string; paidAt: Date; reference: string | null }[];
 let bookingStatus: 'NEW' | 'CONFIRMED';
 let confirmFails = false;
+// The wedding the booking became (null = none yet), and whether making it fails.
+let weddingId: string | null;
+let weddingFails = false;
 // The business profile: what the letterhead of its documents shows.
 let profile: { logoUrl: string | null; gstin: string | null };
 
@@ -34,6 +37,7 @@ const money = mock(async (quotationId: string, now?: Date) =>
     previewTotal: 200000,
     invoices: agreement ? [{ id: 'i1', invoiceNumber: 'SWA-INV-202610-0001', kind: 'ADVANCE', status: 'ISSUED', total: 200000, payments }] : [],
     bookingConfirmed: bookingStatus === 'CONFIRMED',
+    weddingId,
     now,
   })
 );
@@ -44,6 +48,13 @@ const recordPayment = mock(async (_quotationId: string, input: { amount: number;
 const confirmBooking = mock(async (_bookingId: string) => {
   if (confirmFails) throw new Error('database unavailable');
   bookingStatus = 'CONFIRMED';
+});
+
+const createWedding = mock(async (_bookingId: string) => {
+  if (weddingFails) throw new Error('database unavailable');
+  if (bookingStatus !== 'CONFIRMED') throw new Error('booking is not CONFIRMED');
+  weddingId = 'w1'; // one wedding per booking, however often it is asked for
+  return { id: 'w1' };
 });
 
 const consultationUpdate = mock(async ({ where, data }: { where: { id: string }; data: Record<string, string> }) => Object.assign(enquiries[where.id], data));
@@ -74,6 +85,7 @@ const offeringFindMany = mock(async (_args: { where: { businessId: string } }) =
 const service = createVenueQuotationService({
   db: {
     consultation: { findUnique: mock(async ({ where }: { where: { id: string } }) => enquiries[where.id] ?? null) as never, update: consultationUpdate as never },
+    wedding: { findUnique: mock(async ({ where }: { where: { id: string } }) => (where.id === weddingId ? { id: 'w1', weddingNumber: 'SWA-WED-2026-0001' } : null)) as never },
     business: { findUnique: mock(async () => ({ vendorId: 'v1', vendor: { city: 'Patna' }, ...profile })) as never },
     vendorPackage: { findMany: mock(async () => [{ name: 'Gold package', price: 150000, isPerPlate: false }, { name: 'Veg plate', price: 900, isPerPlate: true }]) as never },
     businessOffering: { findMany: offeringFindMany as never },
@@ -81,6 +93,7 @@ const service = createVenueQuotationService({
   money: money as never,
   recordPayment: recordPayment as never,
   confirmBooking,
+  createWedding,
   quotations: { listForSource: mock(async () => quotes) as never, create: create as never, update: update as never, send: send as never, revise: revise as never, issueCustomerLink: issueCustomerLink as never, createBooking: createBooking as never },
   business: (async () => business) as never,
   now: () => NOW,
@@ -90,10 +103,12 @@ const good = { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '20
 const outcome = (p: Promise<unknown>) => p.then(() => null, (e: Error) => e);
 
 beforeEach(() => {
-  for (const m of [consultationUpdate, create, update, send, issueCustomerLink, revise, createBooking, recordPayment, confirmBooking]) m.mockClear();
+  for (const m of [consultationUpdate, create, update, send, issueCustomerLink, revise, createBooking, recordPayment, confirmBooking, createWedding]) m.mockClear();
   payments = [];
   bookingStatus = 'NEW';
   confirmFails = false;
+  weddingId = null;
+  weddingFails = false;
   profile = { logoUrl: null, gstin: null };
   enquiries = { e1: { id: 'e1', name: 'Rahul Kumar', phone: '9876543210', weddingDate: '2026-12-09', city: null, pipelineStage: 'NEW' } };
   quotes = [];
@@ -275,13 +290,68 @@ describe('a venue’s own quotation', () => {
     expect('quotation' in state && state.quotation?.booking).toMatchObject({ confirmed: false, received: 20000, toConfirmRemaining: 40000, outstanding: 180000, stateLabel: 'Date held — 5 of 5 days left', holdOver: false, payments: [{ amount: 20000, method: 'UPI', reference: 'UTR123' }] });
   });
 
-  test('once the amount to confirm is in, the booking is confirmed — no wedding is created here', async () => {
+  test('once the amount to confirm is in, the booking is confirmed — and it becomes the venue’s wedding', async () => {
     await acceptedAndBooked();
     await service.pay('e1', { amount: '20000', method: 'CASH' }, 'u1');
     const state = await service.pay('e1', { amount: '40000', method: 'BANK_TRANSFER', paidOn: '2026-10-04' }, 'u1');
     expect(recordPayment.mock.calls[1][1]).toMatchObject({ amount: 40000, paidAt: new Date('2026-10-04T06:30:00.000Z') });
     expect(confirmBooking.mock.calls).toEqual([['b1']]);
+    expect(createWedding.mock.calls).toEqual([['b1']]);
     expect('quotation' in state && state.quotation?.booking).toMatchObject({ confirmed: true, received: 60000, toConfirmRemaining: 0, outstanding: 140000, stateLabel: 'Booking confirmed' });
+    expect('quotation' in state && state.quotation).toMatchObject({ wedding: { id: 'w1', number: 'SWA-WED-2026-0001' }, canCreateWedding: false });
+  });
+
+  test('a part payment makes no wedding', async () => {
+    await acceptedAndBooked();
+    const state = await service.pay('e1', { amount: '20000', method: 'CASH' }, 'u1');
+    expect(createWedding).not.toHaveBeenCalled();
+    expect('quotation' in state && state.quotation).toMatchObject({ wedding: null, canCreateWedding: false });
+  });
+
+  test('the payment and the confirmation are kept even if the wedding could not be made — "Create the wedding" is the retry', async () => {
+    await acceptedAndBooked();
+    weddingFails = true;
+    const state = await service.pay('e1', { amount: '60000', method: 'CASH' }, 'u1');
+    expect('quotation' in state && state.quotation).toMatchObject({ booking: { confirmed: true, received: 60000 }, wedding: null, canCreateWedding: true });
+    weddingFails = false;
+    const retried = await service.createWedding('e1');
+    expect(retried.quotation).toMatchObject({ wedding: { id: 'w1' }, canCreateWedding: false });
+    expect(recordPayment).toHaveBeenCalledTimes(1); // nothing was paid twice
+  });
+
+  test('"Create the wedding" twice keeps the one wedding', async () => {
+    await acceptedAndBooked();
+    weddingFails = true;
+    await service.pay('e1', { amount: '60000', method: 'CASH' }, 'u1');
+    weddingFails = false;
+    await service.createWedding('e1');
+    createWedding.mockClear();
+    const again = await service.createWedding('e1');
+    expect(createWedding).not.toHaveBeenCalled();
+    expect(again.quotation?.wedding).toEqual({ id: 'w1', number: 'SWA-WED-2026-0001' });
+  });
+
+  test('no wedding before the booking is confirmed, or before there is a booking', async () => {
+    await service.save('e1', good, 'u1');
+    expect((await outcome(service.createWedding('e1')))?.message).toMatch(/has not accepted/);
+    Object.assign(quotes[0], { status: 'ACCEPTED', acceptedAt: NOW });
+    expect((await outcome(service.createWedding('e1')))?.message).toMatch(/Make the booking first/);
+    agreement = { confirmationPercent: 30, confirmationAmount: 60000, holdWindowDays: 5 };
+    await service.pay('e1', { amount: '20000', method: 'CASH' }, 'u1');
+    expect((await outcome(service.createWedding('e1')))?.message).toMatch(/not confirmed yet/);
+    expect(createWedding).not.toHaveBeenCalled();
+  });
+
+  test('a member who may not manage weddings is not offered "Create the wedding"', async () => {
+    await acceptedAndBooked();
+    weddingFails = true;
+    await service.pay('e1', { amount: '60000', method: 'CASH' }, 'u1');
+    const { runInScope } = await import('@/lib/ownership/scope');
+    const { effectivePermissions } = await import('@/lib/auth/permissions');
+    const as = <T>(grants: string[], fn: () => Promise<T>) =>
+      runInScope({ kind: 'BUSINESS', businessId: 'venue-1', role: 'EMPLOYEE', permissions: effectivePermissions({ role: 'EMPLOYEE', grants }), userId: 'u2' }, fn);
+    expect((await as(['quotations'], () => service.get('e1'))).quotation).toMatchObject({ wedding: null, canCreateWedding: false });
+    expect((await as(['quotations', 'weddings'], () => service.get('e1'))).quotation).toMatchObject({ wedding: null, canCreateWedding: true });
   });
 
   test('money after confirmation goes to the balance and confirms nothing twice', async () => {
@@ -298,8 +368,10 @@ describe('a venue’s own quotation', () => {
     const state = await service.pay('e1', { amount: '60000', method: 'CASH' }, 'u1');
     expect('quotation' in state && state.quotation?.booking).toMatchObject({ confirmed: false, received: 60000, stateLabel: 'Ready to confirm' });
     confirmFails = false;
+    expect(createWedding).not.toHaveBeenCalled(); // never a wedding for a booking that is not confirmed
     await service.pay('e1', { amount: '1000', method: 'CASH' }, 'u1'); // the next payment retries it
     expect(bookingStatus).toBe('CONFIRMED');
+    expect(weddingId).toBe('w1');
   });
 
   test('the hold period passing is shown', async () => {

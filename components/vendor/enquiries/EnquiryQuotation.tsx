@@ -367,6 +367,15 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
                 <button type="button" disabled={busy || (!state.customer.weddingDate && !weddingDate)} onClick={() => call('/book', { weddingDate })} className={primary}>{busy ? 'Saving…' : 'Make the booking'}</button>
               </>
             )}
+            {q.wedding && (
+              <Link href={`/vendor/weddings/${q.wedding.id}`} className={secondary}>Open the wedding · {q.wedding.number}</Link>
+            )}
+            {q.canCreateWedding && (
+              <>
+                <p className="text-sm text-[var(--color-text-secondary)]">The booking is confirmed. Create its wedding to plan the functions and see what is still to do.</p>
+                <button type="button" disabled={busy} onClick={() => call('/wedding')} className={primary}>{busy ? 'Creating…' : 'Create the wedding'}</button>
+              </>
+            )}
           </>
         )}
 

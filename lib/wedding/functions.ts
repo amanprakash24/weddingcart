@@ -13,6 +13,14 @@ export const FUNCTION_TYPE_LABELS: Record<FunctionType, string> = {
   OTHER: 'Other',
 };
 
+// The functions a quotation's lines name ("Haldi", "Reception" …), in the order a wedding runs, each once. A business's own booking
+// becomes a wedding with exactly these functions; lines that name none give the one "Wedding" function every wedding starts with.
+export function functionsFromLabels(labels: (string | null | undefined)[]): FunctionType[] {
+  const wanted = new Set(labels.map((l) => l?.trim().toLowerCase()).filter(Boolean));
+  const found = FUNCTION_TYPES.filter((fn) => wanted.has(FUNCTION_TYPE_LABELS[fn].toLowerCase()));
+  return found.length ? found : ['WEDDING'];
+}
+
 export interface FunctionFields {
   type: FunctionType;
   label?: string | null;
