@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { functionDeleteBlocker, functionProblem, functionSpend, normalizeFunction, primaryDateFor } from './functions';
+import { functionDeleteBlocker, functionProblem, functionSpend, functionsFromLabels, normalizeFunction, primaryDateFor } from './functions';
 
 const d = (s: string) => new Date(`${s}T00:00:00.000Z`);
 
@@ -70,5 +70,21 @@ describe('functionSpend', () => {
     expect(functionSpend(30000, [b('CONFIRMED', 35000)])).toEqual({ booked: 35000, over: 5000 });
     expect(functionSpend(null, [b('CONFIRMED', 35000)])).toEqual({ booked: 35000, over: 0 });
     expect(functionSpend(50000, [])).toEqual({ booked: 0, over: 0 });
+  });
+});
+
+describe('functionsFromLabels — the functions a quotation’s lines name', () => {
+  test('each named function once, in the order a wedding runs', () => {
+    expect(functionsFromLabels(['Reception', 'Haldi', ' haldi ', 'Wedding', null])).toEqual(['HALDI', 'WEDDING', 'RECEPTION']);
+  });
+
+  test('lines that name no function give the one Wedding function', () => {
+    expect(functionsFromLabels([null, undefined, '', '  '])).toEqual(['WEDDING']);
+    expect(functionsFromLabels([])).toEqual(['WEDDING']);
+  });
+
+  test('a label that is not a function is ignored', () => {
+    expect(functionsFromLabels(['Cocktail night', 'Sangeet'])).toEqual(['SANGEET']);
+    expect(functionsFromLabels(['Cocktail night'])).toEqual(['WEDDING']);
   });
 });
