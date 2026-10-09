@@ -255,14 +255,25 @@ describe('canIssueCustomerLink (Roadmap 1.4)', () => {
 
 describe('Add an event', () => {
   test('toAddable: grouped in the order a wedding runs, only functions with something, only name and price words', () => {
+    const item = { description: null, active: true } as const;
     const groups = toAddable([
-      { id: 'r1', function: 'RECEPTION', name: 'Banquet hall', price: 150000, perPlate: false },
-      { id: 'h1', function: 'HALDI', name: 'Veg plate', price: 450, perPlate: true },
+      { ...item, id: 'r1', kind: 'RENTAL', function: 'RECEPTION', name: 'Banquet hall', price: 150000, perPlate: false },
+      { ...item, id: 'h1', kind: 'CATERING', function: 'HALDI', name: 'Veg plate', price: 450, perPlate: true },
     ]);
     expect(groups).toEqual([
       { function: 'HALDI', label: 'Haldi', items: [{ id: 'h1', name: 'Veg plate', price: '₹450 per plate' }] },
       { function: 'RECEPTION', label: 'Reception', items: [{ id: 'r1', name: 'Banquet hall', price: '₹1,50,000' }] },
     ]);
+  });
+
+  test('toAddable: an item for any function can be added to every function', () => {
+    const groups = toAddable([
+      { id: 'hall', kind: 'RENTAL', function: null, name: 'Banquet hall', description: 'AC, 500 guests', price: 150000, perPlate: false, active: true },
+      { id: 'h1', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true },
+    ]);
+    expect(groups).toHaveLength(7);
+    expect(groups.find((g) => g.function === 'HALDI')?.items.map((i) => i.id)).toEqual(['h1', 'hall']);
+    expect(groups.find((g) => g.function === 'SANGEET')?.items).toEqual([{ id: 'hall', name: 'Banquet hall', price: '₹1,50,000' }]);
   });
 
   test('validateEventRequest: a known function is required; ticks are de-duplicated and non-strings dropped; the note is trimmed', () => {

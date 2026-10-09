@@ -26,6 +26,7 @@ import { reviewService } from '@/services/review.service';
 import type { ProposalReviews } from '@/lib/reviews/reviewView';
 import { proposalBrandFor } from '@/lib/ownership/business';
 import { FUNCTION_TYPE_LABELS, type Offering } from '@/lib/venue/offering';
+import { OFFERING_ORDER, OFFERING_SELECT } from './venueOffering.service';
 
 // Wedding Proposal (docs/wedding-os/08-quotation.md §15) — what the couple can do through the secret link.
 // A thin adapter: the token is resolved to ONE quotation revision, and every rule that matters is the existing
@@ -81,9 +82,9 @@ const defaultDeps = (): ProposalDeps => ({
   brand: proposalBrandFor,
   offerings: (businessId) =>
     prisma.businessOffering.findMany({
-      where: { businessId },
-      select: { id: true, function: true, name: true, price: true, perPlate: true },
-      orderBy: [{ function: 'asc' }, { createdAt: 'asc' }],
+      where: { businessId, active: true }, // a hidden item is never shown to a couple
+      select: OFFERING_SELECT,
+      orderBy: [...OFFERING_ORDER],
     }),
 });
 
@@ -269,7 +270,7 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
   async requestEvent(token: unknown, input: unknown): Promise<{ recorded: true }> {
     const wanted = validateEventRequest(input);
     const q = await openProposal(token);
-    const offered = (await deps.brand(q.businessId)).isPlatform ? [] : (await deps.offerings(q.businessId)).filter((o) => o.function === wanted.function);
+    const offered = (await deps.brand(q.businessId)).isPlatform ? [] : (await deps.offerings(q.businessId)).filter((o) => o.function === wanted.function || o.function === null);
     if (offered.length === 0) throw new ValidationError('That function cannot be added here — please use "Request changes" instead');
     const picked = offered.filter((o) => wanted.offeringIds.includes(o.id));
     await recordRequest(

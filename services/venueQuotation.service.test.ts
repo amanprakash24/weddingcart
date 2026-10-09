@@ -69,13 +69,19 @@ const createBooking = mock(async (_id?: string, _overrides?: unknown, _actor?: s
   agreement = { confirmationPercent: 30, confirmationAmount: 60000, holdWindowDays: 5 };
 });
 
-const offeringFindMany = mock(async (_args: { where: { businessId: string } }) => [{ id: 'o1', function: 'HALDI', name: 'Haldi decoration', price: 25000, perPlate: false }]);
+// The business's own price list: one offered item, one hidden, and its own copy of the "Veg plate" package from its public page.
+const item = { description: null, perPlate: false, active: true, sourcePackageId: null };
+const offeringFindMany = mock(async (_args: { where: { businessId: string } }) => [
+  { ...item, id: 'o1', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', price: 25000 },
+  { ...item, id: 'o2', kind: 'SERVICE', function: null, name: 'DJ (not offered now)', price: 15000, active: false },
+  { ...item, id: 'o3', kind: 'PACKAGE', function: null, name: 'Veg plate (our price)', price: 950, perPlate: true, sourcePackageId: 'p2' },
+]);
 
 const service = createVenueQuotationService({
   db: {
     consultation: { findUnique: mock(async ({ where }: { where: { id: string } }) => enquiries[where.id] ?? null) as never, update: consultationUpdate as never },
     business: { findUnique: mock(async () => ({ vendorId: 'v1', vendor: { city: 'Patna' }, ...profile })) as never },
-    vendorPackage: { findMany: mock(async () => [{ name: 'Gold package', price: 150000, isPerPlate: false }, { name: 'Veg plate', price: 900, isPerPlate: true }]) as never },
+    vendorPackage: { findMany: mock(async () => [{ id: 'p1', name: 'Gold package', price: 150000, isPerPlate: false }, { id: 'p2', name: 'Veg plate', price: 900, isPerPlate: true }]) as never },
     businessOffering: { findMany: offeringFindMany as never },
   },
   money: money as never,
@@ -102,14 +108,19 @@ beforeEach(() => {
 });
 
 describe('a venue’s own quotation', () => {
-  test('before any quotation: the customer, the venue’s rule and its packages', async () => {
+  test('before any quotation: the customer, the venue’s rule and ONE list of one-tap lines', async () => {
     expect(await service.get('e1')).toEqual({
       customer: { name: 'Rahul Kumar', phone: '9876543210', weddingDate: '2026-12-09' },
       venueName: 'Swayamvar Hall',
       rules: { confirmationPercent: 30, holdWindowDays: 5 },
       quotation: null,
-      packages: [{ name: 'Gold package', price: 150000, perPlate: false }, { name: 'Veg plate', price: 900, perPlate: true }],
-      offerings: [{ id: 'o1', function: 'HALDI', name: 'Haldi decoration', price: 25000, perPlate: false }],
+      // Its own items that it currently offers (the hidden DJ is left out), then the package on its public page that it has not
+      // copied — "Veg plate" was copied, so only the business's own copy shows.
+      offerings: [
+        { id: 'o1', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true },
+        { id: 'o3', kind: 'PACKAGE', function: null, name: 'Veg plate (our price)', description: null, price: 950, perPlate: true, active: true },
+        { id: 'listing-p1', kind: 'PACKAGE', function: null, name: 'Gold package', description: null, price: 150000, perPlate: false, active: true },
+      ],
       payTo: null,
     });
     expect(offeringFindMany.mock.calls[0][0].where).toEqual({ businessId: 'venue-1' }); // the scope's business, named by the service

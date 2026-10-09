@@ -288,6 +288,57 @@ refuse an incomplete profile.
 **Not built yet:** the logo, GST number and photos **on** the quotation and invoice (the quotation rework), areas and
 specifications of a venue, and a GST line on documents.
 
+## 12. One price list, by kind ("What we offer") — built 7 Oct 2026
+
+Step 1 of the Vivah OS catalog work (founder order: Unified Offerings/Catalog → Rental → Catering → Quotation integration → Payments →
+Wedding Pipeline → Command Center). Before this a business had two lists feeding its quotation form: "What we offer"
+(`BusinessOffering`, one card per wedding function) and the packages on its public Shaadi Shopping page (`VendorPackage`). Now there
+is one.
+
+**What a business sees** (`/vendor/offerings`, `components/vendor/offerings/OfferingsScreen.tsx`)
+
+- Everything it sells in one list, sorted by **kind**: Venue & rentals, Food & catering, Decoration, Services, Packages, Other.
+- It is shown the kinds that fit it first, from the category of its listing (`kindsForCategory` in `lib/venue/offering.ts`): a venue
+  gets rentals, food, decoration, services and packages; a caterer starts with food; everyone else starts with services. The other
+  kinds are one tap away under "Do you also offer something else?" — nothing is forced on anyone.
+- Each item: name, **what is provided** (optional note), starting price, per plate (food and packages only), and the wedding function
+  it is for — or **Any function**, which is the default.
+- **Hide** keeps an item in the list but stops offering it; **Remove** deletes it. Quotations already written keep their own lines.
+- Packages on its public page are listed under Packages as "On your Shaadi Shopping page" with **Add to my list** — a one-time copy
+  the business can then change. Shaadi Shopping still looks after what the public page shows.
+
+**Where the list is used**
+
+- **Quotation form** — "Add from your price list", grouped by kind; one tap adds a line with its price and, if it has one, its
+  function. Only items currently offered. A public-page package that has not been copied still appears once, under Packages, so
+  nothing a business could tap before is lost (`state()` in `services/venueQuotation.service.ts`).
+- **The couple's link, "Add an event"** — an item for any function can be ticked for whichever function the couple asks to add; when
+  the list has such items, every function is offered. Hidden items are never shown and never accepted as a tick
+  (`services/proposal.service.ts`).
+
+**Data** — migration `20261007300000_unified_catalog` (additive): `business_offerings` gains `kind` (enum `OfferingKind`, default
+OTHER), `description`, `active` (default true) and `sourcePackageId` (the public-page package a row was copied from); `function`
+becomes optional. Existing rows keep their function, name and price; a per-plate row becomes Food & catering, anything else waits
+under Other until the business sorts it.
+
+**Rules** (`lib/venue/offering.ts`, shared by the form and the server) — a kind is required; at most 60 items of one kind; per plate
+is kept only for food and packages; the business is always the one of the current scope (`services/venueOffering.service.ts`), so
+another business's item or package is simply "not found". Needs the `catalog` permission (reading the list for a quotation:
+`catalog` or `quotations`).
+
+**API** — `GET/POST /api/vendor-os/offerings`, `PUT/PATCH/DELETE /api/vendor-os/offerings/[id]` (PATCH = hide / offer again),
+`POST /api/vendor-os/offerings/from-listing`. Every answer is the whole catalog: `{ items, kinds, listingPackages }`.
+
+**Tests** — `lib/venue/offering.test.ts`, `services/venueOffering.service.test.ts`, `tests-db/venue.offerings.test.ts` (real
+database: two businesses, kinds, any-function items, hide, copy a package once, neither sees the other's).
+
+**Not built yet (next steps, in the founder's order)**
+
+- Rental pricing basis — per function / per day / per slot (Step 2).
+- Catering menus with controlled extras (Step 3).
+- Quotation lines do not yet know their kind, and a list item carries no GST rate (Step 4, quotation integration).
+- The public page still shows `VendorPackage`; a business cannot yet publish its own list there.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |

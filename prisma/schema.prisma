@@ -409,6 +409,7 @@ model VendorPackage {
   image         String   @default("")
 
   vendorBookings VendorBooking[] // Phase B
+  catalogCopies  BusinessOffering[] // copied into the business's own price list (services/venueOffering.service.ts)
 
   @@map("vendor_packages")
 }
@@ -2379,18 +2380,37 @@ model BusinessPhoto {
   @@map("business_photos")
 }
 
+// The kinds a business's price list is sorted by (7 Oct 2026; lib/venue/offering.ts). OTHER = not sorted yet.
+enum OfferingKind {
+  RENTAL
+  CATERING
+  DECORATION
+  SERVICE
+  PACKAGE
+  OTHER
+}
+
+// The business's ONE price list — "What we offer" (the catalog). An item has a kind, may be for one wedding function (null = any),
+// and may be hidden (active = false: kept, but not offered on quotations or to couples). sourcePackageId: copied from that
+// package on the business's public Shaadi Shopping page — the copy is the business's own from then on.
 model BusinessOffering {
-  id         String           @id @default(uuid())
-  businessId String
-  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  function   WeddingEventType
-  name       String
-  price      Int // whole rupees
-  perPlate   Boolean          @default(false)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id              String            @id @default(uuid())
+  businessId      String
+  business        Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  kind            OfferingKind      @default(OTHER)
+  function        WeddingEventType?
+  name            String
+  description     String?
+  price           Int // whole rupees
+  perPlate        Boolean           @default(false)
+  active          Boolean           @default(true)
+  sourcePackageId String?
+  sourcePackage   VendorPackage?    @relation(fields: [sourcePackageId], references: [id], onDelete: SetNull)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([businessId, function])
+  @@index([businessId, kind])
   @@map("business_offerings")
 }
 

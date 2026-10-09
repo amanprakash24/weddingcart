@@ -10,7 +10,7 @@ import StatusPill, { type PillStatus } from '@/components/ui/StatusPill';
 import { requiredConfirmation } from '@/lib/commercial/rules';
 import Link from 'next/link';
 import { whatsappTo } from '@/lib/venue/enquiry';
-import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS, groupOfferings, offeringPriceWords, type FunctionType, type Offering } from '@/lib/venue/offering';
+import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS, groupByKind, offeringPriceWords, type FunctionType, type Offering } from '@/lib/venue/offering';
 import { QUOTE_STAGE_LABEL, quoteShareMessage, VENUE_QUOTE_LIMITS, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
 import { gstPercentText, gstTotals, parseGstPercent } from '@/lib/quotation/lineGst';
 import type { VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
@@ -114,16 +114,10 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== key)));
   };
-  // One tap adds a line from the venue's "What we offer" list — it carries its function (Haldi, Reception …).
+  // One tap adds a line from the business's price list ("What we offer") — it carries its function (Haldi, Reception …) if it has one.
   const addOffering = (o: Offering) =>
     setForm((f) => {
-      const line: Line = { description: o.perPlate ? `${o.name} (per plate)` : o.name, quantity: '1', unitPrice: String(o.price), function: o.function, gstPercent: '' };
-      const only = f.items.length === 1 && !f.items[0].description.trim() && !f.items[0].unitPrice.trim();
-      return { ...f, items: only ? [line] : [...f.items, line] };
-    });
-  const addPackage = (p: VenueQuotationState['packages'][number]) =>
-    setForm((f) => {
-      const line: Line = { description: p.perPlate ? `${p.name} (per plate)` : p.name, quantity: '1', unitPrice: String(p.price), function: '', gstPercent: '' };
+      const line: Line = { description: o.perPlate ? `${o.name} (per plate)` : o.name, quantity: '1', unitPrice: String(o.price), function: o.function ?? '', gstPercent: '' };
       const only = f.items.length === 1 && !f.items[0].description.trim() && !f.items[0].unitPrice.trim();
       return { ...f, items: only ? [line] : [...f.items, line] };
     });
@@ -174,34 +168,28 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
       <section aria-label="Quotation" className="space-y-3">
         {heading}
         <Card className="space-y-4">
-          {groupOfferings(state.offerings).map((g) => (
-            <div key={g.function}>
-              <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">Add for {g.label}</p>
-              <div className="flex flex-wrap gap-2">
-                {g.items.map((o) => (
-                  <button key={o.id} type="button" onClick={() => addOffering(o)} className="min-h-10 rounded-full border border-[var(--color-border-default)] px-3 text-sm text-[var(--color-text-primary)]">
-                    {o.name} · {offeringPriceWords(o)}
-                  </button>
-                ))}
-              </div>
+          {state.offerings.length > 0 && (
+            <div aria-label="Add from your price list" role="group" className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Add from your price list</p>
+              {groupByKind(state.offerings).map((g) => (
+                <div key={g.kind}>
+                  <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">{g.label}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {g.items.map((o) => (
+                      <button key={o.id} type="button" onClick={() => addOffering(o)} title={o.description ?? undefined} className="min-h-10 rounded-full border border-[var(--color-border-default)] px-3 text-left text-sm text-[var(--color-text-primary)]">
+                        {o.name}
+                        {o.function ? ` (${FUNCTION_TYPE_LABELS[o.function]})` : ''} · {offeringPriceWords(o)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
           {state.offerings.length === 0 && (
             <p className="text-xs text-[var(--color-text-muted)]">
-              Tip: add your services and prices for each function in <Link href="/vendor/offerings" className="font-medium text-[var(--primary)] underline underline-offset-2">What we offer</Link> — they will appear here as one-tap lines.
+              Tip: add what you sell and your prices in <Link href="/vendor/offerings" className="font-medium text-[var(--primary)] underline underline-offset-2">What we offer</Link> — they will appear here as one-tap lines.
             </p>
-          )}
-          {state.packages.length > 0 && (
-            <div>
-              <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">Add from your packages</p>
-              <div className="flex flex-wrap gap-2">
-                {state.packages.map((p) => (
-                  <button key={`${p.name}-${p.price}`} type="button" onClick={() => addPackage(p)} className="min-h-10 rounded-full border border-[var(--color-border-default)] px-3 text-sm text-[var(--color-text-primary)]">
-                    {p.name} · {inr(p.price)}
-                  </button>
-                ))}
-              </div>
-            </div>
           )}
 
           <ul className="space-y-4">
