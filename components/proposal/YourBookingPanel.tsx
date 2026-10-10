@@ -21,7 +21,21 @@ export default function YourBookingPanel({ booking: b, businessName }: { booking
         )}
       </div>
 
-      {w && w.functions.length > 0 && (
+      {w && w.planned && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#B08D55]">Your functions</p>
+          <ul className="mt-2 divide-y divide-[#F0E6D6] text-sm">
+            {w.schedule.map((f, i) => (
+              <li key={i} className="flex items-baseline justify-between gap-4 py-2 text-[#2A1F1B]">
+                <span className="font-medium">{f.name}</span>
+                <span className="text-right text-[#4A3F38]">{[dayWords(f.date), f.time, f.place].filter(Boolean).join(' · ')}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {w && !w.planned && w.functions.length > 0 && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#B08D55]">Your functions</p>
           <ul className="mt-2 flex flex-wrap gap-2">

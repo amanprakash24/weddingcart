@@ -431,6 +431,38 @@ database: two businesses, kinds, any-function items, hide, copy a package once, 
 - Quotation lines do not yet know their kind, and a list item carries no GST rate (Step 4, quotation integration).
 - The public page still shows `VendorPackage`; a business cannot yet publish its own list there.
 
+## 16. A business plans its own wedding: functions and a to-do list — built 10 Oct 2026
+
+The business's wedding page (`/vendor/weddings/[id]`, §12) was read-only. It is now where the wedding is planned:
+
+- **Functions** — change a function's day, time and place; change which function it is; add one (Mehndi, Sangeet, Reception, or an
+  "Other" with its own name); remove an empty one. Moving the "Wedding" function moves the wedding's date with it.
+- **To do** — add a to-do with an optional "by when", tick it done, untick it, take it off the list (kept as cancelled, never
+  deleted).
+- **The couple's link** (§14) shows each function's day, time and place once the business has set any of them; until then it
+  lists the functions by name as before. Its countdown runs to the wedding day itself. To-dos are never shown to the couple.
+- A finished or cancelled wedding, or a member without the `weddings` permission, sees the page without the editing controls
+  (`canEdit`) — and the server refuses the change either way.
+
+**How** — a thin adapter (`services/venueWedding.service.ts`: `addFunction`, `updateFunction`, `removeFunction`, `addTask`,
+`setTask`) over the existing wedding service, unchanged (`services/weddingWorkspace.service.ts`): an "Other" function needs a
+name, only an empty function can be removed and never the last, a finished wedding is not changed, every function change is
+written to the wedding's history. The form checks are `lib/venue/weddingPlan.ts` (browser-safe: no server-only imports).
+Routes: `POST /api/vendor-os/weddings/[id]/functions`, `PATCH|DELETE …/functions/[functionId]`, `POST …/tasks`,
+`PATCH …/tasks/[taskId]` — all `venueScoped(…, 'weddings')`, so another business's wedding is "not found". Screen:
+`components/vendor/weddings/WeddingPlan.tsx`. No migration.
+
+**Tests** — `lib/venue/weddingPlan.test.ts`, `lib/quotation/coupleBooking.test.ts`, `tests-db/venue.payments.test.ts` (real
+database: move a function, add and remove one, the wedding's date follows its "Wedding" function, the couple's link shows the
+schedule, the quotation and payments are untouched, the to-do list, another venue is refused, Shaadi Shopping sees nothing).
+
+**Not built yet**
+
+- Giving a to-do to a team member, priorities, and to-dos tied to one function.
+- The same-date warning (§13) still reads the booking's date, not a function moved to another day.
+- The days-to-go on the business's own page counts to the first function, while the couple's link counts to the wedding day.
+- Marking the wedding completed, postponed or cancelled from this page.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |

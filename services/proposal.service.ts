@@ -90,7 +90,7 @@ const defaultDeps = (): ProposalDeps => ({
   wedding: (id) =>
     prisma.wedding.findUnique({
       where: { id },
-      select: { weddingNumber: true, status: true, primaryDate: true, events: { select: { type: true, label: true, date: true }, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] } },
+      select: { weddingNumber: true, status: true, primaryDate: true, events: { select: { type: true, label: true, date: true, startTime: true, venueName: true }, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] } },
     }),
   offerings: (businessId) =>
     prisma.businessOffering.findMany({

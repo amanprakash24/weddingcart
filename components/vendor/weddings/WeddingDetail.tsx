@@ -8,9 +8,11 @@ import StatusPill from '@/components/ui/StatusPill';
 import { whatsappTo } from '@/lib/venue/enquiry';
 import type { VenueWeddingDetail } from '@/services/venueWedding.service';
 import { daysWords, weddingDateWords } from './YourWeddings';
+import { WeddingFunctions, WeddingTasks } from './WeddingPlan';
 
-// One of the business's own weddings: who and when, the functions, what was agreed, the money and what is still to do. Read-only in
-// this first version — the quotation and the payments are changed on the enquiry it came from, one tap away.
+// One of the business's own weddings: who and when, the functions, what was agreed, the money and what is still to do. The functions
+// and the to-do list are planned here (WeddingPlan.tsx); the quotation and the payments are changed on the enquiry it came from,
+// one tap away.
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const big = 'flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold';
@@ -55,7 +57,6 @@ export default function WeddingDetail({ id }: { id: string }) {
   }
 
   const days = daysWords(w.stage, w.daysToGo);
-  const open = w.tasks.filter((t) => !t.done);
 
   return (
     <div className="space-y-5">
@@ -84,20 +85,7 @@ export default function WeddingDetail({ id }: { id: string }) {
         )}
       </Card>
 
-      <section aria-label="Functions" className="space-y-2">
-        <h2 className={heading}>Functions</h2>
-        <Card className="divide-y divide-[var(--color-border-subtle)]">
-          {w.functionList.map((f) => (
-            <div key={f.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-              <p className="text-base font-medium text-[var(--color-text-primary)]">{f.name}</p>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                {weddingDateWords(f.date)}
-                {f.startTime ? ` · ${f.startTime}` : ''}
-              </p>
-            </div>
-          ))}
-        </Card>
-      </section>
+      <WeddingFunctions w={w} onSaved={setW} />
 
       <section aria-label="What was agreed" className="space-y-2">
         <h2 className={heading}>What was agreed{w.quotationNumber ? ` · ${w.quotationNumber}` : ''}</h2>
@@ -155,18 +143,7 @@ export default function WeddingDetail({ id }: { id: string }) {
         </Card>
       </section>
 
-      {w.tasks.length > 0 && (
-        <section aria-label="To do" className="space-y-2">
-          <h2 className={heading}>To do{open.length ? ` · ${open.length} open` : ''}</h2>
-          <Card className="divide-y divide-[var(--color-border-subtle)]">
-            {w.tasks.map((t) => (
-              <p key={t.id} className={`py-2.5 text-base first:pt-0 last:pb-0 ${t.done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]'}`}>
-                {t.title}
-              </p>
-            ))}
-          </Card>
-        </section>
-      )}
+      <WeddingTasks w={w} onSaved={setW} />
     </div>
   );
 }

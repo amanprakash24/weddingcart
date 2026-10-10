@@ -248,6 +248,66 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect(second).toMatchObject({ date: later(90), functions: ['Wedding'] });
   });
 
+  test('the venue plans its own wedding: a function gets its day, time and place; one is added; the couple’s link shows the schedule', async () => {
+    const [rahul] = (await inA(() => weddings.list())).filter((w) => w.customerName === 'Rahul Kumar');
+    const before = await inA(() => weddings.get(rahul.id));
+    expect(before.canEdit).toBe(true);
+    const haldi = before.functionList.find((f) => f.type === 'HALDI')!;
+    // What is wrong is said, and nothing is saved.
+    expect(await inA(() => weddings.updateFunction(rahul.id, haldi.id, { type: 'HALDI', date: 'soon', startTime: '6pm' }, users[0]))).toEqual({ errors: { date: expect.any(String), startTime: expect.any(String) } });
+    const moved = (await inA(() => weddings.updateFunction(rahul.id, haldi.id, { type: 'HALDI', date: later(59), startTime: '10:30', place: 'Main lawn' }, users[0]))) as typeof before;
+    expect(moved.functionList.find((f) => f.id === haldi.id)).toMatchObject({ name: 'Haldi', date: later(59), startTime: '10:30', place: 'Main lawn' });
+    expect(moved.date).toBe(later(60)); // the wedding's own date follows its "Wedding" function, not the Haldi
+    const added = (await inA(() => weddings.addFunction(rahul.id, { type: 'OTHER', label: 'Tilak', date: later(58) }, users[0]))) as typeof before;
+    expect(added.functionList.map((f) => [f.name, f.date])).toEqual([['Tilak', later(58)], ['Haldi', later(59)], ['Wedding', later(60)]]);
+    expect(await runAsSystem('test check', () => app.prisma.weddingEvent.count({ where: { weddingId: rahul.id, wedding: { businessId: scopeA.businessId } } }))).toBe(3);
+    // The couple sees the days on their link; the quotation and the money are untouched.
+    const couple = await coupleView();
+    expect(couple?.yourBooking?.wedding).toMatchObject({ planned: true, schedule: [{ name: 'Tilak', date: later(58), time: null, place: null }, { name: 'Haldi', date: later(59), time: '10:30', place: 'Main lawn' }, { name: 'Wedding', date: later(60), time: null, place: null }] });
+    expect(couple?.yourBooking).toMatchObject({ total: 200000, received: 200000 });
+    expect(await paymentCount()).toBe(4);
+    // Removing: an empty function goes; the last one never does.
+    const tilak = added.functionList.find((f) => f.name === 'Tilak')!;
+    expect((await inA(() => weddings.removeFunction(rahul.id, tilak.id, users[0]))).functionList).toHaveLength(2);
+    const [priya] = (await inA(() => weddings.list())).filter((w) => w.customerName === 'Priya Singh');
+    const only = (await inA(() => weddings.get(priya.id))).functionList[0];
+    expect((await outcome(inA(() => weddings.removeFunction(priya.id, only.id, users[0]))))?.message).toContain('at least one function');
+  });
+
+  test('moving the "Wedding" function moves the wedding’s date', async () => {
+    const [priya] = (await inA(() => weddings.list())).filter((w) => w.customerName === 'Priya Singh');
+    const only = (await inA(() => weddings.get(priya.id))).functionList[0];
+    const moved = (await inA(() => weddings.updateFunction(priya.id, only.id, { type: 'WEDDING', date: later(91) }, users[0]))) as { date: string };
+    expect(moved.date).toBe(later(91));
+    await inA(() => weddings.updateFunction(priya.id, only.id, { type: 'WEDDING', date: later(90) }, users[0])); // back, for the tests below
+  });
+
+  test('the to-do list: add, tick, untick, take off — and it stays the venue’s own', async () => {
+    const [rahul] = (await inA(() => weddings.list())).filter((w) => w.customerName === 'Rahul Kumar');
+    expect(await inA(() => weddings.addTask(rahul.id, { title: ' ' }, users[0]))).toEqual({ errors: { title: expect.any(String) } });
+    const one = (await inA(() => weddings.addTask(rahul.id, { title: 'Confirm the generator', dueOn: later(50) }, users[0]))) as Awaited<ReturnType<typeof weddings.get>>;
+    expect(one.tasks).toEqual([{ id: expect.any(String), title: 'Confirm the generator', done: false, dueAt: expect.any(String), dueOn: later(50) }]);
+    const taskId = one.tasks[0].id;
+    expect(await runAsSystem('test check', () => app.prisma.task.findUniqueOrThrow({ where: { id: taskId }, select: { context: true, weddingId: true, wedding: { select: { businessId: true } } } }))).toEqual({ context: 'WEDDING_TASK', weddingId: rahul.id, wedding: { businessId: scopeA.businessId } });
+    expect((await inA(() => weddings.setTask(rahul.id, taskId, { done: true }))).tasks[0].done).toBe(true);
+    expect((await inA(() => weddings.setTask(rahul.id, taskId, { done: false }))).tasks[0].done).toBe(false);
+    // Another venue cannot see, add to or change any of it; Shaadi Shopping does not see the task.
+    expect((await outcome(inB(() => weddings.addTask(rahul.id, { title: 'x' }, users[1]))))?.name).toBe('NotFoundError');
+    expect((await outcome(inB(() => weddings.setTask(rahul.id, taskId, { done: true }))))?.name).toBe('NotFoundError');
+    expect((await outcome(inB(() => weddings.addFunction(rahul.id, { type: 'HALDI', date: later(59) }, users[1]))))?.name).toBe('NotFoundError');
+    expect(await app.prisma.task.count({ where: { id: taskId } })).toBe(0); // as Shaadi Shopping
+    expect((await inA(() => weddings.get(rahul.id))).tasks[0].done).toBe(false);
+    expect((await inA(() => weddings.setTask(rahul.id, taskId, { remove: true }))).tasks).toEqual([]);
+    expect(await runAsSystem('test check', () => app.prisma.task.findUniqueOrThrow({ where: { id: taskId }, select: { status: true } }))).toEqual({ status: 'CANCELLED' }); // kept, never deleted
+  });
+
+  test('a member who may not work on weddings cannot change the plan from the page', async () => {
+    const { effectivePermissions } = await import('@/lib/auth/permissions');
+    const [rahul] = (await inA(() => weddings.list())).filter((w) => w.customerName === 'Rahul Kumar');
+    const staff = { ...scopeA, role: 'STAFF' as const, permissions: effectivePermissions({ role: 'STAFF', grants: [] }) };
+    expect((await runInScope(staff, () => weddings.get(rahul.id))).canEdit).toBe(staff.permissions.includes('weddings'));
+  });
+
   test('the same-date warning: a new enquiry for a date the venue is already booked on is told who has it', async () => {
     const [rahul] = await inA(() => weddings.list());
     const id = ((await inA(() => enquiries.create({ name: 'Asha Verma', phone: '98765 43212', weddingDate: later(60), channel: 'PHONE' }, users[0]))) as { id: string }).id;
