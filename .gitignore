@@ -53,3 +53,6 @@ next-env.d.ts
 .agents
 .claude
 .env*.local
+
+# before/after database snapshots (scripts/db-snapshot.cjs) — they describe the live database
+.db-snapshots/
