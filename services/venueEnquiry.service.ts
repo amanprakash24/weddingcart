@@ -43,6 +43,7 @@ export interface VenueEnquiryDeps {
     task: Pick<typeof prisma.task, 'create' | 'updateMany'>;
     activityLog: Pick<typeof prisma.activityLog, 'create'>;
     business: Pick<typeof prisma.business, 'findUnique'>;
+    paymentSubmission: Pick<typeof prisma.paymentSubmission, 'count'>;
   };
   match: Pick<typeof platformMatchService, 'find' | 'noteOnPlatformRecord'>;
   now: () => Date;
@@ -124,6 +125,14 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
         .map((r) => view(r, now, seesMoney))
         .sort((a, b) => ACTION_ORDER.indexOf(a.next.kind) - ACTION_ORDER.indexOf(b.next.kind))
         .map(({ need: _need, followUps: _f, history: _h, ...item }) => item);
+    },
+
+    // The mark on "Enquiries" in the menu: how many "I have paid" claims from this business's own couples wait to be checked.
+    // A claim belongs to the business through its quotation, so the guard counts this business's only. A money matter: a member
+    // who may not see money is told nothing.
+    async paymentsToCheck(): Promise<number> {
+      if (!can(effectiveScope(), 'view_financials')) return 0;
+      return deps.db.paymentSubmission.count({ where: { status: 'PENDING', quotation: { status: 'ACCEPTED' } } });
     },
 
     // The history leaves out what has been paid and invoiced for a member who may not see money (a manager, by default).

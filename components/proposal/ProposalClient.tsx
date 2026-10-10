@@ -716,7 +716,7 @@ export default function ProposalClient({
         ) : tab === 'reviews' && p.reviews ? (
           <ReviewsPanel token={token} initial={p.reviews} />
         ) : tab === 'payments' && p.payments ? (
-          <PaymentsPanel token={token} number={p.number} coupleName={p.couple.name} weddingDate={p.wedding.date} initial={p.payments} from={{ name: contact.name, phone: contact.phone?.display ?? null }} />
+          <PaymentsPanel token={token} number={p.number} coupleName={p.couple.name} weddingDate={p.wedding.date} initial={p.payments} from={{ name: contact.name, phone: contact.phone?.display ?? null, whatsApp: contact.isPlatform ? null : (contact.phone?.whatsApp ?? null) }} />
         ) : (
           <div role="tabpanel" aria-label="Detailed quotation" className="space-y-6">
             {/* Printed header — the on-screen hero does not print. */}

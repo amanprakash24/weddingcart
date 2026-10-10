@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { ArrowLeftRight, LogOut, MoreHorizontal, Store, User, X } from 'lucide-react';
 import { canSeeScreen, screenOf, type WorkspaceView } from '@/lib/auth/workspaceView';
-import { PHONE_BAR, PHONE_MORE, PRIMARY } from './vendorNav';
+import { PHONE_BAR, PHONE_MORE, PRIMARY, TO_CHECK_CHANGED } from './vendorNav';
 import LoginCodeReminder from './LoginCodeReminder';
 
 // Operational shell for Vendor OS — the "Venue Owner" experience reuses this unchanged (a category-filtered
@@ -28,6 +28,8 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   // The business this person is working in, and what they may see of it (7 Oct 2026). Until the server has said, the menu shows
   // nothing rather than everything. null after loading = the older single-owner case could not be read: the full menu, as before.
   const [ws, setWs] = useState<(WorkspaceView & { name: string; home: string; several: boolean }) | null | undefined>(undefined);
+  // "I have paid" claims from the business's own couples that wait to be checked — a mark on Enquiries, on every screen.
+  const [toCheck, setToCheck] = useState(0);
   const onProfile = pathname.startsWith('/vendor/profile');
   const onLogin = pathname.startsWith('/vendor/login');
 
@@ -65,6 +67,24 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       live = false;
     };
   }, [onLogin]);
+
+  // Asked again on every screen change, and the moment a claim is checked (TO_CHECK_CHANGED, from the enquiry screen), so the mark
+  // goes with it. Any failure (a login that is not a business's, no permission) simply shows no mark.
+  useEffect(() => {
+    if (onLogin) return;
+    let live = true;
+    const load = () =>
+      fetch('/api/vendor-os/enquiries/to-check')
+        .then((r) => r.json())
+        .then((b) => live && setToCheck(b.success && Number.isInteger(b.data?.paymentsToCheck) ? b.data.paymentsToCheck : 0))
+        .catch(() => live && setToCheck(0));
+    load();
+    window.addEventListener(TO_CHECK_CHANGED, load);
+    return () => {
+      live = false;
+      window.removeEventListener(TO_CHECK_CHANGED, load);
+    };
+  }, [pathname, onLogin]);
 
   // A screen this person cannot use here (a manager typing /vendor/settings, or a screen that belongs to their OTHER business):
   // send them to where this workspace opens. The server refuses the data either way.
@@ -113,18 +133,27 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   const navLink = (item: (typeof PRIMARY)[number], compact = false, desktop = false) => {
     const isActive = item.isActive(pathname);
     const Icon = item.icon;
+    const mark = item.key === 'enquiries' && toCheck > 0 ? toCheck : 0;
+    const markWords = mark ? ` — ${mark} ${mark === 1 ? 'payment' : 'payments'} to check` : '';
     return (
       <Link
         key={item.key}
         href={item.href}
         aria-current={isActive ? 'page' : undefined}
-        aria-label={desktop ? item.label : undefined}
-        title={desktop ? item.label : undefined}
+        aria-label={desktop || mark ? `${item.label}${markWords}` : undefined}
+        title={desktop ? `${item.label}${markWords}` : undefined}
         className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
           isActive ? 'bg-[var(--primary)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]'
         } ${compact ? 'flex-col gap-0.5 !px-1 !py-2 text-[10px]' : ''}`}
       >
-        <Icon className={compact ? 'h-5 w-5' : 'h-4 w-4'} />
+        <span className="relative">
+          <Icon className={compact ? 'h-5 w-5' : 'h-4 w-4'} />
+          {mark > 0 && (
+            <span aria-hidden className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-danger-text)] px-1 text-[10px] font-bold leading-none text-white">
+              {mark > 9 ? '9+' : mark}
+            </span>
+          )}
+        </span>
         <span className={compact ? 'max-w-full truncate' : desktop ? 'hidden whitespace-nowrap xl:inline' : ''}>{item.label}</span>
       </Link>
     );
