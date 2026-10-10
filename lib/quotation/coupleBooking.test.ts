@@ -35,8 +35,20 @@ describe('your booking, on a business’s own link', () => {
   test('confirmed and now a wedding: number, date, days to go, each function once', () => {
     const b = toCoupleBooking(money({ received: 60000, outstanding: 140000, remaining: 0, bookingConfirmed: true }), wedding({ events: [...wedding().events, { type: 'HALDI', label: null, date: new Date('2026-12-09T00:00:00Z') }, { type: 'OTHER', label: ' Tilak ', date: new Date('2026-12-09T00:00:00Z') }] }), NOW);
     expect(b).toMatchObject({ confirmed: true, toConfirm: 0, outstanding: 140000 });
-    expect(b.wedding).toEqual({ number: 'KUS-WED-2026-0001', date: '2026-12-09', state: 'UPCOMING', daysToGo: 60, functions: ['Haldi', 'Wedding', 'Tilak'] });
+    expect(b.wedding).toMatchObject({ number: 'KUS-WED-2026-0001', date: '2026-12-09', state: 'UPCOMING', daysToGo: 60, functions: ['Haldi', 'Wedding', 'Tilak'], planned: false });
+    expect(b.wedding?.schedule).toHaveLength(4);
     expect(coupleBookingWords(b, 'Kush Travel')).toEqual({ heading: 'Your wedding', line: '60 days to go · Your booking with Kush Travel is confirmed.' });
+  });
+
+  test('once the business sets a day, a time or a place, the couple sees the schedule', () => {
+    const b = toCoupleBooking(money({ bookingConfirmed: true }), wedding({ events: [
+      { type: 'HALDI', label: null, date: new Date('2026-12-08T00:00:00Z'), startTime: '10:30', venueName: ' Main lawn ' },
+      { type: 'WEDDING', label: null, date: new Date('2026-12-09T00:00:00Z'), startTime: null, venueName: null },
+    ] }), NOW);
+    expect(b.wedding).toMatchObject({ date: '2026-12-09', daysToGo: 60, planned: true }); // counted to the wedding day, not to the Haldi
+    expect(b.wedding?.schedule).toEqual([{ name: 'Haldi', date: '2026-12-08', time: '10:30', place: 'Main lawn' }, { name: 'Wedding', date: '2026-12-09', time: null, place: null }]);
+    // Only a time, on the wedding day itself, is already a plan worth showing.
+    expect(toCoupleBooking(money(), wedding({ events: [{ type: 'WEDDING', label: null, date: new Date('2026-12-09T00:00:00Z'), startTime: '19:00' }] }), NOW).wedding?.planned).toBe(true);
   });
 
   test('confirmed, the wedding not made yet', () => {

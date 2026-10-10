@@ -20,6 +20,10 @@ export interface CoupleBooking {
     state: 'UPCOMING' | 'COMPLETED' | 'POSTPONED' | 'CANCELLED';
     daysToGo: number | null; // only while UPCOMING; 0 = today; null = the day has passed
     functions: string[]; // "Haldi", "Wedding" … in the wedding's own order, each once
+    // Each function with the day, time and place the business has set for it, in date order. `planned` says whether that tells
+    // the couple anything more than the names do (some function is on another day, or has a time or a place).
+    schedule: { name: string; date: string; time: string | null; place: string | null }[];
+    planned: boolean;
   } | null;
 }
 
@@ -36,7 +40,7 @@ export interface CoupleBookingWedding {
   weddingNumber: string;
   status: string;
   primaryDate: Date;
-  events: { type: string; label: string | null; date: Date }[];
+  events: { type: string; label: string | null; date: Date; startTime?: string | null; venueName?: string | null }[];
 }
 
 const istDay = (d: Date | string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(d));
@@ -46,15 +50,21 @@ const STATE: Partial<Record<WeddingStage, 'COMPLETED' | 'POSTPONED' | 'CANCELLED
 export function toCoupleBooking(money: CoupleBookingMoney, wedding: CoupleBookingWedding | null, now: Date): CoupleBooking {
   let view: CoupleBooking['wedding'] = null;
   if (wedding) {
-    const info = computeWeddingStage({ status: wedding.status as never, primaryDate: wedding.primaryDate, functionDates: wedding.events.map((e) => e.date), now });
+    // The countdown is to the wedding day itself — the day shown beside it — not to the first function before it.
+    const info = computeWeddingStage({ status: wedding.status as never, primaryDate: wedding.primaryDate, now });
     const state = STATE[info.stage] ?? 'UPCOMING';
-    const names = wedding.events.map((e) => e.label?.trim() || FUNCTION_TYPE_LABELS[e.type as FunctionType] || 'Function');
+    const nameOf = (e: { type: string; label: string | null }) => e.label?.trim() || FUNCTION_TYPE_LABELS[e.type as FunctionType] || 'Function';
+    const names = wedding.events.map(nameOf);
+    const day = istDay(wedding.primaryDate);
+    const schedule = wedding.events.map((e) => ({ name: nameOf(e), date: istDay(e.date), time: e.startTime?.trim() || null, place: e.venueName?.trim() || null }));
     view = {
       number: wedding.weddingNumber,
       date: istDay(wedding.primaryDate),
       state,
       daysToGo: state === 'UPCOMING' && info.daysToGo !== null && info.daysToGo >= 0 ? info.daysToGo : null,
       functions: [...new Set(names)],
+      schedule,
+      planned: schedule.some((f) => f.date !== day || f.time !== null || f.place !== null),
     };
   }
   return {
