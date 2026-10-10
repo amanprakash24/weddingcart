@@ -11,7 +11,7 @@ import {
   validatePaymentClaim,
   type ProposalPayments,
 } from '@/lib/payments/customerPayment';
-import { upiPayeeFrom } from '@/lib/payments/upi';
+import { upiPayeeFrom, type UpiPayee } from '@/lib/payments/upi';
 import { deleteProof, signedProofUrl, uploadProof, type StoredProof } from '@/lib/payments/proofStorage';
 import { resolveUserNames } from '@/lib/users';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
@@ -106,15 +106,17 @@ export function createPaymentSubmissionService(deps: PaymentSubmissionDeps = def
   return {
     // The Payments section of an ACCEPTED proposal. Read-only: nothing is created (the agreement is made by the first payment or the
     // booking, never by the couple opening the link).
-    async forProposal(quotationId: string): Promise<ProposalPayments> {
+    // payTo: who is paid. Left out = Shaadi Shopping's own UPI (its quotations); a business's own quotation names that business's
+    // payee (proposal.service) — the money and the checking are then that business's.
+    async forProposal(quotationId: string, payTo?: UpiPayee | null): Promise<ProposalPayments> {
       const money = await deps.loadMoney(quotationId);
       const subs = await deps.db.paymentSubmission.findMany({ where: { quotationId }, select: { id: true, amount: true, utr: true, createdAt: true, status: true, rejectReason: true } });
-      return toProposalPayments(money, subs, upiPayeeFrom(deps.env()));
+      return toProposalPayments(money, subs, payTo === undefined ? upiPayeeFrom(deps.env()) : payTo);
     },
 
     // "I have paid". The caller (proposal.service) has already resolved the link and checked the proposal is ACCEPTED.
-    async submit(quotation: Subject & { id: string; quotationNumber: string }, raw: { amount: unknown; utr: unknown; paidOn?: unknown; note?: unknown }, proof: ProofFile | null): Promise<{ submitted: true }> {
-      if (!upiPayeeFrom(deps.env())) throw new ConflictError('Online payment is not available yet — please call us');
+    async submit(quotation: Subject & { id: string; quotationNumber: string }, raw: { amount: unknown; utr: unknown; paidOn?: unknown; note?: unknown }, proof: ProofFile | null, payTo?: UpiPayee | null): Promise<{ submitted: true }> {
+      if (!(payTo === undefined ? upiPayeeFrom(deps.env()) : payTo)) throw new ConflictError('Online payment is not available yet — please call us');
       const money = await deps.loadMoney(quotation.id);
       const claim = validatePaymentClaim(raw, { outstanding: money.outstanding, now: deps.now() });
       const proofProblem = checkProof(proof);

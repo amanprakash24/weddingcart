@@ -71,7 +71,7 @@ const offeringRows: Record<string, { id: string; function: string | null; name: 
 };
 const offerings = mock(async (businessId: string) => offeringRows[businessId] ?? []);
 const db = { ...tx, vendor: { findMany: vendorFindMany }, vendorBooking: { findMany: vendorBookingFindMany }, $transaction: mock(async (fn: (t: typeof tx) => unknown) => fn(tx)) };
-const paymentsView = { state: 'NOT_STARTED', received: 0, receipts: [], submissions: [], canSubmit: true };
+const paymentsView = { state: 'NOT_STARTED', received: 0, receipts: [] as { number: string; reference: string | null }[], submissions: [], canSubmit: true };
 const paymentsForProposal = mock(async (id: string) => (void id, paymentsView));
 const paymentSubmit = mock(async () => ({ submitted: true as const }));
 const reviewsView = { defaultName: 'Rahul & Priya', items: [] };
@@ -82,6 +82,9 @@ let agreementMoney: Record<string, unknown> = { exists: false };
 let weddingRow: Record<string, unknown> | null = null;
 const moneyFor = mock(async (id: string, now?: Date) => (void id, void now, agreementMoney));
 const weddingFor = mock(async (id: string) => (void id, weddingRow));
+// Where a business's own customers pay (its Settings). null = it has not said.
+let venuePayee: { vpa: string; payee: string } | null = null;
+const payToFor = mock(async (businessId: string) => (void businessId, venuePayee));
 const proposalService = createProposalService({
   db: db as never,
   findByTokenHash: findByCustomerTokenHash as never,
@@ -98,12 +101,15 @@ const proposalService = createProposalService({
   offerings: offerings as never,
   money: moneyFor as never,
   wedding: weddingFor as never,
+  payTo: payToFor as never,
 });
 
 beforeEach(() => {
   row = baseRow();
   agreementMoney = { exists: false };
   weddingRow = null;
+  venuePayee = null;
+  payToFor.mockClear();
   moneyFor.mockClear();
   weddingFor.mockClear();
   for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany, paymentsForProposal, paymentSubmit, reviewsForProposal, reviewSubmit, offerings]) m.mockClear();
@@ -303,16 +309,46 @@ describe('payments (Roadmap 1.3)', () => {
     expect(view?.payments).toBeNull();
   });
 
-  test('a venue’s own quotation never shows Shaadi Shopping’s payment details, and takes no "I have paid" here', async () => {
+  test('a venue’s own quotation never shows Shaadi Shopping’s payment details; with no booking or no UPI of its own it takes no "I have paid"', async () => {
     row.businessId = 'venue-1';
     row.status = 'ACCEPTED';
     row.acceptedAt = new Date();
+    venuePayee = { vpa: 'swayamvar@okhdfcbank', payee: 'Swayamvar Hall' };
+    agreementMoney = { exists: false }; // accepted, the booking not made yet
+    expect((await proposalService.view(TOKEN))?.payments).toBeNull();
+    await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).rejects.toThrow('Please contact Swayamvar Hall about your payment');
+    venuePayee = null; // booked, but the venue has not said where it is paid
+    agreementMoney = { exists: true, bookingId: 'b1', weddingId: null, agreementTotal: 100000, received: 0, outstanding: 100000, remaining: 25000, bookingConfirmed: false, payments: [] };
     const view = await proposalService.view(TOKEN);
     expect(view?.brand.isPlatform).toBe(false);
     expect(view?.payments).toBeNull();
     expect(paymentsForProposal).not.toHaveBeenCalled();
     await expect(proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789012' }, null)).rejects.toThrow('Please contact Swayamvar Hall about your payment');
     expect(paymentSubmit).not.toHaveBeenCalled();
+  });
+
+  test('a venue’s own booked quotation: the couple pays the VENUE’s UPI, and "I have paid" is recorded for the venue to check', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    row.acceptedAt = new Date();
+    venuePayee = { vpa: 'swayamvar@okhdfcbank', payee: 'Swayamvar Hall' };
+    agreementMoney = { exists: true, bookingId: 'b1', weddingId: null, agreementTotal: 100000, received: 0, outstanding: 100000, remaining: 25000, bookingConfirmed: false, payments: [] };
+    const view = await proposalService.view(TOKEN);
+    expect(view?.payments).toEqual(paymentsView as never);
+    expect(payToFor).toHaveBeenCalledWith('venue-1');
+    expect(paymentsForProposal.mock.calls.at(-1)).toEqual(['q1', venuePayee] as never);
+    await expect(proposalService.submitPayment(TOKEN, { amount: 25000, utr: '123456789012' }, null)).resolves.toEqual({ submitted: true, payments: paymentsView as never });
+    expect((paymentSubmit.mock.calls.at(-1) as unknown as unknown[])[3]).toEqual(venuePayee);
+    // The receipts on a venue's link never carry the reference the venue typed when it recorded the money.
+    paymentsForProposal.mockImplementationOnce(async () => ({ ...paymentsView, receipts: [{ number: 'RCPT-1', reference: 'CHEQUE 000123' }] }));
+    const withReceipt = await proposalService.view(TOKEN);
+    expect(withReceipt?.payments?.receipts).toEqual([{ number: 'RCPT-1', reference: null }] as never);
+    expect(JSON.stringify(withReceipt)).not.toContain('000123');
+    // Shaadi Shopping's own quotation still names no payee: the claim service uses Shaadi Shopping's own UPI.
+    row.businessId = 'shaadi-shopping';
+    await proposalService.submitPayment(TOKEN, { amount: 1000, utr: '123456789013' }, null);
+    expect((paymentSubmit.mock.calls.at(-1) as unknown as unknown[]).length).toBe(3);
+    expect(paymentsForProposal.mock.calls.at(-1)).toEqual(['q1'] as never);
   });
 
   test('"I have paid" only on an accepted proposal; invalid links get the generic answer', async () => {

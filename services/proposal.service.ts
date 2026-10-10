@@ -29,6 +29,7 @@ import { FUNCTION_TYPE_LABELS, type Offering } from '@/lib/venue/offering';
 import { OFFERING_ORDER, OFFERING_SELECT } from './venueOffering.service';
 import { loadAgreementMoney } from '@/services/agreement.service';
 import { toCoupleBooking, type CoupleBookingWedding } from '@/lib/quotation/coupleBooking';
+import { upiPayeeOf, type UpiPayee } from '@/lib/payments/upi';
 
 // Wedding Proposal (docs/wedding-os/08-quotation.md §15) — what the couple can do through the secret link.
 // A thin adapter: the token is resolved to ONE quotation revision, and every rule that matters is the existing
@@ -71,6 +72,8 @@ export interface ProposalDeps {
   // Both run inside the business's scope (lib/quotation/proposalEntry.ts), so only that business's records can be read.
   money: typeof loadAgreementMoney;
   wedding: (id: string) => Promise<CoupleBookingWedding | null>;
+  // Where a business's own customers pay (its Settings). null = it has not said, and its link then shows no payment at all.
+  payTo: (businessId: string) => Promise<UpiPayee | null>;
 }
 
 const defaultDeps = (): ProposalDeps => ({
@@ -92,6 +95,10 @@ const defaultDeps = (): ProposalDeps => ({
       where: { id },
       select: { weddingNumber: true, status: true, primaryDate: true, events: { select: { type: true, label: true, date: true, startTime: true, venueName: true }, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] } },
     }),
+  payTo: async (businessId) => {
+    const b = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true, upiId: true, upiName: true } });
+    return b ? upiPayeeOf(b) : null;
+  },
   offerings: (businessId) =>
     prisma.businessOffering.findMany({
       where: { businessId, active: true }, // a hidden item is never shown to a couple
@@ -109,6 +116,13 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     if (!found) return null;
     await deps.expireOverdue({ id: found.id });
     return deps.findByTokenHash(hash);
+  }
+
+  // The Payments view of a business's OWN link: its own payee, and receipts without the reference numbers — on its own bookings
+  // those are whatever the business typed when it recorded the money (a cheque number, a note), never shown to the couple.
+  async function ownPayments(quotationId: string, payTo: UpiPayee): Promise<ProposalPayments> {
+    const view = await deps.payments.forProposal(quotationId, payTo);
+    return { ...view, receipts: view.receipts.map((r) => ({ ...r, reference: null })) };
   }
 
   async function customerView(q: QuotationWithItems, now: Date): Promise<CustomerProposal> {
@@ -164,13 +178,17 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
       try {
         const money = await deps.money(q.id, now);
         if (money.exists) view.yourBooking = toCoupleBooking(money, money.weddingId ? await deps.wedding(money.weddingId) : null, now);
+        // Paying the business itself: its own UPI, and "I have paid" for the business (never Shaadi Shopping) to check. Only once
+        // the booking is made and the business has said where it is paid.
+        const payTo = money.exists && money.bookingId ? await deps.payTo(q.businessId) : null;
+        if (payTo) view.payments = await ownPayments(q.id, payTo);
       } catch (err) {
         console.error(`proposal booking for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
       }
     }
     // Roadmap 1.3: totals, receipts and "I have paid" — only once accepted. Read-only; a failure here never hides the proposal.
-    // Shaadi Shopping's own quotations only: the UPI shown is Shaadi Shopping's and its staff verify each claim. A venue's own
-    // customer pays the VENUE, so its link must never show this — the venue's own payee and its own verification come separately.
+    // Shaadi Shopping's own quotations: the UPI shown is Shaadi Shopping's and its staff verify each claim. (A venue's own customer
+    // pays the VENUE — its payee and its own checking are set above, never these.)
     if (q.status === 'ACCEPTED' && view.brand.isPlatform) {
       try {
         view.payments = await deps.payments.forProposal(q.id);
@@ -310,11 +328,18 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     const state = proposalState(q, new Date());
     if (state === 'INVALID') throw new ProposalNotFoundError();
     if (state !== 'ACCEPTED') throw new ConflictError('Please accept the quotation before paying');
-    // A venue's own customer pays the venue, not Shaadi Shopping (see customerView): nothing is recorded here for them.
     const brand = await deps.brand(q.businessId);
-    if (!brand.isPlatform) throw new ConflictError(`Please contact ${brand.name} about your payment`);
-    await deps.payments.submit(q, raw, proof);
-    return { submitted: true, payments: await deps.payments.forProposal(q.id) };
+    if (brand.isPlatform) {
+      await deps.payments.submit(q, raw, proof);
+      return { submitted: true, payments: await deps.payments.forProposal(q.id) };
+    }
+    // A venue's own customer pays the venue, not Shaadi Shopping (see customerView): the claim is for that venue to check. Only
+    // once its booking is made and it has said where it is paid — otherwise the couple is pointed to the venue.
+    const money = await deps.money(q.id, new Date());
+    const payTo = money.exists && money.bookingId ? await deps.payTo(q.businessId) : null;
+    if (!payTo) throw new ConflictError(`Please contact ${brand.name} about your payment`);
+    await deps.payments.submit(q, raw, proof, payTo);
+    return { submitted: true, payments: await ownPayments(q.id, payTo) };
   },
 
   // A review of one vendor the couple booked (Roadmap 1.4, §21) — only once their wedding is completed; staff publish it.

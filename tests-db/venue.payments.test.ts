@@ -101,14 +101,14 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   test('accepted and booked: nothing received yet; ₹60,000 (30%) confirms; where to pay comes from Settings', async () => {
     const state = await inA(() => quotes.get(enquiryId));
     expect(state.quotation).toMatchObject({ stage: 'ACCEPTED', total: 200000, toConfirm: 60000, confirmationPercent: 30 });
-    expect(state.quotation?.booking).toEqual({ holdWindowDays: 5, confirmed: false, received: 0, toConfirmRemaining: 60000, outstanding: 200000, stateLabel: 'No payment yet', holdOver: false, payments: [], invoices: [{ number: expect.any(String), kind: 'ADVANCE', taxable: 60000, gst: 0, total: 60000, paid: 0, gstin: null }] });
+    expect(state.quotation?.booking).toEqual({ holdWindowDays: 5, confirmed: false, received: 0, toConfirmRemaining: 60000, outstanding: 200000, stateLabel: 'No payment yet', holdOver: false, payments: [], invoices: [{ number: expect.any(String), kind: 'ADVANCE', taxable: 60000, gst: 0, total: 60000, paid: 0, gstin: null }], claims: [] });
     expect(state.payTo).toEqual({ upiId: 'dbtest@okhdfcbank', upiName: 'DBTEST Pay Venue' });
     expect(await nextKind()).toBe('QUOTE_ACCEPTED');
     expect(await bookingStatus()).toBe('NEW');
-    // The couple's link: the booking, what confirms it, no wedding yet — and not Shaadi Shopping's payments view.
+    // The couple's link: the booking, what confirms it, no wedding yet — and where to pay is the VENUE's own UPI.
     const couple = await coupleView();
     expect(couple?.yourBooking).toEqual({ confirmed: false, total: 200000, received: 0, outstanding: 200000, toConfirm: 60000, payments: [], wedding: null });
-    expect(couple?.payments).toBeNull();
+    expect(couple?.payments).toMatchObject({ upi: { vpa: 'dbtest@okhdfcbank', payee: 'DBTEST Pay Venue' }, payNow: 60000, received: 0, inReview: 0, submissions: [], receipts: [], canSubmit: true });
   });
 
   test('a wrong payment is explained and nothing is recorded', async () => {
@@ -330,5 +330,86 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     const other = ((await inB(() => enquiries.create({ name: 'Other Couple', phone: '98765 43214', weddingDate: later(60), channel: 'PHONE' }, users[1]))) as { id: string }).id;
     expect(await inB(() => sameDate.forEnquiry(other))).toEqual({ date: later(60), bookings: [] });
     expect((await outcome(inB(() => sameDate.forEnquiry(enquiryId))))?.name).toBe('NotFoundError');
+  });
+
+  // ---- the couple pays the venue from their link, and the venue checks it ----
+  let claimEnquiry = '';
+  let claimQuotation = '';
+  let claimToken = '';
+  const claimLink = async <T>(fn: () => Promise<T>) => runInScope(await scopeForProposalToken(claimToken), fn);
+  const claimMoney = async () => (await inA(() => quotes.get(claimEnquiry))).quotation?.booking;
+  const claimPayments = () => inA(() => app.prisma.payment.count({ where: { invoice: { quotationId: claimQuotation } } }));
+
+  test('paying the venue from the link needs the booking: before it, the couple is pointed to the venue', async () => {
+    claimEnquiry = ((await inA(() => enquiries.create({ name: 'Anita Verma', phone: '98765 43212', channel: 'WALK_IN' }, users[0]))) as { id: string }).id;
+    await inA(() => quotes.save(claimEnquiry, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '100000' }], validUntil: later(7) }, users[0]));
+    const sent = await inA(() => quotes.send(claimEnquiry, users[0]));
+    claimQuotation = sent.quotation!.id;
+    claimToken = sent.linkPath.slice('/proposal/'.length);
+    await claimLink(() => proposalService.accept(claimToken)); // no wedding date yet, so no booking
+    expect((await claimLink(() => proposalService.view(claimToken, { trackView: false })))?.payments).toBeNull();
+    expect((await outcome(claimLink(() => proposalService.submitPayment(claimToken, { amount: '30000', utr: '412345678901' }, null))))?.message).toContain('Please contact');
+    await inA(() => quotes.book(claimEnquiry, { weddingDate: later(120) }, users[0]));
+    const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
+    expect(view?.payments).toMatchObject({ upi: { vpa: 'dbtest@okhdfcbank', payee: 'DBTEST Pay Venue' }, total: 100000, payNow: 30000, canSubmit: true });
+  });
+
+  test('"I have paid" is a claim, never money: nothing is received, held or confirmed until the venue finds it', async () => {
+    const sent = await claimLink(() => proposalService.submitPayment(claimToken, { amount: '30,000', utr: '4123 4567 8901' }, null));
+    expect(sent.payments).toMatchObject({ received: 0, inReview: 30000, submissions: [{ amount: 30000, utr: '412345678901', status: 'PENDING' }] });
+    expect(await claimMoney()).toMatchObject({ confirmed: false, received: 0, stateLabel: 'No payment yet', payments: [], claims: [{ amount: 30000, utr: '412345678901', status: 'PENDING', proofUrl: null }] });
+    expect(await claimPayments()).toBe(0);
+    // The venue's list puts it first.
+    expect((await inA(() => enquiries.get(claimEnquiry))).next).toEqual({ kind: 'PAYMENT_TO_CHECK', label: 'Anita says they have paid — check and confirm it' });
+    expect((await inA(() => enquiries.list()))[0]).toMatchObject({ id: claimEnquiry, next: { kind: 'PAYMENT_TO_CHECK' } });
+    // The same reference is not taken twice.
+    expect((await outcome(claimLink(() => proposalService.submitPayment(claimToken, { amount: '30000', utr: '412345678901' }, null))))?.name).toBe('ConflictError');
+  });
+
+  test('the claim is the venue’s own: a manager without money permission, another venue and Shaadi Shopping do not see or check it', async () => {
+    const { effectivePermissions } = await import('@/lib/auth/permissions');
+    const manager = { ...scopeA, role: 'MANAGER' as const, permissions: effectivePermissions({ role: 'MANAGER', grants: [] }) };
+    const asManager = await runInScope(manager, async () => ({ enquiry: await enquiries.get(claimEnquiry), quote: await quotes.get(claimEnquiry) }));
+    expect(asManager.enquiry.next.kind).toBe('QUOTE_ACCEPTED');
+    expect(JSON.stringify(asManager)).not.toContain('412345678901');
+    const claimId = (await claimMoney())!.claims[0].id;
+    expect((await outcome(inB(() => quotes.checkClaim(claimEnquiry, claimId, { received: true }, users[1]))))?.name).toBe('NotFoundError');
+    expect(await inB(() => app.prisma.paymentSubmission.count({ where: { quotationId: claimQuotation } }))).toBe(0);
+    expect(await app.prisma.paymentSubmission.count({ where: { quotationId: claimQuotation } })).toBe(0); // as Shaadi Shopping
+    expect(await claimPayments()).toBe(0);
+  });
+
+  test('not found: the couple reads the venue’s reason on their link, and nothing is counted', async () => {
+    await claimLink(() => proposalService.submitPayment(claimToken, { amount: '5000', utr: '999999999999' }, null));
+    const wrong = (await claimMoney())!.claims.find((c) => c.utr === '999999999999')!;
+    expect((await outcome(inA(() => quotes.checkClaim(claimEnquiry, wrong.id, { received: false, reason: ' ' }, users[0]))))?.name).toBe('ValidationError');
+    await inA(() => quotes.checkClaim(claimEnquiry, wrong.id, { received: false, reason: 'We cannot find this reference in our account' }, users[0]));
+    const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
+    expect(view?.payments?.submissions.find((x) => x.utr === '999999999999')).toMatchObject({ status: 'REJECTED', rejectReason: 'We cannot find this reference in our account' });
+    expect(view?.payments).toMatchObject({ received: 0, inReview: 30000 });
+    expect(await claimPayments()).toBe(0);
+    // A claim marked as not found cannot be counted afterwards.
+    expect((await outcome(inA(() => quotes.checkClaim(claimEnquiry, wrong.id, { received: true }, users[0]))))?.name).toBe('ConflictError');
+  });
+
+  test('found: the venue says it received the money — the payment is recorded once, the booking confirms and becomes its wedding', async () => {
+    const claim = (await claimMoney())!.claims.find((c) => c.status === 'PENDING')!;
+    const after = await inA(() => quotes.checkClaim(claimEnquiry, claim.id, { received: true }, users[0]));
+    expect(after.quotation?.booking).toMatchObject({ confirmed: true, received: 30000, outstanding: 70000, stateLabel: 'Booking confirmed', payments: [{ amount: 30000, method: 'UPI', reference: '412345678901' }] });
+    expect(after.quotation?.booking?.claims.map((c) => c.status)).toEqual(['REJECTED']);
+    expect(after.quotation?.wedding?.number).toContain(prefix + '-WED-');
+    // Pressed again (a double tap, a second person): still one payment.
+    await inA(() => quotes.checkClaim(claimEnquiry, claim.id, { received: true }, users[0]));
+    expect(await claimPayments()).toBe(1);
+    expect((await claimMoney())?.received).toBe(30000);
+    expect((await inA(() => enquiries.get(claimEnquiry))).next.kind).toBe('BOOKED');
+    // The couple's link: confirmed, with their receipt; and the venue's wedding carries their name.
+    const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
+    expect(view?.payments).toMatchObject({ bookingConfirmed: true, received: 30000, inReview: 0, outstanding: 70000, receipts: [{ amount: 30000, method: 'UPI', reference: null }] });
+    expect(view?.yourBooking).toMatchObject({ confirmed: true, received: 30000, wedding: { date: later(120) } });
+    expect((await inA(() => weddings.list())).some((w) => w.customerName === 'Anita Verma')).toBe(true);
+    // Still nothing for another venue or Shaadi Shopping.
+    expect(await inB(() => app.prisma.payment.count({ where: { invoice: { quotationId: claimQuotation } } }))).toBe(0);
+    expect(await app.prisma.payment.count({ where: { invoice: { quotationId: claimQuotation } } })).toBe(0);
   });
 });

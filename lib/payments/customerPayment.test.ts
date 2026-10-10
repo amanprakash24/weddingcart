@@ -3,7 +3,7 @@ import { describe, test, expect } from 'bun:test';
 import { ValidationError } from '@/lib/errors';
 import { buildAgreementMoney } from '@/lib/commercial/view';
 import { PENDING_MAX, checkProof, groupReceipts, normaliseUtr, receiptNumber, toProposalPayments, validatePaymentClaim } from './customerPayment';
-import { upiLink, upiPayeeFrom } from './upi';
+import { upiLink, upiPayeeFrom, upiPayeeOf } from './upi';
 
 const NOW = new Date('2026-10-03T06:00:00Z');
 
@@ -13,6 +13,14 @@ describe('UPI payee and link', () => {
     expect(upiPayeeFrom({ SHAADI_UPI_ID: 'shaadishopping@okicici' })).toBeNull();
     expect(upiPayeeFrom({ SHAADI_UPI_ID: 'not a vpa', SHAADI_UPI_NAME: 'Shaadi Shopping' })).toBeNull();
     expect(upiPayeeFrom({ SHAADI_UPI_ID: ' shaadishopping@okicici ', SHAADI_UPI_NAME: ' Shaadi Shopping ' })).toEqual({ vpa: 'shaadishopping@okicici', payee: 'Shaadi Shopping' });
+  });
+
+  test('a business’s own payee: its UPI ID from Settings, under the name it typed or else its own name — or none at all', () => {
+    expect(upiPayeeOf({ upiId: null, upiName: null, name: 'Swayamvar Hall' })).toBeNull();
+    expect(upiPayeeOf({ upiId: 'not a vpa', upiName: 'Swayamvar', name: 'Swayamvar Hall' })).toBeNull();
+    expect(upiPayeeOf({ upiId: ' swayamvar@okhdfcbank ', upiName: null, name: 'Swayamvar Hall' })).toEqual({ vpa: 'swayamvar@okhdfcbank', payee: 'Swayamvar Hall' });
+    expect(upiPayeeOf({ upiId: 'swayamvar@okhdfcbank', upiName: ' S K Enterprises ', name: 'Swayamvar Hall' })).toEqual({ vpa: 'swayamvar@okhdfcbank', payee: 'S K Enterprises' });
+    expect(upiPayeeOf({ upiId: 'swayamvar@okhdfcbank', upiName: null, name: 'x'.repeat(90) })?.payee).toHaveLength(60);
   });
 
   test('the link carries the payee, a fixed rupee amount, INR and the quotation number', () => {

@@ -377,7 +377,7 @@ database: booked with nothing paid; fully paid with the wedding; no reference nu
 
 **Not built yet**
 
-- The couple cannot pay or say "I have paid" on a business's own link — the business tells them where to pay and records it.
+- ~~The couple cannot pay or say "I have paid" on a business's own link.~~ Built 11 Oct 2026 — §17.
 - Each function's own day and time (all are on the wedding date until the business can set them), tasks, documents, guests.
 - The link is only shown to the business when it is made; a couple who lost it needs a new one from the business.
 ## 15. One price list, by kind ("What we offer") — built 7 Oct 2026
@@ -462,6 +462,46 @@ schedule, the quotation and payments are untouched, the to-do list, another venu
 - The same-date warning (§13) still reads the booking's date, not a function moved to another day.
 - The days-to-go on the business's own page counts to the first function, while the couple's link counts to the wedding day.
 - Marking the wedding completed, postponed or cancelled from this page.
+
+## 17. The couple pays the business from their link, and the business checks it — built 11 Oct 2026
+
+A business's own couple could accept on their link (§14) but had to be told separately where to pay, and the business typed the
+payment in afterwards. Now the link carries the payment:
+
+- **The couple's link** gets the Payments tab once the booking is made **and** the business has saved its UPI ID (Settings): the
+  business's own UPI QR and "pay with a UPI app" for the amount that confirms the booking (or any amount up to what is due), then
+  **"I have paid"** with the UPI reference (UTR) and an optional screenshot. The payee is the business — never Shaadi Shopping.
+- **"I have paid" is a claim, never money.** Nothing is received, held or confirmed until the business says it found the money.
+- **The business** sees "… says they have paid — check and confirm it" first on Your Enquiries, and on the enquiry a block with the
+  amount, the UTR and the screenshot: **"Yes, I received ₹…"** records the payment exactly as "Record a payment" does (same rule,
+  hold, confirmation and wedding — §12), once however often it is pressed; **"Not received"** asks for a reason, which the couple
+  reads on their link.
+- Only a member who may see money sees a claim (`view_financials`); only one who may record money can check it
+  (`edit_financials`). Another business's claim is "not found"; Shaadi Shopping's staff see none of it.
+- A business without a UPI ID, or a booking not made yet: the link is as before (no Payments tab), and a claim is refused with
+  "Please contact …".
+
+**How** — the existing claim flow, unchanged in its rules (`services/paymentSubmission.service.ts`, 08-quotation.md §20: at most
+three open claims, a UTR is never taken twice, verifying goes through `recordPaymentForQuotation` with `sub-<id>` as its
+idempotency key). What is new is who is paid and who checks: `forProposal` / `submit` take the payee
+(`upiPayeeOf`, `lib/payments/upi.ts` — the business's UPI ID under the name it typed, else its own name);
+`services/proposal.service.ts` names it for a business's own quotation and strips the reference numbers from the receipts the
+couple sees (on a business's own booking those are whatever the business typed); `venueQuotationService.checkClaim` and
+`booking.claims`; `POST /api/vendor-os/enquiries/[id]/quotation/claims/[claimId]` (`{ received: true }` or
+`{ received: false, reason }`); `PAYMENT_TO_CHECK` in `lib/venue/enquiry.ts`. A claim belongs to the business through its
+quotation (`lib/ownership/owned.ts`), so the database guard keeps it to that business. No migration.
+
+**Tests** — `lib/payments/customerPayment.test.ts`, `lib/venue/enquiry.test.ts`, `services/proposal.service.test.ts`,
+`services/venueQuotation.service.test.ts`, `tests-db/venue.payments.test.ts` (real database: no payment before the booking; a
+claim changes no money; a manager without money permission, another venue and Shaadi Shopping do not see or check it; not found
+shows the reason; found records one payment, confirms the booking and makes the wedding, pressed twice or not).
+
+**Not built yet**
+
+- Nobody checks that the UPI ID a business typed is really its own — the couple is told to check the name in their UPI app.
+- "It arrived, but a different amount": mark it not received with the reason, or record the payment by hand.
+- No message to the business when a claim arrives, and none to the couple when it is checked — both see it on their own page.
+- Card / net-banking payment and automatic matching with the bank.
 
 ## Data model gaps
 

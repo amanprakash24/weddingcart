@@ -1,7 +1,7 @@
 // The UPI payee and deep link — dependency-free, so the proposal page (client) can import it. Roadmap 1.3, 08-quotation.md §20.
 
 export interface UpiPayee {
-  vpa: string; // Shaadi Shopping's own UPI ID — never a vendor's
+  vpa: string; // where the money goes: Shaadi Shopping's own UPI ID on its quotations, the business's own (Settings) on its own
   payee: string; // the name the couple's UPI app shows
 }
 
@@ -13,6 +13,15 @@ export function upiPayeeFrom(env: { SHAADI_UPI_ID?: string; SHAADI_UPI_NAME?: st
   const vpa = env.SHAADI_UPI_ID?.trim() ?? '';
   const payee = env.SHAADI_UPI_NAME?.trim() ?? '';
   if (!VPA.test(vpa) || !payee || payee.length > 60) return null;
+  return { vpa, payee };
+}
+
+// A business's own payee, for its OWN quotations (Settings: Business.upiId / upiName). The name the couple checks in their UPI app
+// is the one the business typed, else the business's name. Missing or malformed = null — no UPI payment is shown at all.
+export function upiPayeeOf(b: { upiId: string | null; upiName: string | null; name: string }): UpiPayee | null {
+  const vpa = b.upiId?.trim() ?? '';
+  const payee = (b.upiName?.trim() || b.name.trim()).slice(0, 60);
+  if (!VPA.test(vpa) || !payee) return null;
   return { vpa, payee };
 }
 
