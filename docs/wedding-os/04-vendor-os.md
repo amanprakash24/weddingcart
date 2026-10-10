@@ -330,7 +330,7 @@ money; pressing again keeps one; another venue and Shaadi Shopping see nothing),
 
 - Changing a function's day and time, tasks and staff from the business's wedding screen (Shaadi Shopping's workspace has these;
   they are not yet opened to a business).
-- The couple's signed-in page (`/customer`) still reads only Shaadi Shopping's weddings.
+- The couple's signed-in page (`/customer`) still reads only Shaadi Shopping's weddings — a business's own couple uses their link (§14).
 
 ## 13. "You already have a booking on this date" — built 10 Oct 2026
 
@@ -352,6 +352,34 @@ A **warning, never a block**: a venue with two halls, or a caterer with two team
 - It does not know about a wedding of Shaadi Shopping's that the business is booked on, or a function moved to another day.
 - It does not know halls, lawns or time slots — two bookings on one date always warn, even when they do not overlap.
 - The couple accepting on their link is never stopped or warned; only the business sees this.
+
+## 14. The couple's link shows their booking and their wedding — built 10 Oct 2026
+
+A business's own couple has no login. Their private link (`/proposal/<token>`, the one the business sends on WhatsApp) stays valid
+after they accept, and until now showed only the quotation. It now also shows, read-only:
+
+- **Your booking** — once the booking is made: the agreed total, what was received, what still confirms the booking, what is still
+  to pay, and each payment the business recorded (date, method, amount).
+- **Your wedding** — once the confirmed booking became a wedding (§12): its date, days to go, its functions by name (each once),
+  the wedding number; and "completed", "postponed" or "cancelled" in words instead of a countdown.
+- The page's status message is the same one line ("₹10,000 received. ₹20,000 more confirms your booking with …").
+
+**How** — `services/proposal.service.ts` adds `yourBooking` to the couple's view for a business's own ACCEPTED quotation, from the
+agreement's money (`loadAgreementMoney`, Money v1, unchanged) and the wedding; `lib/quotation/coupleBooking.ts` decides what the
+couple may see; `components/proposal/YourBookingPanel.tsx` shows it. It runs inside the business's scope, which the link itself
+resolves (`lib/quotation/proposalEntry.ts`). Shaadi Shopping's own links are unchanged (they keep their Payments view). A failure
+loading it never hides the proposal. No migration.
+
+**Never on the link** — payment reference numbers, invoice numbers, who recorded a payment, tasks, notes, another customer.
+
+**Tests** — `lib/quotation/coupleBooking.test.ts`, `services/proposal.service.test.ts`, `tests-db/venue.payments.test.ts` (real
+database: booked with nothing paid; fully paid with the wedding; no reference number or business id in what the couple receives).
+
+**Not built yet**
+
+- The couple cannot pay or say "I have paid" on a business's own link — the business tells them where to pay and records it.
+- Each function's own day and time (all are on the wedding date until the business can set them), tasks, documents, guests.
+- The link is only shown to the business when it is made; a couple who lost it needs a new one from the business.
 
 ## Data model gaps
 

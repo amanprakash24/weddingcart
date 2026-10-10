@@ -26,6 +26,8 @@ import { reviewService } from '@/services/review.service';
 import type { ProposalReviews } from '@/lib/reviews/reviewView';
 import { proposalBrandFor } from '@/lib/ownership/business';
 import { FUNCTION_TYPE_LABELS, type Offering } from '@/lib/venue/offering';
+import { loadAgreementMoney } from '@/services/agreement.service';
+import { toCoupleBooking, type CoupleBookingWedding } from '@/lib/quotation/coupleBooking';
 
 // Wedding Proposal (docs/wedding-os/08-quotation.md §15) — what the couple can do through the secret link.
 // A thin adapter: the token is resolved to ONE quotation revision, and every rule that matters is the existing
@@ -64,6 +66,10 @@ export interface ProposalDeps {
   brand: typeof proposalBrandFor;
   // The owning venue's "What we offer" list. BusinessOffering is not an owned table, so the business is always named here.
   offerings: (businessId: string) => Promise<Offering[]>;
+  // "Your booking" on a business's own link: the agreement's money (Money v1, read-only) and the wedding the booking became.
+  // Both run inside the business's scope (lib/quotation/proposalEntry.ts), so only that business's records can be read.
+  money: typeof loadAgreementMoney;
+  wedding: (id: string) => Promise<CoupleBookingWedding | null>;
 }
 
 const defaultDeps = (): ProposalDeps => ({
@@ -79,6 +85,12 @@ const defaultDeps = (): ProposalDeps => ({
   payments: paymentSubmissionService,
   reviews: reviewService,
   brand: proposalBrandFor,
+  money: loadAgreementMoney,
+  wedding: (id) =>
+    prisma.wedding.findUnique({
+      where: { id },
+      select: { weddingNumber: true, status: true, primaryDate: true, events: { select: { type: true, label: true, date: true }, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] } },
+    }),
   offerings: (businessId) =>
     prisma.businessOffering.findMany({
       where: { businessId },
@@ -145,6 +157,16 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     if (!view.brand.isPlatform) view.brand = { ...view.brand, gstin: q.sellerGstin ?? null };
     // "Add an event": a venue's own open proposal shows what that venue offers. Shaadi Shopping has no such list.
     if (!view.brand.isPlatform && view.state === 'OPEN') view.addable = toAddable(await deps.offerings(q.businessId));
+    // A business's own accepted proposal, once its booking is made: where the booking stands, what was received, and the wedding
+    // it became. Read-only for the couple; a failure here never hides the proposal.
+    if (q.status === 'ACCEPTED' && !view.brand.isPlatform) {
+      try {
+        const money = await deps.money(q.id, now);
+        if (money.exists) view.yourBooking = toCoupleBooking(money, money.weddingId ? await deps.wedding(money.weddingId) : null, now);
+      } catch (err) {
+        console.error(`proposal booking for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
+      }
+    }
     // Roadmap 1.3: totals, receipts and "I have paid" — only once accepted. Read-only; a failure here never hides the proposal.
     // Shaadi Shopping's own quotations only: the UPI shown is Shaadi Shopping's and its staff verify each claim. A venue's own
     // customer pays the VENUE, so its link must never show this — the venue's own payee and its own verification come separately.

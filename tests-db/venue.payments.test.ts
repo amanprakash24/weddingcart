@@ -26,6 +26,9 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   let enquiryId = '';
   let quotationId = '';
   let prefix = '';
+  let coupleToken = '';
+  // What the couple sees on their own link (it runs as the business the link belongs to, never tracking the visit here).
+  const coupleView = async () => runInScope(await scopeForProposalToken(coupleToken), () => proposalService.view(coupleToken, { trackView: false }));
 
   const outcome = (p: Promise<unknown>) => p.then(() => null, (e: Error) => e);
   const inA = <T>(fn: () => Promise<T>) => runInScope(scopeA, fn);
@@ -69,6 +72,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     const sent = await inA(() => quotes.send(enquiryId, users[0]));
     quotationId = sent.quotation!.id;
     const token = sent.linkPath.slice('/proposal/'.length);
+    coupleToken = token;
     await runInScope(await scopeForProposalToken(token), () => proposalService.accept(token));
   });
 
@@ -101,6 +105,10 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect(state.payTo).toEqual({ upiId: 'dbtest@okhdfcbank', upiName: 'DBTEST Pay Venue' });
     expect(await nextKind()).toBe('QUOTE_ACCEPTED');
     expect(await bookingStatus()).toBe('NEW');
+    // The couple's link: the booking, what confirms it, no wedding yet — and not Shaadi Shopping's payments view.
+    const couple = await coupleView();
+    expect(couple?.yourBooking).toEqual({ confirmed: false, total: 200000, received: 0, outstanding: 200000, toConfirm: 60000, payments: [], wedding: null });
+    expect(couple?.payments).toBeNull();
   });
 
   test('a wrong payment is explained and nothing is recorded', async () => {
@@ -211,6 +219,17 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     await inA(() => quotes.pay(enquiryId, { amount: '40000', method: 'CHEQUE', reference: '000123' }, users[0]));
     expect(await money()).toMatchObject({ confirmed: true, received: 200000, outstanding: 0 });
     expect((await outcome(inA(() => quotes.pay(enquiryId, { amount: '1', method: 'CASH' }, users[0]))))?.name).toBe('ValidationError'); // fully paid
+  });
+
+  test('the couple’s link shows their wedding and what was received — no reference numbers, and nothing of another couple', async () => {
+    const couple = await coupleView();
+    expect(couple?.yourBooking).toMatchObject({ confirmed: true, total: 200000, received: 200000, outstanding: 0, toConfirm: 0 });
+    expect(couple?.yourBooking?.payments.map((p) => [p.amount, p.method])).toEqual(expect.arrayContaining([[20000, 'UPI'], [40000, 'Cash'], [100000, 'Bank transfer'], [40000, 'Cheque']]));
+    expect(couple?.yourBooking?.payments).toHaveLength(4);
+    expect(couple?.yourBooking?.wedding).toMatchObject({ date: later(60), state: 'UPCOMING', daysToGo: 60, functions: ['Haldi', 'Wedding'] });
+    expect(couple?.yourBooking?.wedding?.number).toMatch(new RegExp(`^${prefix}-WED-\\d{4}-0001$`));
+    const text = JSON.stringify(couple);
+    for (const hidden of ['UTR-DBTEST-1', 'NEFT-DBTEST-2', '000123', scopeA.businessId]) expect(text).not.toContain(hidden);
   });
 
   test('a payment needs the booking: an accepted quotation without a wedding date is booked first', async () => {
