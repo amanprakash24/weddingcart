@@ -168,8 +168,12 @@ Read-only. No test bookings, enquiries or logins on production without the owner
 - [ ] Home page, vendor login, admin login and `/api/health` answer.
 - [ ] A signed-out request to a Vendor OS screen goes to the login page; a signed-out request to a Vendor OS API is refused.
 - [ ] An unknown couple's link says it is no longer valid.
-- [ ] Row counts of every table before and after the release are the same, apart from what real people did in between.
-      *Today this is done with a script that is not in the repository — see §8.*
+- [ ] Every table is the same before and after the release, apart from what the change meant to do and what real people did
+      in between: `npm run db:snapshot take before` ahead of the release, `npm run db:snapshot take after` once it is live,
+      then `npm run db:snapshot diff before after`. Read-only (one `BEGIN READ ONLY` transaction); it reads `.env.local`, which
+      is **production**, and prints the database it is reading first. For a migration that adds columns, pass them to
+      `--ignore-columns` on both. Snapshots stay on the machine (`.db-snapshots/`, git-ignored).
+      *Verified: used for every release from 7 to 11 Oct 2026; in the repository since 11 Oct 2026.*
 - [ ] The owner signs in and looks at the changed screen. Until then the release is "live, not seen".
 
 ## 8. What is still missing
@@ -179,7 +183,8 @@ Read-only. No test bookings, enquiries or logins on production without the owner
    unknown.
 2. **No staging on the internet.** Rehearsals run on a local PostgreSQL on one dev machine. If that machine is lost, the
    rehearsal step of §2 has to be rebuilt.
-3. **The before/after row-count check is not in the repository** — it lives in a session's temporary folder.
+3. ~~The before/after row-count check is not in the repository.~~ Added 11 Oct 2026: `scripts/db-snapshot.mjs` (§7). It still
+   runs by hand, from one machine.
 4. **Up to 24 hours of data can be lost** with a nightly backup and no point-in-time recovery. Running the backup by hand before
    risky work narrows that for planned changes only.
 5. **Backups older than 90 days do not exist.**

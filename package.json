@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "bun test",
-    "test:db": "bun test tests-db --timeout 180000"
+    "test:db": "bun test tests-db --timeout 180000",
+    "db:snapshot": "node scripts/db-snapshot.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
