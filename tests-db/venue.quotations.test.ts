@@ -90,7 +90,9 @@ dbDescribe('a venue’s own quotations (real database)', () => {
     enquiryId = ((await inA(() => enquiries.create({ name: 'Rahul Kumar', phone: '98765 43210', weddingDate: later(60), guestCount: '300', channel: 'PHONE' }, users[0]))) as { id: string }).id;
     const state = await inA(() => quotes.get(enquiryId));
     expect(state).toMatchObject({ customer: { name: 'Rahul Kumar', phone: '9876543210' }, venueName: venueNames[0], rules: { confirmationPercent: 30, holdWindowDays: 5 }, quotation: null });
-    expect(state.packages).toEqual([{ name: 'Gold A', price: 150000, perPlate: false }]);
+    // The package on its public page is a one-tap line in the ONE list, until the venue copies it into its own price list.
+    expect(state.offerings).toMatchObject([{ kind: 'PACKAGE', function: null, name: 'Gold A', price: 150000, perPlate: false }]);
+    expect(state.offerings[0].id.startsWith('listing-')).toBe(true);
     expect(await nextKind(enquiryId)).toBe('CALL');
   });
 

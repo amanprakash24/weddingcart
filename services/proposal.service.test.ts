@@ -59,13 +59,15 @@ const confirmedRows = [
 ];
 const vendorBookingFindMany = mock(async (args?: unknown) => (void args, confirmedRows));
 // "What we offer" lists, by business. BusinessOffering is not an owned table — the service must always name the business.
-const offeringRows: Record<string, { id: string; function: string; name: string; price: number; perPlate: boolean }[]> = {
+const offeringRows: Record<string, { id: string; function: string | null; name: string; price: number; perPlate: boolean }[]> = {
   'venue-1': [
     { id: 'o-lawn', function: 'HALDI', name: 'Lawn', price: 25000, perPlate: false },
     { id: 'o-plate', function: 'HALDI', name: 'Veg plate', price: 450, perPlate: true },
     { id: 'o-hall', function: 'RECEPTION', name: 'Banquet hall', price: 150000, perPlate: false },
   ],
   'venue-2': [{ id: 'o-other', function: 'HALDI', name: 'Another venue’s lawn', price: 1, perPlate: false }],
+  // A business whose price list is not tied to functions at all.
+  'venue-3': [{ id: 'o-any', function: null, name: 'Car with driver', price: 5000, perPlate: false }],
 };
 const offerings = mock(async (businessId: string) => offeringRows[businessId] ?? []);
 const db = { ...tx, vendor: { findMany: vendorFindMany }, vendorBooking: { findMany: vendorBookingFindMany }, $transaction: mock(async (fn: (t: typeof tx) => unknown) => fn(tx)) };
@@ -92,7 +94,7 @@ const proposalService = createProposalService({
   applyEvent: applyCommercialEvent as never,
   payments: { forProposal: paymentsForProposal as never, submit: paymentSubmit as never },
   reviews: { forProposal: reviewsForProposal as never, submit: reviewSubmit as never },
-  brand: (async (id: string) => (id === 'venue-1' ? { name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false } : { name: 'Shaadi Shopping', phone: null, isPlatform: true })) as never,
+  brand: (async (id: string) => (id.startsWith('venue-') ? { name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false } : { name: 'Shaadi Shopping', phone: null, isPlatform: true })) as never,
   offerings: offerings as never,
   money: moneyFor as never,
   wedding: weddingFor as never,
@@ -470,6 +472,13 @@ describe('requestEvent', () => {
     });
     expect(applyCommercialEvent).toHaveBeenCalledWith(tx, 'CONSULTATION', 'c1', 'CHANGES_REQUESTED', null);
     expect(accept).not.toHaveBeenCalled();
+  });
+
+  test('an item for any function can be ticked for whichever function is asked for', async () => {
+    row.businessId = 'venue-3';
+    expect((await proposalService.view(TOKEN))?.addable).toHaveLength(7);
+    await proposalService.requestEvent(TOKEN, { function: 'SANGEET', offeringIds: ['o-any', 'o-lawn'] });
+    expect(row.changesRequestNote).toContain('Please add Sangeet: Car with driver (from ₹5,000).');
   });
 
   test('nothing ticked is fine: the venue is asked for the function alone', async () => {

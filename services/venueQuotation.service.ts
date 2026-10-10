@@ -9,6 +9,7 @@ import { quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors 
 import { gstTotals } from '@/lib/quotation/lineGst';
 import { validateVenuePayment, type VenuePaymentErrors } from '@/lib/venue/payment';
 import { FUNCTION_TYPE_LABELS, functionOfLabel, type FunctionType, type Offering } from '@/lib/venue/offering';
+import { OFFERING_ORDER, OFFERING_SELECT } from './venueOffering.service';
 import { quotationService, type QuotationView } from '@/services/quotation.service';
 import { loadAgreementMoney, recordAgreementPayment } from '@/services/agreement.service';
 import { bookingService } from '@/services/booking.service';
@@ -82,8 +83,6 @@ export interface VenueQuotationState {
   venueName: string;
   rules: Pick<CommercialRules, 'confirmationPercent' | 'holdWindowDays'>;
   quotation: VenueQuotationView | null;
-  // The venue's listing packages, offered as one-tap starting lines for a new quotation.
-  packages: { name: string; price: number; perPlate: boolean }[];
   // What the venue offers for each function (its "What we offer" list) — one-tap lines that carry their function.
   offerings: Offering[];
   // Where the venue's own customers pay (Settings, D7) — for the payment details the venue sends them. null = not set.
@@ -210,17 +209,24 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
     const e = await enquiry(enquiryId);
     const v = await venue();
     const q = await current(enquiryId);
-    const packages = v.vendorId
-      ? await deps.db.vendorPackage.findMany({ where: { vendorId: v.vendorId }, select: { name: true, price: true, isPerPlate: true }, orderBy: { price: 'asc' }, take: 20 })
+    // ONE list of one-tap lines: the business's own price list (only what it currently offers), then any package on its public
+    // page that it has not copied into that list yet — so nothing it could tap before is lost.
+    // Not an owned table: the business is named here, from the scope (services/venueOffering.service.ts).
+    const own = await deps.db.businessOffering.findMany({ where: { businessId: v.business.id }, select: { ...OFFERING_SELECT, sourcePackageId: true }, orderBy: [...OFFERING_ORDER] });
+    const copied = new Set(own.map((o) => o.sourcePackageId));
+    const listed = v.vendorId
+      ? await deps.db.vendorPackage.findMany({ where: { vendorId: v.vendorId }, select: { id: true, name: true, price: true, isPerPlate: true }, orderBy: { price: 'asc' }, take: 20 })
       : [];
+    const offerings: Offering[] = [
+      ...own.filter((o) => o.active).map((o) => ({ id: o.id, kind: o.kind, function: o.function, name: o.name, description: o.description, price: o.price, perPlate: o.perPlate, active: o.active })),
+      ...listed.filter((p) => !copied.has(p.id)).map((p) => ({ id: `listing-${p.id}`, kind: 'PACKAGE' as const, function: null, name: p.name, description: null, price: p.price, perPlate: p.isPerPlate, active: true })),
+    ];
     return {
       customer: { name: e.name, phone: e.phone, weddingDate: e.weddingDate || null },
       venueName: v.business.name,
       rules: { confirmationPercent: v.rules.confirmationPercent, holdWindowDays: v.rules.holdWindowDays },
       quotation: q ? await toView(q, v.rules, v.letterhead) : null,
-      packages: packages.map((p) => ({ name: p.name, price: p.price, perPlate: p.isPerPlate })),
-      // Not an owned table: the business is named here, from the scope (services/venueOffering.service.ts).
-      offerings: await deps.db.businessOffering.findMany({ where: { businessId: v.business.id }, select: { id: true, function: true, name: true, price: true, perPlate: true }, orderBy: [{ function: 'asc' }, { createdAt: 'asc' }] }),
+      offerings,
       payTo: v.business.upiId && can(effectiveScope(), 'view_financials') ? { upiId: v.business.upiId, upiName: v.business.upiName } : null,
     };
   }

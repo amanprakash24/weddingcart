@@ -538,6 +538,10 @@ A venue lists what it offers for each wedding function on its **What we offer** 
 table `business_offerings`). On the couple's link for **that venue's own quotation**, while the proposal is open,
 the "Your proposal" view shows an **Add an event** card above "Request changes":
 
+> Since 7 Oct 2026 the list is one price list sorted by kind (04-vendor-os.md §12). An item marked "Any function" can be
+> ticked for whichever function the couple asks to add — when the list has such items, every function is offered. Hidden items
+> are never shown.
+
 1. The couple taps a function the venue has something listed for (Haldi, Reception …).
 2. They see the venue's list for it with **starting prices** ("from ₹25,000", "from ₹450 per plate") and tick what
    they want. Ticking nothing is allowed; a short note is optional (500 characters).
