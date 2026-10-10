@@ -77,6 +77,11 @@ const paymentSubmit = mock(async () => ({ submitted: true as const }));
 const reviewsView = { defaultName: 'Rahul & Priya', items: [] };
 const reviewsForProposal = mock(async (bookingId: unknown, name: unknown) => (void bookingId, void name, reviewsView));
 const reviewSubmit = mock(async (bookingId: unknown, vendorBookingId: unknown, raw: unknown) => (void bookingId, void vendorBookingId, void raw, { submitted: true as const }));
+// "Your booking" on a business's own link: the agreement's money and the wedding it became (null = none yet).
+let agreementMoney: Record<string, unknown> = { exists: false };
+let weddingRow: Record<string, unknown> | null = null;
+const moneyFor = mock(async (id: string, now?: Date) => (void id, void now, agreementMoney));
+const weddingFor = mock(async (id: string) => (void id, weddingRow));
 const proposalService = createProposalService({
   db: db as never,
   findByTokenHash: findByCustomerTokenHash as never,
@@ -91,10 +96,16 @@ const proposalService = createProposalService({
   reviews: { forProposal: reviewsForProposal as never, submit: reviewSubmit as never },
   brand: (async (id: string) => (id.startsWith('venue-') ? { name: 'Swayamvar Hall', phone: '9876500000', isPlatform: false } : { name: 'Shaadi Shopping', phone: null, isPlatform: true })) as never,
   offerings: offerings as never,
+  money: moneyFor as never,
+  wedding: weddingFor as never,
 });
 
 beforeEach(() => {
   row = baseRow();
+  agreementMoney = { exists: false };
+  weddingRow = null;
+  moneyFor.mockClear();
+  weddingFor.mockClear();
   for (const m of [findByCustomerTokenHash, findById, accept, createBooking, expireOverdue, activityCreate, applyCommercialEvent, updateMany, vendorFindMany, vendorBookingFindMany, paymentsForProposal, paymentSubmit, reviewsForProposal, reviewSubmit, offerings]) m.mockClear();
   accept.mockImplementation(async () => { row.status = 'ACCEPTED'; return {}; });
   createBooking.mockImplementation(async () => ({ id: 'b1' }));
@@ -395,6 +406,52 @@ describe('Add an event — what the couple sees', () => {
     row.validUntil = PAST;
     expect((await proposalService.view(TOKEN))?.addable).toEqual([]);
     expect(offerings).not.toHaveBeenCalled();
+  });
+});
+
+describe('your booking, on a business’s own link', () => {
+  const booked = { exists: true, weddingId: null, agreementTotal: 100000, received: 10000, outstanding: 90000, remaining: 15000, bookingConfirmed: false, payments: [{ id: 'p1', amount: 10000, method: 'UPI', reference: 'UTR-SECRET', paidAt: '2026-10-09T08:00:00.000Z', recordedByName: 'Owner' }] };
+
+  test('accepted and booked: the money, read-only — no reference numbers, no staff names; Shaadi Shopping’s payments view is not used', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    agreementMoney = booked;
+    const view = await proposalService.view(TOKEN);
+    expect(view?.yourBooking).toEqual({ confirmed: false, total: 100000, received: 10000, outstanding: 90000, toConfirm: 15000, payments: [{ amount: 10000, method: 'UPI', paidOn: '2026-10-09' }], wedding: null });
+    expect(JSON.stringify(view)).not.toContain('UTR-SECRET');
+    expect(view?.payments).toBeNull();
+    expect(weddingFor).not.toHaveBeenCalled();
+  });
+
+  test('confirmed and a wedding: its number, date and functions', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    agreementMoney = { ...booked, weddingId: 'w1', received: 25000, outstanding: 75000, remaining: 0, bookingConfirmed: true };
+    weddingRow = { weddingNumber: 'SWA-WED-2099-0001', status: 'PLANNING', primaryDate: new Date('2099-12-09T00:00:00Z'), events: [{ type: 'HALDI', label: null, date: new Date('2099-12-09T00:00:00Z') }, { type: 'WEDDING', label: null, date: new Date('2099-12-09T00:00:00Z') }] };
+    const view = await proposalService.view(TOKEN);
+    expect(weddingFor).toHaveBeenCalledWith('w1');
+    expect(view?.yourBooking).toMatchObject({ confirmed: true, toConfirm: 0, wedding: { number: 'SWA-WED-2099-0001', date: '2099-12-09', state: 'UPCOMING', functions: ['Haldi', 'Wedding'] } });
+  });
+
+  test('not shown before the booking exists, before acceptance, or on Shaadi Shopping’s own link', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    expect((await proposalService.view(TOKEN))?.yourBooking).toBeNull(); // accepted, the booking not made yet
+    row.status = 'SENT';
+    agreementMoney = booked;
+    expect((await proposalService.view(TOKEN))?.yourBooking).toBeNull();
+    row.businessId = 'shaadi-shopping';
+    row.status = 'ACCEPTED';
+    moneyFor.mockClear();
+    expect((await proposalService.view(TOKEN))?.yourBooking).toBeNull();
+    expect(moneyFor).not.toHaveBeenCalled();
+  });
+
+  test('a failure loading it never hides the proposal', async () => {
+    row.businessId = 'venue-1';
+    row.status = 'ACCEPTED';
+    moneyFor.mockImplementationOnce(async () => { throw new Error('database unavailable'); });
+    expect(await proposalService.view(TOKEN)).toMatchObject({ state: 'ACCEPTED', yourBooking: null });
   });
 });
 

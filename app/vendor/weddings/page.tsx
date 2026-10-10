@@ -4,6 +4,7 @@ import { venuePortalService } from '@/services/venuePortal.service';
 import { buildVendorWeddingsView } from '@/lib/vendor/weddingsView';
 import { isVenueCategory } from '@/lib/quotation/terms';
 import VendorWeddingsScreen from '@/components/vendor/VendorWeddingsScreen';
+import YourWeddings from '@/components/vendor/weddings/YourWeddings';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
@@ -22,7 +23,16 @@ async function VendorWeddingsPage() {
   if (!session?.user?.id) return null;
   const dashboard = await venuePortalService.getDashboard(session.user.id);
   const weddings = buildVendorWeddingsView(dashboard.bookings);
-  return <VendorWeddingsScreen weddings={weddings} isVenue={isVenueCategory(dashboard.vendor.category.name)} />;
+  // The business's OWN weddings first (its confirmed bookings, loaded venue-scoped from /api/vendor-os/weddings); the weddings
+  // Shaadi Shopping booked this vendor on below (Shaadi Shopping's records — this page's own scope).
+  return (
+    <>
+      <div className="mx-auto max-w-3xl px-3 pt-6 sm:px-6">
+        <YourWeddings />
+      </div>
+      <VendorWeddingsScreen weddings={weddings} isVenue={isVenueCategory(dashboard.vendor.category.name)} />
+    </>
+  );
 }
 
 // Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).

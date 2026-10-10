@@ -288,7 +288,99 @@ refuse an incomplete profile.
 **Not built yet:** the logo, GST number and photos **on** the quotation and invoice (the quotation rework), areas and
 specifications of a venue, and a GST line on documents.
 
-## 12. One price list, by kind ("What we offer") — built 7 Oct 2026
+## 12. A business's own booking becomes its own wedding — built 10 Oct 2026
+
+Before this a venue's (or vendor's) own flow ended at a confirmed booking with its payments; only Shaadi Shopping's bookings became
+a Wedding. Now a business's confirmed booking becomes **its own wedding**, through the conversion that already existed.
+
+**What happens**
+
+- **Automatically** — when the payment that confirms the booking is recorded (`services/venueQuotation.service.ts` `pay`), the
+  booking is confirmed and then `convertBookingToWedding` runs (`services/weddingConversion.service.ts`, unchanged rules: one
+  wedding per booking however often it is asked for, only for a confirmed booking whose amount to confirm was received, under an
+  advisory lock). Each is its own step: a wedding that could not be made never undoes the payment or the confirmation.
+- **By hand** — a booking that was confirmed earlier (or whose wedding failed) shows **Create the wedding** on its enquiry
+  (`POST /api/vendor-os/enquiries/[id]/quotation/wedding`, permission `weddings`). Pressing it twice changes nothing.
+- The wedding and everything in it belong to the business: the conversion runs inside the business's scope, so the ownership guard
+  puts its business on every record, and the number carries its prefix (`KUS-WED-2026-0001`). The agreement, its invoices and the
+  payments already recorded move to the wedding untouched.
+
+**What is different for a business's own booking** (and only for it — Shaadi Shopping's path is unchanged)
+
+- Its lines are what the business itself provides: no vendor booking and no "Assign a vendor" task is made.
+- The wedding gets the **functions its quotation names** on its lines (Haldi, Wedding, Reception …), each on the wedding date
+  until the business sets its day; lines that name none give the one "Wedding" function (`functionsFromLabels`,
+  `lib/wedding/functions.ts`).
+- The enquiry it came from stays the **booked** customer on the Enquiries screen. (The conversion moves the stage to Won; "Won with
+  a confirmed booking" is not "closed" — `services/venueEnquiry.service.ts`.)
+
+**What the business sees** — `/vendor/weddings` starts with **Your Weddings** (its own, nearest date first; Shaadi Shopping's
+weddings it is booked on stay below, unchanged). `/vendor/weddings/[id]` shows who and when, the stage and days to go, the
+functions, what was agreed (the accepted quotation's lines, discount, GST, total), the money (agreed / received / still to come —
+only for someone with `view_financials`), open tasks, and one tap back to the enquiry to record a payment. Read-only in this first
+version. `services/venueWedding.service.ts`, `GET /api/vendor-os/weddings`, `GET /api/vendor-os/weddings/[id]` (permission
+`weddings`).
+
+**Tests** — `tests-db/venue.payments.test.ts` (real database: part payment makes no wedding; the confirming payment makes exactly
+one, owned by the venue, with the quotation's functions; invoices and payments attached and unchanged; a manager sees it without the
+money; pressing again keeps one; another venue and Shaadi Shopping see nothing), `services/venueQuotation.service.test.ts`,
+`lib/wedding/functions.test.ts`. No migration.
+
+**Not built yet**
+
+- Changing a function's day and time, tasks and staff from the business's wedding screen (Shaadi Shopping's workspace has these;
+  they are not yet opened to a business).
+- The couple's signed-in page (`/customer`) still reads only Shaadi Shopping's weddings — a business's own couple uses their link (§14).
+
+## 13. "You already have a booking on this date" — built 10 Oct 2026
+
+A **warning, never a block**: a venue with two halls, or a caterer with two teams, takes two weddings on one day on purpose.
+
+- **Where** — on an enquiry, above its quotation (`components/vendor/enquiries/SameDateWarning.tsx`): before the quotation is made,
+  while it is out, and at the booking and its payments. When the enquiry has no date yet, the date being picked for "Make the
+  booking" is checked as it is picked. A closed enquiry shows none.
+- **What it says** — who has the date and whether that booking is confirmed or only accepted (not confirmed yet), each a link to
+  its wedding or its enquiry. A booking never warns about itself; a closed booking does not count.
+- **What it checks** — the business's OWN bookings on that whole day (`Booking.weddingDate`), read inside the business's scope, so
+  another business's bookings are never counted or named (`services/venueSameDate.service.ts`, rules in `lib/venue/sameDate.ts`,
+  `GET /api/vendor-os/enquiries/[id]/quotation/same-date[?date=]`, permission `quotations`). Read-only. No migration.
+- **Tests** — `lib/venue/sameDate.test.ts`; `tests-db/venue.payments.test.ts` (real database: who has the date, never itself, the
+  date being picked, a warning does not stop the second booking, another venue sees and is told nothing).
+
+**Not built yet**
+
+- It does not know about a wedding of Shaadi Shopping's that the business is booked on, or a function moved to another day.
+- It does not know halls, lawns or time slots — two bookings on one date always warn, even when they do not overlap.
+- The couple accepting on their link is never stopped or warned; only the business sees this.
+
+## 14. The couple's link shows their booking and their wedding — built 10 Oct 2026
+
+A business's own couple has no login. Their private link (`/proposal/<token>`, the one the business sends on WhatsApp) stays valid
+after they accept, and until now showed only the quotation. It now also shows, read-only:
+
+- **Your booking** — once the booking is made: the agreed total, what was received, what still confirms the booking, what is still
+  to pay, and each payment the business recorded (date, method, amount).
+- **Your wedding** — once the confirmed booking became a wedding (§12): its date, days to go, its functions by name (each once),
+  the wedding number; and "completed", "postponed" or "cancelled" in words instead of a countdown.
+- The page's status message is the same one line ("₹10,000 received. ₹20,000 more confirms your booking with …").
+
+**How** — `services/proposal.service.ts` adds `yourBooking` to the couple's view for a business's own ACCEPTED quotation, from the
+agreement's money (`loadAgreementMoney`, Money v1, unchanged) and the wedding; `lib/quotation/coupleBooking.ts` decides what the
+couple may see; `components/proposal/YourBookingPanel.tsx` shows it. It runs inside the business's scope, which the link itself
+resolves (`lib/quotation/proposalEntry.ts`). Shaadi Shopping's own links are unchanged (they keep their Payments view). A failure
+loading it never hides the proposal. No migration.
+
+**Never on the link** — payment reference numbers, invoice numbers, who recorded a payment, tasks, notes, another customer.
+
+**Tests** — `lib/quotation/coupleBooking.test.ts`, `services/proposal.service.test.ts`, `tests-db/venue.payments.test.ts` (real
+database: booked with nothing paid; fully paid with the wedding; no reference number or business id in what the couple receives).
+
+**Not built yet**
+
+- The couple cannot pay or say "I have paid" on a business's own link — the business tells them where to pay and records it.
+- Each function's own day and time (all are on the wedding date until the business can set them), tasks, documents, guests.
+- The link is only shown to the business when it is made; a couple who lost it needs a new one from the business.
+## 15. One price list, by kind ("What we offer") — built 7 Oct 2026
 
 Step 1 of the Vivah OS catalog work (founder order: Unified Offerings/Catalog → Rental → Catering → Quotation integration → Payments →
 Wedding Pipeline → Command Center). Before this a business had two lists feeding its quotation form: "What we offer"

@@ -13,6 +13,7 @@ import { OFFERING_ORDER, OFFERING_SELECT } from './venueOffering.service';
 import { quotationService, type QuotationView } from '@/services/quotation.service';
 import { loadAgreementMoney, recordAgreementPayment } from '@/services/agreement.service';
 import { bookingService } from '@/services/booking.service';
+import { convertBookingToWedding } from '@/services/weddingConversion.service';
 
 // A venue's OWN quotation for one of its own enquiries (Phase C). A thin adapter: every rule that matters — one open quotation
 // per enquiry, a sent quotation is never edited, revisions, expiry, the couple's link, acceptance, the booking and its agreement —
@@ -56,6 +57,11 @@ export interface VenueQuotationView {
   // true when the booking exists but this member may not see its money (lib/auth/permissions.ts: view_financials) — `booking` is
   // then null, and the screen says the payments are with the owner.
   moneyHidden: boolean;
+  // The wedding this booking became (the business's own — /vendor/weddings/[id]). null = not made yet.
+  wedding: { id: string; number: string } | null;
+  // The booking is confirmed but has no wedding yet (it was confirmed before weddings were made here, or making it failed) —
+  // "Create the wedding" is offered.
+  canCreateWedding: boolean;
 }
 
 // Where the booking stands, from the payments actually recorded (lib/commercial/view.ts) under the agreement's frozen rule.
@@ -91,6 +97,7 @@ export type LinkResult = VenueQuotationState & { linkPath: string };
 export interface VenueQuotationDeps {
   db: {
     consultation: Pick<typeof prisma.consultation, 'findUnique' | 'update'>;
+    wedding: Pick<typeof prisma.wedding, 'findUnique'>;
     business: Pick<typeof prisma.business, 'findUnique'>;
     vendorPackage: Pick<typeof prisma.vendorPackage, 'findMany'>;
     businessOffering: Pick<typeof prisma.businessOffering, 'findMany'>;
@@ -102,6 +109,10 @@ export interface VenueQuotationDeps {
   money: typeof loadAgreementMoney;
   recordPayment: typeof recordAgreementPayment;
   confirmBooking: (bookingId: string) => Promise<unknown>;
+  // The existing Booking → Wedding conversion, unchanged (services/weddingConversion.service.ts): one wedding per booking however
+  // often it is called, only for a confirmed booking whose amount to confirm was received. Inside the venue's scope the wedding and
+  // everything in it belong to the venue's business.
+  createWedding: (bookingId: string) => Promise<{ id: string }>;
   now: () => Date;
 }
 
@@ -112,6 +123,7 @@ const defaultDeps = (): VenueQuotationDeps => ({
   money: loadAgreementMoney,
   recordPayment: recordAgreementPayment,
   confirmBooking: (bookingId) => bookingService.update(bookingId, { status: 'CONFIRMED' }),
+  createWedding: convertBookingToWedding,
   now: () => new Date(),
 });
 
@@ -149,6 +161,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
     const money = stage === 'ACCEPTED' ? await deps.money(q.id, deps.now()) : null;
     const agreement = money?.exists ? money : null;
     const seesMoney = can(effectiveScope(), 'view_financials');
+    const wedding = agreement?.weddingId ? await deps.db.wedding.findUnique({ where: { id: agreement.weddingId }, select: { id: true, weddingNumber: true } }) : null;
     // The per-line figures are worked out again from the stored lines — the same arithmetic that produced the stored totals.
     const gst = gstTotals(q.items, q.discount);
     return {
@@ -174,6 +187,8 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       acceptedAt: q.acceptedAt?.toISOString() ?? null,
       hasLink: q.hasCustomerLink,
       moneyHidden: !!agreement && !seesMoney,
+      wedding: wedding ? { id: wedding.id, number: wedding.weddingNumber } : null,
+      canCreateWedding: !!agreement && agreement.bookingConfirmed && !wedding && can(effectiveScope(), 'weddings'),
       booking: agreement && seesMoney
         ? {
             holdWindowDays: agreement.holdWindowDays,
@@ -301,7 +316,8 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
     // Money received from the venue's own customer — cash, UPI, bank transfer or cheque. A part payment holds the date for the
     // agreement's hold days; once the amount to confirm is in, the booking is confirmed (anything above it goes to the balance).
     // The payment is its own transaction: it is never undone because the confirmation that follows could not be completed.
-    // No wedding is created here — the venue's own Weddings come in a later slice.
+    // A confirmed booking becomes the venue's own wedding straight away (createWedding) — also its own step: a wedding that could
+    // not be made never undoes the payment or the confirmation, and "Create the wedding" on the enquiry is the retry.
     async pay(enquiryId: string, input: Record<string, unknown>, actorId: string | null): Promise<PayResult> {
       const q = await requireCurrent(enquiryId, 'take a payment for');
       if (q.status !== 'ACCEPTED') throw new ConflictError('The couple has not accepted this quotation yet');
@@ -318,7 +334,29 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
           await deps.confirmBooking(after.bookingId);
         } catch (err) {
           console.error(`venue payment: booking for ${q.quotationNumber} not confirmed —`, err instanceof Error ? err.message : err);
+          return state(enquiryId);
         }
+        try {
+          await deps.createWedding(after.bookingId);
+        } catch (err) {
+          console.error(`venue payment: wedding for ${q.quotationNumber} not created —`, err instanceof Error ? err.message : err);
+        }
+      }
+      return state(enquiryId);
+    },
+
+    // "Create the wedding" — for a confirmed booking that has none yet. Safe to press twice: the conversion returns the wedding
+    // that already exists. A booking whose amount to confirm has arrived but was never confirmed is confirmed first (the booking
+    // gate re-checks the amount itself).
+    async createWedding(enquiryId: string): Promise<VenueQuotationState> {
+      const q = await requireCurrent(enquiryId, 'create the wedding for');
+      if (q.status !== 'ACCEPTED') throw new ConflictError('The couple has not accepted this quotation yet');
+      const money = await deps.money(q.id, deps.now());
+      if (!money.exists || !money.bookingId) throw new ConflictError('Make the booking first — then the wedding can be created');
+      if (!money.bookingConfirmed && !money.readyToConfirm) throw new ConflictError('The booking is not confirmed yet — record the payment that confirms it first');
+      if (!money.weddingId) {
+        await deps.confirmBooking(money.bookingId);
+        await deps.createWedding(money.bookingId);
       }
       return state(enquiryId);
     },

@@ -78,7 +78,9 @@ function view(r: Row, now: Date): VenueEnquiryDetail {
     guestCount: r.guestCount > 0 ? r.guestCount : null,
     channel: CHANNEL_LABEL[r.channel as Channel] ?? 'Shaadi Shopping',
     viaShaadiShopping: r.platformMatch !== null,
-    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || r.pipelineStage === 'WON', followUps, quote, booked: q?.booking?.status === 'CONFIRMED' }, now),
+    // "Won" with a confirmed booking is the booked customer (the wedding was created — the stage moves to Won with it), never
+    // "not going ahead": only a lost enquiry, or one won some other way with no booking here, is closed.
+    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || (r.pipelineStage === 'WON' && q?.booking?.status !== 'CONFIRMED'), followUps, quote, booked: q?.booking?.status === 'CONFIRMED' }, now),
     createdAt: r.createdAt.toISOString(),
     need: r.message,
     followUps,

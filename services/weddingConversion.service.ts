@@ -21,6 +21,8 @@ import { InvalidTransitionError, NotFoundError, ConversionLockedError } from '@/
 import type { SourceType } from '@/services/leadInbox.service';
 import { Prisma, type Wedding, type Lead, type Enquiry, type Consultation } from '@/generated/prisma/client';
 import { weddingCustomerFields } from '@/lib/customer/weddingLink';
+import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
+import { functionsFromLabels } from '@/lib/wedding/functions';
 
 type Tx = Prisma.TransactionClient;
 type ConvertibleSubject = Lead | Enquiry | Consultation;
@@ -188,15 +190,18 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
       tx
     );
 
-    const weddingEvent = await weddingEventRepository.create(
-      {
-        wedding: { connect: { id: wedding.id } },
-        type: 'WEDDING',
-        date: booking.weddingDate!,
-        city: booking.city,
-      },
-      tx
-    );
+    // A business's OWN booking (a venue's, a vendor's — not Shaadi Shopping's): its lines are what the business itself provides.
+    // The wedding gets the functions its quotation names (all on the wedding date until the business sets each one's day), and
+    // no vendor booking or "assign a vendor" task is made — there is no vendor to find.
+    const ownBooking = !!booking.businessId && booking.businessId !== PLATFORM_BUSINESS_ID;
+    const functionTypes = ownBooking && booking.quotationId
+      ? functionsFromLabels((await tx.quotationItem.findMany({ where: { quotationId: booking.quotationId }, select: { functionLabel: true } })).map((i) => i.functionLabel))
+      : (['WEDDING'] as const);
+    const weddingEvents = [];
+    for (const type of functionTypes) {
+      weddingEvents.push(await weddingEventRepository.create({ wedding: { connect: { id: wedding.id } }, type, date: booking.weddingDate!, city: booking.city }, tx));
+    }
+    const weddingEvent = weddingEvents[0];
 
     await activityLogRepository.create(
       {
@@ -208,6 +213,7 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
     );
 
     for (const item of booking.items) {
+      if (!item.vendorId && ownBooking) continue;
       if (!item.vendorId) {
         // Resolved in docs/wedding-os/step4-workflow-review.md: BookingItem.vendorId
         // can be null (vendor removed since — e.g. the "Touch Of Cozy" case),

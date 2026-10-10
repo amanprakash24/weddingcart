@@ -19,6 +19,8 @@ import {
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import PaymentsPanel from '@/components/proposal/PaymentsPanel';
 import ReviewsPanel from '@/components/proposal/ReviewsPanel';
+import YourBookingPanel from '@/components/proposal/YourBookingPanel';
+import { coupleBookingWords } from '@/lib/quotation/coupleBooking';
 
 // The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–17). One link, two separate experiences
 // (Decision 10): the visual, curated PROPOSAL, and the commercially detailed QUOTATION where the couple accepts.
@@ -627,12 +629,13 @@ export default function ProposalClient({
             role="status"
             className="rounded-2xl border border-[#E8DCC8] bg-white p-4 text-sm leading-relaxed text-[#2A1F1B] print:hidden"
           >
-            {nextStep(p)}
+            {p.yourBooking ? coupleBookingWords(p.yourBooking, contact.name).line : nextStep(p)}
           </div>
         )}
 
         {tab === 'proposal' ? (
           <div role="tabpanel" aria-label="Your proposal" className="space-y-10">
+            {p.yourBooking && <YourBookingPanel booking={p.yourBooking} businessName={contact.name} />}
             {groups.map((group, gi) => (
               <section key={group.title ?? gi} className="space-y-5">
                 {group.title && <Eyebrow>{group.title}</Eyebrow>}
