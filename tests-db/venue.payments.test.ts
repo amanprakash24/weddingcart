@@ -15,6 +15,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   let quotes: typeof import('@/services/venueQuotation.service').venueQuotationService;
   let settings: typeof import('@/services/venueSettings.service').venueSettingsService;
   let weddings: typeof import('@/services/venueWedding.service').venueWeddingService;
+  let sameDate: typeof import('@/services/venueSameDate.service').venueSameDateService;
   let businessSvc: typeof import('@/services/venueBusiness.service').venueBusinessService;
   let proposalService: typeof import('@/services/proposal.service').proposalService;
   let scopeForProposalToken: typeof import('@/lib/quotation/proposalEntry').scopeForProposalToken;
@@ -43,6 +44,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     quotes = (await import('@/services/venueQuotation.service')).venueQuotationService;
     settings = (await import('@/services/venueSettings.service')).venueSettingsService;
     weddings = (await import('@/services/venueWedding.service')).venueWeddingService;
+    sameDate = (await import('@/services/venueSameDate.service')).venueSameDateService;
     businessSvc = (await import('@/services/venueBusiness.service')).venueBusinessService;
     proposalService = (await import('@/services/proposal.service')).proposalService;
     scopeForProposalToken = (await import('@/lib/quotation/proposalEntry')).scopeForProposalToken;
@@ -225,5 +227,29 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect('quotation' in paid && paid.quotation?.wedding?.number).toMatch(new RegExp(`^${prefix}-WED-\\d{4}-0002$`));
     const second = (await inA(() => weddings.list())).find((w) => w.customerName === 'Priya Singh');
     expect(second).toMatchObject({ date: later(90), functions: ['Wedding'] });
+  });
+
+  test('the same-date warning: a new enquiry for a date the venue is already booked on is told who has it', async () => {
+    const [rahul] = await inA(() => weddings.list());
+    const id = ((await inA(() => enquiries.create({ name: 'Asha Verma', phone: '98765 43212', weddingDate: later(60), channel: 'PHONE' }, users[0]))) as { id: string }).id;
+    expect(await inA(() => sameDate.forEnquiry(id))).toEqual({ date: later(60), bookings: [{ name: 'Rahul Kumar', confirmed: true, enquiryId, wedding: { id: rahul.id, number: rahul.number } }] });
+    // A booking never warns about itself; a free date warns about nothing.
+    expect(await inA(() => sameDate.forEnquiry(enquiryId))).toEqual({ date: later(60), bookings: [] });
+    expect((await inA(() => sameDate.forEnquiry(id, later(61)))).bookings).toEqual([]);
+    // It is a warning only: the quotation is still made, sent and accepted — and the first couple's enquiry now shows the second.
+    await inA(() => quotes.save(id, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '100000' }], validUntil: later(7) }, users[0]));
+    const token = (await inA(() => quotes.send(id, users[0]))).linkPath.slice('/proposal/'.length);
+    await runInScope(await scopeForProposalToken(token), () => proposalService.accept(token));
+    expect((await inA(() => sameDate.forEnquiry(enquiryId))).bookings).toEqual([{ name: 'Asha Verma', confirmed: false, enquiryId: id, wedding: null }]);
+  });
+
+  test('the same-date warning: no date yet checks the date being picked; another venue is never counted or told', async () => {
+    const id = ((await inA(() => enquiries.create({ name: 'Neha Jha', phone: '98765 43213', channel: 'WALK_IN' }, users[0]))) as { id: string }).id;
+    expect(await inA(() => sameDate.forEnquiry(id))).toEqual({ date: null, bookings: [] });
+    expect((await inA(() => sameDate.forEnquiry(id, later(90)))).bookings.map((b) => [b.name, b.confirmed])).toEqual([['Priya Singh', true]]);
+    expect(await inA(() => sameDate.forEnquiry(id, 'next week'))).toEqual({ date: null, bookings: [] });
+    const other = ((await inB(() => enquiries.create({ name: 'Other Couple', phone: '98765 43214', weddingDate: later(60), channel: 'PHONE' }, users[1]))) as { id: string }).id;
+    expect(await inB(() => sameDate.forEnquiry(other))).toEqual({ date: later(60), bookings: [] });
+    expect((await outcome(inB(() => sameDate.forEnquiry(enquiryId))))?.name).toBe('NotFoundError');
   });
 });
