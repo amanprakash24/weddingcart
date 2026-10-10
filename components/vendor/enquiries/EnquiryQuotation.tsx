@@ -15,6 +15,7 @@ import { QUOTE_STAGE_LABEL, quoteShareMessage, VENUE_QUOTE_LIMITS, type QuoteSta
 import { gstPercentText, gstTotals, parseGstPercent } from '@/lib/quotation/lineGst';
 import type { VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
 import BookingMoney from './BookingMoney';
+import SameDateWarning from './SameDateWarning';
 
 // The venue's own quotation for one of its own enquiries (Phase C): write it, send it with the couple's link on WhatsApp, and see
 // what the couple did — opened it, asked for changes, accepted. Phone-first. No totals are typed: the total is the lines minus the
@@ -169,10 +170,14 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
     </div>
   );
 
+  // The business's other bookings on this wedding date (or on the date being picked for the booking) — a warning, never a block.
+  const sameDate = closed ? null : <SameDateWarning enquiryId={enquiryId} date={state.customer.weddingDate ? undefined : weddingDate || undefined} />;
+
   if (editing) {
     return (
       <section aria-label="Quotation" className="space-y-3">
         {heading}
+        {sameDate}
         <Card className="space-y-4">
           {groupOfferings(state.offerings).map((g) => (
             <div key={g.function}>
@@ -269,6 +274,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
     return (
       <section aria-label="Quotation" className="space-y-3">
         {heading}
+        {sameDate}
         <Card className="space-y-3">
           <p className="text-sm text-[var(--color-text-secondary)]">Send {first} your price — they can open it on their phone and accept it or ask for changes.</p>
           <button type="button" onClick={startEditing} className={primary}>Make a quotation</button>
@@ -282,6 +288,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
   return (
     <section aria-label="Quotation" className="space-y-3">
       {heading}
+      {sameDate}
       <Card className="space-y-4">
         {/* Who the quotation is from — what the customer sees at the top of the document. */}
         <div className="flex items-center gap-3 border-b border-[var(--color-border-subtle)] pb-3">

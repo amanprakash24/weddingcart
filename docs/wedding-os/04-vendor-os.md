@@ -331,7 +331,27 @@ money; pressing again keeps one; another venue and Shaadi Shopping see nothing),
 - Changing a function's day and time, tasks and staff from the business's wedding screen (Shaadi Shopping's workspace has these;
   they are not yet opened to a business).
 - The couple's signed-in page (`/customer`) still reads only Shaadi Shopping's weddings.
-- A warning when the business already has a confirmed booking on the same date.
+
+## 13. "You already have a booking on this date" — built 10 Oct 2026
+
+A **warning, never a block**: a venue with two halls, or a caterer with two teams, takes two weddings on one day on purpose.
+
+- **Where** — on an enquiry, above its quotation (`components/vendor/enquiries/SameDateWarning.tsx`): before the quotation is made,
+  while it is out, and at the booking and its payments. When the enquiry has no date yet, the date being picked for "Make the
+  booking" is checked as it is picked. A closed enquiry shows none.
+- **What it says** — who has the date and whether that booking is confirmed or only accepted (not confirmed yet), each a link to
+  its wedding or its enquiry. A booking never warns about itself; a closed booking does not count.
+- **What it checks** — the business's OWN bookings on that whole day (`Booking.weddingDate`), read inside the business's scope, so
+  another business's bookings are never counted or named (`services/venueSameDate.service.ts`, rules in `lib/venue/sameDate.ts`,
+  `GET /api/vendor-os/enquiries/[id]/quotation/same-date[?date=]`, permission `quotations`). Read-only. No migration.
+- **Tests** — `lib/venue/sameDate.test.ts`; `tests-db/venue.payments.test.ts` (real database: who has the date, never itself, the
+  date being picked, a warning does not stop the second booking, another venue sees and is told nothing).
+
+**Not built yet**
+
+- It does not know about a wedding of Shaadi Shopping's that the business is booked on, or a function moved to another day.
+- It does not know halls, lawns or time slots — two bookings on one date always warn, even when they do not overlap.
+- The couple accepting on their link is never stopped or warned; only the business sees this.
 
 ## Data model gaps
 
