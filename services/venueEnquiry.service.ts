@@ -54,17 +54,17 @@ const include = {
   tasks: { where: { context: 'SALES_FOLLOWUP' as const, status: { not: 'CANCELLED' as const } }, select: { id: true, title: true, dueAt: true, status: true }, orderBy: { dueAt: 'asc' as const } },
   activities: { select: { id: true, type: true, summary: true, detail: true, createdAt: true }, orderBy: { createdAt: 'desc' as const }, take: 50 },
   // The current quotation (never one replaced by a revision) — it decides the next step (lib/venue/quotation.ts).
-  quotations: { where: { status: { not: 'SUPERSEDED' as const } }, select: { status: true, validUntil: true, changesRequestedAt: true, booking: { select: { status: true } } }, orderBy: { createdAt: 'desc' as const }, take: 1 },
+  quotations: { where: { status: { not: 'SUPERSEDED' as const } }, select: { status: true, validUntil: true, changesRequestedAt: true, booking: { select: { status: true } }, _count: { select: { paymentSubmissions: { where: { status: 'PENDING' as const } } } } }, orderBy: { createdAt: 'desc' as const }, take: 1 },
 };
 
 type Row = {
   id: string; name: string; phone: string; weddingDate: string; guestCount: number; channel: string | null; message: string | null; pipelineStage: string; createdAt: Date; platformMatch: string | null;
   tasks: { id: string; title: string; dueAt: Date | null; status: string }[];
   activities: { id: string; type: string; summary: string; detail: string | null; createdAt: Date }[];
-  quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null; booking?: { status: string } | null }[];
+  quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null; booking?: { status: string } | null; _count?: { paymentSubmissions: number } }[];
 };
 
-function view(r: Row, now: Date): VenueEnquiryDetail {
+function view(r: Row, now: Date, seesMoney: boolean): VenueEnquiryDetail {
   const followUps: FollowUp[] = r.tasks.map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt?.toISOString() ?? null, done: t.status === 'DONE' }));
   const contacted = r.activities.some((a) => (CONTACT_TYPES as readonly string[]).includes(a.type));
   const q = r.quotations?.[0];
@@ -80,7 +80,7 @@ function view(r: Row, now: Date): VenueEnquiryDetail {
     viaShaadiShopping: r.platformMatch !== null,
     // "Won" with a confirmed booking is the booked customer (the wedding was created — the stage moves to Won with it), never
     // "not going ahead": only a lost enquiry, or one won some other way with no booking here, is closed.
-    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || (r.pipelineStage === 'WON' && q?.booking?.status !== 'CONFIRMED'), followUps, quote, booked: q?.booking?.status === 'CONFIRMED' }, now),
+    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || (r.pipelineStage === 'WON' && q?.booking?.status !== 'CONFIRMED'), followUps, quote, booked: q?.booking?.status === 'CONFIRMED', paymentToCheck: seesMoney && (q?._count?.paymentSubmissions ?? 0) > 0 }, now),
     createdAt: r.createdAt.toISOString(),
     need: r.message,
     followUps,
@@ -117,17 +117,20 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
     // "Your Enquiries": what needs doing first at the top (late follow-ups, people nobody has called yet, today's follow-ups).
     async list(): Promise<VenueEnquiryListItem[]> {
       const now = deps.now();
+      // "Says they have paid" is a money matter: only a member who may see money is told (the others cannot act on it).
+      const seesMoney = can(effectiveScope(), 'view_financials');
       const rows = (await deps.db.consultation.findMany({ include, orderBy: { createdAt: 'desc' }, take: 300 })) as Row[];
       return rows
-        .map((r) => view(r, now))
+        .map((r) => view(r, now, seesMoney))
         .sort((a, b) => ACTION_ORDER.indexOf(a.next.kind) - ACTION_ORDER.indexOf(b.next.kind))
         .map(({ need: _need, followUps: _f, history: _h, ...item }) => item);
     },
 
     // The history leaves out what has been paid and invoiced for a member who may not see money (a manager, by default).
     async get(id: string): Promise<VenueEnquiryDetail> {
-      const detail = view(await load(id), deps.now());
-      return { ...detail, history: historyFor(detail.history, can(effectiveScope(), 'view_financials')) };
+      const seesMoney = can(effectiveScope(), 'view_financials');
+      const detail = view(await load(id), deps.now(), seesMoney);
+      return { ...detail, history: historyFor(detail.history, seesMoney) };
     },
 
     // "+ New Enquiry" — the record is created in the venue's business by the guard.

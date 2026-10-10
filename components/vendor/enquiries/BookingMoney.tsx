@@ -5,7 +5,7 @@ import { MessageCircle } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import { whatsappTo } from '@/lib/venue/enquiry';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABEL, paymentRequestMessage, type PaymentMethod } from '@/lib/venue/payment';
-import type { VenueBookingMoney, VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
+import type { VenueBookingMoney, VenueClaim, VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
 
 // The money on a venue's own booking (Phase C): what has been received, what still confirms the booking, and "record a payment".
 // The venue records what arrived — cash, UPI, bank transfer or cheque; nothing is charged from here. A part payment holds the
@@ -21,6 +21,46 @@ const dayWords = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numer
 // One key per open form: sending the same form twice (double tap, retry) records the payment once.
 const newKey = () => `venue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
+// "I have paid" from the couple's link. Nothing is counted until the business has seen the money in its own account and says so.
+function Claims({ claims, first, busy, onClaim }: { claims: VenueClaim[]; first: string; busy: boolean; onClaim: (claimId: string, body: { received: boolean; reason?: string }) => Promise<boolean> }) {
+  const [refusing, setRefusing] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
+  const waiting = claims.filter((c) => c.status === 'PENDING');
+  const refused = claims.filter((c) => c.status === 'REJECTED');
+  return (
+    <section aria-label="Payments to check" className="space-y-2">
+      {waiting.map((c) => (
+        <div key={c.id} className="space-y-3 rounded-lg border border-[var(--color-warning-text)] bg-[var(--color-warning-bg)] p-3 text-sm">
+          <p className="font-semibold text-[var(--color-text-primary)]">{first} says they paid {inr(c.amount)} by UPI</p>
+          <p className="text-[var(--color-text-secondary)]">
+            UPI reference (UTR) <span className="font-mono text-[var(--color-text-primary)]">{c.utr}</span> · {c.paidOn ? `paid ${dayWords(c.paidOn)}` : `sent ${dayWords(c.sentAt)}`}
+          </p>
+          {c.note && <p className="text-[var(--color-text-secondary)]">“{c.note}”</p>}
+          {c.proofUrl && <a href={c.proofUrl} target="_blank" rel="noopener noreferrer" className="inline-block font-semibold text-[var(--primary)] underline">See their screenshot</a>}
+          <p className="text-xs text-[var(--color-text-muted)]">Look for this money in your bank or UPI app first. It is not counted until you say you received it.</p>
+          {refusing === c.id ? (
+            <>
+              <Input label={`What should ${first} know?`} value={reason} onChange={(ev) => setReason(ev.target.value)} helperText={`${first} will read this on their link`} placeholder="e.g. We cannot find this reference" className="min-h-12 text-base" />
+              <button type="button" disabled={busy || reason.trim().length < 3} onClick={async () => { if (await onClaim(c.id, { received: false, reason })) { setRefusing(null); setReason(''); } }} className={primary}>{busy ? 'Saving…' : `Tell ${first} it was not received`}</button>
+              <button type="button" disabled={busy} onClick={() => setRefusing(null)} className={secondary}>Back</button>
+            </>
+          ) : (
+            <>
+              <button type="button" disabled={busy} onClick={() => onClaim(c.id, { received: true })} className={primary}>{busy ? 'Saving…' : `Yes, I received ${inr(c.amount)}`}</button>
+              <button type="button" disabled={busy} onClick={() => { setReason(''); setRefusing(c.id); }} className={secondary}>Not received</button>
+            </>
+          )}
+        </div>
+      ))}
+      {refused.map((c) => (
+        <p key={c.id} className="text-xs text-[var(--color-text-muted)]">
+          {inr(c.amount)} · UTR {c.utr} — you marked it as not received{c.rejectReason && <>: {c.rejectReason}</>}
+        </p>
+      ))}
+    </section>
+  );
+}
+
 export default function BookingMoney({
   q,
   money,
@@ -28,6 +68,7 @@ export default function BookingMoney({
   busy,
   errors,
   onPay,
+  onClaim,
 }: {
   q: VenueQuotationView;
   money: VenueBookingMoney;
@@ -35,6 +76,7 @@ export default function BookingMoney({
   busy: boolean;
   errors: Record<string, string>;
   onPay: (body: Record<string, string>) => Promise<boolean>;
+  onClaim: (claimId: string, body: { received: boolean; reason?: string }) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState('');
@@ -77,6 +119,8 @@ export default function BookingMoney({
       </dl>
       {!money.confirmed && money.received === 0 && <p className="text-xs text-[var(--color-text-muted)]">A smaller payment holds the date for {money.holdWindowDays} days.</p>}
       {money.holdOver && <p className="text-xs text-[var(--color-text-muted)]">The {money.holdWindowDays} days are over and the booking is not confirmed. Speak to {first} — you decide whether to keep holding the date.</p>}
+
+      {money.claims.length > 0 && <Claims claims={money.claims} first={first} busy={busy} onClaim={onClaim} />}
 
       {money.payments.length > 0 && (
         <ul className="space-y-1 border-t border-[var(--color-border-subtle)] pt-3 text-sm">

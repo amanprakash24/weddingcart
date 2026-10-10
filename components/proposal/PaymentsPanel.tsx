@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import type { ProposalPayments, CustomerReceipt } from '@/lib/payments/customerPayment';
 import { upiLink } from '@/lib/payments/upi';
-import { SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 
 // Roadmap 1.3 (docs/wedding-os/08-quotation.md §20) — the couple's Payments view on the proposal link: where they stand (total → paid →
 // pending → due date), pay by UPI (QR, or the UPI app on a phone), "I have paid" with the UTR, and their receipts.
 // Everything comes from the server's allow-list (toProposalPayments). A claim is only ever shown as "being checked" — what counts as
 // paid is what staff have verified.
+// `from` is who the couple is paying and who checks it: Shaadi Shopping on its own quotations, the business itself on its own.
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const formatDate = (iso: string | null) =>
@@ -56,13 +56,16 @@ export default function PaymentsPanel({
   coupleName,
   weddingDate,
   initial,
+  from,
 }: {
   token: string;
   number: string;
   coupleName: string | null;
   weddingDate: string | null;
   initial: ProposalPayments;
+  from: { name: string; phone: string | null };
 }) {
+  const callThem = from.phone ? `call ${from.phone}` : `contact ${from.name}`;
   const [m, setM] = useState(initial);
   const [amount, setAmount] = useState(String(initial.payNow));
   const [utr, setUtr] = useState('');
@@ -260,10 +263,10 @@ export default function PaymentsPanel({
                     {error}
                   </p>
                 )}
-                <p className="text-xs text-[#9A8676]">Your screenshot is only seen by the Shaadi Shopping team.</p>
+                <p className="text-xs text-[#9A8676]">Your screenshot is only seen by the {from.name} team.</p>
               </form>
             ) : (
-              <p className="text-sm text-[#5A4A40]">We are still checking the payments you sent. Please wait for us, or call {SHAADI_PHONE_DISPLAY}.</p>
+              <p className="text-sm text-[#5A4A40]">We are still checking the payments you sent. Please wait for us, or {callThem}.</p>
             )}
           </section>
         )}
@@ -279,7 +282,7 @@ export default function PaymentsPanel({
                   </p>
                   <p className="text-xs opacity-80">
                     Sent {formatDate(s.submittedAt)}
-                    {s.rejectReason && <> — {s.rejectReason}. Please check the UTR and send it again, or call {SHAADI_PHONE_DISPLAY}.</>}
+                    {s.rejectReason && <> — {s.rejectReason}. Please check the UTR and send it again, or {callThem}.</>}
                   </p>
                 </li>
               ))}
@@ -314,7 +317,7 @@ export default function PaymentsPanel({
         </section>
 
         {!m.upi && m.outstanding > 0 && (
-          <p className="rounded-2xl border border-[#E8DCC8] bg-white p-4 text-sm text-[#5A4A40]">To pay, please call us on {SHAADI_PHONE_DISPLAY} — our team will share the payment details.</p>
+          <p className="rounded-2xl border border-[#E8DCC8] bg-white p-4 text-sm text-[#5A4A40]">To pay, please {callThem} — our team will share the payment details.</p>
         )}
       </div>
 
@@ -322,7 +325,7 @@ export default function PaymentsPanel({
       {printing && (
         <section aria-label="Payment receipt" className="hidden text-[#2A1F1B] print:block">
           <p className="text-2xl" style={serif}>
-            Shaadi Shopping — Payment receipt
+            {from.name} — Payment receipt
           </p>
           <p className="mt-1 text-sm">Receipt {printing.number}</p>
           <dl className="mt-6 grid max-w-md grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
@@ -348,7 +351,7 @@ export default function PaymentsPanel({
             <dt>Agreed total</dt>
             <dd>{rupees(m.total)}</dd>
           </dl>
-          <p className="mt-8 text-xs">Shaadi Shopping · {SHAADI_PHONE_DISPLAY} · This receipt was generated from our records.</p>
+          <p className="mt-8 text-xs">{from.name}{from.phone && <> · {from.phone}</>} · This receipt was generated from our records.</p>
         </section>
       )}
     </div>

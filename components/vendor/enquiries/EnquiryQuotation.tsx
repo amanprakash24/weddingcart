@@ -355,7 +355,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
             {q.moneyHidden ? (
               <p className="text-sm text-[var(--color-text-secondary)]">The booking is made. Payments for it are kept by the owner of the business.</p>
             ) : q.booking ? (
-              <BookingMoney q={q} money={q.booking} state={state} busy={busy} errors={errors} onPay={async (body) => (await call('/payments', body)) !== null} />
+              <BookingMoney q={q} money={q.booking} state={state} busy={busy} errors={errors} onPay={async (body) => (await call('/payments', body)) !== null} onClaim={async (claimId, body) => (await call(`/claims/${claimId}`, body)) !== null} />
             ) : (
               <>
                 {!state.customer.weddingDate && <Input label="Wedding date" type="date" min={istDay()} value={weddingDate} onChange={(ev) => setWeddingDate(ev.target.value)} helperText="Needed to make the booking" className="min-h-12 text-base" />}

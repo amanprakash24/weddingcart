@@ -88,6 +88,10 @@ const offeringFindMany = mock(async (_args: { where: { businessId: string } }) =
   { ...item, id: 'o3', kind: 'PACKAGE', function: null, name: 'Veg plate (our price)', price: 950, perPlate: true, sourcePackageId: 'p2' },
 ]);
 
+// The couple's "I have paid" claims on the quotation (services/paymentSubmission.service.ts).
+let claimRows: Record<string, unknown>[] = [];
+const claimVerify = mock(async (..._a: unknown[]) => ({}));
+const claimReject = mock(async (..._a: unknown[]) => ({ rejected: true }));
 const service = createVenueQuotationService({
   db: {
     consultation: { findUnique: mock(async ({ where }: { where: { id: string } }) => enquiries[where.id] ?? null) as never, update: consultationUpdate as never },
@@ -100,6 +104,7 @@ const service = createVenueQuotationService({
   recordPayment: recordPayment as never,
   confirmBooking,
   createWedding,
+  claims: { listForQuotation: (async () => claimRows) as never, verify: claimVerify as never, reject: claimReject as never },
   quotations: { listForSource: mock(async () => quotes) as never, create: create as never, update: update as never, send: send as never, revise: revise as never, issueCustomerLink: issueCustomerLink as never, createBooking: createBooking as never },
   business: (async () => business) as never,
   now: () => NOW,
@@ -109,7 +114,8 @@ const good = { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '20
 const outcome = (p: Promise<unknown>) => p.then(() => null, (e: Error) => e);
 
 beforeEach(() => {
-  for (const m of [consultationUpdate, create, update, send, issueCustomerLink, revise, createBooking, recordPayment, confirmBooking, createWedding]) m.mockClear();
+  for (const m of [consultationUpdate, create, update, send, issueCustomerLink, revise, createBooking, recordPayment, confirmBooking, createWedding, claimVerify, claimReject]) m.mockClear();
+  claimRows = [];
   payments = [];
   bookingStatus = 'NEW';
   confirmFails = false;
@@ -389,6 +395,37 @@ describe('a venue’s own quotation', () => {
     await acceptedAndBooked();
     await service.pay('e1', { amount: '20000', method: 'CASH', paidOn: '2026-09-20' }, 'u1');
     expect((await service.get('e1')).quotation?.booking).toMatchObject({ confirmed: false, holdOver: true, stateLabel: 'Date held — hold period over' });
+  });
+
+  test('"I have paid" from the couple’s link: shown to check, found or not found — and only to a member who may see money', async () => {
+    await acceptedAndBooked();
+    const claim = { id: 'c1', amount: 60000, method: 'UPI', utr: '412345678901', paidOn: NOW.toISOString(), note: null, proofUrl: 'https://signed.example/proof', proofIsPdf: false, rejectReason: null, reviewedAt: null, reviewedByName: null, receiptId: null, submittedAt: NOW.toISOString() };
+    claimRows = [{ ...claim, status: 'PENDING' }, { ...claim, id: 'c2', status: 'VERIFIED' }, { ...claim, id: 'c3', status: 'REJECTED', rejectReason: 'Not in our account' }];
+    // A claim that was found is a payment; only those to check and those not found are listed.
+    expect((await service.get('e1')).quotation?.booking?.claims).toEqual([
+      { id: 'c1', amount: 60000, utr: '412345678901', paidOn: NOW.toISOString(), note: null, proofUrl: 'https://signed.example/proof', status: 'PENDING', rejectReason: null, sentAt: NOW.toISOString() },
+      { id: 'c3', amount: 60000, utr: '412345678901', paidOn: NOW.toISOString(), note: null, proofUrl: 'https://signed.example/proof', status: 'REJECTED', rejectReason: 'Not in our account', sentAt: NOW.toISOString() },
+    ]);
+
+    await service.checkClaim('e1', 'c1', { received: true }, 'u1');
+    expect(claimVerify).toHaveBeenCalledWith('q1', 'c1', {}, 'u1');
+    expect(claimReject).not.toHaveBeenCalled();
+    await service.checkClaim('e1', 'c1', { received: false, reason: 'Not in our account' }, 'u1');
+    expect(claimReject).toHaveBeenCalledWith('q1', 'c1', 'Not in our account', 'u1');
+    // Anything but an explicit "received" is never counted as money.
+    await service.checkClaim('e1', 'c1', { received: 'true' }, 'u1');
+    expect(claimVerify).toHaveBeenCalledTimes(1);
+
+    const { runInScope } = await import('@/lib/ownership/scope');
+    const { effectivePermissions } = await import('@/lib/auth/permissions');
+    const manager = await runInScope({ kind: 'BUSINESS', businessId: 'venue-1', role: 'MANAGER', permissions: effectivePermissions({ role: 'MANAGER', grants: [] }), userId: 'u1' }, () => service.get('e1'));
+    expect(JSON.stringify(manager)).not.toContain('412345678901');
+  });
+
+  test('a claim cannot be checked before the couple has accepted', async () => {
+    await service.save('e1', good, 'u1');
+    expect((await outcome(service.checkClaim('e1', 'c1', { received: true }, 'u1')))?.name).toBe('ConflictError');
+    expect(claimVerify).not.toHaveBeenCalled();
   });
 
   test('where to pay comes from Settings, and only when it is set', async () => {

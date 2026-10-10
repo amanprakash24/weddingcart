@@ -56,7 +56,7 @@ describe('what to do next — one action', () => {
   });
 
   test('the couple’s answer first, then late, then people nobody has called, then today', () => {
-    expect(ACTION_ORDER.slice(0, 5)).toEqual(['QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY']);
+    expect(ACTION_ORDER.slice(0, 6)).toEqual(['PAYMENT_TO_CHECK', 'QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY']);
     expect(ACTION_ORDER.indexOf('QUOTE_DRAFT')).toBeLessThan(ACTION_ORDER.indexOf('QUOTE_WAITING'));
     expect(ACTION_ORDER.slice(-2)).toEqual(['BOOKED', 'CLOSED']);
   });
@@ -70,6 +70,10 @@ describe('what to do next — one action', () => {
   test('accepted and the amount to confirm received: the booking is confirmed', () => {
     expect(nextAction({ ...base, quote: 'ACCEPTED', booked: true }, NOW)).toEqual({ kind: 'BOOKED', label: 'Booking confirmed for Rahul' });
     expect(nextAction({ ...base, quote: 'ACCEPTED', booked: false }, NOW).kind).toBe('QUOTE_ACCEPTED');
+    // The couple said "I have paid" on their link: that comes first, booked or not — and never on a closed enquiry.
+    expect(nextAction({ ...base, quote: 'ACCEPTED', booked: false, paymentToCheck: true }, NOW)).toEqual({ kind: 'PAYMENT_TO_CHECK', label: 'Rahul says they have paid — check and confirm it' });
+    expect(nextAction({ ...base, quote: 'ACCEPTED', booked: true, paymentToCheck: true }, NOW).kind).toBe('PAYMENT_TO_CHECK');
+    expect(nextAction({ ...base, closed: true, quote: 'ACCEPTED', paymentToCheck: true }, NOW).kind).toBe('CLOSED');
     expect(nextAction({ ...base, quote: 'SENT', booked: true }, NOW).kind).toBe('QUOTE_WAITING'); // never without an accepted quotation
   });
 
@@ -94,6 +98,7 @@ describe('historyFor — what has been paid is not for everyone', () => {
   const history = [
     { type: 'PAYMENT_RECEIVED', summary: 'Payment recorded: ₹20,000 by UPI' },
     { type: 'INVOICE_CREATED', summary: 'Booking confirmation invoice created' },
+    { type: 'PAYMENT_SUBMITTED', summary: 'The couple says they paid ₹30,000 by UPI' },
     { type: 'QUOTATION_SENT', summary: 'Quotation sent' },
     { type: 'CALL', summary: 'Called' },
   ];

@@ -14,6 +14,7 @@ import { quotationService, type QuotationView } from '@/services/quotation.servi
 import { loadAgreementMoney, recordAgreementPayment } from '@/services/agreement.service';
 import { bookingService } from '@/services/booking.service';
 import { convertBookingToWedding } from '@/services/weddingConversion.service';
+import { paymentSubmissionService } from '@/services/paymentSubmission.service';
 
 // A venue's OWN quotation for one of its own enquiries (Phase C). A thin adapter: every rule that matters — one open quotation
 // per enquiry, a sent quotation is never edited, revisions, expiry, the couple's link, acceptance, the booking and its agreement —
@@ -76,6 +77,21 @@ export interface VenueBookingMoney {
   payments: { id: string; amount: number; method: string; reference: string | null; paidAt: string }[];
   // The invoices of this booking, each with its own tax line: taxable + gst = total. gst is 0 (and gstin null) with no GST charged.
   invoices: { number: string; kind: 'ADVANCE' | 'BALANCE' | 'OTHER'; taxable: number; gst: number; total: number; paid: number; gstin: string | null }[];
+  // "I have paid" from the couple's link — claims, never money, until the business finds the money and says so. Those still to
+  // check and those it could not find (one it found is a payment above).
+  claims: VenueClaim[];
+}
+
+export interface VenueClaim {
+  id: string;
+  amount: number;
+  utr: string;
+  paidOn: string | null;
+  note: string | null;
+  proofUrl: string | null; // the couple's screenshot — a private link that works for a few minutes
+  status: 'PENDING' | 'REJECTED';
+  rejectReason: string | null;
+  sentAt: string;
 }
 
 export interface VenueQuotationState {
@@ -113,6 +129,9 @@ export interface VenueQuotationDeps {
   // often it is called, only for a confirmed booking whose amount to confirm was received. Inside the venue's scope the wedding and
   // everything in it belong to the venue's business.
   createWedding: (bookingId: string) => Promise<{ id: string }>;
+  // The couple's "I have paid" claims, unchanged (services/paymentSubmission.service.ts). Finding one records the payment through
+  // the same Money v1 path as `pay` — the same rule, hold, confirmation and wedding — once per claim however often it is pressed.
+  claims: Pick<typeof paymentSubmissionService, 'listForQuotation' | 'verify' | 'reject'>;
   now: () => Date;
 }
 
@@ -124,6 +143,7 @@ const defaultDeps = (): VenueQuotationDeps => ({
   recordPayment: recordAgreementPayment,
   confirmBooking: (bookingId) => bookingService.update(bookingId, { status: 'CONFIRMED' }),
   createWedding: convertBookingToWedding,
+  claims: paymentSubmissionService,
   now: () => new Date(),
 });
 
@@ -164,6 +184,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
     const wedding = agreement?.weddingId ? await deps.db.wedding.findUnique({ where: { id: agreement.weddingId }, select: { id: true, weddingNumber: true } }) : null;
     // The per-line figures are worked out again from the stored lines — the same arithmetic that produced the stored totals.
     const gst = gstTotals(q.items, q.discount);
+    const claims = agreement && seesMoney ? (await deps.claims.listForQuotation(q.id)).filter((c) => c.status !== 'VERIFIED') : [];
     return {
       id: q.id,
       number: q.quotationNumber,
@@ -200,6 +221,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
             holdOver: agreement.overdue && !agreement.bookingConfirmed,
             payments: agreement.payments.map((p) => ({ id: p.id, amount: p.amount, method: p.method, reference: p.reference, paidAt: p.paidAt })),
             invoices: agreement.invoices.map((i) => ({ number: i.invoiceNumber, kind: i.kind, taxable: i.taxable, gst: i.gst, total: i.total, paid: i.paid, gstin: i.sellerGstin })),
+            claims: claims.map((c) => ({ id: c.id, amount: c.amount, utr: c.utr, paidOn: c.paidOn, note: c.note, proofUrl: c.proofUrl, status: c.status as 'PENDING' | 'REJECTED', rejectReason: c.rejectReason, sentAt: c.submittedAt })),
           }
         : null,
     };
@@ -342,6 +364,17 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
           console.error(`venue payment: wedding for ${q.quotationNumber} not created —`, err instanceof Error ? err.message : err);
         }
       }
+      return state(enquiryId);
+    },
+
+    // The couple said "I have paid" on their link. received: true = the business found the money — the payment is recorded (as in
+    // `pay`: the booking confirms itself and becomes a wedding once the amount to confirm is in). Otherwise the claim is marked as
+    // not found, with the reason the couple will read on their link. Another business's claim is "not found".
+    async checkClaim(enquiryId: string, claimId: string, input: { received?: unknown; reason?: unknown }, actorId: string | null): Promise<VenueQuotationState> {
+      const q = await requireCurrent(enquiryId, 'check a payment for');
+      if (q.status !== 'ACCEPTED') throw new ConflictError('The couple has not accepted this quotation yet');
+      if (input.received === true) await deps.claims.verify(q.id, claimId, {}, actorId);
+      else await deps.claims.reject(q.id, claimId, input.reason, actorId);
       return state(enquiryId);
     },
 

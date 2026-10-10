@@ -69,6 +69,7 @@ export interface FollowUp {
 }
 
 export type NextAction =
+  | { kind: 'PAYMENT_TO_CHECK'; label: string } // the couple said "I have paid" on their link — look in the bank, then say so
   | { kind: 'CALL'; label: string } // nobody has spoken to them yet
   | { kind: 'FOLLOW_UP_OVERDUE'; label: string; followUpId: string }
   | { kind: 'FOLLOW_UP_TODAY'; label: string; followUpId: string }
@@ -89,9 +90,10 @@ const firstName = (name: string) => name.split(' ')[0];
 // One primary action per enquiry (audit brief §13): the earliest open follow-up decides; with none, call them if nobody has yet,
 // otherwise plan the next step. A quotation changes it: the couple's answer (yes / changes) comes before everything; a draft waits
 // to be sent and a sent one waits for the couple — but a follow-up that is due is still shown first.
-export function nextAction(e: { name: string; contacted: boolean; closed: boolean; followUps: FollowUp[]; quote?: QuoteStage | null; booked?: boolean }, now: Date = new Date()): NextAction {
+export function nextAction(e: { name: string; contacted: boolean; closed: boolean; followUps: FollowUp[]; quote?: QuoteStage | null; booked?: boolean; paymentToCheck?: boolean }, now: Date = new Date()): NextAction {
   const who = firstName(e.name);
   if (e.closed) return { kind: 'CLOSED', label: 'Closed' };
+  if (e.quote === 'ACCEPTED' && e.paymentToCheck) return { kind: 'PAYMENT_TO_CHECK', label: `${who} says they have paid — check and confirm it` };
   if (e.quote === 'ACCEPTED' && e.booked) return { kind: 'BOOKED', label: `Booking confirmed for ${who}` };
   if (e.quote === 'ACCEPTED') return { kind: 'QUOTE_ACCEPTED', label: `${who} accepted your quotation` };
   if (e.quote === 'CHANGES') return { kind: 'QUOTE_CHANGES', label: `${who} asked for changes to the quotation` };
@@ -111,7 +113,7 @@ export function nextAction(e: { name: string; contacted: boolean; closed: boolea
 }
 
 // "Today's Work" order: the couple's answer first, then what is late, then today, then the rest.
-export const ACTION_ORDER: NextAction['kind'][] = ['QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY', 'QUOTE_DRAFT', 'SCHEDULE', 'QUOTE_WAITING', 'FOLLOW_UP_LATER', 'BOOKED', 'CLOSED'];
+export const ACTION_ORDER: NextAction['kind'][] = ['PAYMENT_TO_CHECK', 'QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY', 'QUOTE_DRAFT', 'SCHEDULE', 'QUOTE_WAITING', 'FOLLOW_UP_LATER', 'BOOKED', 'CLOSED'];
 
 // Opens a chat with the venue's OWN customer, from the venue's own tool. (Public marketplace pages are different: there every
 // contact link must be Shaadi Shopping's number, never a venue's.)
@@ -119,7 +121,7 @@ export const whatsappTo = (phone: string, text: string) => `https://wa.me/91${ph
 
 // History lines that say what has been paid or invoiced. A member without `view_financials` (a manager, by default) does not get
 // them from the server — the same rule as the payments on the quotation (services/venueQuotation.service.ts `moneyHidden`).
-export const MONEY_HISTORY_TYPES: readonly string[] = ['PAYMENT_RECEIVED', 'INVOICE_CREATED'];
+export const MONEY_HISTORY_TYPES: readonly string[] = ['PAYMENT_RECEIVED', 'INVOICE_CREATED', 'PAYMENT_SUBMITTED', 'PAYMENT_SUBMISSION_REJECTED'];
 
 export function historyFor<T extends { type: string }>(history: T[], seesMoney: boolean): T[] {
   return seesMoney ? history : history.filter((h) => !MONEY_HISTORY_TYPES.includes(h.type));
