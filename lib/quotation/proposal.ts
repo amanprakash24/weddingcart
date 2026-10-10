@@ -1,6 +1,7 @@
 // Wedding Proposal — the couple-facing presentation of a Quotation (docs/wedding-os/08-quotation.md §15).
 // Pure: no database. The proposal is NOT a separate model; everything here is derived from the quotation.
 import { createHash, randomBytes } from 'node:crypto';
+import type { CoupleBooking } from '@/lib/quotation/coupleBooking';
 import type { QuotationStatus } from '@/generated/prisma/enums';
 import { ValidationError } from '@/lib/errors';
 import type { BookingSource } from '@/lib/quotation/booking';
@@ -200,6 +201,9 @@ export interface CustomerProposal {
   // "Add an event": what the venue offers, function by function — only on a venue's own OPEN proposal, otherwise empty.
   // `id` is the row in the venue's own price list; it only says which ones the couple ticked.
   addable: { function: FunctionType; label: string; items: { id: string; name: string; price: string }[] }[];
+  // A business's OWN quotation, once its booking is made: where the booking stands, the money, and the wedding it became
+  // (lib/quotation/coupleBooking.ts). null on Shaadi Shopping's links (they have `payments`) and before the booking exists.
+  yourBooking: CoupleBooking | null;
 }
 
 export function toAddable(offerings: Offering[]): CustomerProposal['addable'] {
@@ -318,5 +322,6 @@ export function toCustomerProposal(
     reviews: null, // added by proposal.service once the wedding is completed
     brand: { name: 'Shaadi Shopping', phone: null, isPlatform: true }, // proposal.service sets the owning business's
     addable: [], // proposal.service fills it for a venue's own open proposal
+    yourBooking: null, // proposal.service fills it for a business's own accepted proposal, once the booking is made
   };
 }
