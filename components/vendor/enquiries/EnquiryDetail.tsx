@@ -67,7 +67,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
 
   return (
     <div className="space-y-4">
-      <Link href="/vendor/enquiries" className="inline-flex items-center gap-1 text-sm text-[var(--color-text-muted)]">
+      <Link href="/vendor/enquiries" className="inline-flex min-h-11 items-center gap-1 text-sm text-[var(--color-text-muted)]">
         <ArrowLeft className="h-4 w-4" aria-hidden /> Your Enquiries
       </Link>
       {justAdded && <p role="status" className="rounded-lg bg-[var(--color-success-bg)] p-3 text-sm text-[var(--color-success-text)]">Enquiry saved.</p>}
@@ -173,7 +173,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
       </section>
 
       {!closed && (
-        <button type="button" onClick={() => setPanel(panel === 'close' ? 'none' : 'close')} className="text-sm text-[var(--color-text-muted)] underline underline-offset-2">
+        <button type="button" onClick={() => setPanel(panel === 'close' ? 'none' : 'close')} className="min-h-11 text-sm text-[var(--color-text-muted)] underline underline-offset-2">
           Not going ahead?
         </button>
       )}
