@@ -115,11 +115,11 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       <div className="min-h-screen bg-[#FFFAF5]">
         <div className="flex h-12 items-center justify-end gap-5 bg-[#1E0510] px-5">
           {ws?.several && (
-            <a href="/workspace" className="flex items-center gap-1.5 text-xs font-medium text-[#E9D9C3]/80 hover:text-white">
+            <a href="/workspace" className="flex h-12 items-center gap-1.5 text-xs font-medium text-[#E9D9C3]/80 hover:text-white">
               <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Switch business
             </a>
           )}
-          <button type="button" onClick={logout} className="flex items-center gap-1.5 text-xs font-medium text-[#E9D9C3]/80 hover:text-white">
+          <button type="button" onClick={logout} className="flex h-12 items-center gap-1.5 text-xs font-medium text-[#E9D9C3]/80 hover:text-white">
             <LogOut className="h-3.5 w-3.5" aria-hidden /> Log out
           </button>
         </div>

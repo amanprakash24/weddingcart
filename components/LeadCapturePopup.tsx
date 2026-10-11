@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { isProposalPath, isVendorOsPath } from '@/lib/proposalPath';
+import { isCouplePromptPath } from '@/lib/proposalPath';
 
 const STORAGE_KEY = 'ss_lead_dismissed_v2';
 const DISMISS_MS = 10 * 60 * 1000; // 10 minutes
@@ -25,8 +25,8 @@ export default function LeadCapturePopup() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Not for couples-only prompts: the admin, Vendor OS, the private proposal, and the Growth Partner sign-up page.
-    if (pathname.startsWith('/admin') || isVendorOsPath(pathname) || isProposalPath(pathname) || pathname.startsWith('/growth-partner')) return;
+    // A prompt for couples only (lib/proposalPath.ts): never on the admin, Vendor OS, a private proposal or a sign-up form.
+    if (!isCouplePromptPath(pathname)) return;
     const dismissed = localStorage.getItem(STORAGE_KEY);
     if (dismissed) {
       const until = Number(dismissed);
@@ -63,7 +63,8 @@ export default function LeadCapturePopup() {
     }
   };
 
-  if (!visible) return null;
+  // Also when it opened on another page and the person then went to one it does not belong on.
+  if (!visible || !isCouplePromptPath(pathname)) return null;
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center px-4" style={{ background: 'rgba(28,18,8,0.55)' }}>

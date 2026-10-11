@@ -123,6 +123,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             >
               <MoreHorizontal className="h-5 w-5 flex-shrink-0" />
               <span>More</span>
+              {/* "Vendor applications" lives inside More: closed, its count would be out of sight, so More carries it too. */}
+              {newApplications > 0 && !(moreOpen || inMore) && (
+                <span aria-label={`${newApplications} new vendor ${newApplications === 1 ? 'application' : 'applications'}`} className="rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold leading-none text-gray-900">
+                  {newApplications}
+                </span>
+              )}
               <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${moreOpen || inMore ? 'rotate-180' : ''}`} />
             </button>
             {(moreOpen || inMore) && <div className="mt-1 space-y-0.5 border-l border-gray-800 pl-2">{moreLinks(true)}</div>}
@@ -170,7 +176,14 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             aria-haspopup="dialog"
             className={`flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium ${inMore || ctx.tab === 'invoices' ? 'text-amber-300' : 'text-gray-400'}`}
           >
-            <MoreHorizontal className="h-5 w-5" />
+            <span className="relative">
+              <MoreHorizontal className="h-5 w-5" />
+              {newApplications > 0 && (
+                <span aria-label={`${newApplications} new vendor ${newApplications === 1 ? 'application' : 'applications'}`} className="absolute -right-3 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold leading-none text-gray-900">
+                  {newApplications > 9 ? '9+' : newApplications}
+                </span>
+              )}
+            </span>
             <span>More</span>
           </button>
         </div>
