@@ -189,4 +189,39 @@ Read-only. No test bookings, enquiries or logins on production without the owner
    risky work narrows that for planned changes only.
 5. **Backups older than 90 days do not exist.**
 6. **One person holds the passphrase and the dashboards.** There is no second person who could do §6 alone.
-7. **Nothing alerts anyone** when the nightly backup fails or the site is down, beyond GitHub's own failure e-mail.
+7. ~~Nothing alerts anyone when the site is down.~~ Added 11 Oct 2026 — see §9. Still true for the nightly backup: only
+   GitHub's own failure e-mail.
+8. **No error-reporting service.** When one person hits an error, the only trace is the server log in Vercel, found by the
+   reference number on their screen (§9). Nobody is told. Needs an account with a service such as Sentry.
+
+## 9. Finding out that the live site is broken — added 11 Oct 2026
+
+**The watcher** — `.github/workflows/watch-live.yml` runs `scripts/watch-live.mjs` every 15 minutes (GitHub may start it a
+few minutes late). Five signed-out requests to public addresses: the home page opens, the Vendor OS login page opens, the app is
+up (`/api/health`), the database can be reached (`/api/health/db` — one `SELECT 1`), and Vendor OS refuses a signed-out
+request with 401 (a 500 means its entry is broken, a 200 that it is open). Each is tried three times, 20 seconds apart, before it
+counts as failed. It uses no secrets, logs in nowhere, writes nothing, and never opens a couple's link.
+
+- **When it fails:** the run fails (GitHub e-mails whoever last changed the schedule, if their notifications are on) and an
+  issue **"Live site check failing"** is opened in the repository, or added to. Everyone watching the repository is told.
+- **When it passes again:** that issue is closed with the time.
+- **By hand:** `node scripts/watch-live.mjs` (or with another address: `node scripts/watch-live.mjs http://localhost:3001`),
+  or "Run workflow" on the Actions page.
+- **What it cannot see:** anything behind a login, one screen failing for one person, a slow site that still answers within 30
+  seconds, and an outage shorter than the gap between two runs. The repository is public, so the issue is too.
+
+**What a person sees when something fails**
+
+| What failed | What they see |
+|---|---|
+| The database cannot be reached when an admin / Vendor OS / customer screen is asked for | "We cannot open this just now", on the same address, 503, "Try again" reloads it (`proxy.ts` → `app/unavailable`). Before 11 Oct this was a bare error page. Nobody is let through, and nobody is sent to the login page as if logged out. |
+| A Vendor OS screen fails | "Something went wrong" inside Vendor OS, the menu still there (`app/vendor/error.tsx`) |
+| The couple's link fails to load | "Your proposal could not be opened just now" and "contact whoever sent you this link" — no number, because whose link it is could not be loaded (D8) (`app/proposal/[token]/error.tsx`) |
+| Any other screen | "Something went wrong" with Shaadi Shopping's WhatsApp (`app/error.tsx`); the site's own frame failing: `app/global-error.tsx` |
+
+Each shows a **reference**. The same number is in the server log (Vercel → the project → Logs) beside the real error.
+
+**Rehearsed 11 Oct 2026, on local staging, at phone width:** with the staging database stopped the watcher failed on "Database
+can be reached" only; a Vendor OS address showed the 503 screen; the couple's link showed its error screen; after the database
+was started again "Try again" brought the Vendor OS screen back. A Vendor OS page made to fail on purpose showed its error screen
+with the menu. **Not rehearsed:** the workflow itself opening and closing an issue (it first runs after the merge).

@@ -31,7 +31,17 @@ export async function proxy(req: NextRequest) {
 
   // Logged out on another device, or the user no longer exists → back to login (proxy runs on Node.js in Next 16,
   // so this one indexed lookup is fine). See lib/auth/sessionVersion.ts.
-  if (!(await isSessionCurrent(token.sub, token.sv))) {
+  // If that lookup itself fails (the database cannot be reached), nothing is let through — but the person is not sent to the
+  // login page either, as if they had been logged out, and not left with a bare error: they get a plain "not reachable just
+  // now" screen (app/unavailable), on the same address, with a 503.
+  let current: boolean;
+  try {
+    current = await isSessionCurrent(token.sub, token.sv);
+  } catch (err) {
+    console.error('[proxy] sign-in check could not be made —', err instanceof Error ? err.name : 'error');
+    return NextResponse.rewrite(new URL('/unavailable', req.url), { status: 503 });
+  }
+  if (!current) {
     return NextResponse.redirect(new URL(portal.loginPath, req.url));
   }
 

@@ -105,6 +105,7 @@ describe('every entry point states its business', () => {
   // Exempt with a reason: they never touch owned records.
   const EXEMPT_ROUTES: Record<string, string> = {
     'app/api/health/route.ts': 'returns a constant; no database',
+    'app/api/health/db/route.ts': 'one `SELECT 1` to see that the database answers — reads no table, so no owned record',
     'app/api/auth/[...nextauth]/route.ts': 'logins only (users, OTPs) — not owned records',
     'app/api/workspace/route.ts': 'the signed-in person’s own memberships only — not owned records; it is what CHOOSES the scope',
   };
