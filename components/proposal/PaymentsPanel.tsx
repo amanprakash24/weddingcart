@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import type { ProposalPayments, CustomerReceipt } from '@/lib/payments/customerPayment';
 import { upiLink } from '@/lib/payments/upi';
+import { couplePaidMessage } from '@/lib/payments/claimMessages';
 
 // Roadmap 1.3 (docs/wedding-os/08-quotation.md §20) — the couple's Payments view on the proposal link: where they stand (total → paid →
 // pending → due date), pay by UPI (QR, or the UPI app on a phone), "I have paid" with the UTR, and their receipts.
@@ -63,7 +64,8 @@ export default function PaymentsPanel({
   coupleName: string | null;
   weddingDate: string | null;
   initial: ProposalPayments;
-  from: { name: string; phone: string | null };
+  // whatsApp: on a business's own link with a number — the couple can tell the business there is a payment to check.
+  from: { name: string; phone: string | null; whatsApp?: ((message: string) => string) | null };
 }) {
   const callThem = from.phone ? `call ${from.phone}` : `contact ${from.name}`;
   const [m, setM] = useState(initial);
@@ -225,6 +227,7 @@ export default function PaymentsPanel({
             {sent && (
               <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900">
                 Thank you — we have your payment details. Our team will check it with the bank, and your receipt will appear here.
+                {from.whatsApp && <> To be quicker, tell us on WhatsApp — the button is under “Payments you sent” below.</>}
               </p>
             )}
             {m.canSubmit ? (
@@ -284,6 +287,16 @@ export default function PaymentsPanel({
                     Sent {formatDate(s.submittedAt)}
                     {s.rejectReason && <> — {s.rejectReason}. Please check the UTR and send it again, or {callThem}.</>}
                   </p>
+                  {s.status === 'PENDING' && from.whatsApp && (
+                    <a
+                      href={from.whatsApp(couplePaidMessage({ businessName: from.name, coupleName, number, amount: s.amount, utr: s.utr }))}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex min-h-[44px] items-center rounded-full bg-[#1F7A4D] px-5 text-sm font-semibold text-white"
+                    >
+                      Tell {from.name} on WhatsApp
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

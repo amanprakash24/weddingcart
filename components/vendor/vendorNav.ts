@@ -10,6 +10,9 @@ import { Briefcase, CalendarClock, Heart, Inbox, LayoutDashboard, type LucideIco
 // their entries below point at the routes they'll live at once built; until then they 404, the same way a
 // nav gets built ahead of its screens elsewhere in this codebase.
 
+// Sent on `window` by the enquiry screen when a couple's "I have paid" has been checked, so the mark on Enquiries updates at once.
+export const TO_CHECK_CHANGED = 'vendor-os:to-check-changed';
+
 export type NavItem = { key: string; label: string; href: string; icon: LucideIcon; isActive: (pathname: string) => boolean };
 
 export const PRIMARY: NavItem[] = [

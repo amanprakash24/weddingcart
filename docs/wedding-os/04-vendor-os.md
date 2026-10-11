@@ -500,8 +500,38 @@ shows the reason; found records one payment, confirms the booking and makes the 
 
 - Nobody checks that the UPI ID a business typed is really its own — the couple is told to check the name in their UPI app.
 - "It arrived, but a different amount": mark it not received with the reason, or record the payment by hand.
-- No message to the business when a claim arrives, and none to the couple when it is checked — both see it on their own page.
+- ~~No message to the business when a claim arrives, and none to the couple when it is checked.~~ See §18 for what was added
+  and what is still missing.
 - Card / net-banking payment and automatic matching with the bank.
+
+## 18. Telling the business about "I have paid", and the couple about the answer — built 11 Oct 2026
+
+§17 left both sides to find out by opening their own page. Nothing is sent by the app here — there is no approved WhatsApp
+template for it (see below) — so this adds what works without one:
+
+- **A mark on "Enquiries" in the menu**, on every Vendor OS screen: the number of claims waiting ("Enquiries — 1 payment to
+  check"). Only for a member who may see money. It is asked again on every screen change and the moment a claim is checked.
+- **The couple's link:** each claim still being checked has **"Tell <business> on WhatsApp"** — a ready message (amount,
+  quotation number, UTR, their name) to the business's own number, sent from the couple's own WhatsApp. Only on a business's own
+  link, and only when the business has a number (D8); Shaadi Shopping's own links are unchanged.
+- **The business's enquiry:** after "Yes, I received" a **"Tell <name> on WhatsApp"** button with a ready thank-you (and
+  "your booking is confirmed" when it is); beside a claim marked not received, the same with the reason.
+
+**How** — `GET /api/vendor-os/enquiries/to-check` (`venueEnquiryService.paymentsToCheck`, a count through the ownership guard);
+the mark in `components/vendor/VendorShell.tsx` (`TO_CHECK_CHANGED` in `vendorNav.ts`); the three message texts in
+`lib/payments/claimMessages.ts` (pure, browser-safe); the links in `components/proposal/PaymentsPanel.tsx` and
+`components/vendor/enquiries/BookingMoney.tsx`. No migration.
+
+**Tests** — `lib/payments/claimMessages.test.ts`; `tests-db/venue.payments.test.ts` (the count: 1 with a claim waiting, 0 for a
+manager without money permission and for another venue, 0 once every claim is checked).
+
+**Not built yet**
+
+- **A message the app sends by itself.** `lib/whatsapp.ts` can send through Shaadi Shopping's WhatsApp Business number, but
+  WhatsApp delivers a free-text message only to someone who wrote to that number in the last 24 hours; anything else needs a
+  message template approved by Meta (as the login OTP has). A "payment to check" template has to be created and approved first.
+- The mark only shows while Vendor OS is open; there is no notification on the phone.
+- The couple's message depends on the couple tapping the button.
 
 ## Data model gaps
 

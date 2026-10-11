@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import { whatsappTo } from '@/lib/venue/enquiry';
+import { TO_CHECK_CHANGED } from '@/components/vendor/vendorNav';
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABEL, paymentRequestMessage, type PaymentMethod } from '@/lib/venue/payment';
+import { claimNotReceivedMessage, claimReceivedMessage } from '@/lib/payments/claimMessages';
 import type { VenueBookingMoney, VenueClaim, VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
 
 // The money on a venue's own booking (Phase C): what has been received, what still confirms the booking, and "record a payment".
@@ -22,7 +24,7 @@ const dayWords = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numer
 const newKey = () => `venue-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 // "I have paid" from the couple's link. Nothing is counted until the business has seen the money in its own account and says so.
-function Claims({ claims, first, busy, onClaim }: { claims: VenueClaim[]; first: string; busy: boolean; onClaim: (claimId: string, body: { received: boolean; reason?: string }) => Promise<boolean> }) {
+function Claims({ claims, first, busy, onClaim, tell }: { claims: VenueClaim[]; first: string; busy: boolean; onClaim: (claim: VenueClaim, body: { received: boolean; reason?: string }) => Promise<boolean>; tell: (c: VenueClaim) => string }) {
   const [refusing, setRefusing] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const waiting = claims.filter((c) => c.status === 'PENDING');
@@ -41,12 +43,12 @@ function Claims({ claims, first, busy, onClaim }: { claims: VenueClaim[]; first:
           {refusing === c.id ? (
             <>
               <Input label={`What should ${first} know?`} value={reason} onChange={(ev) => setReason(ev.target.value)} helperText={`${first} will read this on their link`} placeholder="e.g. We cannot find this reference" className="min-h-12 text-base" />
-              <button type="button" disabled={busy || reason.trim().length < 3} onClick={async () => { if (await onClaim(c.id, { received: false, reason })) { setRefusing(null); setReason(''); } }} className={primary}>{busy ? 'Saving…' : `Tell ${first} it was not received`}</button>
+              <button type="button" disabled={busy || reason.trim().length < 3} onClick={async () => { if (await onClaim(c, { received: false, reason })) { setRefusing(null); setReason(''); } }} className={primary}>{busy ? 'Saving…' : `Tell ${first} it was not received`}</button>
               <button type="button" disabled={busy} onClick={() => setRefusing(null)} className={secondary}>Back</button>
             </>
           ) : (
             <>
-              <button type="button" disabled={busy} onClick={() => onClaim(c.id, { received: true })} className={primary}>{busy ? 'Saving…' : `Yes, I received ${inr(c.amount)}`}</button>
+              <button type="button" disabled={busy} onClick={() => onClaim(c, { received: true })} className={primary}>{busy ? 'Saving…' : `Yes, I received ${inr(c.amount)}`}</button>
               <button type="button" disabled={busy} onClick={() => { setReason(''); setRefusing(c.id); }} className={secondary}>Not received</button>
             </>
           )}
@@ -54,7 +56,8 @@ function Claims({ claims, first, busy, onClaim }: { claims: VenueClaim[]; first:
       ))}
       {refused.map((c) => (
         <p key={c.id} className="text-xs text-[var(--color-text-muted)]">
-          {inr(c.amount)} · UTR {c.utr} — you marked it as not received{c.rejectReason && <>: {c.rejectReason}</>}
+          {inr(c.amount)} · UTR {c.utr} — you marked it as not received{c.rejectReason && <>: {c.rejectReason}</>}.{' '}
+          <a href={tell(c)} target="_blank" rel="noopener noreferrer" className="font-semibold text-[var(--primary)] underline">Tell {first} on WhatsApp</a>
         </p>
       ))}
     </section>
@@ -84,6 +87,8 @@ export default function BookingMoney({
   const [reference, setReference] = useState('');
   const [paidOn, setPaidOn] = useState(istDay());
   const [key, setKey] = useState(newKey);
+  // The claim just marked as received: it is a payment now, so it is gone from the list — this keeps "tell them" on screen.
+  const [justReceived, setJustReceived] = useState<{ amount: number } | null>(null);
 
   const first = state.customer.name.split(' ')[0];
   const fullyPaid = money.outstanding === 0;
@@ -120,7 +125,35 @@ export default function BookingMoney({
       {!money.confirmed && money.received === 0 && <p className="text-xs text-[var(--color-text-muted)]">A smaller payment holds the date for {money.holdWindowDays} days.</p>}
       {money.holdOver && <p className="text-xs text-[var(--color-text-muted)]">The {money.holdWindowDays} days are over and the booking is not confirmed. Speak to {first} — you decide whether to keep holding the date.</p>}
 
-      {money.claims.length > 0 && <Claims claims={money.claims} first={first} busy={busy} onClaim={onClaim} />}
+      {money.claims.length > 0 && (
+        <Claims
+          claims={money.claims}
+          first={first}
+          busy={busy}
+          onClaim={async (c, body) => {
+            const ok = await onClaim(c.id, body);
+            if (ok) {
+              setJustReceived(body.received ? { amount: c.amount } : null);
+              window.dispatchEvent(new Event(TO_CHECK_CHANGED));
+            }
+            return ok;
+          }}
+          tell={(c) => whatsappTo(state.customer.phone, claimNotReceivedMessage({ customerName: state.customer.name, businessName: state.venueName, number: q.number, amount: c.amount, utr: c.utr, reason: c.rejectReason }))}
+        />
+      )}
+      {justReceived && (
+        <div role="status" className="space-y-2 rounded-lg bg-[var(--color-success-bg)] p-3 text-sm text-[var(--color-success-text)]">
+          <p className="font-semibold">{inr(justReceived.amount)} recorded as received.</p>
+          <a
+            href={whatsappTo(state.customer.phone, claimReceivedMessage({ customerName: state.customer.name, businessName: state.venueName, number: q.number, amount: justReceived.amount, confirmed: money.confirmed }))}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={secondary}
+          >
+            <MessageCircle className="h-5 w-5" aria-hidden /> Tell {first} on WhatsApp
+          </a>
+        </div>
+      )}
 
       {money.payments.length > 0 && (
         <ul className="space-y-1 border-t border-[var(--color-border-subtle)] pt-3 text-sm">

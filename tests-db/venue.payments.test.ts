@@ -362,6 +362,8 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     // The venue's list puts it first.
     expect((await inA(() => enquiries.get(claimEnquiry))).next).toEqual({ kind: 'PAYMENT_TO_CHECK', label: 'Anita says they have paid — check and confirm it' });
     expect((await inA(() => enquiries.list()))[0]).toMatchObject({ id: claimEnquiry, next: { kind: 'PAYMENT_TO_CHECK' } });
+    // … and the menu carries the count.
+    expect(await inA(() => enquiries.paymentsToCheck())).toBe(1);
     // The same reference is not taken twice.
     expect((await outcome(claimLink(() => proposalService.submitPayment(claimToken, { amount: '30000', utr: '412345678901' }, null))))?.name).toBe('ConflictError');
   });
@@ -372,6 +374,8 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     const asManager = await runInScope(manager, async () => ({ enquiry: await enquiries.get(claimEnquiry), quote: await quotes.get(claimEnquiry) }));
     expect(asManager.enquiry.next.kind).toBe('QUOTE_ACCEPTED');
     expect(JSON.stringify(asManager)).not.toContain('412345678901');
+    expect(await runInScope(manager, () => enquiries.paymentsToCheck())).toBe(0);
+    expect(await inB(() => enquiries.paymentsToCheck())).toBe(0);
     const claimId = (await claimMoney())!.claims[0].id;
     expect((await outcome(inB(() => quotes.checkClaim(claimEnquiry, claimId, { received: true }, users[1]))))?.name).toBe('NotFoundError');
     expect(await inB(() => app.prisma.paymentSubmission.count({ where: { quotationId: claimQuotation } }))).toBe(0);
@@ -403,6 +407,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect(await claimPayments()).toBe(1);
     expect((await claimMoney())?.received).toBe(30000);
     expect((await inA(() => enquiries.get(claimEnquiry))).next.kind).toBe('BOOKED');
+    expect(await inA(() => enquiries.paymentsToCheck())).toBe(0); // one found, one not found: nothing left to check
     // The couple's link: confirmed, with their receipt; and the venue's wedding carries their name.
     const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
     expect(view?.payments).toMatchObject({ bookingConfirmed: true, received: 30000, inReview: 0, outstanding: 70000, receipts: [{ amount: 30000, method: 'UPI', reference: null }] });
