@@ -811,7 +811,7 @@ export default function ProposalClient({
             <button
               type="button"
               onClick={() => open('proposal')}
-              className="text-sm font-medium text-[#8B1A4A] underline decoration-[#C5A46D] underline-offset-4 print:hidden"
+              className="min-h-11 text-sm font-medium text-[#8B1A4A] underline decoration-[#C5A46D] underline-offset-4 print:hidden"
             >
               ← Back to your proposal
             </button>

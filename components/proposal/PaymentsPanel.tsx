@@ -204,7 +204,7 @@ export default function PaymentsPanel({
                     <p className="font-semibold text-[#2A1F1B]">{m.upi.payee}</p>
                     <p className="flex flex-wrap items-center gap-2 font-mono text-sm">
                       {m.upi.vpa}
-                      <button type="button" onClick={copyUpi} className="rounded-full border border-[#E8DCC8] px-2.5 py-0.5 font-sans text-xs text-[#8B1A4A]">
+                      <button type="button" onClick={copyUpi} className="min-h-9 rounded-full border border-[#E8DCC8] px-4 py-0.5 font-sans text-xs text-[#8B1A4A]">
                         {copied ? 'Copied' : 'Copy'}
                       </button>
                     </p>

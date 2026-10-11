@@ -202,7 +202,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
               <li key={i} className="space-y-2 border-b border-[var(--color-border-subtle)] pb-4 last:border-b-0 last:pb-0">
                 <Input label={`Line ${i + 1}`} value={l.description} onChange={(ev) => setLine(i, 'description', ev.target.value)} error={errors[`items.${i}.description`]} placeholder="Hall for the reception" maxLength={VENUE_QUOTE_LIMITS.descriptionMax} className="min-h-12 text-base" />
                 <Select label="For which function? (optional)" value={l.function} onChange={(ev) => setLine(i, 'function', ev.target.value)} error={errors[`items.${i}.function`]} options={FUNCTION_OPTIONS} className="min-h-12 text-base" />
-                <div className="grid grid-cols-[1fr_1.5fr_auto] items-start gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto] items-start gap-2">
                   <Input label="How many" inputMode="numeric" value={l.quantity} onChange={(ev) => setLine(i, 'quantity', ev.target.value)} error={errors[`items.${i}.quantity`]} className="min-h-12 text-base" />
                   <Input label="Price each (₹)" inputMode="numeric" value={l.unitPrice} onChange={(ev) => setLine(i, 'unitPrice', ev.target.value)} error={errors[`items.${i}.unitPrice`]} placeholder="200000" className="min-h-12 text-base" />
                   <button type="button" aria-label={`Remove line ${i + 1}`} disabled={form.items.length === 1} onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, n) => n !== i) }))} className="mt-6 flex min-h-12 min-w-12 items-center justify-center rounded-lg text-[var(--color-text-muted)] disabled:opacity-30">

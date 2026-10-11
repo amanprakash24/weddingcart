@@ -47,12 +47,12 @@ function Booking({ item, from }: { item: CollectionItem; from: { businessName: s
         {item.claimsToCheck > 0 && <StatusPill status="overdue">Says they have paid — check it</StatusPill>}
       </div>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm font-semibold">
-        <Link href={`/vendor/enquiries/${item.enquiryId}`} className="underline underline-offset-2">
+      <div className="flex flex-wrap gap-x-4 text-sm font-semibold">
+        <Link href={`/vendor/enquiries/${item.enquiryId}`} className="inline-flex min-h-11 items-center underline underline-offset-2">
           {item.outstanding > 0 ? 'Open — record a payment' : 'Open'}
         </Link>
         {item.outstanding > 0 && (
-          <a href={whatsappTo(item.phone, balanceReminderMessage(item, from))} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+          <a href={whatsappTo(item.phone, balanceReminderMessage(item, from))} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center underline underline-offset-2">
             Remind {item.customerName.split(' ')[0]} on WhatsApp
           </a>
         )}

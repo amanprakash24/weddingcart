@@ -120,7 +120,7 @@ export default function WorkspaceChooser() {
           {error && <p role="alert" className="mt-4 text-sm text-rose-700">{error}</p>}
 
           {(state === 'ready' || state === 'none') && (
-            <button type="button" onClick={() => signOut({ callbackUrl: '/vendor/login' })} className="mt-6 flex w-full items-center justify-center gap-1.5 text-xs font-medium text-[#6B5B4D] hover:text-[#2A1F1B]">
+            <button type="button" onClick={() => signOut({ callbackUrl: '/vendor/login' })} className="mt-4 flex min-h-11 w-full items-center justify-center gap-1.5 text-xs font-medium text-[#6B5B4D] hover:text-[#2A1F1B]">
               <LogOut className="h-3.5 w-3.5" aria-hidden /> Sign out
             </button>
           )}
