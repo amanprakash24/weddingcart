@@ -1,0 +1,64 @@
+# Watch the live site: every 15 minutes, a few signed-out requests to public addresses of https://www.shaadishopping.com
+# (scripts/watch-live.mjs). If any fails three times in a row the run fails — GitHub emails the failure — and an issue
+# "Live site check failing" is opened (or added to); when the checks pass again that issue is closed.
+#
+# It uses no secrets, logs in nowhere and writes nothing to the site or its database. GitHub may start a scheduled run a few
+# minutes late, and pauses schedules in a repository with no activity for 60 days.
+name: Watch live site
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: watch-live
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    name: Is the live site usable?
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/watch-live.mjs
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the live site
+        id: check
+        run: node scripts/watch-live.mjs
+
+      - name: Open or update the issue
+        if: failure() && steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAILED: ${{ steps.check.outputs.failed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body="The live-site check failed at $(date -u '+%Y-%m-%d %H:%M UTC'): ${FAILED:-see the run}. Run: ${RUN_URL}"
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'in:title "Live site check failing"' --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Live site check failing" --body "$body"
+          fi
+
+      - name: Close the issue when the site is back
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'in:title "Live site check failing"' --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue close "$number" --repo "$GITHUB_REPOSITORY" --comment "All checks pass again as of $(date -u '+%Y-%m-%d %H:%M UTC')."
+          fi
