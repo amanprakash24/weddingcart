@@ -7,7 +7,8 @@
 import { Card, CardEmptyState, NextActionCard } from '@/components/ui/Card';
 import { Row } from '@/components/ui/Row';
 import StatusPill, { type PillStatus } from '@/components/ui/StatusPill';
-import Button from '@/components/ui/Button';
+import Link from 'next/link';
+import MoneyToCollect from '@/components/vendor/payments/MoneyToCollect';
 
 export interface VendorIdentity {
   businessName: string;
@@ -52,14 +53,12 @@ export interface VendorTodayScreenProps {
   upcomingWeddings: UpcomingWeddingItem[];
   pendingResponses: PendingResponseItem[];
   recentActivity: ActivityItem[];
-  onAcceptResponse?: (id: string) => void;
-  onDeclineResponse?: (id: string) => void;
 }
 
 const SERVICE_STATUS_PILL: Record<TodayServiceItem['status'], PillStatus> = { confirmed: 'confirmed', pending: 'info' };
 
 export default function VendorTodayScreen({
-  vendor, nextAction, attentionItems, todaysServices, upcomingWeddings, pendingResponses, recentActivity, onAcceptResponse, onDeclineResponse,
+  vendor, nextAction, attentionItems, todaysServices, upcomingWeddings, pendingResponses, recentActivity,
 }: VendorTodayScreenProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-3 sm:p-6">
@@ -92,6 +91,9 @@ export default function VendorTodayScreen({
 
       {/* Next action */}
       <NextActionCard {...nextAction} />
+
+      {/* The business's own bookings: what is still to collect. Says nothing when there is nothing, or for a member who may not see money. */}
+      <MoneyToCollect compact />
 
       {/* Needs attention */}
       {attentionItems.length > 0 && (
@@ -132,16 +134,20 @@ export default function VendorTodayScreen({
         ) : (
           <Card>
             {upcomingWeddings.map((w) => (
-              <Row key={w.id} variant="clickable" title={w.wedding} meta={`${w.date} · ${w.function}`} onClick={() => {}} />
+              <Link key={w.id} href="/vendor/weddings" className="block">
+                <Row title={w.wedding} meta={`${w.date} · ${w.function}`} right={<span className="text-xs font-semibold underline underline-offset-2">Open</span>} />
+              </Link>
             ))}
           </Card>
         )}
       </section>
 
-      {/* Pending responses */}
+      {/* Pending responses. There is no way to accept or decline from here yet (no such action exists on the server), so the
+          screen does not offer buttons that do nothing: it says who is waiting and opens the request in Services. */}
       {pendingResponses.length > 0 && (
         <section>
           <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Pending responses</h2>
+          <p className="mb-2 text-xs text-[var(--color-text-muted)]">Shaadi Shopping is waiting for your answer on these — tell your Shaadi Shopping contact whether you can do them.</p>
           <Card>
             {pendingResponses.map((p) => (
               <Row
@@ -149,14 +155,9 @@ export default function VendorTodayScreen({
                 title={`${p.wedding} — ${p.function}`}
                 meta={`${p.requirement} · ${p.price}`}
                 right={
-                  <>
-                    <Button variant="outline" size="small" onClick={() => onDeclineResponse?.(p.id)}>
-                      Decline
-                    </Button>
-                    <Button size="small" onClick={() => onAcceptResponse?.(p.id)}>
-                      Accept
-                    </Button>
-                  </>
+                  <Link href="/vendor/services" className="text-xs font-semibold underline underline-offset-2">
+                    See the request
+                  </Link>
                 }
               />
             ))}
