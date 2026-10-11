@@ -155,7 +155,7 @@ export default function BusinessSettingsForm() {
             value={form.upiId}
             onChange={(e) => set('upiId', e.target.value)}
             error={errors.upiId}
-            helperText="Optional. Added to the payment details you send a customer after they accept your quotation."
+            helperText="Optional, but without it your customers cannot pay from their link. With it, their link shows your QR code and a pay button after they accept your quotation, and they can tell you “I have paid”."
             autoCapitalize="none"
             autoCorrect="off"
             placeholder="yourname@okhdfcbank"
