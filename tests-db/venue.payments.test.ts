@@ -16,6 +16,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   let settings: typeof import('@/services/venueSettings.service').venueSettingsService;
   let weddings: typeof import('@/services/venueWedding.service').venueWeddingService;
   let sameDate: typeof import('@/services/venueSameDate.service').venueSameDateService;
+  let collections: typeof import('@/services/venueCollections.service').venueCollectionsService;
   let businessSvc: typeof import('@/services/venueBusiness.service').venueBusinessService;
   let proposalService: typeof import('@/services/proposal.service').proposalService;
   let scopeForProposalToken: typeof import('@/lib/quotation/proposalEntry').scopeForProposalToken;
@@ -48,6 +49,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     settings = (await import('@/services/venueSettings.service')).venueSettingsService;
     weddings = (await import('@/services/venueWedding.service')).venueWeddingService;
     sameDate = (await import('@/services/venueSameDate.service')).venueSameDateService;
+    collections = (await import('@/services/venueCollections.service')).venueCollectionsService;
     businessSvc = (await import('@/services/venueBusiness.service')).venueBusinessService;
     proposalService = (await import('@/services/proposal.service')).proposalService;
     scopeForProposalToken = (await import('@/lib/quotation/proposalEntry')).scopeForProposalToken;
@@ -364,6 +366,9 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect((await inA(() => enquiries.list()))[0]).toMatchObject({ id: claimEnquiry, next: { kind: 'PAYMENT_TO_CHECK' } });
     // … and the menu carries the count.
     expect(await inA(() => enquiries.paymentsToCheck())).toBe(1);
+    // "Money to collect" lists the booking with everything still owed, and says a claim is waiting — a claim is not money.
+    const waiting = await inA(() => collections.get());
+    expect(waiting.due.find((i) => i.enquiryId === claimEnquiry)).toMatchObject({ customerName: 'Anita Verma', total: 100000, received: 0, outstanding: 100000, confirmed: false, claimsToCheck: 1, weddingDate: later(120), weddingId: null });
     // The same reference is not taken twice.
     expect((await outcome(claimLink(() => proposalService.submitPayment(claimToken, { amount: '30000', utr: '412345678901' }, null))))?.name).toBe('ConflictError');
   });
@@ -408,6 +413,17 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect((await claimMoney())?.received).toBe(30000);
     expect((await inA(() => enquiries.get(claimEnquiry))).next.kind).toBe('BOOKED');
     expect(await inA(() => enquiries.paymentsToCheck())).toBe(0); // one found, one not found: nothing left to check
+    // "Money to collect": the same figures as the enquiry's own money card, the total over every booking of this venue, and the
+    // money counted in this month. Another venue has none of it.
+    const owed = await inA(() => collections.get());
+    const anita = owed.due.find((i) => i.enquiryId === claimEnquiry);
+    expect(anita).toMatchObject({ received: 30000, outstanding: 70000, confirmed: true, claimsToCheck: 0, stateLabel: 'Booking confirmed' });
+    expect(anita?.weddingId).toBe(after.quotation?.wedding?.id);
+    expect(owed.toCollect).toBe([...owed.due, ...owed.paidInFull].reduce((sum, i) => sum + i.outstanding, 0));
+    expect(owed.toCollect).toBeGreaterThanOrEqual(70000);
+    expect(owed.receivedThisMonth).toBeGreaterThanOrEqual(30000);
+    for (const i of [...owed.due, ...owed.paidInFull]) expect(i.received + i.outstanding).toBe(i.total);
+    expect(await inB(() => collections.get())).toMatchObject({ toCollect: 0, receivedThisMonth: 0, due: [], paidInFull: [] });
     // The couple's link: confirmed, with their receipt; and the venue's wedding carries their name.
     const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
     expect(view?.payments).toMatchObject({ bookingConfirmed: true, received: 30000, inReview: 0, outstanding: 70000, receipts: [{ amount: 30000, method: 'UPI', reference: null }] });

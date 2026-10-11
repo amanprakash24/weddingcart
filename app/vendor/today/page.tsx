@@ -16,9 +16,8 @@ export const metadata = {
 // pattern and vendor-scoped data source as the other Vendor OS pages; no new Prisma query.
 //
 // Accept/decline on a booking request has no backing endpoint yet (only venueStatus is currently
-// PATCH-able — see docs/wedding-os/11-vivah-os-ux-architecture.md §21) — onAcceptResponse/onDeclineResponse
-// are deliberately left unwired rather than a new mutation invented here; the buttons render but the guard
-// already in VendorTodayScreen (`onAcceptResponse?.(id)`) makes that a safe, honest no-op, not a crash.
+// PATCH-able — see docs/wedding-os/11-vivah-os-ux-architecture.md §21), so the screen offers no Accept / Decline
+// buttons: it lists the requests and opens them in Services.
 async function VendorTodayPage() {
   const session = await requireRole([Role.VENDOR]);
   if (!session?.user?.id) return null;

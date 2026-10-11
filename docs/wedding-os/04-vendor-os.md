@@ -533,6 +533,43 @@ manager without money permission and for another venue, 0 once every claim is ch
 - The mark only shows while Vendor OS is open; there is no notification on the phone.
 - The couple's message depends on the couple tapping the button.
 
+## 19. Money to collect, and Today's dead buttons — built 11 Oct 2026
+
+Until now a business could see a booking's money only by opening that one enquiry. **Payments** showed only payouts from Shaadi
+Shopping, and **Today** nothing of the business's own.
+
+- **Payments → "Money to collect"** (above the payouts, which are now titled "Payouts from Shaadi Shopping"): two totals — still
+  to collect over all bookings, and received this month (India time) — then one card per booking of the business's OWN couples that
+  still owes something, the nearest wedding first (a date already passed before all, shown in red; no date last): agreed, received,
+  still to pay, where the booking stands, and a mark when the couple says they have paid. "Paid in full" is folded below.
+- **"Open — record a payment"** goes to the enquiry, where money is recorded as before. Nothing is recorded from this list.
+- **"Remind <name> on WhatsApp"**: a ready message from the business's own WhatsApp — the booking, what is still to pay, what
+  confirms it when it is not confirmed yet, and "pay from the link we shared" only when the business has its UPI ID in Settings.
+  It cannot carry the couple's link: only the link's hash is stored.
+- **Today** shows the two totals as one tappable block, only when there is something to say.
+- Only for a member who may see money (`view_financials`); everyone else sees nothing, from the server.
+
+**Today's buttons.** "Accept" / "Decline" on a booking request did nothing (there is no such action on the server — §21 of
+`11-vivah-os-ux-architecture.md`), and an upcoming wedding's row was a button that did nothing. The buttons are gone: a request
+now says Shaadi Shopping is waiting for an answer and opens in Services; an upcoming wedding opens Weddings.
+
+**How** — `GET /api/vendor-os/collections` → `services/venueCollections.service.ts`: ONE query for the business's accepted
+quotations that have an agreement, each fed to the same Money v1 builder as the enquiry's own money card
+(`lib/commercial/view.ts` `buildAgreementMoney`) — no second set of sums. Totals, order and the reminder's wording are pure, in
+`lib/venue/collections.ts`. The screen is `components/vendor/payments/MoneyToCollect.tsx`. Read-only. No migration.
+
+**Tests** — `lib/venue/collections.test.ts`; `tests-db/venue.payments.test.ts` (a claim waiting is listed and is not money; after
+"received" the figures match the enquiry's; received + still to pay = agreed for every booking; another venue gets nothing).
+
+**Not built yet**
+
+- Accepting or declining a Shaadi Shopping booking request from Vendor OS — a decision first: what an "accept" by the vendor
+  should do to Shaadi Shopping's booking.
+- Due dates for the balance, and reminders sent by themselves.
+- Left out of the list: an enquiry marked "Not going ahead" after it was booked, and a cancelled wedding — money already received
+  for those is not counted in "received this month".
+- At most 500 bookings are read.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |

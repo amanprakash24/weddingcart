@@ -73,8 +73,8 @@ export default function VendorPaymentsScreen({ payments }: { payments: VendorPay
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-3 sm:p-6">
       <header>
-        <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Payments</h1>
-        <p className="text-sm text-[var(--color-text-muted)]">What you&apos;ve been paid and what&apos;s pending, after commission.</p>
+        <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Payouts from Shaadi Shopping</h1>
+        <p className="text-sm text-[var(--color-text-muted)]">For the weddings Shaadi Shopping booked you on: what you&apos;ve been paid and what&apos;s pending, after commission.</p>
       </header>
 
       <div className="grid grid-cols-2 gap-3">
@@ -89,7 +89,7 @@ export default function VendorPaymentsScreen({ payments }: { payments: VendorPay
       </div>
 
       {isEmpty ? (
-        <CardEmptyState title="No payments yet" description="Payouts for completed services will show up here once they're calculated." />
+        <CardEmptyState title="No payouts yet" description="Payouts for completed services will show up here once they're calculated." />
       ) : (
         <>
           {pending.length > 0 && (

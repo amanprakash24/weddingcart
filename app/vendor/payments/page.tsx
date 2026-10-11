@@ -3,6 +3,7 @@ import { Role } from '@/lib/auth/roles';
 import { venuePortalService } from '@/services/venuePortal.service';
 import { buildVendorPaymentsView } from '@/lib/vendor/paymentsView';
 import VendorPaymentsScreen from '@/components/vendor/VendorPaymentsScreen';
+import MoneyToCollect from '@/components/vendor/payments/MoneyToCollect';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
@@ -18,7 +19,16 @@ async function VendorPaymentsPage() {
   if (!session?.user?.id) return null;
   const dashboard = await venuePortalService.getDashboard(session.user.id);
   const payments = buildVendorPaymentsView(dashboard.bookings, dashboard.payouts);
-  return <VendorPaymentsScreen payments={payments} />;
+  // The business's OWN bookings first (what its own couples still owe, loaded venue-scoped from /api/vendor-os/collections); the
+  // payouts from Shaadi Shopping below (Shaadi Shopping's records — this page's own scope).
+  return (
+    <>
+      <div className="mx-auto max-w-3xl px-3 pt-6 sm:px-6">
+        <MoneyToCollect />
+      </div>
+      <VendorPaymentsScreen payments={payments} />
+    </>
+  );
 }
 
 // Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).
