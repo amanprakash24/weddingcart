@@ -18,7 +18,7 @@ export const OWNER_LINK_SCREENS = ['today', 'weddings', 'services', 'payments'] 
 
 // The permission each of the other screens needs to be worth showing (any one of a list). Availability reads the business's own
 // bookings through its membership since 12 Oct 2026, so it is offered to whoever may see its enquiries or weddings.
-const NEEDS: Record<string, Permission | readonly Permission[]> = { enquiries: 'enquiries', availability: ['enquiries', 'weddings'], offerings: 'catalog', settings: 'settings' };
+const NEEDS: Record<string, Permission | readonly Permission[]> = { enquiries: 'enquiries', availability: ['enquiries', 'weddings'], offerings: 'catalog', settings: 'settings', team: 'team' };
 
 const PATHS: Record<string, string> = {
   today: '/vendor/today',
@@ -29,6 +29,7 @@ const PATHS: Record<string, string> = {
   payments: '/vendor/payments',
   offerings: '/vendor/offerings',
   settings: '/vendor/settings',
+  team: '/vendor/team',
 };
 
 export function canSeeScreen(key: string, view: WorkspaceView): boolean {
