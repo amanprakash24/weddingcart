@@ -127,8 +127,9 @@ describe('every entry point states its business', () => {
   const OWNED_DATA_PAGES = [
     'app/customer/page.tsx', 'app/proposal/[token]/page.tsx', 'app/rsvp/[token]/page.tsx', 'app/vendor/page.tsx',
     'app/vendor/enquiries/page.tsx', 'app/vendor/proposals/page.tsx', 'app/vendor/proposals/[quotationId]/page.tsx',
-    // Vendor OS (rebased 4 Oct 2026): what Shaadi Shopping shares with the vendor — their bookings, availability and payouts.
-    'app/vendor/today/page.tsx', 'app/vendor/weddings/page.tsx', 'app/vendor/services/page.tsx', 'app/vendor/availability/page.tsx',
+    // Vendor OS (rebased 4 Oct 2026): what Shaadi Shopping shares with the vendor — their bookings and payouts. (Availability reads
+    // nothing itself since 12 Oct 2026: its calendar loads through the venue-scoped /api/vendor-os/calendar.)
+    'app/vendor/today/page.tsx', 'app/vendor/weddings/page.tsx', 'app/vendor/services/page.tsx',
     'app/vendor/payments/page.tsx',
   ];
 

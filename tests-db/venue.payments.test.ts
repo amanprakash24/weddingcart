@@ -18,6 +18,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   let sameDate: typeof import('@/services/venueSameDate.service').venueSameDateService;
   let collections: typeof import('@/services/venueCollections.service').venueCollectionsService;
   let started: typeof import('@/services/venueGettingStarted.service').venueGettingStartedService;
+  let calendar: typeof import('@/services/venueCalendar.service').venueCalendarService;
   let businessSvc: typeof import('@/services/venueBusiness.service').venueBusinessService;
   let proposalService: typeof import('@/services/proposal.service').proposalService;
   let scopeForProposalToken: typeof import('@/lib/quotation/proposalEntry').scopeForProposalToken;
@@ -52,6 +53,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     sameDate = (await import('@/services/venueSameDate.service')).venueSameDateService;
     collections = (await import('@/services/venueCollections.service')).venueCollectionsService;
     started = (await import('@/services/venueGettingStarted.service')).venueGettingStartedService;
+    calendar = (await import('@/services/venueCalendar.service')).venueCalendarService;
     businessSvc = (await import('@/services/venueBusiness.service')).venueBusinessService;
     proposalService = (await import('@/services/proposal.service')).proposalService;
     scopeForProposalToken = (await import('@/lib/quotation/proposalEntry')).scopeForProposalToken;
@@ -433,6 +435,11 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     const b = await inB(() => started.get());
     expect(b.steps.find((s) => s.key === 'QUOTATION')?.done).toBe(false);
     expect(b.finished).toBe(false);
+    // "Availability": A's calendar shows Anita Verma's date as booked, linked to her wedding; B's calendar never shows A's dates.
+    const calA = await inA(() => calendar.get());
+    const anitaDay = calA.days.find((d) => d.date === later(120))?.bookings.find((x) => x.name === 'Anita Verma');
+    expect(anitaDay).toMatchObject({ confirmed: true, wedding: { id: expect.any(String) } });
+    expect((await inB(() => calendar.get())).days.flatMap((d) => d.bookings).some((x) => ['Anita Verma', 'Rahul Kumar', 'Asha Verma'].includes(x.name))).toBe(false);
     // The couple's link: confirmed, with their receipt; and the venue's wedding carries their name.
     const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
     expect(view?.payments).toMatchObject({ bookingConfirmed: true, received: 30000, inReview: 0, outstanding: 70000, receipts: [{ amount: 30000, method: 'UPI', reference: null }] });

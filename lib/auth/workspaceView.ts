@@ -5,7 +5,7 @@ import type { Permission } from '@/lib/auth/permissions';
 //
 // Two things decide it:
 //   - their permissions in that business (a manager has no Settings);
-//   - whether this business is the vendor they OWN through the older owner link. Today, Weddings, Services, Availability and
+//   - whether this business is the vendor they OWN through the older owner link. Today, Weddings, Services and
 //     Payments — what Shaadi Shopping shares with a vendor — are still read through that link (docs/wedding-os/15 §8.4), so in
 //     any other business they would show the WRONG business's records. There they are not offered at all.
 export interface WorkspaceView {
@@ -14,10 +14,11 @@ export interface WorkspaceView {
 }
 
 // Vendor OS screens that are read through the owner link, by their key in components/vendor/vendorNav.ts.
-export const OWNER_LINK_SCREENS = ['today', 'weddings', 'services', 'availability', 'payments'] as const;
+export const OWNER_LINK_SCREENS = ['today', 'weddings', 'services', 'payments'] as const;
 
-// The permission each of the other screens needs to be worth showing.
-const NEEDS: Record<string, Permission> = { enquiries: 'enquiries', offerings: 'catalog', settings: 'settings' };
+// The permission each of the other screens needs to be worth showing (any one of a list). Availability reads the business's own
+// bookings through its membership since 12 Oct 2026, so it is offered to whoever may see its enquiries or weddings.
+const NEEDS: Record<string, Permission | readonly Permission[]> = { enquiries: 'enquiries', availability: ['enquiries', 'weddings'], offerings: 'catalog', settings: 'settings' };
 
 const PATHS: Record<string, string> = {
   today: '/vendor/today',
@@ -33,7 +34,8 @@ const PATHS: Record<string, string> = {
 export function canSeeScreen(key: string, view: WorkspaceView): boolean {
   if ((OWNER_LINK_SCREENS as readonly string[]).includes(key)) return view.ownsVendor;
   const need = NEEDS[key];
-  return need ? view.permissions.includes(need) : true;
+  if (!need) return true;
+  return (typeof need === 'string' ? [need] : need).some((p) => view.permissions.includes(p));
 }
 
 // Where this workspace opens: Today for the vendor's owner, otherwise the first screen they can use; the business profile (any

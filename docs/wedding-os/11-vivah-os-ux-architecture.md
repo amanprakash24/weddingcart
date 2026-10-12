@@ -408,7 +408,10 @@ gracefully (no broken layout), and the empty state matches the requested wording
 **No backend gaps beyond the already-known payment-visibility one** — this screen needed nothing the
 Weddings screen's audit hadn't already surfaced.
 
-## 12. Vendor Availability screen (22 Sep 2026)
+## 12. Vendor Availability screen (22 Sep 2026) — replaced 12 Oct 2026
+
+> **Replaced:** the screen is now a calendar of the business's own booked dates — see `04-vendor-os.md` §21. What follows is
+> the history of the first version.
 
 **Data source — reused again, read-only.** `venuePortalService.getDashboard`'s `availability` field
 already exists: `prisma.vendorAvailability.findMany({ where: { vendorId }, date: { gte: now } }, take: 90,

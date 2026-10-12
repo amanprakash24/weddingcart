@@ -611,6 +611,40 @@ off another venue's list).
   who lands on Enquiries, does not see it.
 - No line for the business's first booking or first payment — the enquiry's own "next step" leads there.
 
+## 21. "Availability" — a calendar of the business's own booked dates — built 12 Oct 2026
+
+The Availability screen used to list hand-set `VendorAvailability` rows. Nothing in the app writes those for a vendor any more,
+so for every real venue it said "No availability has been recorded yet" — a dead end found by walking a new venue's first hour
+(11 Oct). Founder's choice, 12 Oct ("A"): show the dates the business has **already given away**, from what it already has.
+
+- **A month calendar**, this month and the next eleven (in India's date). Seven columns fit a 375px phone; each day is a 44px
+  tap target. "Previous" stops at this month.
+- **What a day shows** — the business's OWN bookings (made from its own accepted quotations): **filled** = booked (the amount to
+  confirm was received), **outlined** = the couple accepted but the booking is not confirmed yet. A small number on the day =
+  more than one booking that day. A closed booking frees its date. The same rules as the same-date warning (§13).
+- **Tap a day** for its bookings; each opens its wedding (or, when there is none yet, its enquiry). A free day says so. With no
+  day picked, the list under the calendar is everything booked that month.
+- **Never a block.** The screen says so: a booked day can still be quoted.
+- **Who sees it** — anyone in the business who may see its enquiries or its weddings (owner, manager, staff), in whichever
+  business they work in: it reads through the membership, not the old owner link, so it is no longer an owner-only screen
+  (`lib/auth/workspaceView.ts`). An employee with neither permission does not get it.
+
+**How** — `GET /api/vendor-os/calendar` (`venueScoped`, needs `enquiries` or `weddings`) → `services/venueCalendar.service.ts`
+(one read of this business's bookings in the window, through the ownership guard, at most 500) → `lib/venue/calendar.ts` (pure:
+the window, the days, the month grid). The screen is `components/vendor/availability/AvailabilityCalendar.tsx`; the page reads
+nothing itself. Read-only. No migration. The old `VendorAvailabilityScreen` and `lib/vendor/availabilityView.ts` were removed;
+the `VendorAvailability` table and its old write route are untouched.
+
+**Tests** — `lib/venue/calendar.test.ts` (window in India's date, month grid, closed/out-of-range left out, confirmed first);
+`lib/auth/workspaceView.test.ts` (who is offered the screen); `tests-db/venue.payments.test.ts` (venue A's booked date shows,
+linked to its wedding; venue B never sees A's dates).
+
+**Not built yet**
+
+- Blocking a date by hand ("B") — needs a migration.
+- Shaadi Shopping's own weddings this business is booked on, and functions moved to another day.
+- More than 500 bookings in the window (the screen says when some are left out).
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |
