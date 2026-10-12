@@ -570,6 +570,35 @@ quotations that have an agreement, each fed to the same Money v1 builder as the 
   for those is not counted in "received this month".
 - At most 500 bookings are read.
 
+## 20. "Getting started" on Today — built 12 Oct 2026
+
+A business that had just finished its profile landed on Today and read "Nothing needs your attention right now" — found by
+walking a new venue's first hour (11 Oct). Today now opens with what to do first, in order, each one tap away:
+
+1. **Add what you offer and your prices** → What we offer. Done when the price list has an item on offer.
+2. **Add your UPI ID** → Settings. Done when a UPI ID is saved.
+3. **Add your first enquiry** → New Enquiry. Done when the business has an enquiry of its own.
+4. **Send your first quotation** → Enquiries. Done when one of its own quotations was sent.
+
+- **Nothing is stored.** A line is done when the thing itself exists, so it ticks itself off; when all are done the list is not
+  shown at all, and never comes back unless the thing goes away again (the UPI ID is cleared, say).
+- **Only what the person may do** (`lib/auth/permissions.ts`): a manager is not told to add a UPI ID, and someone who may do none
+  of it gets no list. A business long at work that never added a UPI ID gets that one line.
+- The answer holds no name, no amount and no UPI ID — only which of the four exist — so any member may ask for it.
+
+**How** — `GET /api/vendor-os/getting-started` → `services/venueGettingStarted.service.ts` (three counts and the business's own
+row, through the ownership guard) → `lib/venue/gettingStarted.ts` (pure: which lines, in what order, done or not). The screen is
+`components/vendor/GettingStarted.tsx`, at the top of Today. Read-only. No migration.
+
+**Tests** — `lib/venue/gettingStarted.test.ts`; `tests-db/venue.payments.test.ts` (one venue's enquiries and quotations never tick
+off another venue's list).
+
+**Not built yet**
+
+- The list is on Today only, and Today is shown only to the business's owner (§8.4 of `15-record-ownership.md`): a manager,
+  who lands on Enquiries, does not see it.
+- No line for the business's first booking or first payment — the enquiry's own "next step" leads there.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |

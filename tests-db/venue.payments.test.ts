@@ -17,6 +17,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   let weddings: typeof import('@/services/venueWedding.service').venueWeddingService;
   let sameDate: typeof import('@/services/venueSameDate.service').venueSameDateService;
   let collections: typeof import('@/services/venueCollections.service').venueCollectionsService;
+  let started: typeof import('@/services/venueGettingStarted.service').venueGettingStartedService;
   let businessSvc: typeof import('@/services/venueBusiness.service').venueBusinessService;
   let proposalService: typeof import('@/services/proposal.service').proposalService;
   let scopeForProposalToken: typeof import('@/lib/quotation/proposalEntry').scopeForProposalToken;
@@ -50,6 +51,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     weddings = (await import('@/services/venueWedding.service')).venueWeddingService;
     sameDate = (await import('@/services/venueSameDate.service')).venueSameDateService;
     collections = (await import('@/services/venueCollections.service')).venueCollectionsService;
+    started = (await import('@/services/venueGettingStarted.service')).venueGettingStartedService;
     businessSvc = (await import('@/services/venueBusiness.service')).venueBusinessService;
     proposalService = (await import('@/services/proposal.service')).proposalService;
     scopeForProposalToken = (await import('@/lib/quotation/proposalEntry')).scopeForProposalToken;
@@ -424,6 +426,13 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect(owed.receivedThisMonth).toBeGreaterThanOrEqual(30000);
     for (const i of [...owed.due, ...owed.paidInFull]) expect(i.received + i.outstanding).toBe(i.total);
     expect(await inB(() => collections.get())).toMatchObject({ toCollect: 0, receivedThisMonth: 0, due: [], paidInFull: [] });
+    // "Getting started" counts each venue's own records: A has enquiries and a sent quotation and a UPI ID; B, who made no
+    // quotation of its own, is still told to send its first one — A's never count for B.
+    const stepsA = Object.fromEntries((await inA(() => started.get())).steps.map((s) => [s.key, s.done]));
+    expect(stepsA).toMatchObject({ UPI: true, ENQUIRY: true, QUOTATION: true });
+    const b = await inB(() => started.get());
+    expect(b.steps.find((s) => s.key === 'QUOTATION')?.done).toBe(false);
+    expect(b.finished).toBe(false);
     // The couple's link: confirmed, with their receipt; and the venue's wedding carries their name.
     const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
     expect(view?.payments).toMatchObject({ bookingConfirmed: true, received: 30000, inReview: 0, outstanding: 70000, receipts: [{ amount: 30000, method: 'UPI', reference: null }] });

@@ -9,6 +9,7 @@ import { Row } from '@/components/ui/Row';
 import StatusPill, { type PillStatus } from '@/components/ui/StatusPill';
 import Link from 'next/link';
 import MoneyToCollect from '@/components/vendor/payments/MoneyToCollect';
+import GettingStarted from '@/components/vendor/GettingStarted';
 
 export interface VendorIdentity {
   businessName: string;
@@ -72,6 +73,9 @@ export default function VendorTodayScreen({
           <p className="text-xs text-[var(--color-text-muted)]">{vendor.category}</p>
         </div>
       </div>
+
+      {/* A business that has just set up its profile: what to do first. Gone once it is all done. */}
+      <GettingStarted />
 
       {/* Today summary */}
       <div className="grid grid-cols-3 gap-3">
