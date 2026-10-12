@@ -1,26 +1,13 @@
-import { requireRole } from '@/lib/auth/session';
-import { Role } from '@/lib/auth/roles';
-import { venuePortalService } from '@/services/venuePortal.service';
-import { groupAvailabilityByMonth } from '@/lib/vendor/availabilityView';
-import VendorAvailabilityScreen from '@/components/vendor/VendorAvailabilityScreen';
-import { platformScoped } from '@/lib/ownership/entry';
+import AvailabilityCalendar from '@/components/vendor/availability/AvailabilityCalendar';
 
+// "Availability" in Vendor OS (12 Oct 2026): a month calendar of the business's own booked dates. The screen loads them through
+// the venue-scoped API (/api/vendor-os/calendar); this page reads no data itself. It replaced a list of hand-set VendorAvailability
+// rows that nothing in the app writes any more, so it was always empty.
 export const metadata = {
   title: 'Availability | Vendor OS',
   robots: { index: false, follow: false },
 };
 
-// Same defense-in-depth pattern and same vendor-scoped data source as the other Vendor OS pages. Read-only:
-// there is no existing API route to write/update a vendor's own VendorAvailability rows (audited — only
-// venuePortalService and founderDashboard.service.ts read this model, nothing writes it on the vendor's
-// behalf), so this screen doesn't offer one either. See docs/wedding-os/11-vivah-os-ux-architecture.md §12.
-async function VendorAvailabilityPage() {
-  const session = await requireRole([Role.VENDOR]);
-  if (!session?.user?.id) return null;
-  const dashboard = await venuePortalService.getDashboard(session.user.id);
-  const months = groupAvailabilityByMonth(dashboard.availability);
-  return <VendorAvailabilityScreen months={months} />;
+export default function VendorAvailabilityPage() {
+  return <AvailabilityCalendar />;
 }
-
-// Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).
-export default platformScoped(VendorAvailabilityPage);
