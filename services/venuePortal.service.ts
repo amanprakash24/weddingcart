@@ -24,7 +24,15 @@ export async function vendorForUser(userId: string) {
   return profile;
 }
 
-function bookingView(booking: {
+// The vendor these screens are about: the one the person is WORKING in (lib/auth/workingVendor.ts), by id — never from the request.
+async function vendorById(vendorId: string) {
+  const vendor = await prisma.vendor.findUnique({ where: { id: vendorId }, select: { id: true, name: true, city: true, address: true, category: { select: { name: true } } } });
+  if (!vendor) throw new NotFoundError('Vendor', vendorId);
+  return vendor;
+}
+
+// `seesMoney` false (a member without view_financials): the agreed price is left out here, on the server — never sent and hidden.
+function bookingView(seesMoney: boolean, booking: {
   id: string; status: string; venueStatus: VenueBookingStatus; agreedPrice: number; respondedAt: Date | null;
   weddingEvent: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; venueAddress: string | null; city: string; wedding: { id: string; weddingNumber: string; weddingType: string | null; guestCount: number | null; customer: { name: string | null } | null; events: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; city: string }[] } };
   vendorPackage: { name: string; description: string } | null;
@@ -34,7 +42,7 @@ function bookingView(booking: {
     id: booking.id,
     bookingStatus: booking.status,
     venueStatus: booking.venueStatus,
-    amount: booking.agreedPrice,
+    amount: seesMoney ? booking.agreedPrice : null,
     // Already fetched (no `select` narrows this query, so every VendorBooking scalar column is returned by
     // default) — just wasn't exposed until the Vendor -> Today screen needed a real "recent activity" source.
     respondedAt: booking.respondedAt?.toISOString() ?? null,
@@ -69,9 +77,9 @@ function payoutView(payout: {
   status: string;
   paidAt: Date | null;
   createdAt: Date;
-  vendorBooking: Parameters<typeof bookingView>[0];
+  vendorBooking: Parameters<typeof bookingView>[1];
 }) {
-  const booking = bookingView(payout.vendorBooking);
+  const booking = bookingView(true, payout.vendorBooking);
   return {
     id: payout.id,
     bookingId: booking.id,
@@ -106,8 +114,10 @@ const bookingInclude = {
 } as const;
 
 export const venuePortalService = {
-  async getDashboard(userId: string) {
-    const profile = await vendorForUser(userId);
+  // What Shaadi Shopping shares with one vendor. `seesMoney` false: no agreed prices, no approval amounts, and the payouts are
+  // not read at all.
+  async getDashboard(vendorId: string, { seesMoney }: { seesMoney: boolean }) {
+    const profile = { vendorId, vendor: await vendorById(vendorId) };
     const bookings = await prisma.vendorBooking.findMany({ where: { vendorId: profile.vendorId }, include: bookingInclude, orderBy: { weddingEvent: { date: 'asc' } } });
     const bookingIds = bookings.map((booking) => booking.id);
     const documents = bookingIds.length ? await prisma.document.findMany({ where: { vendorBookingId: { in: bookingIds }, category: { in: ['VENUE_AGREEMENT', 'FLOOR_PLAN', 'MENU', 'QUOTATION'] }, visibility: 'CUSTOMER_VISIBLE' }, select: { id: true, fileName: true, url: true, category: true, vendorBookingId: true, createdAt: true }, orderBy: { createdAt: 'desc' } }) : [];
@@ -119,20 +129,19 @@ export const venuePortalService = {
       orderBy: { createdAt: 'desc' },
     }) : [];
     const availability = await prisma.vendorAvailability.findMany({ where: { vendorId: profile.vendorId, date: { gte: new Date() } }, select: { date: true, status: true, note: true }, orderBy: { date: 'asc' }, take: 90 });
-    const payouts = await prisma.payout.findMany({ where: { vendorId: profile.vendorId }, include: { vendorBooking: { include: bookingInclude } }, orderBy: { createdAt: 'desc' } });
+    const payouts = seesMoney ? await prisma.payout.findMany({ where: { vendorId: profile.vendorId }, include: { vendorBooking: { include: bookingInclude } }, orderBy: { createdAt: 'desc' } }) : [];
     return {
       vendor: profile.vendor,
-      bookings: bookings.map(bookingView),
+      bookings: bookings.map((booking) => bookingView(seesMoney, booking)),
       documents: documents.map((document) => ({ ...document, createdAt: document.createdAt.toISOString() })),
       availability: availability.map((item) => ({ ...item, date: item.date.toISOString() })),
-      approvals: approvals.map((approval) => ({ ...approval, title: approval.title || 'Client approval', weddingEventId: approval.weddingEventId })),
+      approvals: approvals.map((approval) => ({ ...approval, amount: seesMoney ? approval.amount : null, title: approval.title || 'Client approval', weddingEventId: approval.weddingEventId })),
       payouts: payouts.map(payoutView),
     };
   },
 
-  async updateStatus(userId: string, bookingId: string, venueStatus: VenueBookingStatus) {
-    const profile = await vendorForUser(userId);
-    const booking = await prisma.vendorBooking.findFirst({ where: { id: bookingId, vendorId: profile.vendorId } });
+  async updateStatus(vendorId: string, bookingId: string, venueStatus: VenueBookingStatus) {
+    const booking = await prisma.vendorBooking.findFirst({ where: { id: bookingId, vendorId } });
     if (!booking) throw new NotFoundError('Venue booking', bookingId);
 
     if (!canTransitionVenueBooking(booking.venueStatus, venueStatus)) {
@@ -143,12 +152,12 @@ export const venuePortalService = {
   },
 
   // The vendor answers Shaadi Shopping's booking request (12 Oct 2026, lib/vendor/bookingResponse.ts): Confirm, or Can't do it
-  // with a reason. Only the vendor's OWN booking (by the owner link, like every screen here), and only while it still waits. It
-  // goes through the same change staff make (weddingWorkspaceService.updateVendorBookingStatus): the confirm task closes, the
-  // wedding may become active, and the timeline says the vendor answered, by name.
-  async respond(userId: string, bookingId: string, input: { answer?: unknown; reason?: unknown }) {
-    const profile = await vendorForUser(userId);
-    const booking = await prisma.vendorBooking.findFirst({ where: { id: bookingId, vendorId: profile.vendorId }, select: { id: true, status: true, weddingEvent: { select: { weddingId: true } } } });
+  // with a reason. Only a booking of the vendor the person is working in (`who`, lib/auth/workingVendor.ts — the owner or anyone
+  // in the business who may manage its weddings), and only while it still waits. It goes through the same change staff make
+  // (weddingWorkspaceService.updateVendorBookingStatus): the confirm task closes, the wedding may become active, and the
+  // timeline says the vendor answered, naming the person who did.
+  async respond({ vendorId, userId }: { vendorId: string; userId: string }, bookingId: string, input: { answer?: unknown; reason?: unknown }) {
+    const booking = await prisma.vendorBooking.findFirst({ where: { id: bookingId, vendorId }, select: { id: true, status: true, weddingEvent: { select: { weddingId: true } } } });
     if (!booking) throw new NotFoundError('Booking', bookingId);
     if (booking.status !== 'PENDING_VENDOR_CONFIRMATION') throw new InvalidTransitionError('This booking has already been answered — reload to see where it stands');
     const checked = checkBookingResponse(input);

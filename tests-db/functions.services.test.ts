@@ -210,18 +210,18 @@ dbDescribe('Functions & Services (real database)', () => {
       const userC = await loginFor(vendorC, 1);
       const userA = await loginFor(vendorA, 2);
       // Another vendor's booking is simply not found; a decline without a reason is refused; nothing changes.
-      expect((await errorOf(venuePortalService.respond(userA, waiting.id, { answer: 'CONFIRM' })))?.name).toBe('NotFoundError');
-      expect((await errorOf(venuePortalService.respond(userC, waiting.id, { answer: 'DECLINE', reason: '' })))?.name).toBe('ValidationError');
+      expect((await errorOf(venuePortalService.respond({ vendorId: vendorA, userId: userA }, waiting.id, { answer: 'CONFIRM' })))?.name).toBe('NotFoundError');
+      expect((await errorOf(venuePortalService.respond({ vendorId: vendorC, userId: userC }, waiting.id, { answer: 'DECLINE', reason: '' })))?.name).toBe('ValidationError');
       expect((await app.prisma.vendorBooking.findUniqueOrThrow({ where: { id: waiting.id } })).status).toBe('PENDING_VENDOR_CONFIRMATION');
 
-      await venuePortalService.respond(userC, waiting.id, { answer: 'DECLINE', reason: 'Already booked that night' });
+      await venuePortalService.respond({ vendorId: vendorC, userId: userC }, waiting.id, { answer: 'DECLINE', reason: 'Already booked that night' });
       const after = await app.prisma.vendorBooking.findUniqueOrThrow({ where: { id: waiting.id } });
       expect(after).toMatchObject({ status: 'DECLINED', declineReason: 'Already booked that night' });
       expect(after.respondedAt).toBeInstanceOf(Date);
       expect((await tasksFor(waiting.id)).every((t) => t.status === 'CANCELLED')).toBe(true);
       expect(await logged('The vendor declined in Vendor OS: Already booked that night')).toMatchObject({ performedById: userC });
       // Answered: it cannot be answered again, and the team sees the decline on the wedding.
-      expect((await errorOf(venuePortalService.respond(userC, waiting.id, { answer: 'CONFIRM' })))?.name).toBe('InvalidTransitionError');
+      expect((await errorOf(venuePortalService.respond({ vendorId: vendorC, userId: userC }, waiting.id, { answer: 'CONFIRM' })))?.name).toBe('InvalidTransitionError');
       expect((await view()).vendors.find((r) => r.vendorBookingId === waiting.id)?.state).toBe('declined');
     } finally {
       await app.prisma.vendorProfile.deleteMany({ where: { userId: { in: made } } });

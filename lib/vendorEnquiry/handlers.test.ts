@@ -7,10 +7,13 @@ import { makeListForSource, makeStaffAnswer, makeVendorAnswer } from './handlers
 // Fakes only: the session check and the service are passed in, so no shared module is replaced.
 let session: { user: { id: string; roles: string[] } } | null;
 const requireAdmin = mock(async () => (session && session.user.roles.some((r) => ['SUPER_ADMIN', 'SALES', 'OPERATIONS'].includes(r)) ? session : null));
-const requireVendor = mock(async () => (session && session.user.roles.includes('VENDOR') ? session : null));
+// What lib/auth/workingVendor.ts answers: the vendor the person is working in, or the refusal to send back.
+let mayAnswer = true;
+const refuse = (status: number) => ({ refused: new Response(null, { status }) });
+const vendor = mock(async () => (!session || !session.user.roles.includes('VENDOR') ? refuse(401) : !mayAnswer ? refuse(403) : { who: { vendorId: 'vendor-A', userId: session.user.id, extra: 'not passed on' } }));
 const listForSource = mock(async () => ({ enquiries: [], alerts: [] }));
 const answerAsStaff = mock(async () => 'AVAILABLE');
-const answerAsVendor = mock(async (_userId: string, id: string) => {
+const answerAsVendor = mock(async (_who: { vendorId: string; userId: string }, id: string) => {
   if (id !== 'e-own') throw new NotFoundError('Vendor enquiry', 'unavailable');
   return { id, status: 'AVAILABLE' };
 });
@@ -20,7 +23,8 @@ const post = (body: unknown) => new NextRequest('https://www.shaadishopping.com/
 
 beforeEach(() => {
   session = null;
-  for (const m of [requireAdmin, requireVendor, listForSource, answerAsStaff, answerAsVendor]) m.mockClear();
+  mayAnswer = true;
+  for (const m of [requireAdmin, vendor, listForSource, answerAsStaff, answerAsVendor]) m.mockClear();
 });
 
 describe('staff routes', () => {
@@ -57,20 +61,27 @@ describe('vendor route', () => {
   test('only a logged-in vendor may answer — admins and customers cannot use it', async () => {
     for (const roles of [null, ['SUPER_ADMIN'], ['CUSTOMER']]) {
       session = roles ? { user: { id: 'u', roles } } : null;
-      expect((await makeVendorAnswer({ requireVendor, answerAsVendor })(post({ status: 'AVAILABLE' }), ctx('e-own'))).status).toBe(401);
+      expect((await makeVendorAnswer({ vendor, answerAsVendor })(post({ status: 'AVAILABLE' }), ctx('e-own'))).status).toBe(401);
     }
     expect(answerAsVendor).not.toHaveBeenCalled();
   });
 
-  test('the vendor is the session user — never an id from the request body', async () => {
+  test('a member of the business who may not work its enquiries → 403, nothing written', async () => {
     session = { user: { id: 'user-A', roles: ['VENDOR'] } };
-    const res = await makeVendorAnswer({ requireVendor, answerAsVendor })(post({ status: 'AVAILABLE', vendorId: 'someone-else', userId: 'x' }), ctx('e-own'));
+    mayAnswer = false;
+    expect((await makeVendorAnswer({ vendor, answerAsVendor })(post({ status: 'AVAILABLE' }), ctx('e-own'))).status).toBe(403);
+    expect(answerAsVendor).not.toHaveBeenCalled();
+  });
+
+  test('the vendor is the one the person is working in — never an id from the request body', async () => {
+    session = { user: { id: 'user-A', roles: ['VENDOR'] } };
+    const res = await makeVendorAnswer({ vendor, answerAsVendor })(post({ status: 'AVAILABLE', vendorId: 'someone-else', userId: 'x' }), ctx('e-own'));
     expect(res.status).toBe(200);
-    expect(answerAsVendor).toHaveBeenCalledWith('user-A', 'e-own', { status: 'AVAILABLE' });
+    expect(answerAsVendor).toHaveBeenCalledWith({ vendorId: 'vendor-A', userId: 'user-A' }, 'e-own', { status: 'AVAILABLE' });
   });
 
   test("another vendor's enquiry → 404", async () => {
     session = { user: { id: 'user-A', roles: ['VENDOR'] } };
-    expect((await makeVendorAnswer({ requireVendor, answerAsVendor })(post({ status: 'AVAILABLE' }), ctx('e-other'))).status).toBe(404);
+    expect((await makeVendorAnswer({ vendor, answerAsVendor })(post({ status: 'AVAILABLE' }), ctx('e-other'))).status).toBe(404);
   });
 });

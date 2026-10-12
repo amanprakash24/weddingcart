@@ -214,9 +214,10 @@ not say. Inside a service, `can(scope, …)` decides finer points: a manager see
 (`moneyHidden`), nor the business's payment details.
 
 **What a member sees** (`lib/auth/workspaceView.ts`, found in the staging browser test of 7 Oct 2026). The Vendor OS menu follows
-the chosen workspace: a screen is offered only with its permission, and the screens still read through the owner link (Today,
-Weddings, Services, Availability, Payments — §8.4) are offered only in the vendor the person owns, because anywhere else they
-would show the wrong business. A member who opens such a path is sent to where their workspace opens. The header names the
+the chosen workspace: a screen is offered only with its permission. Until 13 Oct 2026 the screens read through the owner link
+(Today, Weddings, Services, Payments — §8.4) were offered only in the vendor the person owns; they are read for the vendor the
+person is WORKING in now (`lib/auth/workingVendor.ts`, `04-vendor-os.md` §24), so they follow permissions like the rest. A
+member who opens a path they may not use is sent to where their workspace opens. The header names the
 business and offers "Switch business". An enquiry's history leaves out payment and invoice lines for a member without
 `view_financials` (`historyFor`, `lib/venue/enquiry.ts`) — filtered on the server, not in the screen.
 

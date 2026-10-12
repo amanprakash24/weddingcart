@@ -37,7 +37,7 @@ export interface PendingResponseItem {
   wedding: string;
   function: string;
   requirement: string;
-  price: string;
+  price: string | null;
 }
 
 export interface ActivityItem {
@@ -157,7 +157,7 @@ export default function VendorTodayScreen({
               <Row
                 key={p.id}
                 title={`${p.wedding} — ${p.function}`}
-                meta={`${p.requirement} · ${p.price}`}
+                meta={[p.requirement, p.price].filter(Boolean).join(' · ')}
                 right={
                   <Link href="/vendor/services" className="text-xs font-semibold underline underline-offset-2">
                     Answer it

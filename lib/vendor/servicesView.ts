@@ -15,7 +15,7 @@ export interface VendorServiceCard {
   startTime: string | null;
   venueName: string | null;
   city: string;
-  agreedAmount: number;
+  agreedAmount: number | null; // null: this member may not see money
   status: VendorBookingRow['bookingStatus'];
   venueStatus: VendorBookingRow['venueStatus'];
   nextVenueStatus: VendorBookingRow['venueStatus'] | null;

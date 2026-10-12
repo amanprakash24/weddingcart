@@ -117,4 +117,27 @@ dbDescribe('the Team screen (real database)', () => {
     expect(await asOwner(() => team.add({ name: 'DBTEST Rahul', mobile: phone(10), role: 'MANAGER' }))).toMatchObject({ kind: 'EXISTING_LOGIN', member: { role: 'MANAGER' } });
     expect((await businessSvc.scopeForVendorLogin(login.id))?.role).toBe('MANAGER');
   });
+  // 13 Oct 2026 — what Shaadi Shopping shares with a vendor (Today, Weddings, Services, Payments) is read for the vendor a person
+  // is WORKING in, not the one they own.
+  test('the vendor a person works in: a manager gets the owner’s vendor; an owner of another vendor gets the one they chose', async () => {
+    const { PLATFORM_SCOPE } = await import('@/lib/ownership/scope');
+    const { venuePortalService } = await import('@/services/venuePortal.service');
+    const rahul = await app.prisma.user.findUniqueOrThrow({ where: { phone: phone(10) } });
+    const asManager = await businessSvc.working(rahul.id);
+    expect(asManager).toMatchObject({ businessId: businessIds[0], vendorId: vendorIds[0], role: 'MANAGER' });
+    expect(asManager?.permissions).toContain('weddings');
+    expect(asManager?.permissions).not.toContain('view_financials');
+
+    // The owner of venue B also works in venue A.
+    expect(await asOwner(() => team.add({ name: 'Owner of B', mobile: phone(1), role: 'EMPLOYEE' }))).toMatchObject({ kind: 'NEEDS_CODE' });
+    expect(await businessSvc.working(users[1])).toBeNull(); // two businesses, none chosen
+    expect(await businessSvc.working(users[1], businessIds[0])).toMatchObject({ vendorId: vendorIds[0], role: 'EMPLOYEE', permissions: [] });
+    expect(await businessSvc.working(users[1], businessIds[1])).toMatchObject({ vendorId: vendorIds[1], role: 'OWNER' });
+    expect(await businessSvc.working(users[1], 'not-a-business-of-theirs')).toBeNull();
+
+    // The shared records are read by that vendor's id; without money nothing about payouts is read.
+    const shared = await runInScope(PLATFORM_SCOPE, () => venuePortalService.getDashboard(vendorIds[0], { seesMoney: false }));
+    expect(shared.vendor.id).toBe(vendorIds[0]);
+    expect(shared).toMatchObject({ bookings: [], payouts: [] });
+  });
 });

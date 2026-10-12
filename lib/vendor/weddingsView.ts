@@ -26,7 +26,7 @@ export interface VendorWeddingCard {
     status: VendorBookingRow['bookingStatus'];
     venueStatus: VendorBookingRow['venueStatus'];
     nextVenueStatus: VendorBookingRow['venueStatus'] | null;
-    amount: number;
+    amount: number | null; // null: this member may not see money
     service: string | null;
     overdueTasks: { id: string; title: string }[];
   }[];

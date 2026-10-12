@@ -666,8 +666,8 @@ workspace. Founder's "GO", 12 Oct.
 - **Two answers at once** (the vendor and staff together) cannot both land: the change claims the booking's status first, and the
   second gets "This booking was answered a moment ago". This guard protects staff's own answers too.
 
-**How** — `POST /api/vendor/bookings/[bookingId]/respond` (vendor login, owner link, works as Shaadi Shopping like the other
-`/api/vendor/bookings` route) → `venuePortalService.respond` → `lib/vendor/bookingResponse.ts` (pure: the answer and the reason) →
+**How** — `POST /api/vendor/bookings/[bookingId]/respond` (the vendor the person is working in, needs `weddings` — §24; works
+as Shaadi Shopping like the other `/api/vendor/bookings` route) → `venuePortalService.respond` → `lib/vendor/bookingResponse.ts` (pure: the answer and the reason) →
 `weddingWorkspaceService.updateVendorBookingStatus(…, { actorId, vendorOs: true })`. Screen: `components/vendor/BookingResponse.tsx`
 inside `VendorServicesScreen`. No migration.
 
@@ -679,7 +679,8 @@ reason, task cancelled, logged by name, cannot answer twice, the team's view sho
 **Not built yet**
 
 - Telling Shaadi Shopping's team by WhatsApp or e-mail when a vendor declines (in-app only, on the wedding).
-- A manager or staff member of the vendor's business answering — the booking screens still read through the owner link.
+
+A manager or staff member of the vendor's business can answer since 13 Oct 2026 (§24).
 
 ## 23. Team — the owner adds the people who work in the business — built 12 Oct 2026
 
@@ -734,6 +735,41 @@ member; a manager given `team` cannot hand out money).
   person, who may work in other businesses too).
 - Choosing permissions one by one (only role + money for now; the model already supports more).
 - "My Work" for an employee, and giving out tasks.
+
+## 24. The team on the shared screens — Today, Weddings, Services, Payments — built 13 Oct 2026
+
+What Shaadi Shopping shares with a vendor (its booking requests, the weddings it is booked on, its payouts, its availability
+requests) used to be read for the signed-in person's OWN vendor (the owner link, `VendorProfile`). So a manager or employee of a
+business could not open these screens at all, and a person who owns one vendor and works in another got their own vendor's
+records there. They are now read for the vendor of the business the person is **working in** — from their memberships and the
+workspace they chose, never from the request.
+
+| Screen / action | Who |
+|---|---|
+| Today | every member; Shaadi Shopping's bookings only with `weddings` |
+| Weddings, Services | `weddings` |
+| Confirm / Can't do it, venue setup status | `weddings` |
+| Payments (payouts) | `view_financials` |
+| Shaadi Shopping's availability requests on Enquiries, and answering them | `enquiries` |
+| the older `/vendor` portal | the owner only |
+
+- **Money** — without `view_financials` the agreed price of a booking is not sent to the browser at all (`amount: null` from
+  `venuePortalService.getDashboard(vendorId, { seesMoney })`), approval amounts likewise, and the payouts are not read.
+- **Who answered** — the wedding's timeline names the person who confirmed or declined, whoever in the business it was.
+- **An employee** has no permissions until the owner gives some: Today opens with nothing on it.
+- **Refused on the server** — a route answers 401 (not signed in / no business chosen), 403 (no permission), 404 (the business
+  has no listing); a page sends the person to "Choose Workspace" or to where their workspace opens.
+
+**How** — `lib/auth/workingVendor.ts` (`workingVendor`, `sharedPage(need)` for pages, `sharedRoute(need)` for routes) over
+`venueBusinessService.working` (the one picking rule, also behind `scopeForVendorLogin`). The pages and routes still run as
+Shaadi Shopping (`platformScoped`) and are limited to one vendor by id. Menu: `lib/auth/workspaceView.ts` (no owner-link rule
+left). No migration.
+
+**Tests** — `lib/auth/workingVendor.test.ts`, `lib/auth/workspaceView.test.ts`, `services/venuePortal.service.test.ts` (money left
+out; a manager answers), `services/vendorEnquiry.service.test.ts`, `lib/vendorEnquiry/handlers.test.ts` (403),
+`tests-db/venue.team.test.ts` (real database: the manager's vendor; an owner of another vendor gets the one chosen).
+
+**Not changed** — `/vendor/proposals` and the unused `PATCH /api/vendor/availability` still read through the owner link.
 
 ## Data model gaps
 

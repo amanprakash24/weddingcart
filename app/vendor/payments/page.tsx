@@ -1,5 +1,4 @@
-import { requireRole } from '@/lib/auth/session';
-import { Role } from '@/lib/auth/roles';
+import { sharedPage } from '@/lib/auth/workingVendor';
 import { venuePortalService } from '@/services/venuePortal.service';
 import { buildVendorPaymentsView } from '@/lib/vendor/paymentsView';
 import VendorPaymentsScreen from '@/components/vendor/VendorPaymentsScreen';
@@ -11,13 +10,12 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-// Same defense-in-depth pattern and vendor-scoped data source as app/vendor/services/page.tsx —
+// Money: only for the owner and anyone they let see it. Same vendor-scoped data source as app/vendor/services/page.tsx —
 // docs/wedding-os/11-vivah-os-ux-architecture.md §14/§23: the one new read this screen needed
 // (vendor-scoped Payout rows) now lives in venuePortalService.getDashboard alongside everything else.
 async function VendorPaymentsPage() {
-  const session = await requireRole([Role.VENDOR]);
-  if (!session?.user?.id) return null;
-  const dashboard = await venuePortalService.getDashboard(session.user.id);
+  const who = await sharedPage('view_financials');
+  const dashboard = await venuePortalService.getDashboard(who.vendorId, { seesMoney: true });
   const payments = buildVendorPaymentsView(dashboard.bookings, dashboard.payouts);
   // The business's OWN bookings first (what its own couples still owe, loaded venue-scoped from /api/vendor-os/collections); the
   // payouts from Shaadi Shopping below (Shaadi Shopping's records — this page's own scope).
