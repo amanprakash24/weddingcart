@@ -20,7 +20,10 @@ import LoginCodeReminder from './LoginCodeReminder';
 export default function VendorShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [moreOpen, setMoreOpen] = useState(false);
+  // The phone's More sheet belongs to the page it was opened on: going to another page (any link in it) closes it.
+  const [moreOpenOn, setMoreOpenOn] = useState<string | null>(null);
+  const moreOpen = moreOpenOn === pathname;
+  const setMoreOpen = (open: boolean | ((was: boolean) => boolean)) => setMoreOpenOn(((typeof open === 'function' ? open(moreOpen) : open) ? pathname : null));
   // First sign-in (6 Oct 2026): until the business profile has a name, a logo and three photos, every Vendor OS screen leads to
   // /vendor/profile and the navigation is put away. 'checking' shows nothing of the page behind it, so a new vendor never sees a
   // dashboard flash by. A login that is not a vendor business (the API answers "no") is simply let through.
@@ -59,6 +62,9 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       .then((r) => r.json())
       .then((b) => {
         if (!live) return;
+        // In no vendor business at all — taken out of a team, say: "Choose Workspace" says so and how to get back in, rather than
+        // a menu whose every screen would refuse them.
+        if (b.success && !b.data.workspaces.some((x: { kind: string }) => x.kind === 'VENDOR')) return void window.location.replace('/workspace');
         const w = b.success ? b.data?.working : null;
         setWs(w ? { ...w, several: b.data.workspaces.filter((x: { kind: string }) => x.kind === 'VENDOR').length > 1 } : null);
       })

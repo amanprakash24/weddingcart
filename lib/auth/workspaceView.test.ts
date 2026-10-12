@@ -3,7 +3,7 @@ import { describe, test, expect } from 'bun:test';
 import { effectivePermissions } from './permissions';
 import { canSeeScreen, screenOf, vendorHome } from './workspaceView';
 
-const ALL = ['today', 'enquiries', 'weddings', 'services', 'availability', 'payments', 'offerings', 'settings'];
+const ALL = ['today', 'enquiries', 'weddings', 'services', 'availability', 'payments', 'offerings', 'settings', 'team'];
 const seen = (view: Parameters<typeof canSeeScreen>[1]) => ALL.filter((key) => canSeeScreen(key, view));
 
 describe('what the Vendor OS menu shows in the chosen workspace', () => {
@@ -27,7 +27,7 @@ describe('what the Vendor OS menu shows in the chosen workspace', () => {
 
   test('an owner by membership who is not the vendor’s linked owner still gets no owner-link screens', () => {
     const coOwner = { permissions: effectivePermissions({ role: 'OWNER' }), ownsVendor: false };
-    expect(seen(coOwner)).toEqual(['enquiries', 'availability', 'offerings', 'settings']);
+    expect(seen(coOwner)).toEqual(['enquiries', 'availability', 'offerings', 'settings', 'team']);
   });
 
   test('a path is matched to its screen; the profile and the chooser belong to none', () => {

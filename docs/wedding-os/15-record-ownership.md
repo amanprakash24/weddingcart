@@ -257,8 +257,8 @@ cannot happen unnoticed. There is no audit log of it yet.
 
 - **The Command Center's own routes** (about 70) still ask only "is this an internal team member?". The membership and its
   permissions exist for the team, but those routes are not yet behind `can()`.
-- **Adding people:** there is no Team screen yet (Phase 2). The only way a second person gets a membership today is "My sign-in".
+- ~~**Adding people:** there is no Team screen yet (Phase 2).~~ Built 12 Oct 2026: Vendor OS → More → Team (`04-vendor-os.md` §23).
 - **My Work** for an employee, and task assignment (Phase 2).
 - **What Shaadi Shopping shares with a vendor** (availability requests, bookings, payouts — the older Vendor OS screens) is still
   read through the owner's vendor link, so a manager or employee sees none of it yet.
-- The `/vendor` door still needs the `VENDOR` portal role; Phase 2's "Add employee" gives it.
+- The `/vendor` door still needs the `VENDOR` portal role; the Team screen gives it to everyone it adds (12 Oct 2026).

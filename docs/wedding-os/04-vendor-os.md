@@ -681,6 +681,60 @@ reason, task cancelled, logged by name, cannot answer twice, the team's view sho
 - Telling Shaadi Shopping's team by WhatsApp or e-mail when a vendor declines (in-app only, on the wedding).
 - A manager or staff member of the vendor's business answering — the booking screens still read through the owner link.
 
+## 23. Team — the owner adds the people who work in the business — built 12 Oct 2026
+
+Phase 2 of "Person → Membership → Role → Permissions" (`15-record-ownership.md` §8). Until now nobody but a business's owner could
+sign in to it: memberships existed, but nothing created them. Founder's "GO", 12 Oct, with the recommended answers: the code is
+shown once and sent from the owner's own WhatsApp; a manager sees no money unless the owner allows it.
+
+**Vendor OS → More → Team** (needs the `team` permission — the owner, by default):
+
+- **The list**: everyone in the business — name, job title, mobile number, role, "Sees money". The owner is first and cannot be
+  changed or removed here; nobody can change or remove themselves.
+- **Add a person**: name, mobile number, role (**Manager** or **Employee**), job title (optional), **Can see money** (payments
+  received, amounts due and totals — `view_financials`). Only someone who sees money may give it. Up to 50 people.
+- **Their login**, by what the mobile number already is:
+  - a **new number** → a new login with the vendor door (`VENDOR`) and a fresh 6-digit code, shown **once**, with **Send it on
+    WhatsApp** (a ready message from the owner's own phone: the business, where to sign in, the number and the code);
+  - a number that **already signs in with its own code** (they work elsewhere too) → only the membership; their code is never
+    replaced; they choose this business after signing in;
+  - an **account with no code** (a couple who signs in by WhatsApp, a team member with a password) → only the membership, and **no
+    code is issued** — whoever issues a code can sign in with it, so an owner must never get one for an account that is not new.
+    The screen says to ask Shaadi Shopping for one. The owner never renames someone else's account.
+- **Change**: role, job title, money. What else the owner had given or taken for that person is kept (`memberPermissions`).
+- **Remove**: after a confirmation. Access to this business ends on their next request (every request re-checks the membership);
+  what they did still names them. Adding the same number again brings them back.
+
+**Found and fixed on the way**
+
+- **The phone's More sheet stayed open** over the page after tapping Services, Availability, What we offer or Settings (only
+  Business profile closed it), so the page could not be used until it was closed by hand. It now belongs to the page it was
+  opened on (`VendorShell`).
+- **Enquiries, a manager's home, was a 404** for anyone without a vendor of their own, and someone who owns another vendor would
+  have seen THAT vendor's Shaadi Shopping requests in this business. "From Shaadi Shopping" now shows only when the person is
+  working in the vendor they own; the business's own enquiries show for everyone who may see them.
+- **Someone in no business at all** (taken out of their only team) now lands on "Choose Workspace" — "No workspace yet … ask the
+  owner of your business to add you" — instead of a menu whose every screen refuses them.
+
+**How** — `GET/POST /api/vendor-os/team`, `PATCH/DELETE /api/vendor-os/team/[memberId]` (`venueScoped`, `team`) →
+`services/venueTeam.service.ts` (the business always from the scope; the add is one transaction) → `lib/venue/team.ts` (pure: the
+form, the stored grants/denies, the WhatsApp message). Screen: `components/vendor/team/TeamScreen.tsx`. No migration —
+`BusinessMember` already had role, job title, grants, denies and removedAt; codes already belonged to the person.
+
+**Tests** — `lib/venue/team.test.ts`; `lib/auth/workspaceView.test.ts` (Team only with `team`); `tests-db/venue.team.test.ts` (real
+database: a new number's code really signs in and the person is a manager without money; an existing code is kept; an account
+without a code is given none and is not renamed; change and remove take effect at once; no owner, no self, no other business's
+member; a manager given `team` cannot hand out money).
+
+**Not built yet** (PR B and later)
+
+- Today, Weddings, Services and Payments for team members — still read through the owner's own vendor link, so not in their menu.
+- Shaadi Shopping's availability requests for team members (the same reason).
+- A new code for a team member who lost theirs — Shaadi Shopping issues it; the owner cannot (it would let them sign in as that
+  person, who may work in other businesses too).
+- Choosing permissions one by one (only role + money for now; the model already supports more).
+- "My Work" for an employee, and giving out tasks.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |

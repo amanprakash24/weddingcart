@@ -1,4 +1,4 @@
-import { Briefcase, CalendarClock, Heart, Inbox, LayoutDashboard, type LucideIcon, ListChecks, Receipt, Settings } from 'lucide-react';
+import { Briefcase, CalendarClock, Heart, Inbox, LayoutDashboard, type LucideIcon, ListChecks, Receipt, Settings, Users } from 'lucide-react';
 
 // The one Vendor OS navigation — shared by ordinary vendors and venue owners alike. Venue Owner is a
 // specialized Vendor OS experience (docs/wedding-os/11-vivah-os-ux-architecture.md §3), not a separate
@@ -27,6 +27,8 @@ export const PRIMARY: NavItem[] = [
   { key: 'offerings', label: 'What we offer', href: '/vendor/offerings', icon: ListChecks, isActive: (p) => p.startsWith('/vendor/offerings') },
   // Phase C: the venue's own number and booking rule, for the customers it brings itself.
   { key: 'settings', label: 'Settings', href: '/vendor/settings', icon: Settings, isActive: (p) => p.startsWith('/vendor/settings') },
+  // Phase 2 (12 Oct 2026): the people who work in the business — the owner adds, changes and removes them.
+  { key: 'team', label: 'Team', href: '/vendor/team', icon: Users, isActive: (p) => p.startsWith('/vendor/team') },
 ];
 
 // Phone bottom bar: 4 daily items + a More button for the rest (same shape as adminNav.ts's PHONE_BAR).
