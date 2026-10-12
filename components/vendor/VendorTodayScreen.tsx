@@ -160,7 +160,7 @@ export default function VendorTodayScreen({
                 meta={`${p.requirement} · ${p.price}`}
                 right={
                   <Link href="/vendor/services" className="text-xs font-semibold underline underline-offset-2">
-                    See the request
+                    Answer it
                   </Link>
                 }
               />

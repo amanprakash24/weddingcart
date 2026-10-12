@@ -664,16 +664,16 @@ export const weddingWorkspaceService = {
   },
 
   // domain-model.md §5.2 — the only route that can move a VendorBooking to
-  // CONFIRMED, which is also the automatic PLANNING->ACTIVE trigger. No
-  // vendor-facing self-service confirm flow exists yet (Vendor OS, a later
-  // milestone), so this is Operations recording a real confirmation (phone
-  // call, WhatsApp, etc.), not a placeholder.
+  // CONFIRMED, which is also the automatic PLANNING->ACTIVE trigger. Two callers: Operations recording a real confirmation (phone
+  // call, WhatsApp, etc.), and since 12 Oct 2026 the vendor answering in Vendor OS (venuePortalService.respond) — `by` says
+  // who, so the wedding's timeline names them. Two answers at the same moment cannot both land: the status is claimed first.
   async updateVendorBookingStatus(
     weddingId: string,
     vendorBookingId: string,
     status: VendorBookingStatus,
     declineReason?: string,
-    onTimeService?: boolean
+    onTimeService?: boolean,
+    by?: { actorId: string | null; vendorOs?: boolean }
   ) {
     const vendorBooking = await vendorBookingRepository.findById(vendorBookingId);
     if (!vendorBooking) throw new NotFoundError('VendorBooking', vendorBookingId);
@@ -688,6 +688,10 @@ export const weddingWorkspaceService = {
     }
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Claim the change: only if the booking is still in the status read above (staff and the vendor may answer at once).
+      const claimed = await tx.vendorBooking.updateMany({ where: { id: vendorBookingId, status: vendorBooking.status }, data: { status } });
+      if (claimed.count === 0) throw new InvalidTransitionError('This booking was answered a moment ago — reload to see the answer');
+
       const updated = await vendorBookingRepository.update(
         vendorBookingId,
         {
@@ -714,14 +718,19 @@ export const weddingWorkspaceService = {
                 : ActivityType.STATUS_CHANGED,
           summary:
             status === 'CONFIRMED'
-              ? 'Vendor booking confirmed'
+              ? by?.vendorOs
+                ? 'The vendor confirmed the booking in Vendor OS'
+                : 'Vendor booking confirmed'
               : status === 'DECLINED'
-                ? 'Vendor booking declined'
+                ? by?.vendorOs
+                  ? `The vendor declined in Vendor OS${declineReason ? `: ${declineReason}` : ''}`
+                  : 'Vendor booking declined'
                 : status === 'COMPLETED'
                   ? `Vendor booking marked completed${onTimeService === false ? ' (late)' : ''}`
                   : `Vendor booking set to ${status}`,
           wedding: { connect: { id: weddingId } },
           vendorBooking: { connect: { id: vendorBookingId } },
+          ...(by?.actorId ? { performedBy: { connect: { id: by.actorId } } } : {}),
         },
         tx
       );

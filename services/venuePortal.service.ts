@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
 import { VenueBookingStatus, AvailabilityStatus } from '@/generated/prisma/enums';
 import { canTransitionVenueBooking } from '@/lib/wedding/lifecycle';
+import { checkBookingResponse } from '@/lib/vendor/bookingResponse';
+import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 
 // A vendor can set at most this many dates in one request — generous enough for
 // "block the next 3 months" in one go, small enough to keep the transaction bounded.
@@ -138,6 +140,21 @@ export const venuePortalService = {
     }
 
     return prisma.vendorBooking.update({ where: { id: bookingId }, data: { venueStatus } });
+  },
+
+  // The vendor answers Shaadi Shopping's booking request (12 Oct 2026, lib/vendor/bookingResponse.ts): Confirm, or Can't do it
+  // with a reason. Only the vendor's OWN booking (by the owner link, like every screen here), and only while it still waits. It
+  // goes through the same change staff make (weddingWorkspaceService.updateVendorBookingStatus): the confirm task closes, the
+  // wedding may become active, and the timeline says the vendor answered, by name.
+  async respond(userId: string, bookingId: string, input: { answer?: unknown; reason?: unknown }) {
+    const profile = await vendorForUser(userId);
+    const booking = await prisma.vendorBooking.findFirst({ where: { id: bookingId, vendorId: profile.vendorId }, select: { id: true, status: true, weddingEvent: { select: { weddingId: true } } } });
+    if (!booking) throw new NotFoundError('Booking', bookingId);
+    if (booking.status !== 'PENDING_VENDOR_CONFIRMATION') throw new InvalidTransitionError('This booking has already been answered — reload to see where it stands');
+    const checked = checkBookingResponse(input);
+    if (!checked.ok) throw new ValidationError(checked.error);
+    const updated = await weddingWorkspaceService.updateVendorBookingStatus(booking.weddingEvent.weddingId, booking.id, checked.status, checked.reason ?? undefined, undefined, { actorId: userId, vendorOs: true });
+    return { id: updated.id, status: updated.status, declineReason: updated.declineReason };
   },
 
   // Self-service availability: a vendor sets AVAILABLE/TENTATIVE/BOOKED/BLOCKED on

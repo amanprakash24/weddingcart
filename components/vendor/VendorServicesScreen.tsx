@@ -7,6 +7,7 @@ import Tabs, { type TabItem } from '@/components/ui/Tabs';
 import Button from '@/components/ui/Button';
 import type { VendorServiceCard } from '@/lib/vendor/servicesView';
 import { VENUE_STATUS_LABEL, VENUE_ADVANCE_LABEL } from './venueStatusLabels';
+import BookingResponse from './BookingResponse';
 
 // Small, deliberate duplication of components/vendor/VendorWeddingsScreen.tsx's identical booking-status
 // mapping — that map lives inside each screen component, not a pure lib function, so it isn't worth
@@ -33,7 +34,7 @@ function dateLabel(value: string) {
   return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 }
 
-function ServiceCard({ service, isVenue, onAdvanceVenueStatus, advancing }: { service: VendorServiceCard; isVenue: boolean; onAdvanceVenueStatus: (bookingId: string, next: VendorServiceCard['venueStatus']) => void; advancing: boolean }) {
+function ServiceCard({ service, isVenue, onAdvanceVenueStatus, advancing, onAnswered }: { service: VendorServiceCard; isVenue: boolean; onAdvanceVenueStatus: (bookingId: string, next: VendorServiceCard['venueStatus']) => void; advancing: boolean; onAnswered: (bookingId: string, status: 'CONFIRMED' | 'DECLINED') => void }) {
   const pill = BOOKING_STATUS_PILL[service.status];
   return (
     <Card variant={service.bucket === 'needs-attention' ? 'attention' : 'default'}>
@@ -58,7 +59,10 @@ function ServiceCard({ service, isVenue, onAdvanceVenueStatus, advancing }: { se
         </p>
       )}
 
-      {service.nextAction && <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">{service.nextAction}</p>}
+      {service.nextAction && service.status !== 'PENDING_VENDOR_CONFIRMATION' && <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">{service.nextAction}</p>}
+
+      {service.status === 'PENDING_VENDOR_CONFIRMATION' && <BookingResponse bookingId={service.bookingId} onAnswered={(status) => onAnswered(service.bookingId, status)} />}
+      {service.status === 'DECLINED' && <p className="mt-2 text-sm text-[var(--color-text-secondary)]">Declined — Shaadi Shopping’s team will arrange someone else for this.</p>}
 
       {isVenue && service.status !== 'DECLINED' && service.status !== 'CANCELLED' && (
         <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--color-border-subtle)] pt-2">
@@ -110,7 +114,11 @@ export default function VendorServicesScreen({ services: initialServices, isVenu
   const showAttentionSection = filter === 'all' && attention.length > 0;
   const showCompletedSection = filter === 'all' && completed.length > 0;
 
-  const renderCard = (s: VendorServiceCard) => <ServiceCard key={s.bookingId} service={s} isVenue={isVenue} onAdvanceVenueStatus={advanceVenueStatus} advancing={advancingId === s.bookingId} />;
+  // The vendor answered a booking request: it leaves "Needs attention" — confirmed is upcoming, declined is done with.
+  const answered = (bookingId: string, status: 'CONFIRMED' | 'DECLINED') =>
+    setServices((current) => current.map((s) => (s.bookingId === bookingId ? { ...s, status, nextAction: null, bucket: s.overdueTasks.length > 0 ? 'needs-attention' : status === 'DECLINED' ? 'completed' : 'upcoming' } : s)));
+
+  const renderCard = (s: VendorServiceCard) => <ServiceCard key={s.bookingId} service={s} isVenue={isVenue} onAdvanceVenueStatus={advanceVenueStatus} advancing={advancingId === s.bookingId} onAnswered={answered} />;
 
   if (services.length === 0) {
     return (

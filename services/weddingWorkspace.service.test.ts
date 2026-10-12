@@ -37,6 +37,7 @@ function makePrismaMock({
     vendorBooking: {
       findUnique: mock(async () => fakeVendorBooking(vendorBookingStatus)),
       update: updateMock,
+      updateMany: mock(async () => ({ count: 1 })),
     },
     weddingEvent: {
       findUnique: mock(async () => ({ id: 'we-1', weddingId })),
@@ -235,7 +236,7 @@ function makePlanMock(over: { taskWeddingId?: string; taskTitle?: string; staff?
     activityLog: { create: logCreate },
     weddingEvent: { findUnique: mock(async () => ({ id: 'we-1', weddingId: 'wedding-1' })) },
     vendor: { findUnique: mock(async () => ({ id: 'vendor-1', name: 'Lens Studio' })) },
-    vendorBooking: { findUnique: mock(async () => ({ id: 'vb-1', weddingEventId: 'we-1', status: over.vendorBookingStatus ?? 'PENDING_VENDOR_CONFIRMATION', respondedAt: null, onTimeService: null })), update: vbUpdate, create: vbCreate },
+    vendorBooking: { findUnique: mock(async () => ({ id: 'vb-1', weddingEventId: 'we-1', status: over.vendorBookingStatus ?? 'PENDING_VENDOR_CONFIRMATION', respondedAt: null, onTimeService: null })), update: vbUpdate, create: vbCreate, updateMany: mock(async () => ({ count: 1 })) },
   };
   const prismaMock = { ...base, $transaction: mock(async (fn: (tx: typeof base) => unknown) => fn(base)) };
   return { prismaMock, weddingUpdate, taskUpdate, taskUpdateMany, logCreate };
@@ -315,5 +316,32 @@ describe('vendor tasks close themselves', () => {
     const notThatKind = makePlanMock({ taskTitle: 'Call the caterer' });
     expect(await failure((await loadServiceWith(notThatKind.prismaMock)).addVendorBooking('wedding-1', { weddingEventId: 'we-1', vendorId: 'vendor-1', agreedPrice: 1, resolvesTaskId: 'task-1' }, null))).toBeInstanceOf(NotFoundError);
     expect(notThatKind.taskUpdateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('the vendor answering in Vendor OS (12 Oct 2026)', () => {
+  test('the timeline says the vendor answered, names them, and carries the reason of a decline', async () => {
+    const { prismaMock, activityLogCreateMock } = makePrismaMock({ vendorBookingStatus: 'PENDING_VENDOR_CONFIRMATION' });
+    const service = await loadServiceWith(prismaMock);
+    await service.updateVendorBookingStatus('wedding-1', 'vb-1', 'DECLINED', 'Already booked that night', undefined, { actorId: 'user-v', vendorOs: true });
+    const data = (activityLogCreateMock.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    expect(data).toMatchObject({ summary: 'The vendor declined in Vendor OS: Already booked that night', performedBy: { connect: { id: 'user-v' } } });
+  });
+
+  test('staff answering is unchanged: no name, the old wording', async () => {
+    const { prismaMock, activityLogCreateMock } = makePrismaMock({ vendorBookingStatus: 'PENDING_VENDOR_CONFIRMATION' });
+    await (await loadServiceWith(prismaMock)).updateVendorBookingStatus('wedding-1', 'vb-1', 'CONFIRMED');
+    const data = (activityLogCreateMock.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
+    expect(data.summary).toBe('Vendor booking confirmed');
+    expect(data.performedBy).toBeUndefined();
+  });
+
+  test('answered a moment ago by someone else: refused, nothing written', async () => {
+    const { prismaMock, updateMock, activityLogCreateMock } = makePrismaMock({ vendorBookingStatus: 'PENDING_VENDOR_CONFIRMATION' });
+    prismaMock.vendorBooking.updateMany = mock(async () => ({ count: 0 }));
+    const service = await loadServiceWith(prismaMock);
+    await expect(service.updateVendorBookingStatus('wedding-1', 'vb-1', 'CONFIRMED')).rejects.toThrow('answered a moment ago');
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(activityLogCreateMock).not.toHaveBeenCalled();
   });
 });

@@ -66,6 +66,8 @@ Decline should require a reason (date conflict, price disagreement, etc.) — us
 both for the requesting coordinator (do they need to find a replacement vendor
 immediately) and for the vendor's own cancellation-rate tracking in §7.
 
+**Built 12 Oct 2026 — see §22.**
+
 ## 5. Package Management ("Update prices")
 
 **Already real, already migrated:** `VendorPackage` exists in the Phase A schema
@@ -575,8 +577,7 @@ quotations that have an agreement, each fed to the same Money v1 builder as the 
 
 **Not built yet**
 
-- Accepting or declining a Shaadi Shopping booking request from Vendor OS — a decision first: what an "accept" by the vendor
-  should do to Shaadi Shopping's booking.
+- ~~Accepting or declining a Shaadi Shopping booking request from Vendor OS~~ — built 12 Oct 2026, §22.
 - Due dates for the balance, and reminders sent by themselves.
 - Left out of the list: an enquiry marked "Not going ahead" after it was booked, and a cancelled wedding — money already received
   for those is not counted in "received this month".
@@ -644,6 +645,41 @@ linked to its wedding; venue B never sees A's dates).
 - Blocking a date by hand ("B") — needs a migration.
 - Shaadi Shopping's own weddings this business is booked on, and functions moved to another day.
 - More than 500 bookings in the window (the screen says when some are left out).
+
+## 22. The vendor answers Shaadi Shopping's booking request — built 12 Oct 2026
+
+When Shaadi Shopping books a vendor for a wedding, the `VendorBooking` waits as "Awaiting your response" (§4). Today, Weddings
+and Services said "Respond to this booking request", but nothing on them answered it — only staff could, from the wedding
+workspace. Founder's "GO", 12 Oct.
+
+- **On Services**, a waiting booking asks "Shaadi Shopping has booked you for this. Can you do it?" with **Confirm** and **Can't
+  do it**. Can't do it asks **why** (3–300 characters, required) and says it cannot be undone before it is sent. Today's
+  "Awaiting your response" list links there ("Answer it").
+- **The same change staff make** (`weddingWorkspaceService.updateVendorBookingStatus`) — no second path: `respondedAt` is set,
+  the "Confirm booking with…" task is finished (confirmed) or cancelled (declined), a confirm can make the wedding active, and the
+  reason is kept in `VendorBooking.declineReason`. The wedding's timeline says **"The vendor confirmed the booking in Vendor OS"**
+  / **"The vendor declined in Vendor OS: <reason>"**, by the vendor's name.
+- **Staff see a decline where they already look**: the wedding's vendor row reads "Declined — <reason>" with *Assign
+  replacement*. A decline is final for that booking (`lib/wedding/lifecycle.ts`: DECLINED → only CANCELLED, which is staff's
+  replace); the couple is not told by the vendor's answer — the team is.
+- **Only the vendor's own booking, only while it waits.** Another vendor's booking is "not found"; an answered one is refused.
+- **Two answers at once** (the vendor and staff together) cannot both land: the change claims the booking's status first, and the
+  second gets "This booking was answered a moment ago". This guard protects staff's own answers too.
+
+**How** — `POST /api/vendor/bookings/[bookingId]/respond` (vendor login, owner link, works as Shaadi Shopping like the other
+`/api/vendor/bookings` route) → `venuePortalService.respond` → `lib/vendor/bookingResponse.ts` (pure: the answer and the reason) →
+`weddingWorkspaceService.updateVendorBookingStatus(…, { actorId, vendorOs: true })`. Screen: `components/vendor/BookingResponse.tsx`
+inside `VendorServicesScreen`. No migration.
+
+**Tests** — `lib/vendor/bookingResponse.test.ts`; `services/venuePortal.service.test.ts` (confirm, decline needs a reason, another
+vendor's booking, already answered); `services/weddingWorkspace.service.test.ts` (timeline wording and name; answered a moment ago);
+`tests-db/functions.services.test.ts` (on a real database: not found for another vendor, reason required, declined with its
+reason, task cancelled, logged by name, cannot answer twice, the team's view shows it declined).
+
+**Not built yet**
+
+- Telling Shaadi Shopping's team by WhatsApp or e-mail when a vendor declines (in-app only, on the wedding).
+- A manager or staff member of the vendor's business answering — the booking screens still read through the owner link.
 
 ## Data model gaps
 
