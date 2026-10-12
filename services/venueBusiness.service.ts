@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import type { Scope } from '@/lib/ownership/scope';
 import { effectivePermissions, type MemberRole, type Permission } from '@/lib/auth/permissions';
+import { photosFromRegistration } from '@/lib/venue/profile';
+import { ONBOARDING_UPLOAD_FOLDER } from '@/lib/onboardingUpload';
 
 // A person's place in a business (7 Oct 2026):  Person (User) → Business Membership → Role → Permissions.
 //
@@ -12,16 +14,21 @@ import { effectivePermissions, type MemberRole, type Permission } from '@/lib/au
 // The owner link still works exactly as before: the first time a vendor's owner works on its own records, the vendor gets its
 // Business (kind VENDOR) with that login as Owner. Business and BusinessMember are not owned tables, so this runs without a scope.
 // Never takes a business id on trust.
+//
+// That new business starts with the "Our Work" photos from the vendor's approved registration (12 Oct 2026), in the same write,
+// so the profile does not ask for them again. They wait for Shaadi Shopping's photo review like any other profile photo.
 
 export interface VenueBusinessDeps {
   db: {
     vendorProfile: Pick<typeof prisma.vendorProfile, 'findUnique'>;
     business: Pick<typeof prisma.business, 'findUnique' | 'create'>;
     businessMember: Pick<typeof prisma.businessMember, 'findUnique' | 'create' | 'findMany'>;
+    vendorApplication: Pick<typeof prisma.vendorApplication, 'findUnique'>;
   };
+  cloudName: () => string;
 }
 
-const defaultDeps = (): VenueBusinessDeps => ({ db: prisma });
+const defaultDeps = (): VenueBusinessDeps => ({ db: prisma, cloudName: () => process.env.CLOUDINARY_CLOUD_NAME ?? '' });
 
 const isUniqueViolation = (err: unknown) => (err as { code?: string })?.code === 'P2002';
 
@@ -48,8 +55,13 @@ export function createVenueBusinessService(deps: VenueBusinessDeps = defaultDeps
     if (!profile) return;
     let business = await deps.db.business.findUnique({ where: { vendorId: profile.vendorId }, select: { id: true, kind: true } });
     if (!business) {
+      const application = await deps.db.vendorApplication.findUnique({ where: { vendorId: profile.vendorId }, select: { status: true, portfolioImages: true } });
+      const photos = application?.status === 'APPROVED' ? photosFromRegistration(application.portfolioImages, deps.cloudName(), ONBOARDING_UPLOAD_FOLDER) : [];
       try {
-        business = await deps.db.business.create({ data: { name: profile.vendor.name, kind: 'VENDOR', vendorId: profile.vendorId }, select: { id: true, kind: true } });
+        business = await deps.db.business.create({
+          data: { name: profile.vendor.name, kind: 'VENDOR', vendorId: profile.vendorId, ...(photos.length ? { photos: { create: photos.map((url) => ({ url })) } } : {}) },
+          select: { id: true, kind: true },
+        });
       } catch (err) {
         if (!isUniqueViolation(err)) throw err; // two first requests at once: the other one created it
         business = await deps.db.business.findUnique({ where: { vendorId: profile.vendorId }, select: { id: true, kind: true } });

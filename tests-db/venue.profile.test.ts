@@ -14,6 +14,7 @@ dbDescribe('the business profile and its review (real database)', () => {
   let review: ReturnType<typeof import('@/services/venueProfile.service').createProfileReviewService>;
   let businessSvc: typeof import('@/services/venueBusiness.service').venueBusinessService;
   const users: string[] = [];
+  const extraBusinesses: string[] = [];
   const vendorIds: string[] = [];
   let scopeA: Extract<Scope, { kind: 'BUSINESS' }>;
   let scopeB: Extract<Scope, { kind: 'BUSINESS' }>;
@@ -55,11 +56,12 @@ dbDescribe('the business profile and its review (real database)', () => {
 
   afterAll(async () => {
     if (!app) return;
-    const ids = [scopeA?.businessId, scopeB?.businessId].filter(Boolean) as string[];
+    const ids = [scopeA?.businessId, scopeB?.businessId, ...extraBusinesses].filter(Boolean) as string[];
     await app.prisma.businessMember.deleteMany({ where: { userId: { in: users } } });
     await app.prisma.business.deleteMany({ where: { id: { in: ids } } }); // its photos go with it
     await app.prisma.vendorProfile.deleteMany({ where: { userId: { in: users } } });
     await app.prisma.user.deleteMany({ where: { id: { in: users } } });
+    await app.prisma.vendorApplication.deleteMany({ where: { vendorId: { in: vendorIds } } });
     await app.prisma.vendor.deleteMany({ where: { id: { in: vendorIds } } });
     if (fx) await fx.purge();
   });
@@ -144,5 +146,29 @@ dbDescribe('the business profile and its review (real database)', () => {
     expect((await asStaff(() => profile.get())).canEdit).toBe(false);
     expect(await asStaff(() => profile.update({ name: 'Hacked' }))).toEqual({ forbidden: true });
     expect(await asStaff(() => profile.addPhoto(image('staff')))).toEqual({ forbidden: true });
+  });
+
+  test('a venue approved from its registration starts with those photos: the profile asks only for a logo', async () => {
+    const reg = (name: string) => `https://res.cloudinary.com/${CLOUD}/image/upload/v1/shaadishopping/vendor-onboarding/${name}-${fx.runId}.jpg`;
+    const { categoryId } = await app.prisma.vendor.findUniqueOrThrow({ where: { id: vendorIds[0] }, select: { categoryId: true } });
+    const v = await app.prisma.vendor.create({ data: { slug: `dbtest-profile-c-${fx.runId}`, name: `DBTEST Profile Venue C ${fx.runId}`, categoryId, city: 'Patna', priceMin: 1, priceMax: 2, image: 'x', images: ['x'], description: 'x' } });
+    vendorIds.push(v.id);
+    const u = await app.prisma.user.create({ data: { phone: `95001${fx.runId.replace(/\D/g, '').padEnd(4, '0').slice(0, 4)}2`, roles: { create: { role: 'VENDOR' } } } });
+    users.push(u.id);
+    await app.prisma.vendorProfile.create({ data: { userId: u.id, vendorId: v.id } });
+    await app.prisma.vendorApplication.create({
+      data: { businessName: v.name, ownerName: 'x', ownerPhone: u.phone!, ownerEmail: '', categoryId, city: 'Patna', status: 'APPROVED', vendorId: v.id, portfolioImages: [reg('a'), reg('b'), 'https://elsewhere.example/c.jpg', reg('c')] },
+    });
+
+    const firstLogin = (await import('@/services/venueBusiness.service')).createVenueBusinessService({ db: app.prisma, cloudName: () => CLOUD });
+    const scopeC = (await firstLogin.scopeForVendorLogin(u.id))!;
+    extraBusinesses.push(scopeC.businessId);
+    const p = await view(runInScope(scopeC, () => profile.get()));
+    expect(p.photos.map((ph) => [ph.url, ph.status])).toEqual([[reg('a'), 'PENDING'], [reg('b'), 'PENDING'], [reg('c'), 'PENDING']]);
+    expect(p.missing).toEqual(['logo']);
+    // Not on the public listing until Shaadi Shopping reviews them; signing in again adds nothing.
+    expect((await listing(2)).images).toEqual(['x']);
+    await firstLogin.scopeForVendorLogin(u.id);
+    expect(await app.prisma.businessPhoto.count({ where: { businessId: scopeC.businessId } })).toBe(3);
   });
 });
