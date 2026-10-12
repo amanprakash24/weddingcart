@@ -155,10 +155,8 @@ export default function VendorOnboardingClient() {
       setError('Please upload all 3 "Our Work" images before submitting.');
       return;
     }
-    if (isVenue && menuImages.some((url) => !url)) {
-      setError('Please upload both Veg and Non Veg menu images before submitting.');
-      return;
-    }
+    // Menu photos are optional (12 Oct 2026): a pure-veg venue has no non-veg menu, and a venue without catering has none.
+    const menus = isVenue ? menuImages.filter(Boolean) : [];
     setLoading(true);
     try {
       const res = await fetch('/api/vendor-applications', {
@@ -170,7 +168,7 @@ export default function VendorOnboardingClient() {
           priceMin: Number(form.priceMin) || 0,
           priceMax: Number(form.priceMax) || 0,
           portfolioImages: images,
-          ...(isVenue && { foodMenuImages: menuImages }),
+          ...(menus.length > 0 && { foodMenuImages: menus }),
         }),
       });
       const data = await res.json();
@@ -486,7 +484,7 @@ export default function VendorOnboardingClient() {
               </div>
               {isVenue ? 'Venue Images' : 'Our Work'} <span className="text-rose-500">*</span>
             </h2>
-            <p className="text-xs text-gray-400 mb-5">Upload 3 photos that best represent your craft. All 3 are required.</p>
+            <p className="text-xs text-gray-400 mb-5">Upload 3 photos that best represent your craft. All 3 are required — they also become your first profile photos once you are approved.</p>
             <div className="grid grid-cols-3 gap-4">
               {([0, 1, 2] as const).map((i) => (
                 <div key={i} className="relative">
@@ -536,9 +534,9 @@ export default function VendorOnboardingClient() {
                 <div className="w-7 h-7 bg-rose-100 rounded-lg flex items-center justify-center">
                   <ImagePlus className="w-4 h-4 text-rose-500" />
                 </div>
-                Food Menu Images <span className="text-rose-500">*</span>
+                Food Menu Images <span className="text-sm font-normal text-gray-400">(optional)</span>
               </h2>
-              <p className="text-xs text-gray-400 mb-5">Upload 1 photo each for Veg &amp; Non Veg menus. Both are required.</p>
+              <p className="text-xs text-gray-400 mb-5">If you serve food, add a photo of your menu — Veg, Non Veg or both. Skip this if you don&apos;t.</p>
               <div className="grid grid-cols-2 gap-4">
                 {([0, 1] as const).map((i) => {
                   const label = i === 0 ? 'Veg Menu' : 'Non Veg Menu';

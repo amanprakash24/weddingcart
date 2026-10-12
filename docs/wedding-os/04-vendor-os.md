@@ -281,9 +281,21 @@ approved photo or video takes it off the listing too.
 the vendor to `/vendor/profile` and puts the navigation away. It is a guide, not a lock — the APIs behind the other screens do not
 refuse an incomplete profile.
 
-**Tests:** `lib/venue/profile.test.ts` (GST number, links, own-upload check, completeness), `services/venueProfile.service.test.ts`
-(both halves), `app/api/vendor-os/profile/routes.test.ts` (order of checks, who may call) and `tests-db/venue.profile.test.ts`
-(two real venues and the review).
+**Photos from registration (12 Oct 2026).** The 3 "Our Work" / "Venue Images" photos a vendor uploads when registering become the
+profile's first photos, so the profile no longer asks for the same three again — a newly approved venue is asked only for its
+logo. They are copied when the business is first created (the owner's first sign-in, `ensureOwnerMembership` in
+`services/venueBusiness.service.ts`), in the same write, only from an **APPROVED** application, and only addresses under our own
+registration folder `shaadishopping/vendor-onboarding` (`photosFromRegistration`) — the application's list is whatever the public
+form sent. They are `PENDING` like any other profile photo, so nothing reaches the public listing without the photo review. A
+business that already exists is never given them again (no backfill for businesses created before this).
+
+At the same time the registration form's **menu photos became optional**: it used to demand both a Veg and a Non Veg menu photo
+from every venue, so a pure-veg venue or one without catering could not register. Only the photos actually added are sent.
+
+**Tests:** `lib/venue/profile.test.ts` (GST number, links, own-upload check, completeness, registration photos),
+`services/venueProfile.service.test.ts` (both halves), `services/venueBusiness.service.test.ts` (photos carried on first
+sign-in), `app/api/vendor-os/profile/routes.test.ts` (order of checks, who may call) and `tests-db/venue.profile.test.ts`
+(two real venues and the review; a venue approved from its registration needing only a logo).
 
 **Not built yet:** the logo, GST number and photos **on** the quotation and invoice (the quotation rework), areas and
 specifications of a venue, and a GST line on documents.

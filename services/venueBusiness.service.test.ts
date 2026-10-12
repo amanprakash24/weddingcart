@@ -13,6 +13,9 @@ let profiles: Record<string, { vendorId: string; vendor: { name: string } }>;
 let businesses: { id: string; vendorId: string | null; kind: Kind; name: string }[];
 let members: MemberRow[];
 let raceOnCreate = false;
+let applications: Record<string, { status: 'NEW' | 'APPROVED' | 'REJECTED'; portfolioImages: string[] }>;
+const CLOUD = 'democloud';
+const regPhoto = (name: string) => `https://res.cloudinary.com/${CLOUD}/image/upload/v1/shaadishopping/vendor-onboarding/${name}.jpg`;
 
 const db = {
   vendorProfile: { findUnique: mock(async ({ where }: { where: { userId: string } }) => profiles[where.userId] ?? null) },
@@ -29,6 +32,7 @@ const db = {
       return b;
     }),
   },
+  vendorApplication: { findUnique: mock(async ({ where }: { where: { vendorId: string } }) => applications[where.vendorId] ?? null) },
   businessMember: {
     findUnique: mock(async ({ where }: { where: { businessId_userId: { businessId: string; userId: string } } }) => members.find((m) => m.businessId === where.businessId_userId.businessId && m.userId === where.businessId_userId.userId) ?? null),
     create: mock(async ({ data }: { data: MemberRow }) => (members.push({ ...data, createdAt: new Date(members.length) }), data)),
@@ -40,7 +44,7 @@ const db = {
     ),
   },
 };
-const service = createVenueBusinessService({ db: db as never });
+const service = createVenueBusinessService({ db: db as never, cloudName: () => CLOUD });
 
 const add = (m: MemberRow) => members.push({ ...m, createdAt: new Date(members.length) });
 
@@ -53,6 +57,7 @@ beforeEach(() => {
   ];
   members = [];
   raceOnCreate = false;
+  applications = {};
   for (const m of [db.business.create, db.businessMember.create]) m.mockClear();
 });
 
@@ -73,6 +78,36 @@ describe('a vendor’s owner — the link from before memberships still works', 
   test('two first requests at once: the second uses the business the first made', async () => {
     raceOnCreate = true;
     expect((await service.scopeForVendorLogin('u-kush'))?.businessId).toBe('b-raced');
+  });
+
+  test('the new business starts with the photos from the approved registration — the profile does not ask for them again', async () => {
+    applications['v-kush'] = { status: 'APPROVED', portfolioImages: [regPhoto('a'), regPhoto('b'), regPhoto('c')] };
+    await service.scopeForVendorLogin('u-kush');
+    expect((db.business.create.mock.calls[0] as unknown as [{ data: unknown }])[0].data).toEqual({
+      name: 'Kush Travel', kind: 'VENDOR', vendorId: 'v-kush',
+      photos: { create: [{ url: regPhoto('a') }, { url: regPhoto('b') }, { url: regPhoto('c') }] },
+    });
+  });
+
+  test('only our own registration uploads are carried; an application not approved carries none', async () => {
+    applications['v-kush'] = { status: 'APPROVED', portfolioImages: ['https://evil.example/x.jpg', regPhoto('a')] };
+    await service.scopeForVendorLogin('u-kush');
+    expect((db.business.create.mock.calls[0] as unknown as [{ data: { photos: unknown } }])[0].data.photos).toEqual({ create: [{ url: regPhoto('a') }] });
+
+    businesses = businesses.filter((b) => b.vendorId !== 'v-kush');
+    members = [];
+    db.business.create.mockClear();
+    applications['v-kush'] = { status: 'REJECTED', portfolioImages: [regPhoto('a')] };
+    await service.scopeForVendorLogin('u-kush');
+    expect((db.business.create.mock.calls[0] as unknown as [{ data: unknown }])[0].data).toEqual({ name: 'Kush Travel', kind: 'VENDOR', vendorId: 'v-kush' });
+  });
+
+  test('a business that already exists is never given photos again', async () => {
+    applications['v-a'] = { status: 'APPROVED', portfolioImages: [regPhoto('a')] };
+    profiles['u-a'] = { vendorId: 'v-a', vendor: { name: 'Venue A' } };
+    await service.scopeForVendorLogin('u-a');
+    expect(db.business.create).not.toHaveBeenCalled();
+    expect(db.vendorApplication.findUnique).not.toHaveBeenCalledWith(expect.objectContaining({ where: { vendorId: 'v-a' } }));
   });
 
   test('a person who belongs to no business gets no scope', async () => {

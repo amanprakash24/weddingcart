@@ -73,6 +73,16 @@ export function isOwnUpload(url: unknown, cloudName: string, folder: string): ur
   return `/${url.slice(prefix.length)}`.includes(`/${folder}/`);
 }
 
+// The photos a business brings from its registration (12 Oct 2026): the "Our Work" photos the approved application holds become
+// the profile's first photos, so the profile does not ask for the same three again. Only our own registration uploads (the
+// registration upload folder, passed in) — the application's list is whatever the public form sent, never trusted — each once,
+// at most photosMax.
+export function photosFromRegistration(urls: readonly string[], cloudName: string, registrationFolder: string): string[] {
+  const out: string[] = [];
+  for (const url of urls) if (isOwnUpload(url, cloudName, registrationFolder) && !out.includes(url)) out.push(url);
+  return out.slice(0, PROFILE_LIMITS.photosMax);
+}
+
 // ---- the profile form ----
 
 export interface ProfileInput {

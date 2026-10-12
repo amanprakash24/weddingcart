@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { gstinCheckCharacter, isOwnUpload, isValidGstin, missingProfileSteps, normalizeGstin, PROFILE_LIMITS, validateProfile, videoLink } from './profile';
+import { gstinCheckCharacter, isOwnUpload, isValidGstin, missingProfileSteps, normalizeGstin, photosFromRegistration, PROFILE_LIMITS, validateProfile, videoLink } from './profile';
 
 // Two GST numbers published as format examples; both carry a correct check character.
 const GSTIN_A = '27AAPFU0939F1ZV';
@@ -112,5 +112,29 @@ describe('missingProfileSteps — what still has to be done, in order', () => {
 
   test('two photos are not enough', () => {
     expect(missingProfileSteps({ name: 'Swayamvar Hall', logoUrl: 'https://x/logo.png', photoCount: 2 })).toEqual(['photos']);
+  });
+});
+
+describe('photosFromRegistration — the registration photos the profile starts with', () => {
+  const cloud = 'democloud';
+  const reg = 'shaadishopping/vendor-onboarding';
+  const up = (name: string, folder = reg) => `https://res.cloudinary.com/${cloud}/image/upload/v1791200000/${folder}/${name}.jpg`;
+
+  test('the three "Our Work" photos, in order', () => {
+    expect(photosFromRegistration([up('a'), up('b'), up('c')], cloud, reg)).toEqual([up('a'), up('b'), up('c')]);
+  });
+
+  test('only our own registration uploads — not another folder, cloud or site, nothing blank, each once', () => {
+    const other = `https://res.cloudinary.com/othercloud/image/upload/v1/${reg}/x.jpg`;
+    expect(photosFromRegistration([up('a'), up('p', 'shaadishopping/elsewhere'), other, 'https://evil.example/a.jpg', '', up('a'), up('b')], cloud, reg)).toEqual([up('a'), up('b')]);
+  });
+
+  test('no cloud configured: nothing is carried', () => {
+    expect(photosFromRegistration([up('a')], '', reg)).toEqual([]);
+  });
+
+  test('never more than the profile may hold', () => {
+    const many = Array.from({ length: PROFILE_LIMITS.photosMax + 3 }, (_, i) => up(`p${i}`));
+    expect(photosFromRegistration(many, cloud, reg)).toHaveLength(PROFILE_LIMITS.photosMax);
   });
 });
