@@ -56,6 +56,14 @@ body {
   max-width: 100%;
 }
 
+/* `overflow-x: hidden` on <body> silently turns it into a scroll box, and every `position: sticky` bar inside it then
+   sticks to a box that never scrolls — so the admin sidebar, the Vendor OS header and every sticky bar on the site
+   scrolled away with the page (found 13 Oct 2026). `clip` cuts the sideways overflow exactly the same way without
+   making a scroll box. Browsers that do not know `clip` keep `hidden` from the rule above. */
+body {
+  overflow-x: clip;
+}
+
 html {
   scroll-behavior: smooth;
 }

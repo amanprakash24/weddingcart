@@ -25,9 +25,11 @@ export interface TabsProps<K extends string> {
 // correction made here, not applied to the shipped file per the "don't redesign it" instruction.
 export default function Tabs<K extends string>({ tabs, active, onChange, attention = {}, disabledKeys = [], ariaLabel = 'Sections' }: TabsProps<K>) {
   return (
+    // Sticks just under the Vendor OS header (h-14 on a phone, h-16 from md — components/vendor/VendorShell.tsx), the only
+    // shell these tabs are used in: at top-0 they would slide underneath it.
     <nav
       aria-label={ariaLabel}
-      className="sticky top-0 z-10 overflow-x-auto rounded-xl border border-[var(--color-border-subtle)] bg-white/95 p-1.5 shadow-sm backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="sticky top-[3.75rem] z-10 overflow-x-auto rounded-xl border border-[var(--color-border-subtle)] md:top-[4.25rem] bg-white/95 p-1.5 shadow-sm backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       <div role="tablist" className="flex min-w-max gap-1">
         {tabs.map((t) => {

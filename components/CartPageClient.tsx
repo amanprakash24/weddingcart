@@ -262,7 +262,7 @@ export default function CartPageClient() {
 
             {/* ── Right: Summary ── */}
             <div className="space-y-4">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-24">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-[100px] sm:top-28 lg:top-[124px]">
                 <h3 className="font-bold text-gray-900 mb-4 font-playfair">Order Summary</h3>
 
                 <div className="space-y-4 mb-4">

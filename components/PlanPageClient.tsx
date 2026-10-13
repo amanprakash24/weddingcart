@@ -165,7 +165,8 @@ export default function PlanPageClient() {
       </div>
 
       {/* Progress */}
-      <div className="bg-white border-b border-gray-100 shadow-sm sticky top-16 z-20">
+      {/* Sticks just under the site header (announcement 36px + nav 52 / 64 / 72px — components/Navbar.tsx). */}
+      <div className="bg-white border-b border-gray-100 shadow-sm sticky top-[88px] sm:top-[100px] lg:top-[108px] z-20">
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             {STEPS.map((s, i) => (
@@ -734,7 +735,7 @@ export default function PlanPageClient() {
           </div>
         </div>
 
-        <div className="mt-6 lg:mt-0 lg:sticky lg:top-24">
+        <div className="mt-6 lg:mt-0 lg:sticky lg:top-[196px]">
           <LivePlanPreview form={form} step={step} />
         </div>
       </div>
