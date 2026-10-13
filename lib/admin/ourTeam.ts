@@ -18,6 +18,8 @@ export const TEAM_ROLE_HELP: Record<TeamRole, string> = {
 export interface OurTeamMember {
   id: string; // the person
   name: string | null;
+  designation: string | null; // their own words, from My profile
+  photoUrl: string | null;
   email: string | null;
   mobile: string | null;
   role: 'SUPER_ADMIN' | TeamRole;

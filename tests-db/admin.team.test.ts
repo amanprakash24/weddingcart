@@ -126,6 +126,28 @@ dbDescribe('Our team (real database)', () => {
     expect(await app.prisma.user.findUnique({ where: { phone: phone(15) } })).toBeNull();
   });
 
+  // "My profile": each team member's own photo, name and designation — shown to the founder in the team list.
+  test('my profile: a team member sets their own name, designation and photo; someone outside the team has no profile', async () => {
+    const { createAdminProfileService } = await import('@/services/adminProfile.service');
+    const profiles = createAdminProfileService({ db: app.prisma, cloudName: () => 'dbtestcloud' });
+    const photo = 'https://res.cloudinary.com/dbtestcloud/image/upload/v1/shaadishopping/dbtest.jpg';
+    const meera = await person(phone(13));
+    expect(await profiles.get(meera.id)).toMatchObject({ name: 'Meera Singh', designation: null, photoUrl: null, role: 'OPERATIONS', mobile: `${phone(13).slice(0, 2)}******${phone(13).slice(-2)}`, hasCode: true, hasPassword: false });
+    expect(await profiles.update(meera.id, { photoUrl: 'https://elsewhere.example/me.jpg' })).toEqual({ errors: { photoUrl: expect.any(String) } });
+    expect(await profiles.update(meera.id, { name: ' Meera  S ', designation: 'Wedding planner', photoUrl: photo })).toMatchObject({ name: 'Meera S', designation: 'Wedding planner', photoUrl: photo });
+    expect((await team.list(founderId)).find((m) => m.id === meera.id)).toMatchObject({ name: 'Meera S', designation: 'Wedding planner', photoUrl: photo });
+    // Only what is sent changes; the photo can be taken off.
+    expect(await profiles.update(meera.id, { photoUrl: null })).toMatchObject({ name: 'Meera S', designation: 'Wedding planner', photoUrl: null });
+    // The founder has a profile too; a vendor does not, and cannot write one.
+    // This test founder was made without a place in the Shaadi Shopping business: the designation gives them the owner's.
+    expect(await profiles.update(founderId, { designation: 'Founder & CEO' })).toMatchObject({ role: 'SUPER_ADMIN', designation: 'Founder & CEO' });
+    expect(await app.prisma.businessMember.findUniqueOrThrow({ where: { businessId_userId: { businessId: 'shaadi-shopping', userId: founderId } } })).toMatchObject({ role: 'OWNER', removedAt: null });
+    const vendor = await person(phone(11));
+    expect((await outcome(profiles.get(vendor.id)))?.name).toBe('NotFoundError');
+    expect((await outcome(profiles.update(vendor.id, { name: 'Sneaky' })))?.name).toBe('NotFoundError');
+    expect((await person(phone(11))).name).toBeNull();
+  });
+
   test('removed: no team role, membership closed, signed out — and adding them again brings them back with a new code', async () => {
     const before = await person(phone(13));
     expect(await team.remove(founderId, before.id)).toEqual({ removed: true });

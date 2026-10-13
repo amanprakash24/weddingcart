@@ -28,8 +28,12 @@ export interface AdminTeamDeps {
 
 const defaultDeps = (): AdminTeamDeps => ({ db: prisma, hash: hashLoginCode, newCode: newLoginCode, now: () => new Date() });
 
-const personSelect = { id: true, name: true, email: true, phone: true, passwordHash: true, loginCodeHash: true, roles: { select: { role: true } } } as const;
-type PersonRow = { id: string; name: string | null; email: string | null; phone: string | null; passwordHash: string | null; loginCodeHash: string | null; roles: { role: Role }[] };
+const personSelect = {
+  id: true, name: true, email: true, phone: true, image: true, passwordHash: true, loginCodeHash: true,
+  roles: { select: { role: true } },
+  businessMemberships: { where: { businessId: PLATFORM_BUSINESS_ID }, select: { jobTitle: true } },
+} as const;
+type PersonRow = { id: string; name: string | null; email: string | null; phone: string | null; image: string | null; passwordHash: string | null; loginCodeHash: string | null; roles: { role: Role }[]; businessMemberships: { jobTitle: string | null }[] };
 
 // What a Sales / Operations person is in the Shaadi Shopping business — the same as the people who were there before this screen
 // (migration 20261007100100): a manager who sees and records money.
@@ -52,7 +56,7 @@ export function createAdminTeamService(deps: AdminTeamDeps = defaultDeps()) {
 
   const view = (p: PersonRow, me: string): OurTeamMember => {
     const role = teamRoleOf(p.roles)!;
-    return { id: p.id, name: p.name, email: p.email, mobile: p.phone, role, hasCode: p.loginCodeHash !== null, hasPassword: p.passwordHash !== null, isYou: p.id === me, canManage: role !== 'SUPER_ADMIN' };
+    return { id: p.id, name: p.name, designation: p.businessMemberships[0]?.jobTitle ?? null, photoUrl: p.image, email: p.email, mobile: p.phone, role, hasCode: p.loginCodeHash !== null, hasPassword: p.passwordHash !== null, isYou: p.id === me, canManage: role !== 'SUPER_ADMIN' };
   };
 
   // Someone on the team who is not a founder — the only people whose sign-in and place in the team are managed here.
