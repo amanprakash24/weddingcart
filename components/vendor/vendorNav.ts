@@ -1,4 +1,4 @@
-import { Briefcase, CalendarClock, Heart, Inbox, LayoutDashboard, type LucideIcon, ListChecks, Receipt, Settings, Users } from 'lucide-react';
+import { Briefcase, CalendarClock, FileText, Heart, Inbox, LayoutDashboard, type LucideIcon, ListChecks, Receipt, Settings, Users } from 'lucide-react';
 
 // The one Vendor OS navigation — shared by ordinary vendors and venue owners alike. Venue Owner is a
 // specialized Vendor OS experience (docs/wedding-os/11-vivah-os-ux-architecture.md §3), not a separate
@@ -21,6 +21,8 @@ export const PRIMARY: NavItem[] = [
   { key: 'enquiries', label: 'Enquiries', href: '/vendor/enquiries', icon: Inbox, isActive: (p) => p.startsWith('/vendor/enquiries') },
   { key: 'weddings', label: 'Weddings', href: '/vendor/weddings', icon: Heart, isActive: (p) => p.startsWith('/vendor/weddings') },
   { key: 'services', label: 'Services', href: '/vendor/services', icon: Briefcase, isActive: (p) => p.startsWith('/vendor/services') },
+  // Shaadi Shopping's proposals its couples accepted that include this vendor's work (13 Oct 2026: in the menu, for the team too).
+  { key: 'proposals', label: 'Proposals', href: '/vendor/proposals', icon: FileText, isActive: (p) => p.startsWith('/vendor/proposals') },
   { key: 'availability', label: 'Availability', href: '/vendor/availability', icon: CalendarClock, isActive: (p) => p.startsWith('/vendor/availability') },
   { key: 'payments', label: 'Payments', href: '/vendor/payments', icon: Receipt, isActive: (p) => p.startsWith('/vendor/payments') },
   // Phase C: the venue's own price list, function by function (Haldi: lawn, decoration …).

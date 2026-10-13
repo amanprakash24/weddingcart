@@ -139,5 +139,9 @@ dbDescribe('the Team screen (real database)', () => {
     const shared = await runInScope(PLATFORM_SCOPE, () => venuePortalService.getDashboard(vendorIds[0], { seesMoney: false }));
     expect(shared.vendor.id).toBe(vendorIds[0]);
     expect(shared).toMatchObject({ bookings: [], payouts: [] });
+    // The accepted proposals are read the same way — by the vendor's id (the real query runs; this venue has none).
+    const { vendorProposalService } = await import('@/services/vendorProposal.service');
+    expect(await runInScope(PLATFORM_SCOPE, () => vendorProposalService.listForVendor(vendorIds[0], { seesMoney: false }))).toEqual([]);
+    expect((await outcome(runInScope(PLATFORM_SCOPE, () => vendorProposalService.getForVendor(vendorIds[0], '00000000-0000-4000-8000-000000000000', { seesMoney: true }))))?.name).toBe('NotFoundError');
   });
 });

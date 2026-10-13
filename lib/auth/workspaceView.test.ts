@@ -3,7 +3,7 @@ import { describe, test, expect } from 'bun:test';
 import { effectivePermissions } from './permissions';
 import { canSeeScreen, screenOf, vendorHome } from './workspaceView';
 
-const ALL = ['today', 'enquiries', 'weddings', 'services', 'availability', 'payments', 'offerings', 'settings', 'team'];
+const ALL = ['today', 'enquiries', 'weddings', 'services', 'proposals', 'availability', 'payments', 'offerings', 'settings', 'team'];
 const seen = (view: Parameters<typeof canSeeScreen>[1]) => ALL.filter((key) => canSeeScreen(key, view));
 
 describe('what the Vendor OS menu shows in the chosen workspace', () => {
@@ -15,7 +15,7 @@ describe('what the Vendor OS menu shows in the chosen workspace', () => {
 
   test('a manager: the day-to-day screens of the business they work in — no Payments (money), no Settings, no Team', () => {
     const manager = { permissions: effectivePermissions({ role: 'MANAGER' }) };
-    expect(seen(manager)).toEqual(['today', 'enquiries', 'weddings', 'services', 'availability', 'offerings']);
+    expect(seen(manager)).toEqual(['today', 'enquiries', 'weddings', 'services', 'proposals', 'availability', 'offerings']);
     expect(vendorHome(manager)).toBe('/vendor/today');
   });
 
@@ -31,7 +31,7 @@ describe('what the Vendor OS menu shows in the chosen workspace', () => {
   });
 
   test('Weddings and Services go together, by the weddings permission', () => {
-    expect(seen({ permissions: ['weddings'] })).toEqual(['today', 'weddings', 'services', 'availability']);
+    expect(seen({ permissions: ['weddings'] })).toEqual(['today', 'weddings', 'services', 'proposals', 'availability']);
     expect(seen({ permissions: ['view_financials'] })).toEqual(['today', 'payments']);
   });
 

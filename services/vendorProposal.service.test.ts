@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect, mock, beforeEach } from 'bun:test';
-import { NotFoundError } from '@/lib/errors';
+
 
 // Everything is faked through createVendorProposalService(deps) — no shared module is mocked except '@/lib/prisma'
 // (needed because importing the service loads the real modules). No real quotation, vendor or booking exists here.
@@ -150,35 +150,29 @@ const findFirst = mock(async (args: { where: Where; select: never }) => {
   const q = db.find((row) => matches(row, args.where));
   return q ? applySelect(q, args.select) : null;
 });
-const profiles = new Map([['user-A', 'vendor-A'], ['user-B', 'vendor-B'], ['user-C', 'vendor-C']]);
-const vendorIdForUser = mock(async (userId: string) => {
-  const v = profiles.get(userId);
-  if (!v) throw new NotFoundError('Vendor profile', userId);
-  return v;
-});
 const sourceFacts = mock(async () => ({ name: 'Rahul & Priya', phone: '9876543210', city: 'Patna', dateText: '2026-12-05', guestCount: 350, eventType: 'wedding' }));
 
-const service = createVendorProposalService({ findMany: findMany as never, findFirst: findFirst as never, vendorIdForUser, sourceFacts: sourceFacts as never });
+const service = createVendorProposalService({ findMany: findMany as never, findFirst: findFirst as never, sourceFacts: sourceFacts as never });
 
 beforeEach(() => {
   seed();
-  for (const m of [findMany, findFirst, vendorIdForUser, sourceFacts]) m.mockClear();
+  for (const m of [findMany, findFirst, sourceFacts]) m.mockClear();
 });
 
 const NOT_VISIBLE = [4, 5, 6, 7, 8, 9];
 
 describe('visibility — ACCEPTED is the access gate; a booking only changes the label', () => {
   test('1. ACCEPTED, no booking yet → vendor CAN view (label ACCEPTED)', async () => {
-    expect((await service.getForVendor('user-A', uuid(1))).status).toBe('ACCEPTED');
+    expect((await service.getForVendor('vendor-A', uuid(1))).status).toBe('ACCEPTED');
   });
 
   test('2. ACCEPTED with a booking → vendor CAN view (label BOOKED) — confirmed booking or not', async () => {
-    expect((await service.getForVendor('user-A', uuid(2))).status).toBe('BOOKED');
-    expect((await service.getForVendor('user-A', uuid(14))).status).toBe('BOOKED');
+    expect((await service.getForVendor('vendor-A', uuid(2))).status).toBe('BOOKED');
+    expect((await service.getForVendor('vendor-A', uuid(14))).status).toBe('BOOKED');
   });
 
   test('3. ACCEPTED with the booking CLOSED → vendor still CAN view', async () => {
-    const p = await service.getForVendor('user-A', uuid(10));
+    const p = await service.getForVendor('vendor-A', uuid(10));
     expect(p.lines.map((l) => l.description)).toEqual(['Closed-booking decor']);
   });
 
@@ -187,7 +181,7 @@ describe('visibility — ACCEPTED is the access gate; a booking only changes the
     [12, 'lead'],
     [13, 'enquiry'],
   ])('4. ACCEPTED quotation %i whose %s is marked LOST → vendor still CAN view', async (n) => {
-    expect((await service.getForVendor('user-A', uuid(n))).lines).toHaveLength(1);
+    expect((await service.getForVendor('vendor-A', uuid(n))).lines).toHaveLength(1);
   });
 
   test.each([
@@ -198,11 +192,11 @@ describe('visibility — ACCEPTED is the access gate; a booking only changes the
     [9, '9. SUPERSEDED'],
     [4, 'DRAFT'],
   ])('quotation %i — %s → vendor cannot view (same generic not-found)', async (n) => {
-    await expect(service.getForVendor('user-A', uuid(n))).rejects.toBeInstanceOf(VendorProposalNotFoundError);
+    await expect(service.getForVendor('vendor-A', uuid(n))).rejects.toBeInstanceOf(VendorProposalNotFoundError);
   });
 
   test('the list holds exactly the accepted proposals vendor A is on — newest acceptance first — and none of the hidden ones', async () => {
-    const list = await service.listForVendor('user-A');
+    const list = await service.listForVendor('vendor-A');
     expect(list.map((p) => Number(p.number.slice(-4)))).toEqual([14, 13, 12, 11, 10, 2, 1]);
     expect(list.map((p) => p.status)).toEqual(['BOOKED', 'ACCEPTED', 'ACCEPTED', 'ACCEPTED', 'BOOKED', 'BOOKED', 'ACCEPTED']);
     for (const n of NOT_VISIBLE) expect(list.map((p) => p.number)).not.toContain(`QTN-202610-${String(n).padStart(4, '0')}`);
@@ -216,53 +210,52 @@ describe('visibility — ACCEPTED is the access gate; a booking only changes the
 
 describe('vendor isolation', () => {
   test('10. vendor A sees only vendor A\'s lines, and a total from those lines only', async () => {
-    const p = await service.getForVendor('user-A', uuid(1));
+    const p = await service.getForVendor('vendor-A', uuid(1));
     expect(p.lines.map((l) => l.description)).toEqual(['Stage decoration', 'Mandap flowers']);
     expect(p.total).toBe(80000 + 15000 * 2);
   });
 
   test('vendor B on the same quotation sees only vendor B\'s line', async () => {
-    const p = await service.getForVendor('user-B', uuid(1));
+    const p = await service.getForVendor('vendor-B', uuid(1));
     expect(p.lines.map((l) => l.description)).toEqual(['Catering 350 plates']);
     expect(p.total).toBe(900 * 350);
   });
 
   test('vendor A cannot open vendor B\'s quotation by guessing its id — same not-found as an id that does not exist', async () => {
-    await expect(service.getForVendor('user-A', uuid(3))).rejects.toBeInstanceOf(VendorProposalNotFoundError);
-    await expect(service.getForVendor('user-A', uuid(999))).rejects.toBeInstanceOf(VendorProposalNotFoundError);
-    const a = await service.getForVendor('user-A', uuid(3)).catch((e: Error) => e.message);
-    const b = await service.getForVendor('user-A', uuid(999)).catch((e: Error) => e.message);
+    await expect(service.getForVendor('vendor-A', uuid(3))).rejects.toBeInstanceOf(VendorProposalNotFoundError);
+    await expect(service.getForVendor('vendor-A', uuid(999))).rejects.toBeInstanceOf(VendorProposalNotFoundError);
+    const a = await service.getForVendor('vendor-A', uuid(3)).catch((e: Error) => e.message);
+    const b = await service.getForVendor('vendor-A', uuid(999)).catch((e: Error) => e.message);
     expect(a).toBe(b);
   });
 
   test('malformed ids never reach the database', async () => {
     for (const bad of ['', 'abc', '../1', `${uuid(1)}x`, null, undefined, 42, { id: uuid(1) }]) {
-      await expect(service.getForVendor('user-A', bad)).rejects.toBeInstanceOf(VendorProposalNotFoundError);
+      await expect(service.getForVendor('vendor-A', bad)).rejects.toBeInstanceOf(VendorProposalNotFoundError);
     }
     expect(findFirst).not.toHaveBeenCalled();
   });
 
-  test('the vendor comes from the logged-in user — the query is always built for that vendor', async () => {
-    await service.getForVendor('user-A', uuid(1));
+  test('the vendor is the one the pages pass (the business the person is working in) — the query is always built for that vendor', async () => {
+    await service.getForVendor('vendor-A', uuid(1));
     const args = findFirst.mock.calls[0][0] as unknown as { where: Where; select: { items: { where: { vendorId: string } } } };
     expect(args.where.items.some.vendorId).toBe('vendor-A');
     expect(args.select.items.where.vendorId).toBe('vendor-A');
-    expect(vendorIdForUser).toHaveBeenCalledWith('user-A');
   });
 
   test('venue details only for the functions this vendor is booked for — never another vendor\'s function or venue', async () => {
-    const p = await service.getForVendor('user-A', uuid(2));
+    const p = await service.getForVendor('vendor-A', uuid(2));
     expect(p.venue).toEqual([{ function: 'Reception', date: '2026-12-05T13:00:00.000Z', startTime: '19:00', venueName: 'Swayamvar Hall', venueAddress: 'Boring Road', city: 'Patna' }]);
     expect(JSON.stringify(p)).not.toContain('SECRET-OTHER-VENUE');
     expect(JSON.stringify(p)).not.toContain('Sangeet');
   });
 
   test('a vendor with no proposals gets an empty list', async () => {
-    expect(await service.listForVendor('user-C')).toEqual([]);
+    expect(await service.listForVendor('vendor-C')).toEqual([]);
   });
 
   test('responses contain no other vendor\'s id, name, line or price', async () => {
-    const json = JSON.stringify([await service.getForVendor('user-A', uuid(1)), await service.getForVendor('user-A', uuid(2)), await service.listForVendor('user-A')]);
+    const json = JSON.stringify([await service.getForVendor('vendor-A', uuid(1)), await service.getForVendor('vendor-A', uuid(2)), await service.listForVendor('vendor-A')]);
     for (const other of ['vendor-B', 'vendor-A', 'Catering', 'Sangeet catering', 'Only-B', '315000', '140000', 'Custom photo booth']) {
       expect(json).not.toContain(other);
     }
@@ -271,7 +264,7 @@ describe('vendor isolation', () => {
 
 describe('leak prevention — nothing internal leaves the server', () => {
   test('no contact details, money totals, notes, link, change request, acceptance or CRM details', async () => {
-    const json = JSON.stringify([await service.getForVendor('user-A', uuid(1)), await service.getForVendor('user-A', uuid(2)), await service.listForVendor('user-A')]);
+    const json = JSON.stringify([await service.getForVendor('vendor-A', uuid(1)), await service.getForVendor('vendor-A', uuid(2)), await service.listForVendor('vendor-A')]);
     for (const hidden of [
       '9876543210', // customer phone
       '@', // any email
@@ -299,22 +292,27 @@ describe('leak prevention — nothing internal leaves the server', () => {
   });
 
   test('exact keys of the detail view', async () => {
-    const p = await service.getForVendor('user-A', uuid(2));
+    const p = await service.getForVendor('vendor-A', uuid(2));
     expect(Object.keys(p).sort()).toEqual(['id', 'lines', 'number', 'status', 'total', 'venue', 'version', 'wedding']);
   });
 });
 
 describe('who may use it', () => {
-  test('a logged-in user without a vendor profile (e.g. an admin or a customer) is refused before any quotation is read', async () => {
-    await expect(service.listForVendor('admin-1')).rejects.toBeInstanceOf(NotFoundError);
-    await expect(service.getForVendor('admin-1', uuid(1))).rejects.toBeInstanceOf(NotFoundError);
-    expect(findMany).not.toHaveBeenCalled();
-    expect(findFirst).not.toHaveBeenCalled();
+  test('a member who may not see money gets the work, the couple and the place — and no amount at all (13 Oct 2026)', async () => {
+    const full = await service.getForVendor('vendor-A', uuid(2));
+    const p = await service.getForVendor('vendor-A', uuid(2), { seesMoney: false });
+    expect(full.total).toBeGreaterThan(0);
+    expect(p).toMatchObject({ id: full.id, status: full.status, wedding: full.wedding, venue: full.venue, total: null });
+    expect(p.lines.map((l) => [l.description, l.quantity, l.unitPrice, l.lineTotal])).toEqual(full.lines.map((l) => [l.description, l.quantity, null, null]));
+    const list = await service.listForVendor('vendor-A', { seesMoney: false });
+    expect(list.length).toBeGreaterThan(0);
+    expect(list.every((s) => s.total === null && s.lineCount > 0)).toBe(true);
+    for (const l of full.lines) if (l.unitPrice && l.unitPrice > 999) expect(JSON.stringify([p, list])).not.toContain(String(l.unitPrice));
   });
 
   test('read-only: the service only reads (the fake database has no write methods at all)', async () => {
-    await service.listForVendor('user-A');
-    await service.getForVendor('user-A', uuid(2));
+    await service.listForVendor('vendor-A');
+    await service.getForVendor('vendor-A', uuid(2));
     expect(findMany).toHaveBeenCalledTimes(1);
     expect(findFirst).toHaveBeenCalledTimes(1);
   });

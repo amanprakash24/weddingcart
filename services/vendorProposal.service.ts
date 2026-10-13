@@ -1,7 +1,9 @@
 // Vendor Proposal View (docs/wedding-os/04-vendor-os.md "Proposal view") — read-only.
 //
 // Isolation is enforced HERE, not in the UI:
-//  1. The vendor is always the logged-in user's own vendor (vendorForUser) — never an id from the URL, query or body.
+//  1. The vendor is always the one the signed-in person is WORKING in (lib/auth/workingVendor.ts — the owner or anyone in the
+//     business who may manage its weddings; 13 Oct 2026). The pages pass its id; it is never an id from the URL, query or body.
+//  1b. Amounts go only to someone who may see money (`seesMoney`); for anyone else they are taken out here (withoutMoney).
 //  2. The database query itself only matches quotations that contain at least one line of that vendor, and only
 //     selects that vendor's lines — other vendors' lines are never read.
 //  3. ACCEPTED is the access gate: the couple accepting turns the vendor's access on, and a booking made from it later
@@ -11,11 +13,10 @@
 // Nothing here writes to the database.
 import { prisma } from '@/lib/prisma';
 import { NotFoundError } from '@/lib/errors';
-import { toVendorProposal, toVendorProposalSummary, type VendorProposal, type VendorProposalInput, type VendorProposalSummary } from '@/lib/quotation/vendorProposal';
+import { toVendorProposal, toVendorProposalSummary, withoutMoney, type VendorProposal, type VendorProposalInput, type VendorProposalSummary } from '@/lib/quotation/vendorProposal';
 import type { BookingSource } from '@/lib/quotation/booking';
 import type { SourceType } from '@/services/leadInbox.service';
 import { bookingSourceFacts } from '@/services/quotation.service';
-import { vendorForUser } from '@/services/venuePortal.service';
 
 // One message for every "you can't see this" case, so a vendor can't tell a real quotation from a made-up id.
 export class VendorProposalNotFoundError extends NotFoundError {
@@ -79,7 +80,6 @@ type FindArgs = { where: ReturnType<typeof vendorVisibleWhere>; select: ReturnTy
 export interface VendorProposalDeps {
   findMany: (args: FindArgs & { orderBy: { acceptedAt: 'desc' }; take: number }) => Promise<Row[]>;
   findFirst: (args: FindArgs) => Promise<Row | null>;
-  vendorIdForUser: (userId: string) => Promise<string>;
   sourceFacts: (sourceType: SourceType, sourceId: string) => Promise<BookingSource>;
 }
 
@@ -87,7 +87,6 @@ function defaultDeps(): VendorProposalDeps {
   return {
     findMany: (args) => prisma.quotation.findMany(args) as unknown as Promise<Row[]>,
     findFirst: (args) => prisma.quotation.findFirst(args) as unknown as Promise<Row | null>,
-    vendorIdForUser: async (userId) => (await vendorForUser(userId)).vendorId,
     sourceFacts: (sourceType, sourceId) => bookingSourceFacts(sourceType, sourceId, prisma),
   };
 }
@@ -115,22 +114,20 @@ export function createVendorProposalService(deps: VendorProposalDeps = defaultDe
   }
 
   return {
-    // The vendor's accepted proposals, newest acceptance first. A user without a vendor profile gets NotFoundError.
-    async listForVendor(userId: string): Promise<VendorProposalSummary[]> {
-      const vendorId = await deps.vendorIdForUser(userId);
+    // The vendor's accepted proposals, newest acceptance first.
+    async listForVendor(vendorId: string, { seesMoney }: { seesMoney: boolean } = { seesMoney: true }): Promise<VendorProposalSummary[]> {
       const rows = await deps.findMany({ where: vendorVisibleWhere(vendorId), select: vendorProposalSelect(vendorId), orderBy: { acceptedAt: 'desc' }, take: MAX_LIST });
       const proposals = await Promise.all(rows.map(async (row) => project(row, vendorId, await facts(row))));
-      return proposals.filter((p) => p.lines.length > 0).map(toVendorProposalSummary);
+      return proposals.filter((p) => p.lines.length > 0).map((p) => toVendorProposalSummary(seesMoney ? p : withoutMoney(p)));
     },
 
     // One proposal. Anything the vendor may not see → VendorProposalNotFoundError (same for every reason).
-    async getForVendor(userId: string, quotationId: unknown): Promise<VendorProposal> {
-      const vendorId = await deps.vendorIdForUser(userId);
+    async getForVendor(vendorId: string, quotationId: unknown, { seesMoney }: { seesMoney: boolean } = { seesMoney: true }): Promise<VendorProposal> {
       if (typeof quotationId !== 'string' || !/^[0-9a-f-]{36}$/i.test(quotationId)) throw new VendorProposalNotFoundError();
       const row = await deps.findFirst({ where: vendorVisibleWhere(vendorId, quotationId), select: vendorProposalSelect(vendorId) });
       const proposal = row ? project(row, vendorId, await facts(row)) : null;
       if (!proposal || proposal.lines.length === 0) throw new VendorProposalNotFoundError();
-      return proposal;
+      return seesMoney ? proposal : withoutMoney(proposal);
     },
   };
 }

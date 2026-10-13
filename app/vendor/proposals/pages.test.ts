@@ -2,24 +2,30 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test';
 import { NotFoundError } from '@/lib/errors';
 
-// Who may open the Vendor Proposal pages. The session and the vendor proposal service are faked (same pattern as the
-// quotation route tests); requireRole keeps its real meaning — a session is returned only when the user has one of
-// the allowed roles. Page-level proxy checks are in lib/auth/logoutEverywhere.test.ts.
-const session = { current: null as { user: { id: string; roles: string[] } } | null };
-const requireRole = mock(async (allowed: string[]) => (session.current && session.current.user.roles.some((r) => allowed.includes(r)) ? session.current : null));
-mock.module('@/lib/auth/session', () => ({ requireRole, getSession: mock(async () => session.current) }));
+// Who may open the Vendor Proposal pages (13 Oct 2026: the owner and anyone in the business who may manage its weddings). The
+// gate itself — who is signed in, which vendor they are working in, what they may do — is lib/auth/workingVendor.ts (its own
+// tests: lib/auth/workingVendor.test.ts); here it is faked, to check that the pages ask it for the right thing and pass on the
+// vendor and the money rule it answers. Page-level proxy checks are in lib/auth/logoutEverywhere.test.ts.
+type Who = { vendorId: string; can: (p: string) => boolean };
+const gate = { answer: null as Who | null, sendTo: '/workspace' };
+const redirectTo = (path: string) => Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${path};307;` });
+const sharedPage = mock(async (_need: string | null) => {
+  if (!gate.answer) throw redirectTo(gate.sendTo);
+  return gate.answer;
+});
+// Only `sharedPage` is replaced: bun keeps a module mock for the whole run, so the rest of the real module stays as it is for
+// the files that test it.
+mock.module('@/lib/prisma', () => ({ prisma: {} }));
+const realGate = await import('@/lib/auth/workingVendor');
+mock.module('@/lib/auth/workingVendor', () => ({ ...realGate, sharedPage }));
 
 class VendorProposalNotFoundError extends NotFoundError {
   constructor() {
     super('Proposal', 'unavailable');
   }
 }
-const listForVendor = mock(async (userId: string) => {
-  if (userId !== 'user-A') throw new NotFoundError('Vendor profile', userId);
-  return [];
-});
-const getForVendor = mock(async (userId: string, id: string) => {
-  if (userId !== 'user-A') throw new NotFoundError('Vendor profile', userId);
+const listForVendor = mock(async (_vendorId: string, _opts: { seesMoney: boolean }) => []);
+const getForVendor = mock(async (_vendorId: string, id: string, _opts: { seesMoney: boolean }) => {
   if (id !== 'q-visible') throw new VendorProposalNotFoundError();
   return { id, number: 'QTN-1', version: 1, status: 'ACCEPTED', wedding: { name: null, date: null, guestCount: null, city: null, eventType: null }, lines: [], total: 0, venue: [] };
 });
@@ -28,6 +34,7 @@ mock.module('@/services/vendorProposal.service', () => ({ vendorProposalService:
 const { default: ListPage } = await import('./page');
 const { default: DetailPage } = await import('./[quotationId]/page');
 const params = (quotationId: string) => ({ params: Promise.resolve({ quotationId }) });
+const member = (vendorId: string, permissions: string[]): Who => ({ vendorId, can: (p) => permissions.includes(p) });
 
 // Next's redirect()/notFound() throw errors carrying a digest; this reads which one happened.
 async function outcome(run: () => Promise<unknown>): Promise<string> {
@@ -43,51 +50,50 @@ async function outcome(run: () => Promise<unknown>): Promise<string> {
 }
 
 beforeEach(() => {
-  session.current = null;
-  for (const m of [requireRole, listForVendor, getForVendor]) m.mockClear();
+  gate.answer = null;
+  gate.sendTo = '/workspace';
+  for (const m of [sharedPage, listForVendor, getForVendor]) m.mockClear();
 });
 
 describe('Vendor Proposal pages — authorization', () => {
-  test('unauthenticated → sent to the vendor login, no data read', async () => {
-    expect(await outcome(() => ListPage())).toBe('redirect:/vendor/login');
-    expect(await outcome(() => DetailPage(params('q-visible')))).toBe('redirect:/vendor/login');
+  test('both pages ask for the weddings permission, in the vendor the person is working in', async () => {
+    gate.answer = member('vendor-A', ['weddings', 'view_financials']);
+    await ListPage();
+    await DetailPage(params('q-visible'));
+    expect(sharedPage.mock.calls.map((c) => c[0])).toEqual(['weddings', 'weddings']);
+  });
+
+  test('refused by the gate (not signed in, no business chosen, no permission) → sent away, and no proposal is read', async () => {
+    expect(await outcome(() => ListPage())).toBe('redirect:/workspace');
+    gate.sendTo = '/vendor/today'; // a member without the permission is sent where their workspace opens
+    expect(await outcome(() => DetailPage(params('q-visible')))).toBe('redirect:/vendor/today');
     expect(listForVendor).not.toHaveBeenCalled();
     expect(getForVendor).not.toHaveBeenCalled();
   });
 
-  test.each([['SUPER_ADMIN'], ['ADMIN'], ['CUSTOMER']])('a %s cannot use the Vendor OS as a vendor', async (role) => {
-    session.current = { user: { id: 'someone', roles: [role] } };
-    expect(await outcome(() => ListPage())).toBe('redirect:/vendor/login');
-    expect(await outcome(() => DetailPage(params('q-visible')))).toBe('redirect:/vendor/login');
-    expect(getForVendor).not.toHaveBeenCalled();
-  });
-
-  test('only the VENDOR role is accepted', async () => {
-    session.current = { user: { id: 'user-A', roles: ['VENDOR'] } };
-    await ListPage();
-    expect(requireRole).toHaveBeenCalledWith(['VENDOR']);
-  });
-
-  test('a vendor-role user without a vendor profile gets 404', async () => {
-    session.current = { user: { id: 'user-no-profile', roles: ['VENDOR'] } };
-    expect(await outcome(() => ListPage())).toBe('not-found');
-    expect(await outcome(() => DetailPage(params('q-visible')))).toBe('not-found');
-  });
-
-  test('a vendor sees their list and a proposal they may see; the session user id — not the URL — picks the vendor', async () => {
-    session.current = { user: { id: 'user-A', roles: ['VENDOR'] } };
+  test('the vendor comes from the gate — never from the URL; an owner gets the amounts', async () => {
+    gate.answer = member('vendor-A', ['weddings', 'view_financials']);
     expect(await outcome(() => ListPage())).toBe('rendered');
     expect(await outcome(() => DetailPage(params('q-visible')))).toBe('rendered');
-    expect(getForVendor).toHaveBeenCalledWith('user-A', 'q-visible');
+    expect(listForVendor).toHaveBeenCalledWith('vendor-A', { seesMoney: true });
+    expect(getForVendor).toHaveBeenCalledWith('vendor-A', 'q-visible', { seesMoney: true });
+  });
+
+  test('a manager (weddings, no money) opens them — without amounts', async () => {
+    gate.answer = member('vendor-A', ['weddings']);
+    await ListPage();
+    await DetailPage(params('q-visible'));
+    expect(listForVendor).toHaveBeenCalledWith('vendor-A', { seesMoney: false });
+    expect(getForVendor).toHaveBeenCalledWith('vendor-A', 'q-visible', { seesMoney: false });
   });
 
   test('any proposal the vendor may not see is a plain 404', async () => {
-    session.current = { user: { id: 'user-A', roles: ['VENDOR'] } };
+    gate.answer = member('vendor-A', ['weddings']);
     expect(await outcome(() => DetailPage(params('someone-elses-quotation')))).toBe('not-found');
   });
 
   test('other errors are not hidden as 404', async () => {
-    session.current = { user: { id: 'user-A', roles: ['VENDOR'] } };
+    gate.answer = member('vendor-A', ['weddings']);
     getForVendor.mockImplementationOnce(async () => {
       throw new Error('db down');
     });

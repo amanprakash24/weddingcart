@@ -35,7 +35,6 @@ export function VendorProposalList({ proposals }: { proposals: VendorProposalSum
           <h1 className="mt-1 text-2xl font-bold text-slate-900">Accepted proposals</h1>
           <p className="mt-1 text-sm text-slate-600">Your work on proposals the couple has accepted.</p>
         </div>
-        <Link href="/vendor" className="text-sm font-medium text-slate-600 underline underline-offset-4">Back to portal</Link>
       </header>
       {proposals.length === 0 ? (
         <p className="rounded-2xl bg-white p-5 text-sm text-slate-500 shadow-sm">No accepted proposals include your services yet.</p>
@@ -52,7 +51,8 @@ export function VendorProposalList({ proposals }: { proposals: VendorProposalSum
                   <span className={`rounded-full px-2 py-1 text-xs font-semibold ${STATUS_CLASS[p.status]}`}>{STATUS_LABEL[p.status]}</span>
                 </div>
                 <p className="mt-3 text-sm text-slate-700">
-                  {p.lineCount} {p.lineCount === 1 ? 'item' : 'items'} · <span className="font-semibold">{rupees(p.total)}</span>
+                  {p.lineCount} {p.lineCount === 1 ? 'item' : 'items'}
+                  {p.total !== null && <> · <span className="font-semibold">{rupees(p.total)}</span></>}
                   <span className="text-slate-400"> · {p.number} v{p.version}</span>
                 </p>
               </Link>
@@ -90,17 +90,19 @@ export function VendorProposalDetail({ proposal: p }: { proposal: VendorProposal
               <span role="cell">
                 <span className="font-medium text-slate-900">{l.description}</span>
                 <span className="block text-xs text-slate-500">{[l.category, l.functionLabel].filter(Boolean).join(' · ')}</span>
-                <span className="block text-xs text-slate-500 sm:hidden">{l.quantity} × {rupees(l.unitPrice)}</span>
+                <span className="block text-xs text-slate-500 sm:hidden">{l.unitPrice === null ? `Quantity ${l.quantity}` : `${l.quantity} × ${rupees(l.unitPrice)}`}</span>
               </span>
-              <span role="cell" className="hidden text-right text-slate-600 sm:block">{l.quantity} × {rupees(l.unitPrice)}</span>
-              <span role="cell" className="text-right tabular-nums text-slate-900">{rupees(l.lineTotal)}</span>
+              <span role="cell" className="hidden text-right text-slate-600 sm:block">{l.unitPrice === null ? l.quantity : `${l.quantity} × ${rupees(l.unitPrice)}`}</span>
+              <span role="cell" className="text-right tabular-nums text-slate-900">{l.lineTotal === null ? '' : rupees(l.lineTotal)}</span>
             </div>
           ))}
         </div>
-        <div className="mt-3 flex justify-between text-base font-bold text-slate-900">
-          <span>Agreed amount for your work</span>
-          <span className="tabular-nums">{rupees(p.total)}</span>
-        </div>
+        {p.total !== null && (
+          <div className="mt-3 flex justify-between text-base font-bold text-slate-900">
+            <span>Agreed amount for your work</span>
+            <span className="tabular-nums">{rupees(p.total)}</span>
+          </div>
+        )}
       </section>
 
       {p.venue.length > 0 && (

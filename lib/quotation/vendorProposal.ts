@@ -51,8 +51,8 @@ export interface VendorProposalLine {
   functionLabel: string | null;
   description: string;
   quantity: number;
-  unitPrice: number;
-  lineTotal: number;
+  unitPrice: number | null; // null: this member may not see money (withoutMoney)
+  lineTotal: number | null;
 }
 
 export interface VendorProposal {
@@ -62,7 +62,7 @@ export interface VendorProposal {
   status: VendorProposalStatus;
   wedding: { name: string | null; date: string | null; guestCount: number | null; city: string | null; eventType: string | null };
   lines: VendorProposalLine[];
-  total: number; // the sum of THIS vendor's line totals — the agreed amount for their quoted work
+  total: number | null; // the sum of THIS vendor's line totals — the agreed amount for their quoted work; null without money
   venue: { function: string; date: string; startTime: string | null; venueName: string | null; venueAddress: string | null; city: string }[];
 }
 
@@ -105,7 +105,7 @@ export function toVendorProposal(
       eventType: wedding?.weddingType ?? source?.eventType ?? null,
     },
     lines,
-    total: lines.reduce((sum, l) => sum + l.lineTotal, 0),
+    total: lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0),
     venue: (wedding?.events ?? []).map((e) => ({
       function: e.label || e.type,
       date: e.date.toISOString(),
@@ -115,6 +115,12 @@ export function toVendorProposal(
       city: e.city,
     })),
   };
+}
+
+// For a member of the vendor's business who may not see money (lib/auth/permissions.ts: view_financials): the work, the couple,
+// the dates and the place stay; every amount is taken out here, on the server — never sent and hidden.
+export function withoutMoney(p: VendorProposal): VendorProposal {
+  return { ...p, lines: p.lines.map((l) => ({ ...l, unitPrice: null, lineTotal: null })), total: null };
 }
 
 export function toVendorProposalSummary(p: VendorProposal): VendorProposalSummary {

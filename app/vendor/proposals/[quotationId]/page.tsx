@@ -1,6 +1,5 @@
-import { notFound, redirect } from 'next/navigation';
-import { requireRole } from '@/lib/auth/session';
-import { Role } from '@/lib/auth/roles';
+import { notFound } from 'next/navigation';
+import { sharedPage } from '@/lib/auth/workingVendor';
 import { NotFoundError } from '@/lib/errors';
 import { vendorProposalService } from '@/services/vendorProposal.service';
 import { VendorProposalDetail } from '@/components/vendor/VendorProposalView';
@@ -12,14 +11,13 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Proposal | Vendor Portal', robots: { index: false, follow: false } };
 
 async function VendorProposalPage({ params }: { params: Promise<{ quotationId: string }> }) {
-  const session = await requireRole([Role.VENDOR]);
-  if (!session?.user?.id) redirect('/vendor/login');
+  const who = await sharedPage('weddings');
   const { quotationId } = await params;
   let proposal;
   try {
-    proposal = await vendorProposalService.getForVendor(session.user.id, quotationId);
+    proposal = await vendorProposalService.getForVendor(who.vendorId, quotationId, { seesMoney: who.can('view_financials') });
   } catch (err) {
-    if (err instanceof NotFoundError) notFound(); // not visible to this vendor, or no vendor profile
+    if (err instanceof NotFoundError) notFound(); // not visible to this vendor
     throw err;
   }
   return <VendorProposalDetail proposal={proposal} />;
