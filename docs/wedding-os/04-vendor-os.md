@@ -771,6 +771,35 @@ out; a manager answers), `services/vendorEnquiry.service.test.ts`, `lib/vendorEn
 
 **Not changed** — `/vendor/proposals` and the unused `PATCH /api/vendor/availability` still read through the owner link.
 
+## 25. Giving out work, and "Your work" — built 13 Oct 2026
+
+Phase 2 of the team plan (`15-record-ownership.md` §8): a to-do on a business's own wedding can be given to a person who works
+there, and that person sees it when they sign in. Until now a to-do had no "who", and an employee (no permissions by default)
+saw an empty Today.
+
+- **Give a to-do to someone** — on the wedding's to-do list: "Who does it" when adding, and a picker on each to-do (give it to
+  someone else, or to no one). Offered to, and accepted from, only someone who may give out work: the owner, or a member with the
+  `tasks` permission (managers by default). Someone with only `weddings` still adds and ticks to-dos and sees who has each one.
+- **Only people of this business** — the server looks the person up among the business's current members; anyone else is
+  refused. A person who has since left stays named on the to-do until it is given to someone else.
+- **"Your work" on Today** — for every member: the to-dos given to them in the business they are working in. Open ones first,
+  soonest due on top, overdue marked; done ones stay for 7 days. Nothing is shown when they have none.
+- **What they see of the wedding** — the couple's name, the date, and each function's day, time and place. Not the phone number,
+  the agreed price list or any money, and no way into the wedding page unless they have `weddings`.
+- **Ticking** — the person a to-do was given to marks it done or not done from "Your work"; nothing else can be changed there.
+  The wedding page shows it done, with their name.
+
+**How** — `Task.assignedToId` (already in the schema; no migration). `services/venueWedding.service.ts`: `addTask(… assignTo)`,
+`assignTask`, and `canAssign` / `team` / `tasks[].assignee` on the wedding. `services/venueMyWork.service.ts` + `lib/venue/myWork.ts`
+→ `GET /api/vendor-os/my-work`, `PATCH /api/vendor-os/my-work/[taskId]` (both any member; only one's own to-dos). Screens:
+`components/vendor/YourWork.tsx` on Today, `WeddingTasks` in `components/vendor/weddings/WeddingPlan.tsx`.
+
+**Tests** — `lib/venue/myWork.test.ts`; `tests-db/venue.payments.test.ts` ("giving out work": another business's person refused,
+no `tasks` permission refused, the person's own list only, not in another business, ticking, giving to someone else, taken off).
+
+**Not built yet** — a note from the person doing the work; giving out enquiry follow-ups; telling the person on WhatsApp that
+work was given to them; work on the weddings Shaadi Shopping booked the vendor on.
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |

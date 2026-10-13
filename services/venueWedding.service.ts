@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma';
-import { NotFoundError } from '@/lib/errors';
+import { NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
-import { can } from '@/lib/auth/permissions';
+import { can, type MemberRole } from '@/lib/auth/permissions';
+import { memberLabel } from '@/lib/venue/myWork';
 import { computeWeddingStage, STAGE_LABELS, type WeddingStage } from '@/lib/wedding/stage';
 import { FUNCTION_TYPE_LABELS, type FunctionType } from '@/lib/wedding/functions';
 import { loadAgreementMoney } from '@/services/agreement.service';
@@ -19,6 +20,11 @@ import type { Prisma } from '@/generated/prisma/client';
 // the existing wedding service's, unchanged (services/weddingWorkspace.service.ts): an "Other" function needs a name, the wedding's
 // date follows its "Wedding" function, only an empty function can be removed, a finished or cancelled wedding is not changed.
 // The quotation and the payments are never touched from here.
+//
+// Giving out work (13 Oct 2026): a to-do can be given to someone who works in the business. Only the owner or someone with the
+// `tasks` permission gives work out, and only to a current member of THIS business — the member is looked up here by the
+// business in the scope (BusinessMember is not an owned table), never taken on trust. The person sees it in "Your work"
+// (services/venueMyWork.service.ts).
 
 const istDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(d);
 
@@ -47,7 +53,11 @@ export interface VenueWeddingDetail extends VenueWeddingListItem {
   agreed: { description: string; quantity: number; unitPrice: number; lineTotal: number; function: string | null }[];
   // How the lines add up to the agreed total: the discount taken off and the GST added (each 0 when there is none). null = no quotation.
   agreedTotals: { discount: number; gst: number; total: number } | null;
-  tasks: { id: string; title: string; done: boolean; dueAt: string | null; dueOn: string | null }[]; // dueOn = YYYY-MM-DD (IST)
+  // dueOn = YYYY-MM-DD (IST). assignee = who it was given to (their login's id and how the business names them), or null.
+  tasks: { id: string; title: string; done: boolean; dueAt: string | null; dueOn: string | null; assignee: { id: string; name: string } | null }[];
+  // This member may give the to-dos out (the `tasks` permission) — and to whom: the people working in the business today.
+  canAssign: boolean;
+  team: { id: string; name: string }[];
   // null = this member may not see money (lib/auth/permissions.ts: view_financials), or there is no agreement.
   money: { total: number; received: number; outstanding: number } | null;
   moneyHidden: boolean;
@@ -56,7 +66,8 @@ export interface VenueWeddingDetail extends VenueWeddingListItem {
 export interface VenueWeddingDeps {
   db: {
     wedding: Pick<typeof prisma.wedding, 'findMany' | 'findUnique'>;
-    task: Pick<typeof prisma.task, 'findMany'>;
+    task: Pick<typeof prisma.task, 'findMany' | 'updateMany'>;
+    businessMember: Pick<typeof prisma.businessMember, 'findMany'>;
     quotation: Pick<typeof prisma.quotation, 'findUnique'>;
   };
   money: typeof loadAgreementMoney;
@@ -102,6 +113,27 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
     };
   }
 
+  // The people of the business in the scope, by their login's id. `ids` = only these (whoever a to-do was given to, even if they
+  // have left since); without it, everyone working there today.
+  async function people(ids?: string[]): Promise<{ id: string; name: string }[]> {
+    const scope = effectiveScope();
+    if (scope.kind !== 'BUSINESS' || (ids && ids.length === 0)) return [];
+    const rows = await deps.db.businessMember.findMany({
+      where: { businessId: scope.businessId, ...(ids ? { userId: { in: ids } } : { removedAt: null }) },
+      select: { userId: true, role: true, jobTitle: true, user: { select: { name: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((m) => ({ id: m.userId, name: memberLabel({ name: m.user.name, role: m.role as MemberRole, jobTitle: m.jobTitle }) }));
+  }
+
+  // Who a to-do is being given to: null = nobody. Refused unless the asker may give out work and the person works here today.
+  async function assignee(raw: unknown): Promise<{ ok: true; userId: string | null } | { ok: false; error: string }> {
+    const userId = typeof raw === 'string' ? raw.trim() : '';
+    if (!can(effectiveScope(), 'tasks')) return { ok: false, error: 'Only the owner or someone who manages the team’s work can give a to-do to a person' };
+    if (!userId) return { ok: true, userId: null };
+    return (await people()).some((p) => p.id === userId) ? { ok: true, userId } : { ok: false, error: 'Choose someone who works in your business' };
+  }
+
   return {
     // Upcoming first (nearest date on top), then the ones already over.
     async list(): Promise<VenueWeddingListItem[]> {
@@ -119,12 +151,15 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
       if (!w) throw new NotFoundError('Wedding', id);
       const quotationId = w.sourceBooking?.quotationId ?? null;
       const [tasks, quotation] = await Promise.all([
-        deps.db.task.findMany({ where: { weddingId: id, status: { not: 'CANCELLED' } }, select: { id: true, title: true, status: true, dueAt: true }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }], take: 100 }),
+        deps.db.task.findMany({ where: { weddingId: id, status: { not: 'CANCELLED' } }, select: { id: true, title: true, status: true, dueAt: true, assignedToId: true }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }], take: 100 }),
         quotationId
           ? deps.db.quotation.findUnique({ where: { id: quotationId }, select: { quotationNumber: true, discount: true, gstAmount: true, total: true, items: { select: { description: true, quantity: true, unitPrice: true, functionLabel: true }, orderBy: { sortOrder: 'asc' } } } })
           : null,
       ]);
       const seesMoney = can(effectiveScope(), 'view_financials');
+      const canEdit = w.status !== 'COMPLETED' && w.status !== 'CANCELLED' && can(effectiveScope(), 'weddings');
+      const canAssign = canEdit && can(effectiveScope(), 'tasks');
+      const given = new Map((await people([...new Set(tasks.flatMap((t) => (t.assignedToId ? [t.assignedToId] : [])))])).map((p) => [p.id, p]));
       const agreement = quotationId && seesMoney ? await deps.money(quotationId, deps.now()) : null;
       return {
         ...listItem(w),
@@ -133,10 +168,12 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
         enquiryId: w.sourceBooking?.consultationId ?? null,
         quotationNumber: quotation?.quotationNumber ?? null,
         functionList: w.events.map((e) => ({ id: e.id, type: e.type as FunctionType, name: functionName(e), date: istDay(e.date), startTime: e.startTime, place: e.venueName?.trim() || null })),
-        canEdit: w.status !== 'COMPLETED' && w.status !== 'CANCELLED' && can(effectiveScope(), 'weddings'),
+        canEdit,
+        canAssign,
+        team: canAssign ? await people() : [],
         agreed: (quotation?.items ?? []).map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.unitPrice * i.quantity, function: i.functionLabel?.trim() || null })),
         agreedTotals: quotation ? { discount: quotation.discount, gst: quotation.gstAmount, total: quotation.total } : null,
-        tasks: tasks.map((t) => ({ id: t.id, title: t.title, done: t.status === 'DONE', dueAt: t.dueAt?.toISOString() ?? null, dueOn: t.dueAt ? istDay(t.dueAt) : null })),
+        tasks: tasks.map((t) => ({ id: t.id, title: t.title, done: t.status === 'DONE', dueAt: t.dueAt?.toISOString() ?? null, dueOn: t.dueAt ? istDay(t.dueAt) : null, assignee: t.assignedToId ? (given.get(t.assignedToId) ?? { id: t.assignedToId, name: 'Someone no longer in the team' }) : null })),
         money: agreement?.exists ? { total: agreement.agreementTotal, received: agreement.received, outstanding: agreement.outstanding } : null,
         moneyHidden: !!quotationId && !seesMoney,
       };
@@ -167,7 +204,21 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
     async addTask(id: string, input: Record<string, unknown>, actorId: string | null): Promise<TaskResult> {
       const checked = validateTaskForm(input);
       if (!checked.ok) return { errors: checked.errors };
-      await deps.workspace.addTask(id, { title: checked.value.title, dueAt: checked.value.dueAt ?? undefined, createdById: actorId });
+      // Given to someone at once (`assignTo`) — optional; left out or empty = nobody yet.
+      const who = typeof input.assignTo === 'string' && input.assignTo.trim() ? await assignee(input.assignTo) : null;
+      if (who && !who.ok) return { errors: { assignTo: who.error } };
+      await deps.workspace.addTask(id, { title: checked.value.title, dueAt: checked.value.dueAt ?? undefined, assignedToId: who?.userId ?? undefined, createdById: actorId });
+      return this.get(id);
+    },
+
+    // Give a to-do to someone who works in the business, to someone else, or to nobody (`assignTo` empty).
+    async assignTask(id: string, taskId: string, assignTo: unknown): Promise<VenueWeddingDetail> {
+      const w = await this.get(id); // another business's wedding is "not found" before anything is changed
+      if (!w.canEdit) throw new ValidationError('This wedding is finished — its to-do list can no longer be changed');
+      const who = await assignee(assignTo);
+      if (!who.ok) throw new ValidationError(who.error);
+      const { count } = await deps.db.task.updateMany({ where: { id: taskId, weddingId: id, status: { not: 'CANCELLED' } }, data: { assignedToId: who.userId } });
+      if (count === 0) throw new NotFoundError('Task', taskId);
       return this.get(id);
     },
 
