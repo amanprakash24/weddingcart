@@ -769,7 +769,12 @@ left). No migration.
 out; a manager answers), `services/vendorEnquiry.service.test.ts`, `lib/vendorEnquiry/handlers.test.ts` (403),
 `tests-db/venue.team.test.ts` (real database: the manager's vendor; an owner of another vendor gets the one chosen).
 
-**Not changed** — `/vendor/proposals` and the unused `PATCH /api/vendor/availability` still read through the owner link.
+**Proposals** (13 Oct 2026) — "Accepted proposals" (`/vendor/proposals`, the vendor's own lines on quotations Shaadi Shopping's
+couples accepted) is read the same way now: `weddings` to open it, amounts only with `view_financials` (`withoutMoney`,
+`lib/quotation/vendorProposal.ts` — taken out on the server), and it is in the menu ("Proposals") for whoever may open it.
+`vendorProposalService.listForVendor(vendorId, { seesMoney })` / `getForVendor(vendorId, id, { seesMoney })`.
+
+**Not changed** — the unused `PATCH /api/vendor/availability` still reads through the owner link.
 
 ## 25. Giving out work, and "Your work" — built 13 Oct 2026
 
