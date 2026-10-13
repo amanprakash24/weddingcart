@@ -8,7 +8,7 @@ import StatusPill from '@/components/ui/StatusPill';
 import { whatsappTo } from '@/lib/venue/enquiry';
 import type { VenueWeddingDetail } from '@/services/venueWedding.service';
 import { daysWords, weddingDateWords } from './YourWeddings';
-import { WeddingFunctions, WeddingTasks } from './WeddingPlan';
+import { WeddingFunctions, WeddingNotes, WeddingTasks } from './WeddingPlan';
 
 // One of the business's own weddings: who and when, the functions, what was agreed, the money and what is still to do. The functions
 // and the to-do list are planned here (WeddingPlan.tsx); the quotation and the payments are changed on the enquiry it came from,
@@ -144,6 +144,7 @@ export default function WeddingDetail({ id }: { id: string }) {
       </section>
 
       <WeddingTasks w={w} onSaved={setW} />
+      <WeddingNotes w={w} onSaved={setW} />
     </div>
   );
 }

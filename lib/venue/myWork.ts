@@ -13,12 +13,31 @@ export interface MyWorkItem {
   dueOn: string | null; // YYYY-MM-DD (IST)
   overdue: boolean;
   wedding: { id: string; name: string; date: string; functions: { name: string; date: string; startTime: string | null; place: string | null }[] };
+  notes: { id: string; text: string; at: string }[]; // this person's own notes on this to-do, oldest first
 }
 
 export interface MyWork {
   items: MyWorkItem[]; // open first (soonest due on top, no date last), then done
   open: number;
   canOpenWeddings: boolean; // this person may open the wedding itself (the `weddings` permission)
+}
+
+// A note from the team on a business's own wedding (13 Oct 2026) — "generator needs 40 litres more", "florist will come at 4".
+// Kept in the wedding's history (ActivityLog, type NOTE: who, when, the words), so it is never edited or removed. A note written
+// from "Your work" says which to-do it is about in its heading; there is no database link to the to-do, so the heading keeps the
+// to-do's name as it was when the note was written.
+export const NOTE_MAX = 300;
+export const GENERAL_NOTE = 'Note';
+export const noteAbout = (taskTitle: string) => `Note on “${taskTitle}”`;
+
+// When a note was written, as it reads in India: "13 Oct, 4:05 pm".
+export const noteWhen = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).format(new Date(iso));
+
+export function checkNote(raw: unknown): { ok: true; text: string } | { ok: false; error: string } {
+  const text = typeof raw === 'string' ? raw.trim().replace(/\s+\n/g, '\n') : '';
+  if (!text) return { ok: false, error: 'Write the note first' };
+  if (text.length > NOTE_MAX) return { ok: false, error: `Please keep the note under ${NOTE_MAX} letters` };
+  return { ok: true, text };
 }
 
 // How a member is named when work is given out: their name; an account with no name yet (most owners) by what they are.

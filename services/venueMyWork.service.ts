@@ -1,9 +1,9 @@
 import { prisma } from '@/lib/prisma';
-import { NotFoundError } from '@/lib/errors';
+import { NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { can } from '@/lib/auth/permissions';
 import { FUNCTION_TYPE_LABELS, type FunctionType } from '@/lib/wedding/functions';
-import { isOverdue, sortMyWork, type MyWork } from '@/lib/venue/myWork';
+import { checkNote, isOverdue, noteAbout, sortMyWork, type MyWork } from '@/lib/venue/myWork';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 
 // "Your work" on Today (lib/venue/myWork.ts): the to-dos on this business's own weddings that were given to the signed-in person,
@@ -16,7 +16,7 @@ const istDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/K
 const DONE_KEPT_DAYS = 7;
 
 export interface VenueMyWorkDeps {
-  db: { task: Pick<typeof prisma.task, 'findMany' | 'findFirst'> };
+  db: { task: Pick<typeof prisma.task, 'findMany' | 'findFirst'>; activityLog: Pick<typeof prisma.activityLog, 'findMany' | 'create'> };
   // The existing wedding service, unchanged: marks a task done or not (and when).
   workspace: Pick<typeof weddingWorkspaceService, 'updateTask'>;
   now: () => Date;
@@ -59,6 +59,11 @@ export function createVenueMyWorkService(deps: VenueMyWorkDeps = defaultDeps()) 
         },
         take: 100,
       });
+      // Their own notes on these to-dos (a note names its to-do in its heading — lib/venue/myWork.ts).
+      const weddingIds = [...new Set(rows.flatMap((t) => (t.wedding ? [t.wedding.id] : [])))];
+      const mine = weddingIds.length
+        ? await deps.db.activityLog.findMany({ where: { type: 'NOTE', performedById: userId, weddingId: { in: weddingIds } }, select: { id: true, summary: true, detail: true, weddingId: true, createdAt: true }, orderBy: { createdAt: 'asc' }, take: 300 })
+        : [];
       const today = istDay(now);
       const items = sortMyWork(
         rows.flatMap((t) => {
@@ -78,6 +83,7 @@ export function createVenueMyWorkService(deps: VenueMyWorkDeps = defaultDeps()) 
                 date: istDay(t.wedding.primaryDate),
                 functions: t.wedding.events.map((e) => ({ name: e.label?.trim() || FUNCTION_TYPE_LABELS[e.type as FunctionType] || 'Function', date: istDay(e.date), startTime: e.startTime, place: e.venueName?.trim() || null })),
               },
+              notes: mine.filter((n) => n.weddingId === t.wedding?.id && n.summary === noteAbout(t.title)).map((n) => ({ id: n.id, text: n.detail ?? '', at: n.createdAt.toISOString() })),
             },
           ];
         })
@@ -92,6 +98,18 @@ export function createVenueMyWorkService(deps: VenueMyWorkDeps = defaultDeps()) 
       const task = await deps.db.task.findFirst({ where: { id: taskId, assignedToId: userId, context: 'WEDDING_TASK', status: { not: 'CANCELLED' } }, select: { id: true, weddingId: true } });
       if (!task?.weddingId) throw new NotFoundError('Task', taskId);
       await deps.workspace.updateTask(task.weddingId, task.id, { status: done === true ? 'DONE' : 'PENDING' });
+      return this.list();
+    },
+
+    // The person a to-do was given to writes a note about it. It goes into the wedding's history under their name, and whoever
+    // manages that wedding reads it on the wedding's page. Anyone else's to-do is "not found".
+    async addNote(taskId: string, raw: unknown): Promise<MyWork> {
+      const { userId } = me();
+      const checked = checkNote(raw);
+      if (!checked.ok) throw new ValidationError(checked.error);
+      const task = await deps.db.task.findFirst({ where: { id: taskId, assignedToId: userId, context: 'WEDDING_TASK', status: { not: 'CANCELLED' } }, select: { title: true, weddingId: true } });
+      if (!task?.weddingId) throw new NotFoundError('Task', taskId);
+      await deps.db.activityLog.create({ data: { type: 'NOTE', summary: noteAbout(task.title), detail: checked.text, performedBy: { connect: { id: userId } }, wedding: { connect: { id: task.weddingId } } } });
       return this.list();
     },
   };
