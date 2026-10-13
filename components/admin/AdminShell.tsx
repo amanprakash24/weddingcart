@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, LogOut, MoreHorizontal, X } from 'lucide-react';
 
+import Avatar from './Avatar';
+import { PROFILE_CHANGED } from '@/lib/admin/myProfile';
 import { MORE, OLD_SCREENS, OUR_TEAM, PHONE_BAR, PRIMARY, SETUP, type ActiveContext, type NavItem } from './adminNav';
 
 export default function AdminShell({ children }: { children: ReactNode }) {
@@ -15,6 +17,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const section = searchParams.get('section');
 
   const [role, setRole] = useState<'admin' | 'super_admin' | null>(null);
+  // The signed-in person, shown at the top of the menu (My profile). Re-read when they change their name or photo.
+  const [me, setMe] = useState<{ name: string | null; designation: string | null; photoUrl: string | null } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   // New vendor registrations waiting for review — the count beside "Vendor applications" (founder's choice, 6 Oct 2026: a count in
   // the menu, no email or WhatsApp). Re-read on every screen change, so it drops as soon as one is approved or rejected.
@@ -25,10 +29,17 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLogin) return;
-    fetch('/api/admin/me')
-      .then((res) => res.json())
-      .then((data) => setRole(data.role ?? null))
-      .catch(() => setRole(null));
+    const read = () =>
+      fetch('/api/admin/me')
+        .then((res) => res.json())
+        .then((data) => {
+          setRole(data.role ?? null);
+          setMe(data.me ?? null);
+        })
+        .catch(() => setRole(null));
+    void read();
+    window.addEventListener(PROFILE_CHANGED, read);
+    return () => window.removeEventListener(PROFILE_CHANGED, read);
   }, [isLogin]);
 
   useEffect(() => {
@@ -93,6 +104,17 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     );
   };
 
+  const roleLabel = role === 'super_admin' ? 'Founder' : 'Team';
+  const profileLink = (onDark: string) => (
+    <Link href="/admin/profile" aria-current={pathname.startsWith('/admin/profile') ? 'page' : undefined} className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 ${onDark}`}>
+      <Avatar name={me?.name ?? null} photoUrl={me?.photoUrl ?? null} size={36} />
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold text-white">{me?.name ?? 'Add your name'}</span>
+        <span className="block truncate text-[11px] text-gray-400">{me?.designation ?? roleLabel}</span>
+      </span>
+    </Link>
+  );
+
   const moreLinks = (compact: boolean) => (
     <>
       {moreItems.map((item) => link(item, { compact }))}
@@ -111,6 +133,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             <span className="block text-[11px] text-gray-500">by ShaadiShopping</span>
           </Link>
         </div>
+        {role && <div className="border-b border-gray-800 p-2">{profileLink(pathname.startsWith('/admin/profile') ? 'bg-amber-500/20' : 'hover:bg-gray-800')}</div>}
         <nav aria-label="Admin" className="flex-1 space-y-1 px-2 py-3">
           {PRIMARY.map((item) => link(item))}
 
@@ -199,6 +222,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {role && <div className="mb-2 border-b border-gray-800 pb-2">{profileLink('hover:bg-gray-800')}</div>}
             <div className="space-y-0.5">
               {PRIMARY.filter((item) => item.key === 'invoices').map((item) => link(item))}
               {moreLinks(false)}

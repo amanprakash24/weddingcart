@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Check, Copy, KeyRound, MessageCircle, Pencil, Trash2, UserPlus } from 'lucide-react';
+import { Camera, Check, Copy, KeyRound, MessageCircle, Pencil, Trash2, UserPlus } from 'lucide-react';
+import Avatar from './Avatar';
 import { TEAM_ROLE_HELP, TEAM_ROLE_LABELS, TEAM_ROLES, teamLoginMessage, type OurTeamErrors, type OurTeamMember, type TeamRole } from '@/lib/admin/ourTeam';
 
 // "Our team" (13 Oct 2026): the founder first — their own name and sign-in — then the people who work at Shaadi Shopping: add
@@ -161,7 +162,13 @@ export default function OurTeam() {
       {you && (
         <section className={card} aria-labelledby="you-heading">
           <h2 id="you-heading" className="text-xs font-bold uppercase tracking-wide text-gray-500">You · {TEAM_ROLE_LABELS[you.role]}</h2>
-          <p className="mt-2 text-lg font-bold text-gray-900">{you.name ?? 'No name yet'}</p>
+          <div className="mt-2 flex items-center gap-3">
+            <Avatar name={you.name} photoUrl={you.photoUrl} size={56} />
+            <div className="min-w-0">
+              <p className="break-words text-lg font-bold text-gray-900">{you.name ?? 'No name yet'}</p>
+              {you.designation && <p className="text-sm text-gray-600">{you.designation}</p>}
+            </div>
+          </div>
           <dl className="mt-2 space-y-1 text-sm text-gray-700">
             <div className="flex gap-2"><dt className="w-28 shrink-0 text-gray-500">Mobile number</dt><dd className="font-medium">{shown(you.mobile) ?? 'Not registered yet'}</dd></div>
             {you.email && <div className="flex gap-2"><dt className="w-28 shrink-0 text-gray-500">Email</dt><dd className="break-all font-medium">{you.email}</dd></div>}
@@ -172,6 +179,7 @@ export default function OurTeam() {
           ) : (
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" onClick={() => open(you.id, 'name', you.name ?? '')} className={light}><Pencil className="h-3 w-3" aria-hidden /> {you.name ? 'Change your name' : 'Add your name'}</button>
+              <Link href="/admin/profile" className={light}><Camera className="h-3 w-3" aria-hidden /> Your photo and designation</Link>
               <Link href="/admin/account" className={light}><KeyRound className="h-3 w-3" aria-hidden /> Change your mobile number or code</Link>
             </div>
           )}
@@ -185,8 +193,14 @@ export default function OurTeam() {
         <ul className="mt-1 divide-y divide-gray-100">
           {others.map((m) => (
             <li key={m.id} className="py-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <p className="text-sm font-bold text-gray-900">{m.name ?? 'No name yet'}</p>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <Avatar name={m.name} photoUrl={m.photoUrl} size={40} />
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-bold text-gray-900">{m.name ?? 'No name yet'}</p>
+                    {m.designation && <p className="text-xs text-gray-600">{m.designation}</p>}
+                  </div>
+                </div>
                 <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700">{TEAM_ROLE_LABELS[m.role]}</span>
               </div>
               <p className="mt-1 text-sm text-gray-700">{shown(m.mobile) ?? 'No mobile number yet'}{m.email ? ` · ${m.email}` : ''}</p>
