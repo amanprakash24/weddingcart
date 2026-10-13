@@ -29,6 +29,7 @@ export default function MySignIn() {
   const [linked, setLinked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [withCode, setWithCode] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -90,7 +91,9 @@ export default function MySignIn() {
 
   if (!status) return <p className="text-sm text-gray-500">Loading…</p>;
 
-  const proofReady = status.hasPassword ? password.length > 0 : myCode.length === 6;
+  // Someone with a password and a code proves it with either one (a founder who signs in by code may not know the password).
+  const byPassword = status.hasPassword && !(status.hasCode && withCode);
+  const proofReady = byPassword ? password.length > 0 : myCode.length === 6;
 
   return (
     <div className="max-w-xl space-y-5">
@@ -151,7 +154,7 @@ export default function MySignIn() {
               {errors.mobile && <p className="mt-1 text-xs text-red-600">{errors.mobile}</p>}
             </div>
 
-            {status.hasPassword ? (
+            {byPassword ? (
               <div>
                 <label htmlFor="my-password" className={label}>Your current password (to confirm it is you)</label>
                 <input id="my-password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={field} aria-invalid={Boolean(errors.password)} />
@@ -163,6 +166,20 @@ export default function MySignIn() {
                 <input id="my-code" type="password" inputMode="numeric" autoComplete="off" value={myCode} onChange={(e) => setMyCode(digits(e.target.value, 6))} placeholder="6 digits" className={`${field} tracking-[0.3em]`} aria-invalid={Boolean(errors.myCode)} />
                 {errors.myCode && <p className="mt-1 text-xs text-red-600">{errors.myCode}</p>}
               </div>
+            )}
+            {status.hasPassword && status.hasCode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setWithCode((v) => !v);
+                  setPassword('');
+                  setMyCode('');
+                  setErrors({});
+                }}
+                className="-mt-1 inline-flex min-h-11 items-center text-xs font-semibold text-gray-700 underline underline-offset-2"
+              >
+                {withCode ? 'Use my password instead' : 'I do not remember the password — use my 6-digit code'}
+              </button>
             )}
 
             {existing && (

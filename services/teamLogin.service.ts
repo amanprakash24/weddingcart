@@ -14,7 +14,7 @@ import { vendorLoginCodeService } from '@/services/vendorLoginCode.service';
 // THE RULE THIS FILE EXISTS TO KEEP: nobody's login code is ever replaced, and nobody's login is ever given more access, without
 // proof from the person it belongs to.
 //   - Only a signed-in member of the internal team, and only for THEMSELVES.
-//   - They prove it is them again: their password, or — for a login that has no password — their own current code.
+//   - They prove it is them again: their password, or their own current code (the only proof for a login that has no password).
 //   - A number NOBODY has: it becomes theirs, and they get a new code (there was no code to replace).
 //   - A number that is ALREADY SOMEONE'S LOGIN (often the same human's vendor login): it is linked only if they also enter THAT
 //     login's current code — proof that they hold it. Its code is NOT changed and no code is shown. Without that code, nothing
@@ -80,7 +80,10 @@ export function createTeamLoginService(deps: TeamLoginDeps = defaultDeps()) {
       if (await deps.isLocked(lock)) throw new ConflictError('Too many wrong tries — please wait 15 minutes and try again');
 
       // 1. It is really me, again. A login with neither a password nor a code cannot prove that, so it cannot use this screen.
-      if (me.passwordHash) {
+      // Someone who has BOTH may use either (13 Oct 2026): the code alone already signs them in, and a founder who signs in by
+      // code and no longer knows the password could otherwise never correct their own number.
+      const byCode = !!me.loginCodeHash && typeof input.myCode === 'string' && input.myCode.length > 0 && !(typeof input.password === 'string' && input.password.length > 0);
+      if (me.passwordHash && !byCode) {
         const ok = typeof input.password === 'string' && input.password.length > 0 && (await deps.compare(input.password, me.passwordHash));
         await deps.record(lock, ok);
         if (!ok) return { errors: { password: 'That is not your current password' } };

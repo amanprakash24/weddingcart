@@ -80,6 +80,9 @@ export const MORE: NavItem[] = [
   { key: 'account', label: 'My sign-in', href: '/admin/account', icon: KeyRound, isActive: ({ pathname }) => pathname.startsWith('/admin/account') },
 ];
 
+// Shaadi Shopping's own people (services/adminTeam.service.ts) — shown to the founder only; the server refuses everyone else.
+export const OUR_TEAM: NavItem = { key: 'our-team', label: 'Our team', href: '/admin/team', icon: UsersRound, isActive: ({ pathname }) => pathname.startsWith('/admin/team') };
+
 // Development / setup only — shown to super admins.
 export const SETUP: NavItem = { key: 'setup', label: 'Setup & seed data', href: '/admin?tab=dashboard', icon: Database, isActive: onTab('dashboard') };
 
