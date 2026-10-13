@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion';
 import { Building2, Store, UserCheck } from 'lucide-react';
 import { fadeUp, stagger } from './animations';
+import { festive } from '@/lib/festive';
+import { OrnamentRule } from '@/components/festive/Decor';
 
 const VALUE_PROPS = [
   {
@@ -22,10 +24,20 @@ const VALUE_PROPS = [
   },
 ];
 
+// While the festive season is on (lib/festive.ts) the row carries the season's three plain benefits. Nothing here is a number,
+// a rating or a guarantee — only what Shaadi Shopping really does.
+const FESTIVE_PROPS = [
+  { icon: Store, title: 'Discover Wedding Vendors', desc: 'Venues, decorators, caterers, photographers, makeup artists and more.' },
+  { icon: Building2, title: 'Wedding Planning in One Place', desc: 'Your date, budget and guest count — planned together, not in pieces.' },
+  { icon: UserCheck, title: 'Dedicated Support', desc: 'One wedding expert with you from planning to Vidai.' },
+];
+
 export default function ValuePropsSection() {
+  const props = festive.enabled ? FESTIVE_PROPS : VALUE_PROPS;
   return (
     <section className="bg-[#FAF5EE] py-12 sm:py-16">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {festive.enabled && <OrnamentRule className="mb-9" />}
         <motion.div
           className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-6"
           initial="hidden"
@@ -33,7 +45,7 @@ export default function ValuePropsSection() {
           viewport={{ once: true, margin: '-60px' }}
           variants={stagger(0.08)}
         >
-          {VALUE_PROPS.map(({ icon: Icon, title, desc }) => (
+          {props.map(({ icon: Icon, title, desc }) => (
             <motion.div key={title} variants={fadeUp} className="text-center sm:text-left flex flex-col items-center sm:items-start gap-2.5">
               <div className="w-11 h-11 rounded-full bg-[#8B1A4A]/8 flex items-center justify-center">
                 <Icon className="w-5 h-5 text-[#8B1A4A]" />

@@ -45,6 +45,7 @@ const company = [
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'Begin Your Journey', href: '/plan' },
   { label: 'For Vendors', href: '/vendor-onboarding' },
+  { label: 'Vivah OS', href: '/vivah-os' },
   { label: 'Privacy Policy', href: '#' },
   { label: 'Terms of Service', href: '#' },
 ];

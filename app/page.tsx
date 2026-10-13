@@ -4,6 +4,8 @@ import HomepageClient from '@/components/HomepageClient';
 import { JsonLd } from '@/components/JsonLd';
 import { blogRepository } from '@/repositories/blog.repository';
 import type { BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
+import type { HomeCategory } from '@/components/homepage/CategoriesSection';
+import { prisma } from '@/lib/prisma';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
@@ -31,6 +33,21 @@ async function getTopBlogPosts(): Promise<BlogHighlight[]> {
         category: p.category,
         readTime: p.readTime,
       }));
+  } catch {
+    return [];
+  }
+}
+
+// "Explore Wedding Categories": the everyday categories that have vendors today, busiest first — straight from the database,
+// with each category's own name and picture. If the read fails the section is simply left out.
+async function getHomeCategories(): Promise<HomeCategory[]> {
+  try {
+    return await prisma.category.findMany({
+      where: { isSpecial: false, vendors: { some: {} } },
+      orderBy: [{ vendors: { _count: 'desc' } }, { name: 'asc' }],
+      take: 8,
+      select: { slug: true, name: true, image: true },
+    });
   } catch {
     return [];
   }
@@ -191,7 +208,7 @@ const faqSchema = {
 };
 
 export default async function HomePage() {
-  const topBlogPosts = await getTopBlogPosts();
+  const [topBlogPosts, categories] = await Promise.all([getTopBlogPosts(), getHomeCategories()]);
 
   return (
     <>
@@ -199,7 +216,7 @@ export default async function HomePage() {
       <JsonLd data={organizationSchema} />
       <JsonLd data={faqSchema} />
       <Suspense>
-        <HomepageClient topBlogPosts={topBlogPosts} />
+        <HomepageClient topBlogPosts={topBlogPosts} categories={categories} />
       </Suspense>
     </>
   );

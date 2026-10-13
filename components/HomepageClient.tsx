@@ -19,6 +19,8 @@ import GrowthPartnerSection from './homepage/GrowthPartnerSection';
 import FinalCtaSection from './homepage/FinalCtaSection';
 import AboutBrandSection from './homepage/AboutBrandSection';
 import BlogHighlightsSection, { type BlogHighlight } from './homepage/BlogHighlightsSection';
+import CategoriesSection, { type HomeCategory } from './homepage/CategoriesSection';
+import VivahOsSection from './homepage/VivahOsSection';
 
 const MARQUEE_ITEMS = [
   'Venues', 'Photographers', 'Decorators', 'Mehndi Artists',
@@ -28,7 +30,7 @@ const MARQUEE_ITEMS = [
 
 const TRUST_BADGES = ['Verified Vendors', 'Transparent Quotations', 'Dedicated Wedding Expert', 'Free Consultation'];
 
-export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: BlogHighlight[] }) {
+export default function HomepageClient({ topBlogPosts = [], categories = [] }: { topBlogPosts?: BlogHighlight[]; categories?: HomeCategory[] }) {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -60,6 +62,11 @@ export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: B
         <HeroSection />
 
         <ValuePropsSection />
+
+        {/* 14 Oct 2026: the categories that really exist (read by app/page.tsx), then the introduction of Vivah OS. */}
+        <CategoriesSection categories={categories} />
+
+        <VivahOsSection />
 
         <BudgetSection />
 

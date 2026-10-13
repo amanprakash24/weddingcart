@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { isProposalPath, isVendorOsPath } from '@/lib/proposalPath';
+import { festive } from '@/lib/festive';
 import { Menu, X, ChevronDown, Home, UtensilsCrossed, Camera, Palette, Star, Sparkles, FileText, Phone, ArrowRight } from 'lucide-react';
 
 const MEGA_MENU = [
@@ -140,8 +141,8 @@ export default function Navbar() {
       <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-9 flex items-center justify-center overflow-hidden px-4">
         <p className="text-[0.62rem] tracking-[0.12em] sm:tracking-[0.22em] whitespace-nowrap truncate text-center">
           <span className="text-[#C5A46D]/45 mr-3 sm:mr-5">✦</span>
-          <span className="hidden sm:inline">Expert Wedding Coordination · From Venue to Vidai</span>
-          <span className="sm:hidden">Expert Wedding Coordination · From Venue to Vidai</span>
+          {/* The season's greeting while the festive look is on (lib/festive.ts); the everyday line otherwise. */}
+          <span>{festive.enabled ? festive.announcement : 'Expert Wedding Coordination · From Venue to Vidai'}</span>
           <span className="text-[#C5A46D]/45 ml-3 sm:ml-5">✦</span>
         </p>
       </div>
