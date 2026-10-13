@@ -797,8 +797,14 @@ saw an empty Today.
 **Tests** — `lib/venue/myWork.test.ts`; `tests-db/venue.payments.test.ts` ("giving out work": another business's person refused,
 no `tasks` permission refused, the person's own list only, not in another business, ticking, giving to someone else, taken off).
 
-**Not built yet** — a note from the person doing the work; giving out enquiry follow-ups; telling the person on WhatsApp that
-work was given to them; work on the weddings Shaadi Shopping booked the vendor on.
+- **"Tell them on WhatsApp"** (13 Oct 2026) — under every open to-do given to someone else: a ready message the giver sends
+  from their own WhatsApp to that person's own number (`workGivenMessage`, `lib/venue/myWork.ts`): what, by when, which wedding
+  and its date, and where to find it. Nothing is sent by the app. Not shown for a done to-do, one given to yourself, or a person
+  with no number. A colleague's number reaches the browser only for someone who may give out work (`team[].mobile` on the
+  wedding; `team` is empty for everyone else) — approved 13 Oct 2026: a manager who gives out work may reach that person.
+
+**Not built yet** — a note from the person doing the work; giving out enquiry follow-ups; work on the weddings Shaadi Shopping
+booked the vendor on.
 
 ## Data model gaps
 

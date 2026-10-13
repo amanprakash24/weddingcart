@@ -7,6 +7,8 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS } from '@/lib/wedding/functions';
 import { WEDDING_PLAN_LIMITS } from '@/lib/venue/weddingPlan';
+import { workGivenMessage } from '@/lib/venue/myWork';
+import { whatsappTo } from '@/lib/venue/enquiry';
 import type { VenueWeddingDetail } from '@/services/venueWedding.service';
 import { weddingDateWords } from './YourWeddings';
 
@@ -134,6 +136,14 @@ export function WeddingTasks({ w, onSaved }: { w: VenueWeddingDetail; onSaved: (
   const WHO = [{ value: '', label: 'No one yet' }, ...w.team.map((p) => ({ value: p.id, label: p.name }))];
   const open = w.tasks.filter((t) => !t.done).length;
 
+  // The ready WhatsApp message for an open to-do given to someone else who has a number — or null. w.team (and so every number)
+  // is empty unless this person may give out work.
+  const tell = (t: VenueWeddingDetail['tasks'][number]) => {
+    const who = t.done ? undefined : w.team.find((p) => p.id === t.assignee?.id);
+    if (!who || who.isYou || !who.mobile) return null;
+    return { name: who.firstName ?? who.name, href: whatsappTo(who.mobile, workGivenMessage({ firstName: who.firstName, businessName: w.businessName, title: t.title, dueOn: t.dueOn, weddingName: w.customerName, weddingDate: w.date, site: typeof window === 'undefined' ? '' : window.location.origin })) };
+  };
+
   if (!w.canEdit && w.tasks.length === 0) return null;
 
   async function add() {
@@ -178,6 +188,14 @@ export function WeddingTasks({ w, onSaved }: { w: VenueWeddingDetail; onSaved: (
                   ) : (
                     t.assignee && <p className="text-xs text-[var(--color-text-muted)]">{t.assignee.name}</p>
                   )}
+                  {(() => {
+                    const msg = tell(t);
+                    return msg ? (
+                      <a href={msg.href} target="_blank" rel="noopener noreferrer" className="mt-1 flex min-h-11 items-center text-sm font-semibold text-[var(--primary)] underline underline-offset-2">
+                        Tell {msg.name} on WhatsApp
+                      </a>
+                    ) : null;
+                  })()}
                 </div>
                 {w.canEdit && (
                   <button type="button" aria-label={`Take off the list: ${t.title}`} disabled={busy} onClick={() => save(`/tasks/${t.id}`, 'PATCH', { remove: true })} className={icon}>
