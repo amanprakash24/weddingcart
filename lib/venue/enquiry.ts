@@ -66,6 +66,7 @@ export interface FollowUp {
   title: string;
   dueAt: string | null;
   done: boolean;
+  assignee?: { id: string; name: string } | null; // who it was given to (13 Oct 2026); nobody = anyone who works the enquiries
 }
 
 export type NextAction =

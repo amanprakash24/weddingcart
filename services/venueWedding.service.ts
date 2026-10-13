@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
-import { can, type MemberRole } from '@/lib/auth/permissions';
-import { checkNote, GENERAL_NOTE, memberLabel } from '@/lib/venue/myWork';
+import { can } from '@/lib/auth/permissions';
+import { assignable, venuePeople } from '@/services/venuePeople';
+import { checkNote, GENERAL_NOTE } from '@/lib/venue/myWork';
 import { computeWeddingStage, STAGE_LABELS, type WeddingStage } from '@/lib/wedding/stage';
 import { FUNCTION_TYPE_LABELS, type FunctionType } from '@/lib/wedding/functions';
 import { loadAgreementMoney } from '@/services/agreement.service';
@@ -120,36 +121,10 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
     };
   }
 
-  // The people of the business in the scope, by their login's id. `ids` = only these (whoever a to-do was given to, even if they
-  // have left since); without it, everyone working there today.
-  // Their mobile number is read too, but only `team()` below ever passes it on.
-  async function members(ids?: string[]) {
-    const scope = effectiveScope();
-    if (scope.kind !== 'BUSINESS' || (ids && ids.length === 0)) return [];
-    const rows = await deps.db.businessMember.findMany({
-      where: { businessId: scope.businessId, ...(ids ? { userId: { in: ids } } : { removedAt: null }) },
-      select: { userId: true, role: true, jobTitle: true, user: { select: { name: true, phone: true } }, business: { select: { name: true } } },
-      orderBy: { createdAt: 'asc' },
-    });
-    return rows.map((m) => ({
-      id: m.userId,
-      name: memberLabel({ name: m.user.name, role: m.role as MemberRole, jobTitle: m.jobTitle }),
-      mobile: m.user.phone?.replace(/\D/g, '').slice(-10) || null,
-      firstName: m.user.name?.trim().split(/\s+/)[0] || null,
-      isYou: m.userId === scope.userId,
-      businessName: m.business.name,
-    }));
-  }
+  // The people of the business in the scope, and who work may be given to (services/venuePeople.ts — shared with enquiry follow-ups).
+  const { members, assignee } = venuePeople(deps.db);
   // Names only — what anyone who sees the to-do list may know.
   const people = async (ids?: string[]): Promise<{ id: string; name: string }[]> => (await members(ids)).map(({ id, name }) => ({ id, name }));
-
-  // Who a to-do is being given to: null = nobody. Refused unless the asker may give out work and the person works here today.
-  async function assignee(raw: unknown): Promise<{ ok: true; userId: string | null } | { ok: false; error: string }> {
-    const userId = typeof raw === 'string' ? raw.trim() : '';
-    if (!can(effectiveScope(), 'tasks')) return { ok: false, error: 'Only the owner or someone who manages the team’s work can give a to-do to a person' };
-    if (!userId) return { ok: true, userId: null };
-    return (await people()).some((p) => p.id === userId) ? { ok: true, userId } : { ok: false, error: 'Choose someone who works in your business' };
-  }
 
   return {
     // Upcoming first (nearest date on top), then the ones already over.
@@ -189,7 +164,7 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
         functionList: w.events.map((e) => ({ id: e.id, type: e.type as FunctionType, name: functionName(e), date: istDay(e.date), startTime: e.startTime, place: e.venueName?.trim() || null })),
         canEdit,
         canAssign,
-        team: team.map(({ businessName: _b, ...p }) => p),
+        team: team.map(assignable),
         businessName: team[0]?.businessName ?? '',
         notes: noteRows.map((n) => ({ id: n.id, by: (n.performedById && given.get(n.performedById)?.name) || 'Someone no longer in the team', at: n.createdAt.toISOString(), about: n.summary, text: n.detail ?? '' })),
         agreed: (quotation?.items ?? []).map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.unitPrice * i.quantity, function: i.functionLabel?.trim() || null })),

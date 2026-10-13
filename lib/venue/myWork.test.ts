@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { checkNote, isOverdue, memberLabel, NOTE_MAX, noteAbout, noteWhen, sortMyWork, workGivenMessage } from './myWork';
+import { checkNote, followUpGivenMessage, isOverdue, memberLabel, NOTE_MAX, noteAbout, noteWhen, sortMyWork, workGivenMessage } from './myWork';
 
 describe('"Your work" — the pure parts', () => {
   test('a member is named by their name; with none, the owner is "Owner" and anyone else is their job, then their role', () => {
@@ -26,6 +26,14 @@ describe('"Your work" — the pure parts', () => {
     const bare = workGivenMessage({ firstName: null, businessName: '', title: 'Flowers', dueOn: null, weddingName: 'KUS-WED-2026-0001', weddingDate: '2026-12-09', site: 'http://localhost:3001' });
     expect(bare.split('\n').slice(0, 3)).toEqual(['Namaste,', 'Work for you:', '• Flowers']);
     expect(full).not.toMatch(/₹|\d{10}/);
+  });
+
+  test('the WhatsApp message for a follow-up: who to follow up with and by when — never the couple’s number', () => {
+    const full = followUpGivenMessage({ firstName: 'Sunil', businessName: 'Kush Travel', title: 'Share the package', dueOn: '2026-10-20', coupleName: 'Rahul Kumar', site: 'https://www.shaadishopping.com' });
+    expect(full).toBe(['Namaste Sunil,', 'Work for you from Kush Travel:', '• Follow up with Rahul Kumar — Share the package — by 20 Oct 2026', 'See it in Vivah OS → Today → Your work: https://www.shaadishopping.com/vendor/login'].join('\n'));
+    // The default title adds nothing; no date, no "by".
+    expect(followUpGivenMessage({ firstName: null, businessName: '', title: 'Follow up', dueOn: null, coupleName: 'Asha', site: 'x' }).split('\n').slice(0, 3)).toEqual(['Namaste,', 'Work for you:', '• Follow up with Asha']);
+    expect(full).not.toMatch(/\d{10}/);
   });
 
   test('a note: trimmed, never empty, never longer than the limit; its heading names the to-do; its time reads in India', () => {

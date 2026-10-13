@@ -8,11 +8,15 @@ import { MEMBER_ROLE_LABELS, type MemberRole } from '@/lib/auth/permissions';
 
 export interface MyWorkItem {
   id: string;
+  // TODO = a to-do on a wedding (`wedding` is set); FOLLOW_UP = a follow-up on an enquiry (`enquiry` is set — given only to
+  // someone who may open enquiries, so it carries the couple's name and links to the enquiry, where the number is).
+  kind: 'TODO' | 'FOLLOW_UP';
   title: string;
   done: boolean;
   dueOn: string | null; // YYYY-MM-DD (IST)
   overdue: boolean;
-  wedding: { id: string; name: string; date: string; functions: { name: string; date: string; startTime: string | null; place: string | null }[] };
+  wedding: { id: string; name: string; date: string; functions: { name: string; date: string; startTime: string | null; place: string | null }[] } | null;
+  enquiry: { id: string; name: string; weddingDate: string | null } | null;
   notes: { id: string; text: string; at: string }[]; // this person's own notes on this to-do, oldest first
 }
 
@@ -20,6 +24,7 @@ export interface MyWork {
   items: MyWorkItem[]; // open first (soonest due on top, no date last), then done
   open: number;
   canOpenWeddings: boolean; // this person may open the wedding itself (the `weddings` permission)
+  canOpenEnquiries: boolean; // … and the enquiry a follow-up belongs to (`enquiries`)
 }
 
 // A note from the team on a business's own wedding (13 Oct 2026) — "generator needs 40 litres more", "florist will come at 4".
@@ -61,6 +66,16 @@ export function workGivenMessage(m: { firstName: string | null; businessName: st
     `• ${m.title}${m.dueOn ? ` — by ${dayWords(m.dueOn)}` : ''}`,
     `For: ${m.weddingName}, ${dayWords(m.weddingDate)}`,
     `See it and tick it done in Vivah OS → Today → Your work: ${m.site.replace(/\/$/, '')}/vendor/login`,
+  ].join('\n');
+}
+
+// The same for a follow-up on an enquiry: who to follow up with and by when. The couple's number is not in it — it is on the enquiry.
+export function followUpGivenMessage(m: { firstName: string | null; businessName: string; title: string; dueOn: string | null; coupleName: string; site: string }): string {
+  return [
+    m.firstName ? `Namaste ${m.firstName},` : 'Namaste,',
+    `Work for you${m.businessName ? ` from ${m.businessName}` : ''}:`,
+    `• Follow up with ${m.coupleName}${m.title && m.title !== 'Follow up' ? ` — ${m.title}` : ''}${m.dueOn ? ` — by ${dayWords(m.dueOn)}` : ''}`,
+    `See it in Vivah OS → Today → Your work: ${m.site.replace(/\/$/, '')}/vendor/login`,
   ].join('\n');
 }
 

@@ -345,7 +345,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
       // The person it was given to: their own work, with the wedding's name, date and functions — no phone, no money.
       const mine = await runInScope(asEmp, () => myWork.list());
       expect(mine).toMatchObject({ open: 1, canOpenWeddings: false, items: [{ id: task.id, title: 'Check the generator', done: false, dueOn: later(2), overdue: false, wedding: { id: rahul.id, name: 'Rahul Kumar' } }] });
-      expect(mine.items[0].wedding.functions.length).toBeGreaterThan(0);
+      expect(mine.items[0].wedding?.functions.length).toBeGreaterThan(0);
       for (const hidden of [before.customerPhone, 'unitPrice', 'outstanding', 'total']) if (hidden) expect(JSON.stringify(mine)).not.toContain(hidden);
       // Not the owner's work, and not there in another business the same person might work in.
       expect((await inA(() => myWork.list())).items).toEqual([]);
@@ -388,6 +388,43 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
       await inA(() => weddings.setTask(rahul.id, task.id, { remove: true }));
       expect((await runInScope(asEmp, () => myWork.list())).items).toEqual([]);
       expect((await outcome(runInScope(asEmp, () => myWork.setDone(task.id, true))))?.name).toBe('NotFoundError');
+
+      // --- A follow-up on an enquiry (13 Oct 2026): given only to someone who may work enquiries themselves. ---
+      const enq = ((await inA(() => enquiries.create({ name: 'Meena Devi', phone: '98765 43219', channel: 'WALK_IN' }, users[0]))) as { id: string }).id;
+      expect((await outcome(inA(() => enquiries.addFollowUp(enq, { date: later(3), title: 'Share the package', assignTo: emp.id }, users[0]))))?.message).toContain('cannot open your enquiries');
+      const first = await inA(() => enquiries.get(enq));
+      expect(first).toMatchObject({ canAssign: true, followUps: [] });
+      expect(first.team.map((p) => p.id)).toEqual([users[0]]); // the employee is not offered
+      // The owner lets the employee work on enquiries: now it can be theirs.
+      await app.prisma.businessMember.updateMany({ where: { userId: emp.id, businessId: scopeA.businessId }, data: { grants: ['enquiries'] } });
+      const asSales = { ...asEmp, permissions: ['enquiries' as const] };
+      const withFollowUp = await inA(() => enquiries.addFollowUp(enq, { date: later(3), title: 'Share the package', assignTo: emp.id }, users[0]));
+      expect(withFollowUp.team.map((p) => [p.name, p.mobile])).toEqual([['Owner', expect.any(String)], ['DBTEST Sunil', emp.phone]]);
+      const followUp = withFollowUp.followUps[0];
+      expect(followUp).toMatchObject({ title: 'Share the package', done: false, assignee: { id: emp.id, name: 'DBTEST Sunil' } });
+      // Someone who works enquiries but may not give out work: sees who has it, gets no numbers, cannot change it.
+      const enquiriesOnly = { ...weddingsOnly, permissions: ['enquiries' as const] };
+      const seenEnquiry = await runInScope(enquiriesOnly, () => enquiries.get(enq));
+      expect(seenEnquiry).toMatchObject({ canAssign: false, team: [], businessName: '', followUps: [{ assignee: { name: 'DBTEST Sunil' } }] });
+      expect((await outcome(runInScope(enquiriesOnly, () => enquiries.assignFollowUp(enq, followUp.id, null))))?.name).toBe('ValidationError');
+      // In the person's "Your work": the couple's name, a way to the enquiry — and never the couple's number.
+      const sales = await runInScope(asSales, () => myWork.list());
+      expect(sales).toMatchObject({ canOpenEnquiries: true, items: [{ id: followUp.id, kind: 'FOLLOW_UP', title: 'Share the package', dueOn: later(3), wedding: null, enquiry: { id: enq, name: 'Meena Devi', weddingDate: null }, notes: [] }] });
+      expect(JSON.stringify(sales)).not.toContain('9876543219');
+      expect((await runInScope(empInB, () => myWork.list())).items).toEqual([]);
+      // A follow-up takes no note from "Your work" (the enquiry has its own log); they tick it, and the enquiry shows it done.
+      expect((await outcome(runInScope(asSales, () => myWork.addNote(followUp.id, 'called'))))?.name).toBe('NotFoundError');
+      expect((await outcome(inA(() => myWork.setDone(followUp.id, true))))?.name).toBe('NotFoundError');
+      expect((await runInScope(asSales, () => myWork.setDone(followUp.id, true))).items[0]).toMatchObject({ id: followUp.id, done: true });
+      expect((await inA(() => enquiries.get(enq))).followUps[0]).toMatchObject({ done: true, assignee: { id: emp.id } });
+      expect((await runInScope(asSales, () => myWork.setDone(followUp.id, false))).open).toBe(1);
+      // Given to nobody: it leaves their list. Another venue cannot touch it. Closing the enquiry ends its follow-ups.
+      expect((await outcome(inB(() => enquiries.assignFollowUp(enq, followUp.id, users[1]))))?.name).toBe('NotFoundError');
+      expect((await inA(() => enquiries.assignFollowUp(enq, followUp.id, ''))).followUps[0].assignee).toBeNull();
+      expect((await runInScope(asSales, () => myWork.list())).items).toEqual([]);
+      await inA(() => enquiries.assignFollowUp(enq, followUp.id, emp.id));
+      await inA(() => enquiries.close(enq, 'test over', users[0]));
+      expect((await runInScope(asSales, () => myWork.list())).items).toEqual([]);
     } finally {
       await runAsSystem('test clean-up', () => app.prisma.task.updateMany({ where: { assignedToId: emp.id }, data: { assignedToId: null } }));
       await runAsSystem('test clean-up', () => app.prisma.activityLog.updateMany({ where: { performedById: emp.id }, data: { performedById: null } }));
