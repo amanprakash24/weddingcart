@@ -434,7 +434,7 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
 
           {/* RIGHT: Sticky sidebar */}
           <div className="space-y-4">
-            <div className="sticky top-24">
+            <div className="sticky top-[100px] sm:top-28 lg:top-[124px]">
               {/* Quick actions */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
                 <h3 className="font-bold text-gray-900 mb-4 font-playfair">Quick Actions</h3>
