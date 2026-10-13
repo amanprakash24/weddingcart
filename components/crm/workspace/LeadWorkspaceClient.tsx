@@ -5,6 +5,7 @@ import type { SourceType } from '@/components/crm/types';
 import type { LeadWorkspace } from './types';
 import { useRouter } from 'next/navigation';
 import LeadWorkspaceHeader from './LeadWorkspaceHeader';
+import DeleteLead from '@/components/crm/DeleteLead';
 import type { StageTransitionInput } from './StageControl';
 import AgreementPanel from './AgreementPanel';
 import type { AgreementMoneyView } from '@/lib/commercial/view';
@@ -62,6 +63,14 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [showReason, setShowReason] = useState(false);
+  // Deleting a lead is the founder's alone (the server refuses everyone else); only the founder is shown the option.
+  const [isFounder, setIsFounder] = useState(false);
+  useEffect(() => {
+    fetch('/api/admin/me')
+      .then((r) => r.json())
+      .then((d) => setIsFounder(d.role === 'super_admin'))
+      .catch(() => {});
+  }, []);
   const [followUps, setFollowUps] = useState(0);
   // WhatsApp was opened (or the message copied) and we are waiting for the operator to say they pressed Send.
   const [pendingSend, setPendingSend] = useState<PendingSend | null>(null);
@@ -540,6 +549,15 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
           </button>
         )}
       </div>
+
+      {/* The founder only (the server refuses everyone else); a lead that became a customer record is refused there too. */}
+      {isFounder && (
+        <section aria-label="Delete this lead" className="rounded-2xl border border-gray-100 bg-white p-5">
+          <h2 className="text-sm font-bold text-gray-900">Delete this lead</h2>
+          <p className="mb-3 mt-1 text-sm text-gray-600">For a test entry, a wrong number or a duplicate. Its quotations, tasks and history go with it. A lead that already has a booking, a wedding, an invoice or a payment cannot be deleted.</p>
+          <DeleteLead sourceType={sourceType} id={id} onDeleted={() => router.replace('/admin/crm')} />
+        </section>
+      )}
 
       {dialog === 'accept' && <AcceptDialog customerName={customerName} onSave={saveAcceptance} onClose={() => setDialog(null)} />}
       {dialog === 'decline' && <DeclineDialog customerName={customerName} onSave={saveDecline} onClose={() => setDialog(null)} />}

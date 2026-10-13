@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import DeleteLead from './DeleteLead';
 import { STAGE_LABELS, STAGE_COLORS, SOURCE_LABELS, type LeadInboxItem } from './types';
 
 function timeAgo(iso: string): string {
@@ -10,7 +11,8 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export default function LeadTable({ items, loading }: { items: LeadInboxItem[]; loading: boolean }) {
+// onDeleted is given only to the founder (components/crm/CrmDashboardClient.tsx): it adds the Delete column.
+export default function LeadTable({ items, loading, onDeleted }: { items: LeadInboxItem[]; loading: boolean; onDeleted?: (name: string) => void }) {
   if (loading) {
     return <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">Loading…</div>;
   }
@@ -30,6 +32,7 @@ export default function LeadTable({ items, loading }: { items: LeadInboxItem[]; 
             <th className="px-4 py-3 font-medium">Stage</th>
             <th className="px-4 py-3 font-medium">Assigned To</th>
             <th className="px-4 py-3 font-medium">Received</th>
+            {onDeleted && <th className="px-4 py-3 font-medium"><span className="sr-only">Delete</span></th>}
           </tr>
         </thead>
         <tbody>
@@ -51,6 +54,12 @@ export default function LeadTable({ items, loading }: { items: LeadInboxItem[]; 
               </td>
               <td className="px-4 py-3 text-gray-600">{item.assignedToName ?? 'Unassigned'}</td>
               <td className="px-4 py-3 text-gray-500 text-xs">{timeAgo(item.createdAt)}</td>
+              {onDeleted && (
+                // Above the row-wide link, so a tap here deletes instead of opening the lead.
+                <td className="relative z-10 px-4 py-2 text-right">
+                  <DeleteLead sourceType={item.sourceType} id={item.id} compact onDeleted={onDeleted} />
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
