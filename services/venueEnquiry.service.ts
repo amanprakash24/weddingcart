@@ -6,11 +6,16 @@ import { quoteStage } from '@/lib/venue/quotation';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { can } from '@/lib/auth/permissions';
 import { platformMatchService } from '@/services/platformMatch.service';
+import { assignable, venuePeople, type Assignable } from '@/services/venuePeople';
 
 // A venue's OWN enquiries (Phase C, docs/wedding-os/15-record-ownership.md §5). Always called inside the venue's scope
 // (lib/ownership/venueEntry.ts): the database guard limits every query here to that venue's business, so this file never names a
 // business and cannot reach anyone else's records. An enquiry is stored as a Consultation (the same record the /plan wizard
 // makes), with its channel, so the later steps — quotation, booking, wedding — reuse the existing services.
+//
+// Giving out follow-ups (13 Oct 2026): a follow-up can be given to someone in the business, by the owner or a member with the
+// `tasks` permission — and only to a person who may work enquiries themselves, because following up means calling the couple and
+// they must be able to open the enquiry (services/venuePeople.ts). The person sees it in "Your work" (services/venueMyWork.service.ts).
 
 const CONTACT_TYPES = ['CALL', 'WHATSAPP'] as const;
 const LOG_TYPES = { CALL: ActivityType.CALL, WHATSAPP: ActivityType.WHATSAPP, NOTE: ActivityType.NOTE } as const;
@@ -35,12 +40,18 @@ export interface VenueEnquiryDetail extends VenueEnquiryListItem {
   need: string | null;
   followUps: FollowUp[];
   history: { id: string; type: string; summary: string; detail: string | null; at: string }[];
+  // This member may give the follow-ups out, and to whom (people who may work enquiries; with what the ready WhatsApp message
+  // needs). Empty unless canAssign.
+  canAssign: boolean;
+  team: Assignable[];
+  businessName: string;
 }
 
 export interface VenueEnquiryDeps {
   db: Pick<typeof prisma, '$transaction'> & {
     consultation: Pick<typeof prisma.consultation, 'findMany' | 'findUnique' | 'create' | 'update'>;
     task: Pick<typeof prisma.task, 'create' | 'updateMany'>;
+    businessMember: Pick<typeof prisma.businessMember, 'findMany'>;
     activityLog: Pick<typeof prisma.activityLog, 'create'>;
     business: Pick<typeof prisma.business, 'findUnique'>;
     paymentSubmission: Pick<typeof prisma.paymentSubmission, 'count'>;
@@ -52,7 +63,7 @@ export interface VenueEnquiryDeps {
 const defaultDeps = (): VenueEnquiryDeps => ({ db: prisma, match: platformMatchService, now: () => new Date() });
 
 const include = {
-  tasks: { where: { context: 'SALES_FOLLOWUP' as const, status: { not: 'CANCELLED' as const } }, select: { id: true, title: true, dueAt: true, status: true }, orderBy: { dueAt: 'asc' as const } },
+  tasks: { where: { context: 'SALES_FOLLOWUP' as const, status: { not: 'CANCELLED' as const } }, select: { id: true, title: true, dueAt: true, status: true, assignedToId: true }, orderBy: { dueAt: 'asc' as const } },
   activities: { select: { id: true, type: true, summary: true, detail: true, createdAt: true }, orderBy: { createdAt: 'desc' as const }, take: 50 },
   // The current quotation (never one replaced by a revision) — it decides the next step (lib/venue/quotation.ts).
   quotations: { where: { status: { not: 'SUPERSEDED' as const } }, select: { status: true, validUntil: true, changesRequestedAt: true, booking: { select: { status: true } }, _count: { select: { paymentSubmissions: { where: { status: 'PENDING' as const } } } } }, orderBy: { createdAt: 'desc' as const }, take: 1 },
@@ -60,7 +71,7 @@ const include = {
 
 type Row = {
   id: string; name: string; phone: string; weddingDate: string; guestCount: number; channel: string | null; message: string | null; pipelineStage: string; createdAt: Date; platformMatch: string | null;
-  tasks: { id: string; title: string; dueAt: Date | null; status: string }[];
+  tasks: { id: string; title: string; dueAt: Date | null; status: string; assignedToId?: string | null }[];
   activities: { id: string; type: string; summary: string; detail: string | null; createdAt: Date }[];
   quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null; booking?: { status: string } | null; _count?: { paymentSubmissions: number } }[];
 };
@@ -86,6 +97,9 @@ function view(r: Row, now: Date, seesMoney: boolean): VenueEnquiryDetail {
     need: r.message,
     followUps,
     history: r.activities.map((a) => ({ id: a.id, type: a.type, summary: a.summary, detail: a.detail, at: a.createdAt.toISOString() })),
+    canAssign: false,
+    team: [],
+    businessName: '',
   };
 }
 
@@ -124,7 +138,7 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
       return rows
         .map((r) => view(r, now, seesMoney))
         .sort((a, b) => ACTION_ORDER.indexOf(a.next.kind) - ACTION_ORDER.indexOf(b.next.kind))
-        .map(({ need: _need, followUps: _f, history: _h, ...item }) => item);
+        .map(({ need: _need, followUps: _f, history: _h, canAssign: _c, team: _t, businessName: _b, ...item }) => item);
     },
 
     // The mark on "Enquiries" in the menu: how many "I have paid" claims from this business's own couples wait to be checked.
@@ -138,8 +152,17 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
     // The history leaves out what has been paid and invoiced for a member who may not see money (a manager, by default).
     async get(id: string): Promise<VenueEnquiryDetail> {
       const seesMoney = can(effectiveScope(), 'view_financials');
-      const detail = view(await load(id), deps.now(), seesMoney);
-      return { ...detail, history: historyFor(detail.history, seesMoney) };
+      const row = await load(id);
+      const detail = view(row, deps.now(), seesMoney);
+      const people = venuePeople(deps.db);
+      const given = await people.names(row.tasks.map((t) => t.assignedToId));
+      const followUps = detail.followUps.map((f) => {
+        const to = row.tasks.find((t) => t.id === f.id)?.assignedToId;
+        return { ...f, assignee: to ? (given.get(to) ?? { id: to, name: 'Someone no longer in the team' }) : null };
+      });
+      const canAssign = detail.next.kind !== 'CLOSED' && can(effectiveScope(), 'tasks');
+      const team = canAssign ? (await people.members()).filter((p) => p.permissions.includes('enquiries')) : [];
+      return { ...detail, followUps, history: historyFor(detail.history, seesMoney), canAssign, team: team.map(assignable), businessName: team[0]?.businessName ?? '' };
     },
 
     // "+ New Enquiry" — the record is created in the venue's business by the guard.
@@ -174,13 +197,26 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
       return this.get(id);
     },
 
-    async addFollowUp(id: string, input: { date?: unknown; title?: unknown }, actorId: string | null): Promise<VenueEnquiryDetail> {
+    async addFollowUp(id: string, input: { date?: unknown; title?: unknown; assignTo?: unknown }, actorId: string | null): Promise<VenueEnquiryDetail> {
       const date = typeof input.date === 'string' ? input.date.trim() : '';
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ValidationError('Pick the follow-up date');
       if (date < istToday(deps.now())) throw new ValidationError('Pick today or a later date');
       const title = typeof input.title === 'string' && input.title.trim() ? input.title.trim().slice(0, 200) : 'Follow up';
       const e = await load(id);
-      await deps.db.task.create({ data: { context: 'SALES_FOLLOWUP', title, dueAt: istNoon(date), consultation: { connect: { id: e.id } }, createdBy: actorId ? { connect: { id: actorId } } : undefined } });
+      // Given to someone at once (`assignTo`) — optional; left out or empty = nobody in particular.
+      const who = typeof input.assignTo === 'string' && input.assignTo.trim() ? await venuePeople(deps.db).assignee(input.assignTo, 'enquiries') : null;
+      if (who && !who.ok) throw new ValidationError(who.error);
+      await deps.db.task.create({ data: { context: 'SALES_FOLLOWUP', title, dueAt: istNoon(date), consultation: { connect: { id: e.id } }, createdBy: actorId ? { connect: { id: actorId } } : undefined, assignedTo: who?.userId ? { connect: { id: who.userId } } : undefined } });
+      return this.get(id);
+    },
+
+    // Give an open follow-up to someone who may work enquiries, to someone else, or to nobody (`assignTo` empty).
+    async assignFollowUp(id: string, taskId: string, assignTo: unknown): Promise<VenueEnquiryDetail> {
+      await load(id); // another business's enquiry is "not found" before anything is changed
+      const who = await venuePeople(deps.db).assignee(assignTo, 'enquiries');
+      if (!who.ok) throw new ValidationError(who.error);
+      const { count } = await deps.db.task.updateMany({ where: { id: taskId, consultationId: id, context: 'SALES_FOLLOWUP', status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { assignedToId: who.userId } });
+      if (count === 0) throw new NotFoundError('Follow-up', taskId);
       return this.get(id);
     },
 

@@ -811,8 +811,17 @@ no `tasks` permission refused, the person's own list only, not in another busine
   with the old name. `POST /api/vendor-os/my-work/[taskId]/notes` (any member, own to-dos only),
   `POST /api/vendor-os/weddings/[id]/notes` (`weddings`).
 
-**Not built yet** — giving out enquiry follow-ups; work on the weddings Shaadi Shopping booked the vendor on; telling the owner
-when a note is written (they see it when they open the wedding).
+- **Follow-ups on enquiries** (13 Oct 2026) — a follow-up can be given to someone too: "Who does it" when scheduling one, and a
+  picker on each open follow-up, for the owner or a member with `tasks`. It can be given **only to someone who may work
+  enquiries** (owner, managers, anyone granted `enquiries`): following up means calling the couple, and they must be able to open
+  the enquiry — so nobody is shown a customer's number they could not already see. It shows in the person's "Your work" with the
+  couple's name and a link to the enquiry (never the number); they tick it done there or on the enquiry. The same "Tell them on
+  WhatsApp" link (`followUpGivenMessage`). A follow-up takes no note from "Your work" — the enquiry has its own log.
+  `venueEnquiryService.addFollowUp(… assignTo)` / `assignFollowUp`; `PATCH …/enquiries/[id]/follow-ups/[taskId]` with
+  `{ assignTo }`; the people lookup is shared with wedding to-dos (`services/venuePeople.ts`).
+
+**Not built yet** — work on the weddings Shaadi Shopping booked the vendor on; telling the owner when a note is written (they
+see it when they open the wedding).
 
 ## Data model gaps
 

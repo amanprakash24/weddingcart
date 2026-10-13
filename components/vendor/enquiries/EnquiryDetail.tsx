@@ -7,6 +7,8 @@ import { Card, CardSkeleton } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import { whatsappTo } from '@/lib/venue/enquiry';
+import { followUpGivenMessage } from '@/lib/venue/myWork';
+import Select from '@/components/ui/Select';
 import type { VenueEnquiryDetail } from '@/services/venueEnquiry.service';
 import EnquiryQuotation from './EnquiryQuotation';
 
@@ -25,6 +27,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
   const [panel, setPanel] = useState<'none' | 'followup' | 'note' | 'close'>('none');
   const [date, setDate] = useState('');
   const [text, setText] = useState('');
+  const [assignTo, setAssignTo] = useState(''); // who a new follow-up is given to — offered only to someone who may give out work
   const [version, setVersion] = useState(0); // bumped when the quotation below changes — the next step and history follow it
 
   useEffect(() => {
@@ -49,6 +52,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         setE(b.data);
         setPanel('none');
         setText('');
+        setAssignTo('');
         setDate('');
       } else setError(b.error ?? 'Something went wrong. It was not saved — please try again.');
     } catch {
@@ -64,6 +68,15 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
   const next = e.next;
   const openFollowUps = e.followUps.filter((f) => !f.done);
   const closed = next.kind === 'CLOSED';
+  // Who a follow-up can be given to (e.team is empty unless this person may give out work), and the ready WhatsApp message for
+  // one given to someone else who has a number.
+  const WHO = [{ value: '', label: 'No one in particular' }, ...e.team.map((p) => ({ value: p.id, label: p.name }))];
+  const tell = (f: (typeof e.followUps)[number]) => {
+    const who = e.team.find((p) => p.id === f.assignee?.id);
+    if (!who || who.isYou || !who.mobile) return null;
+    const dueOn = f.dueAt ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(f.dueAt)) : null;
+    return { name: who.firstName ?? who.name, href: whatsappTo(who.mobile, followUpGivenMessage({ firstName: who.firstName, businessName: e.businessName, title: f.title, dueOn, coupleName: e.name, site: typeof window === 'undefined' ? '' : window.location.origin })) };
+  };
 
   return (
     <div className="space-y-4">
@@ -127,7 +140,8 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         <Card className="space-y-3">
           <Input label="Follow up on" type="date" min={today()} value={date} onChange={(ev) => setDate(ev.target.value)} className="min-h-12 text-base" />
           <Input label="What about? (optional)" value={text} onChange={(ev) => setText(ev.target.value)} placeholder="Share the package, site visit…" className="min-h-12 text-base" />
-          <button type="button" disabled={busy || !date} onClick={() => send('/follow-ups', { date, title: text })} className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)] disabled:opacity-50`}>Save follow-up</button>
+          {e.canAssign && <Select label="Who does it (optional)" value={assignTo} onChange={(ev) => setAssignTo(ev.target.value)} options={WHO} className="min-h-12 text-base" />}
+          <button type="button" disabled={busy || !date} onClick={() => send('/follow-ups', { date, title: text, assignTo })} className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)] disabled:opacity-50`}>Save follow-up</button>
         </Card>
       )}
       {panel === 'note' && (
@@ -150,9 +164,38 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Follow-ups</h2>
           <ul className="space-y-2">
             {openFollowUps.map((f) => (
-              <li key={f.id} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--color-border-subtle)] p-3 text-sm">
-                <span>{f.title}{f.dueAt && <span className="text-[var(--color-text-muted)]"> · {dayWords(f.dueAt)}</span>}</span>
-                <button type="button" disabled={busy} onClick={() => send(`/follow-ups/${f.id}`, {}, 'PATCH')} className="min-h-10 rounded-lg px-3 text-sm font-medium text-[var(--primary)]">Done</button>
+              <li key={f.id} className="rounded-lg border border-[var(--color-border-subtle)] p-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span>{f.title}{f.dueAt && <span className="text-[var(--color-text-muted)]"> · {dayWords(f.dueAt)}</span>}</span>
+                  <button type="button" disabled={busy} onClick={() => send(`/follow-ups/${f.id}`, {}, 'PATCH')} className="min-h-10 rounded-lg px-3 text-sm font-medium text-[var(--primary)]">Done</button>
+                </div>
+                {e.canAssign ? (
+                  <select
+                    aria-label={`Who does: ${f.title}`}
+                    value={f.assignee?.id ?? ''}
+                    disabled={busy}
+                    onChange={(ev) => send(`/follow-ups/${f.id}`, { assignTo: ev.target.value || null }, 'PATCH')}
+                    className="mt-1 min-h-11 w-full max-w-56 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] px-2 text-sm text-[var(--color-text-secondary)] disabled:opacity-60"
+                  >
+                    {/* Someone who has left the team, or may no longer work enquiries, stays named until it is given to someone else. */}
+                    {f.assignee && !e.team.some((p) => p.id === f.assignee?.id) && <option value={f.assignee.id}>{f.assignee.name}</option>}
+                    {WHO.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.value ? o.label : f.assignee ? 'No one' : 'Give to…'}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  f.assignee && <p className="mt-1 text-xs text-[var(--color-text-muted)]">{f.assignee.name}</p>
+                )}
+                {(() => {
+                  const msg = tell(f);
+                  return msg ? (
+                    <a href={msg.href} target="_blank" rel="noopener noreferrer" className="mt-1 flex min-h-11 items-center text-sm font-semibold text-[var(--primary)] underline underline-offset-2">
+                      Tell {msg.name} on WhatsApp
+                    </a>
+                  ) : null;
+                })()}
               </li>
             ))}
           </ul>

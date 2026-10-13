@@ -94,17 +94,32 @@ export default function YourWork() {
                     {t.overdue ? 'Was due' : 'By'} {weddingDateWords(t.dueOn)}
                   </p>
                 )}
-                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  {data.canOpenWeddings ? (
-                    <Link href={`/vendor/weddings/${t.wedding.id}`} className="font-semibold underline underline-offset-2">
-                      {t.wedding.name}
-                    </Link>
-                  ) : (
-                    <span className="font-semibold">{t.wedding.name}</span>
-                  )}{' '}
-                  · {weddingDateWords(t.wedding.date)}
-                </p>
-                {!t.done && (
+                {t.enquiry && (
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                    Follow up with{' '}
+                    {data.canOpenEnquiries ? (
+                      <Link href={`/vendor/enquiries/${t.enquiry.id}`} className="font-semibold underline underline-offset-2">
+                        {t.enquiry.name}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold">{t.enquiry.name}</span>
+                    )}
+                    {t.enquiry.weddingDate && /^\d{4}-\d{2}-\d{2}$/.test(t.enquiry.weddingDate) ? ` · wedding ${weddingDateWords(t.enquiry.weddingDate)}` : ''}
+                  </p>
+                )}
+                {t.wedding && (
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                    {data.canOpenWeddings ? (
+                      <Link href={`/vendor/weddings/${t.wedding.id}`} className="font-semibold underline underline-offset-2">
+                        {t.wedding.name}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold">{t.wedding.name}</span>
+                    )}{' '}
+                    · {weddingDateWords(t.wedding.date)}
+                  </p>
+                )}
+                {!t.done && t.wedding && (
                   <ul className="mt-1 space-y-0.5">
                     {t.wedding.functions.map((f, i) => (
                       <li key={i} className="text-xs text-[var(--color-text-muted)]">
@@ -122,7 +137,7 @@ export default function YourWork() {
                     ))}
                   </ul>
                 )}
-                {noting === t.id ? (
+                {t.kind !== 'TODO' ? null : noting === t.id ? (
                   <div className="mt-2 space-y-2">
                     <Textarea label="Your note" value={note} onChange={(ev) => setNote(ev.target.value)} maxLength={NOTE_MAX} rows={2} placeholder="Done — needs 40 litres more on the day" className="text-base" />
                     <div className="grid grid-cols-2 gap-2">
