@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, LogOut, MoreHorizontal, X } from 'lucide-react';
 
-import { MORE, OLD_SCREENS, PHONE_BAR, PRIMARY, SETUP, type ActiveContext, type NavItem } from './adminNav';
+import { MORE, OLD_SCREENS, OUR_TEAM, PHONE_BAR, PRIMARY, SETUP, type ActiveContext, type NavItem } from './adminNav';
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -48,7 +48,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const setSheetOpen = (open: boolean) => setSheetFor(open ? routeKey : null);
 
   const ctx: ActiveContext = { pathname, tab, section };
-  const moreItems = role === 'super_admin' ? [...MORE, SETUP] : MORE;
+  const moreItems = role === 'super_admin' ? [...MORE, OUR_TEAM, SETUP] : MORE;
   const inMore = [...moreItems, ...OLD_SCREENS].some((item) => item.isActive(ctx));
 
   const logout = useCallback(async () => {

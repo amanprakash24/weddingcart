@@ -135,6 +135,18 @@ describe('registering my own mobile number', () => {
     expect(users[0].phone).toBe('9123456780');
   });
 
+  // 13 Oct 2026 — a founder who signs in by code and no longer knows the password could not correct their own number.
+  test('someone with a password AND a code may prove it with either — a wrong code is still refused and counted', async () => {
+    users[0] = { ...users[0], phone: '9876543210', loginCodeHash: 'h(730518)' };
+    expect(await service.linkMobile('founder', { mobile: '9123456780', password: '', myCode: '000417' })).toEqual({ errors: { myCode: expect.any(String) } });
+    expect(users[0].phone).toBe('9876543210');
+    expect(attempts).toEqual([{ identifier: 'team-login-link:founder', success: false }]);
+    expect(await service.linkMobile('founder', { mobile: '9123456780', password: '', myCode: '730518' })).toEqual({ code: '815204', mobile: '91******80' });
+    expect(users[0]).toMatchObject({ phone: '9123456780', passwordHash: 'h(secret)' });
+    // A password that is typed is what gets checked — a right code beside a wrong password does not rescue it.
+    expect(await service.linkMobile('founder', { mobile: '9000000001', password: 'guess', myCode: '815204' })).toEqual({ errors: { password: expect.any(String) } });
+  });
+
   test('a login with neither a password nor a code cannot prove anything, so it cannot use this at all', async () => {
     users[0] = { ...users[0], passwordHash: null };
     await expect(service.linkMobile('founder', { mobile: '9876543210' })).rejects.toBeInstanceOf(ConflictError);
