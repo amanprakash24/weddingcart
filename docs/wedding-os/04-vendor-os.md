@@ -803,8 +803,16 @@ no `tasks` permission refused, the person's own list only, not in another busine
   with no number. A colleague's number reaches the browser only for someone who may give out work (`team[].mobile` on the
   wedding; `team` is empty for everyone else) — approved 13 Oct 2026: a manager who gives out work may reach that person.
 
-**Not built yet** — a note from the person doing the work; giving out enquiry follow-ups; work on the weddings Shaadi Shopping
-booked the vendor on.
+- **Notes from the team** (13 Oct 2026) — the person a to-do was given to writes a note about it from "Your work" ("Add a
+  note", up to 300 letters, as many as they like); whoever manages the wedding reads it in "Notes from the team" on the wedding
+  page — who, when, which to-do, the words — and can add a note about the wedding itself there. Kept in the wedding's history
+  (`ActivityLog`, type `NOTE`, `performedBy`; no migration), so a note is never edited or removed. A note is tied to its to-do by
+  the to-do's name in its heading (`noteAbout`), not by a database link: renaming or removing the to-do later leaves the note
+  with the old name. `POST /api/vendor-os/my-work/[taskId]/notes` (any member, own to-dos only),
+  `POST /api/vendor-os/weddings/[id]/notes` (`weddings`).
+
+**Not built yet** — giving out enquiry follow-ups; work on the weddings Shaadi Shopping booked the vendor on; telling the owner
+when a note is written (they see it when they open the wedding).
 
 ## Data model gaps
 

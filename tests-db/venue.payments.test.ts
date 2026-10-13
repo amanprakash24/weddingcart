@@ -351,6 +351,24 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
       expect((await inA(() => myWork.list())).items).toEqual([]);
       expect((await runInScope(empInB, () => myWork.list())).items).toEqual([]);
 
+      // A note from the person doing it: kept in the wedding's history under their name; whoever manages the wedding reads it.
+      expect((await outcome(runInScope(asEmp, () => myWork.addNote(task.id, '   '))))?.name).toBe('ValidationError');
+      expect((await outcome(inA(() => myWork.addNote(task.id, 'not mine'))))?.name).toBe('NotFoundError'); // the owner was not given it
+      expect((await outcome(runInScope(empInB, () => myWork.addNote(task.id, 'wrong business'))))?.name).toBe('NotFoundError');
+      const noted = await runInScope(asEmp, () => myWork.addNote(task.id, ' Needs 40 litres more '));
+      expect(noted.items[0].notes).toEqual([{ id: expect.any(String), text: 'Needs 40 litres more', at: expect.any(String) }]);
+      const general = (await inA(() => weddings.addNote(rahul.id, 'Family wants the stage on the east side', users[0]))) as Detail;
+      expect(await inA(() => weddings.addNote(rahul.id, '', users[0]))).toEqual({ errors: { note: expect.any(String) } });
+      expect(general.notes.map((n) => [n.by, n.about, n.text])).toEqual([
+        ['Owner', 'Note', 'Family wants the stage on the east side'],
+        ['DBTEST Sunil', 'Note on “Check the generator”', 'Needs 40 litres more'],
+      ]);
+      // The owner's general note is not shown as the employee's note on the to-do; another venue and Shaadi Shopping see none of it.
+      expect((await runInScope(asEmp, () => myWork.list())).items[0].notes).toHaveLength(1);
+      expect((await outcome(inB(() => weddings.addNote(rahul.id, 'x', users[1]))))?.name).toBe('NotFoundError');
+      expect(await app.prisma.activityLog.count({ where: { type: 'NOTE', weddingId: rahul.id } })).toBe(0); // as Shaadi Shopping
+      expect(await runAsSystem('test check', () => app.prisma.activityLog.count({ where: { type: 'NOTE', weddingId: rahul.id } }))).toBe(2);
+
       // Only the person it was given to ticks it there; the owner sees it done on the wedding.
       expect((await outcome(inA(() => myWork.setDone(task.id, true))))?.name).toBe('NotFoundError');
       expect((await outcome(runInScope(empInB, () => myWork.setDone(task.id, true))))?.name).toBe('NotFoundError');
@@ -372,6 +390,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
       expect((await outcome(runInScope(asEmp, () => myWork.setDone(task.id, true))))?.name).toBe('NotFoundError');
     } finally {
       await runAsSystem('test clean-up', () => app.prisma.task.updateMany({ where: { assignedToId: emp.id }, data: { assignedToId: null } }));
+      await runAsSystem('test clean-up', () => app.prisma.activityLog.updateMany({ where: { performedById: emp.id }, data: { performedById: null } }));
       await app.prisma.businessMember.deleteMany({ where: { userId: emp.id } });
       await app.prisma.user.delete({ where: { id: emp.id } });
     }

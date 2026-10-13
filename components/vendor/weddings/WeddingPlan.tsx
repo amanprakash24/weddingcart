@@ -7,7 +7,8 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS } from '@/lib/wedding/functions';
 import { WEDDING_PLAN_LIMITS } from '@/lib/venue/weddingPlan';
-import { workGivenMessage } from '@/lib/venue/myWork';
+import { GENERAL_NOTE, NOTE_MAX, noteWhen, workGivenMessage } from '@/lib/venue/myWork';
+import Textarea from '@/components/ui/Textarea';
 import { whatsappTo } from '@/lib/venue/enquiry';
 import type { VenueWeddingDetail } from '@/services/venueWedding.service';
 import { weddingDateWords } from './YourWeddings';
@@ -215,6 +216,47 @@ export function WeddingTasks({ w, onSaved }: { w: VenueWeddingDetail; onSaved: (
           </div>
         )}
         {error && <p role="alert" className="text-sm text-[var(--color-danger-text)]">{error}</p>}
+      </Card>
+    </section>
+  );
+}
+
+// Notes from the team (lib/venue/myWork.ts): what the people doing the work wrote from "Your work", and notes about the wedding
+// itself from whoever manages it. Newest first; kept as history, so there is no edit and no delete. Someone who may only look
+// sees the notes; with none to show and no right to write, nothing is rendered.
+export function WeddingNotes({ w, onSaved }: { w: VenueWeddingDetail; onSaved: (w: VenueWeddingDetail) => void }) {
+  const [note, setNote] = useState('');
+  const { busy, error, errors, save } = useSave(w.id, onSaved);
+  const mayWrite = w.canEdit;
+
+  if (!mayWrite && w.notes.length === 0) return null;
+
+  async function add() {
+    if (await save('/notes', 'POST', { note })) setNote('');
+  }
+
+  return (
+    <section aria-label="Notes from the team" className="space-y-2">
+      <h2 className={heading}>Notes from the team</h2>
+      <Card className="space-y-3">
+        {w.notes.length === 0 && <p className="text-sm text-[var(--color-text-secondary)]">No notes yet. What your team writes on their work shows here.</p>}
+        {w.notes.length > 0 && (
+          <ul className="divide-y divide-[var(--color-border-subtle)]">
+            {w.notes.map((n) => (
+              <li key={n.id} className="py-2.5 first:pt-0 last:pb-0">
+                <p className="whitespace-pre-line break-words text-base text-[var(--color-text-primary)]">{n.text}</p>
+                <p className="mt-0.5 break-words text-xs text-[var(--color-text-muted)]">{[n.by, noteWhen(n.at), n.about === GENERAL_NOTE ? null : n.about].filter(Boolean).join(' · ')}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+        {mayWrite && (
+          <div className="space-y-3 border-t border-[var(--color-border-subtle)] pt-3">
+            <Textarea label="Add a note" value={note} onChange={(ev) => setNote(ev.target.value)} error={errors.note} maxLength={NOTE_MAX} rows={2} placeholder="The family wants the stage on the east side" className="text-base" />
+            <button type="button" disabled={busy || !note.trim()} onClick={add} className={primary}>{busy ? 'Saving…' : 'Save the note'}</button>
+          </div>
+        )}
+        {error && !errors.note && <p role="alert" className="text-sm text-[var(--color-danger-text)]">{error}</p>}
       </Card>
     </section>
   );

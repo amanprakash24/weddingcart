@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { can, type MemberRole } from '@/lib/auth/permissions';
-import { memberLabel } from '@/lib/venue/myWork';
+import { checkNote, GENERAL_NOTE, memberLabel } from '@/lib/venue/myWork';
 import { computeWeddingStage, STAGE_LABELS, type WeddingStage } from '@/lib/wedding/stage';
 import { FUNCTION_TYPE_LABELS, type FunctionType } from '@/lib/wedding/functions';
 import { loadAgreementMoney } from '@/services/agreement.service';
@@ -61,6 +61,9 @@ export interface VenueWeddingDetail extends VenueWeddingListItem {
   // may give out work (approved 13 Oct 2026); null when the person has none on file. `isYou` = the member asking.
   team: { id: string; name: string; mobile: string | null; firstName: string | null; isYou: boolean }[];
   businessName: string; // who that message is from; '' unless canAssign
+  // Notes from the team, newest first (lib/venue/myWork.ts): who wrote it, when, what it is about ("Note on “Confirm the
+  // generator”", or just "Note") and the words. Kept as history — never edited or removed.
+  notes: { id: string; by: string; at: string; about: string; text: string }[];
   // null = this member may not see money (lib/auth/permissions.ts: view_financials), or there is no agreement.
   money: { total: number; received: number; outstanding: number } | null;
   moneyHidden: boolean;
@@ -70,6 +73,7 @@ export interface VenueWeddingDeps {
   db: {
     wedding: Pick<typeof prisma.wedding, 'findMany' | 'findUnique'>;
     task: Pick<typeof prisma.task, 'findMany' | 'updateMany'>;
+    activityLog: Pick<typeof prisma.activityLog, 'findMany' | 'create'>;
     businessMember: Pick<typeof prisma.businessMember, 'findMany'>;
     quotation: Pick<typeof prisma.quotation, 'findUnique'>;
   };
@@ -163,8 +167,9 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
       const w = await deps.db.wedding.findUnique({ where: { id }, select: LIST_SELECT });
       if (!w) throw new NotFoundError('Wedding', id);
       const quotationId = w.sourceBooking?.quotationId ?? null;
-      const [tasks, quotation] = await Promise.all([
+      const [tasks, noteRows, quotation] = await Promise.all([
         deps.db.task.findMany({ where: { weddingId: id, status: { not: 'CANCELLED' } }, select: { id: true, title: true, status: true, dueAt: true, assignedToId: true }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }], take: 100 }),
+        deps.db.activityLog.findMany({ where: { weddingId: id, type: 'NOTE' }, select: { id: true, summary: true, detail: true, performedById: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 50 }),
         quotationId
           ? deps.db.quotation.findUnique({ where: { id: quotationId }, select: { quotationNumber: true, discount: true, gstAmount: true, total: true, items: { select: { description: true, quantity: true, unitPrice: true, functionLabel: true }, orderBy: { sortOrder: 'asc' } } } })
           : null,
@@ -172,7 +177,7 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
       const seesMoney = can(effectiveScope(), 'view_financials');
       const canEdit = w.status !== 'COMPLETED' && w.status !== 'CANCELLED' && can(effectiveScope(), 'weddings');
       const canAssign = canEdit && can(effectiveScope(), 'tasks');
-      const given = new Map((await people([...new Set(tasks.flatMap((t) => (t.assignedToId ? [t.assignedToId] : [])))])).map((p) => [p.id, p]));
+      const given = new Map((await people([...new Set([...tasks.map((t) => t.assignedToId), ...noteRows.map((n) => n.performedById)].flatMap((x) => (x ? [x] : [])))])).map((p) => [p.id, p]));
       const agreement = quotationId && seesMoney ? await deps.money(quotationId, deps.now()) : null;
       const team = canAssign ? await members() : [];
       return {
@@ -186,6 +191,7 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
         canAssign,
         team: team.map(({ businessName: _b, ...p }) => p),
         businessName: team[0]?.businessName ?? '',
+        notes: noteRows.map((n) => ({ id: n.id, by: (n.performedById && given.get(n.performedById)?.name) || 'Someone no longer in the team', at: n.createdAt.toISOString(), about: n.summary, text: n.detail ?? '' })),
         agreed: (quotation?.items ?? []).map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.unitPrice * i.quantity, function: i.functionLabel?.trim() || null })),
         agreedTotals: quotation ? { discount: quotation.discount, gst: quotation.gstAmount, total: quotation.total } : null,
         tasks: tasks.map((t) => ({ id: t.id, title: t.title, done: t.status === 'DONE', dueAt: t.dueAt?.toISOString() ?? null, dueOn: t.dueAt ? istDay(t.dueAt) : null, assignee: t.assignedToId ? (given.get(t.assignedToId) ?? { id: t.assignedToId, name: 'Someone no longer in the team' }) : null })),
@@ -223,6 +229,16 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
       const who = typeof input.assignTo === 'string' && input.assignTo.trim() ? await assignee(input.assignTo) : null;
       if (who && !who.ok) return { errors: { assignTo: who.error } };
       await deps.workspace.addTask(id, { title: checked.value.title, dueAt: checked.value.dueAt ?? undefined, assignedToId: who?.userId ?? undefined, createdById: actorId });
+      return this.get(id);
+    },
+
+    // A note about the wedding itself, from someone who may work on its weddings (the route asks for that). Into the wedding's
+    // history under their name; a finished wedding still takes notes.
+    async addNote(id: string, raw: unknown, actorId: string | null): Promise<VenueWeddingDetail | { errors: { note: string } }> {
+      await this.get(id); // another business's wedding is "not found" before anything is written
+      const checked = checkNote(raw);
+      if (!checked.ok) return { errors: { note: checked.error } };
+      await deps.db.activityLog.create({ data: { type: 'NOTE', summary: GENERAL_NOTE, detail: checked.text, ...(actorId ? { performedBy: { connect: { id: actorId } } } : {}), wedding: { connect: { id } } } });
       return this.get(id);
     },
 
