@@ -15,8 +15,9 @@ export interface StaffDeps {
   answerAsStaff: (id: string, input: AnswerInput, channel: StaffChannel, actorId: string | null) => Promise<unknown>;
 }
 export interface VendorDeps {
-  requireVendor: () => Promise<Session>;
-  answerAsVendor: (userId: string, id: string, input: AnswerInput) => Promise<unknown>;
+  // The vendor the signed-in person is working in and may answer for, or the answer to send back (lib/auth/workingVendor.ts).
+  vendor: () => Promise<{ who: { vendorId: string; userId: string } } | { refused: Response }>;
+  answerAsVendor: (who: { vendorId: string; userId: string }, id: string, input: AnswerInput) => Promise<unknown>;
 }
 
 const unauthorized = () => NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -60,14 +61,14 @@ export function makeStaffAnswer(deps: StaffDeps) {
   };
 }
 
-// POST /api/vendor/enquiries/[id] — the logged-in vendor answers one of their OWN enquiries.
+// POST /api/vendor/enquiries/[id] — an enquiry of the vendor the signed-in person is working in is answered.
 export function makeVendorAnswer(deps: VendorDeps) {
   return async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const session = await deps.requireVendor();
-    if (!session?.user?.id) return unauthorized();
+    const gate = await deps.vendor();
+    if ('refused' in gate) return gate.refused;
     try {
       const input = answerSchema.parse(await req.json());
-      return NextResponse.json({ success: true, data: await deps.answerAsVendor(session.user.id, (await params).id, input) }, { headers: NO_STORE });
+      return NextResponse.json({ success: true, data: await deps.answerAsVendor({ vendorId: gate.who.vendorId, userId: gate.who.userId }, (await params).id, input) }, { headers: NO_STORE });
     } catch (err) {
       return handleApiError(err);
     }

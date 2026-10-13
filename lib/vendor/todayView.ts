@@ -12,7 +12,7 @@ export interface VendorTodayView {
   attentionItems: { id: string; title: string; meta: string }[];
   todaysServices: { id: string; wedding: string; function: string; time: string; location: string; status: 'confirmed' | 'pending' }[];
   upcomingWeddings: { id: string; wedding: string; date: string; function: string }[];
-  pendingResponses: { id: string; wedding: string; function: string; requirement: string; price: string }[];
+  pendingResponses: { id: string; wedding: string; function: string; requirement: string; price: string | null }[]; // price null: this member may not see money
   recentActivity: { id: string; text: string; when: string }[];
 }
 
@@ -84,7 +84,7 @@ export function buildVendorTodayView(bookings: VendorBookingRow[], isVenue = fal
     wedding: b.event.name,
     function: b.event.function,
     requirement: b.requirements?.name ?? b.event.function,
-    price: `₹${b.amount.toLocaleString('en-IN')}`,
+    price: b.amount === null ? null : `₹${b.amount.toLocaleString('en-IN')}`,
   }));
 
   // Derived from the vendor's own accept/decline timestamp — the only "activity" signal already available

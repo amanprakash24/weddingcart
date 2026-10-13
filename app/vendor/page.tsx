@@ -1,6 +1,6 @@
 import VenuePortalClient from '@/components/VenuePortalClient';
-import { requireRole } from '@/lib/auth/session';
-import { Role } from '@/lib/auth/roles';
+import { redirect } from 'next/navigation';
+import { sharedPage } from '@/lib/auth/workingVendor';
 import { venuePortalService } from '@/services/venuePortal.service';
 import { platformScoped } from '@/lib/ownership/entry';
 
@@ -9,10 +9,11 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
+// The older portal, kept for the business's owner: everyone else is sent to where their workspace opens.
 async function VendorHomePage() {
-  const session = await requireRole([Role.VENDOR]);
-  if (!session?.user?.id) return null;
-  const dashboard = await venuePortalService.getDashboard(session.user.id);
+  const who = await sharedPage(null);
+  if (who.role !== 'OWNER') redirect(who.home);
+  const dashboard = await venuePortalService.getDashboard(who.vendorId, { seesMoney: true });
   return <VenuePortalClient dashboard={dashboard} />;
 }
 

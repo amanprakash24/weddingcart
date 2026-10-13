@@ -25,7 +25,6 @@ import {
 import type { BookingSource } from '@/lib/quotation/booking';
 // Namespace imports, looked up when called: tests that replace these modules with partial stubs can still load this one.
 import * as quotationModule from '@/services/quotation.service';
-import * as venuePortalModule from '@/services/venuePortal.service';
 import * as activityLogModule from '@/repositories/activityLog.repository';
 
 export const sourceKeyOf = (sourceType: SourceType, sourceId: string) => `${sourceType}:${sourceId}`;
@@ -46,7 +45,6 @@ export interface VendorEnquiryDeps {
   };
   sourceFacts: (sourceType: SourceType, sourceId: string) => Promise<BookingSource>;
   logActivity: (data: { type: 'VENDOR_ENQUIRY_SENT' | 'VENDOR_ENQUIRY_ANSWERED'; summary: string; detail: string | null; sourceType: SourceType; sourceId: string; actorId: string | null }) => Promise<void>;
-  vendorIdForUser: (userId: string) => Promise<string>;
 }
 
 export interface StaffEnquiryView {
@@ -177,16 +175,15 @@ export function createVendorEnquiryService(deps: VendorEnquiryDeps) {
       return answer.status;
     },
 
-    // Vendor OS: the logged-in vendor's own enquiries (newest first), as the vendor may see them.
-    async listForVendor(userId: string): Promise<VendorEnquiryView[]> {
-      const vendorId = await deps.vendorIdForUser(userId);
+    // Vendor OS: one vendor's enquiries (newest first), as the vendor may see them. The caller says which vendor — the one the
+    // signed-in person is working in (lib/auth/workingVendor.ts), never one from the request.
+    async listForVendor(vendorId: string): Promise<VendorEnquiryView[]> {
       const rows = await db.vendorEnquiry.findMany({ where: { vendorId }, orderBy: { createdAt: 'desc' }, take: 100 });
       return rows.map((r) => toVendorEnquiryView(r as never));
     },
 
-    // Vendor OS: answer one of the vendor's OWN enquiries. Any other id → the same "not found".
-    async answerAsVendor(userId: string, id: unknown, input: AnswerInput): Promise<VendorEnquiryView> {
-      const vendorId = await deps.vendorIdForUser(userId);
+    // Vendor OS: answer one of that vendor's enquiries. Any other id → the same "not found".
+    async answerAsVendor({ vendorId, userId }: { vendorId: string; userId: string }, id: unknown, input: AnswerInput): Promise<VendorEnquiryView> {
       if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) throw new NotFoundError('Vendor enquiry', 'unavailable');
       const answer = validateAnswer(input);
       const row = await db.vendorEnquiry.findFirst({ where: { id, vendorId } });
@@ -219,7 +216,6 @@ function defaultDeps(): VendorEnquiryDeps {
         ...subjectCreateData(sourceType, sourceId),
       });
     },
-    vendorIdForUser: async (userId) => (await venuePortalModule.vendorForUser(userId)).vendorId,
   };
 }
 

@@ -42,13 +42,10 @@ const deps = {
   db: db as never,
   sourceFacts: mock(async () => ({ name: 'Rahul & Priya', phone: '9876543210', city: 'Patna', dateText: '2026-11-18', guestCount: 350, eventType: 'wedding' })),
   logActivity: mock(async (d: { type: string; summary: string; sourceType: string; sourceId: string; actorId: string | null }) => void logs.push(d)),
-  vendorIdForUser: mock(async (userId: string) => {
-    const map: Record<string, string> = { 'user-A': 'vA', 'user-B': 'vB' };
-    if (!map[userId]) throw new NotFoundError('Vendor profile', userId);
-    return map[userId];
-  }),
 };
 const service = createVendorEnquiryService(deps as never);
+// Who answers in Vendor OS: the vendor they are working in comes from their membership (lib/auth/workingVendor.ts), not from here.
+const asA = { vendorId: 'vA', userId: 'user-A' };
 const line = (vendorId: string | null, category: string, functionLabel: string | null = null) => ({ vendorId, category, description: category, functionLabel });
 
 beforeEach(() => {
@@ -127,33 +124,34 @@ describe('answers — staff on the vendor\'s behalf, or the vendor in Vendor OS;
   });
 
   test('the vendor answers their OWN enquiry in Vendor OS', async () => {
-    const view = await service.answerAsVendor('user-A', idOf('vA'), { status: 'QUOTED', quotedAmount: 120000 });
+    const view = await service.answerAsVendor(asA, idOf('vA'), { status: 'QUOTED', quotedAmount: 120000 });
     expect(view).toMatchObject({ status: 'QUOTED', answer: { quotedAmount: 120000, answeredBy: 'you' } });
     expect(rows.find((r) => r.vendorId === 'vA')).toMatchObject({ responseChannel: 'VENDOR_OS', respondedById: 'user-A' });
   });
 
   test('a vendor cannot answer another vendor\'s enquiry — same "not found" as an unknown id', async () => {
-    await expect(service.answerAsVendor('user-A', idOf('vB'), { status: 'AVAILABLE' })).rejects.toBeInstanceOf(NotFoundError);
-    await expect(service.answerAsVendor('user-A', '00000000-0000-4000-8000-999999999999', { status: 'AVAILABLE' })).rejects.toBeInstanceOf(NotFoundError);
-    await expect(service.answerAsVendor('user-A', 'not-an-id', { status: 'AVAILABLE' })).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.answerAsVendor(asA, idOf('vB'), { status: 'AVAILABLE' })).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.answerAsVendor(asA, '00000000-0000-4000-8000-999999999999', { status: 'AVAILABLE' })).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.answerAsVendor(asA, 'not-an-id', { status: 'AVAILABLE' })).rejects.toBeInstanceOf(NotFoundError);
     expect(rows.find((r) => r.vendorId === 'vB')!.status).toBe('PENDING');
   });
 
-  test('a user without a vendor profile cannot list or answer', async () => {
-    await expect(service.listForVendor('admin-1')).rejects.toBeInstanceOf(NotFoundError);
-    await expect(service.answerAsVendor('admin-1', idOf('vA'), { status: 'AVAILABLE' })).rejects.toBeInstanceOf(NotFoundError);
+  test('someone else in the business answers for the same vendor, and is recorded as the one who did', async () => {
+    await service.answerAsVendor({ vendorId: 'vA', userId: 'manager-7' }, idOf('vA'), { status: 'AVAILABLE' });
+    expect(rows.find((r) => r.vendorId === 'vA')).toMatchObject({ status: 'AVAILABLE', responseChannel: 'VENDOR_OS', respondedById: 'manager-7' });
+    expect(logs.at(-1)).toMatchObject({ actorId: 'manager-7' });
   });
 
   test('a withdrawn enquiry cannot be answered; invalid answers are refused before any write', async () => {
     quote = { id: 'q1', status: 'DRAFT', items: [line('vB', 'Catering')] };
     await service.syncForSource('CONSULTATION', 'c1', null);
-    await expect(service.answerAsVendor('user-A', idOf('vA'), { status: 'AVAILABLE' })).rejects.toBeInstanceOf(ConflictError);
+    await expect(service.answerAsVendor(asA, idOf('vA'), { status: 'AVAILABLE' })).rejects.toBeInstanceOf(ConflictError);
     await expect(service.answerAsStaff(idOf('vB'), { status: 'AVAILABLE_WITH_CONDITIONS' }, 'PHONE', null)).rejects.toBeInstanceOf(ValidationError);
     expect(rows.find((r) => r.vendorId === 'vB')!.status).toBe('PENDING');
   });
 
   test('the vendor\'s list shows only their own enquiries, and never who the couple is', async () => {
-    const list = await service.listForVendor('user-A');
+    const list = await service.listForVendor('vA');
     expect(list).toHaveLength(1);
     const json = JSON.stringify(list);
     for (const hidden of ['Rahul', '9876543210', 'c1', 'CONSULTATION', 'vB', 'Catering', 'q1']) expect(json).not.toContain(hidden);

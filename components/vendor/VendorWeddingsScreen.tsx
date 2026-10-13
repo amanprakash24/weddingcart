@@ -61,7 +61,7 @@ function WeddingCard({ wedding, isVenue, onAdvanceVenueStatus, advancingBookingI
                 variant={booking.overdueTasks.length > 0 ? 'attention' : 'default'}
                 right={
                   <>
-                    <span className="text-sm font-semibold tabular-nums text-[var(--color-text-primary)]">₹{booking.amount.toLocaleString('en-IN')}</span>
+                    {booking.amount !== null && <span className="text-sm font-semibold tabular-nums text-[var(--color-text-primary)]">₹{booking.amount.toLocaleString('en-IN')}</span>}
                     <StatusPill status={pill.status}>{pill.label}</StatusPill>
                   </>
                 }

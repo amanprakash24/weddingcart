@@ -94,16 +94,22 @@ export function createVenueBusinessService(deps: VenueBusinessDeps = defaultDeps
 
   const toScope = (w: Workspace, userId: string): BusinessScope => ({ kind: 'BUSINESS', businessId: w.businessId, role: w.role, permissions: w.permissions, userId });
 
+  // The vendor business a person is working in. `workspaceId` is the business they chose; it counts only if they are a member of
+  // it. With no choice: their only vendor business, if they have exactly one. null = not a member of any vendor business, or a
+  // member of several with none chosen (they are sent to "Choose Workspace").
+  async function working(userId: string, workspaceId?: string | null): Promise<Workspace | null> {
+    const vendorSide = (await workspaces(userId)).filter((w) => w.kind === 'VENDOR');
+    const chosen = workspaceId ? vendorSide.find((w) => w.businessId === workspaceId) : undefined;
+    return chosen ?? (vendorSide.length === 1 ? vendorSide[0] : null);
+  }
+
   return {
     workspaces,
+    working,
 
-    // The scope a person works in on the vendor side (Vendor OS). `workspaceId` is the business they chose; it counts only if they
-    // are a member of it. With no choice: their only vendor business, if they have exactly one. null = not a member of any vendor
-    // business, or a member of several with none chosen (they are sent to "Choose Workspace").
+    // The scope a person works in on the vendor side (Vendor OS): the business `working` picks, or null.
     async scopeForVendorLogin(userId: string, workspaceId?: string | null): Promise<BusinessScope | null> {
-      const vendorSide = (await workspaces(userId)).filter((w) => w.kind === 'VENDOR');
-      const chosen = workspaceId ? vendorSide.find((w) => w.businessId === workspaceId) : undefined;
-      const pick = chosen ?? (vendorSide.length === 1 ? vendorSide[0] : undefined);
+      const pick = await working(userId, workspaceId);
       return pick ? toScope(pick, userId) : null;
     },
 

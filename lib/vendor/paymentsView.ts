@@ -80,7 +80,7 @@ export function buildVendorPaymentsView(bookings: VendorBookingRow[], payouts: V
       weddingReference: b.event.reference,
       function: b.event.function,
       eventDate: dateLabel(b.event.date),
-      agreedAmountLabel: inr(b.amount),
+      agreedAmountLabel: b.amount === null ? '—' : inr(b.amount),
     }));
 
   return {

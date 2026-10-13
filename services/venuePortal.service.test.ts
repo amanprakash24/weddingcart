@@ -44,7 +44,7 @@ describe('venuePortalService.updateStatus — venue transition enforcement', () 
     const { prismaMock, updateMock } = makePrismaMock({ venueStatus: 'PENDING' });
     const service = await loadServiceWith(prismaMock);
 
-    const result = await service.updateStatus('user-1', 'vb-1', 'READY_FOR_SETUP');
+    const result = await service.updateStatus('vendor-1', 'vb-1', 'READY_FOR_SETUP');
 
     expect(result.venueStatus).toBe('READY_FOR_SETUP');
     expect(updateMock).toHaveBeenCalledTimes(1);
@@ -54,7 +54,7 @@ describe('venuePortalService.updateStatus — venue transition enforcement', () 
     const { prismaMock, updateMock } = makePrismaMock({ venueStatus: 'PENDING' });
     const service = await loadServiceWith(prismaMock);
 
-    await expect(service.updateStatus('user-1', 'vb-1', 'READY')).rejects.toThrow(InvalidTransitionError);
+    await expect(service.updateStatus('vendor-1', 'vb-1', 'READY')).rejects.toThrow(InvalidTransitionError);
     expect(updateMock).not.toHaveBeenCalled();
   });
 
@@ -62,7 +62,7 @@ describe('venuePortalService.updateStatus — venue transition enforcement', () 
     const { prismaMock, updateMock } = makePrismaMock({ venueStatus: 'READY' });
     const service = await loadServiceWith(prismaMock);
 
-    await expect(service.updateStatus('user-1', 'vb-1', 'SETUP_IN_PROGRESS')).rejects.toThrow(InvalidTransitionError);
+    await expect(service.updateStatus('vendor-1', 'vb-1', 'SETUP_IN_PROGRESS')).rejects.toThrow(InvalidTransitionError);
     expect(updateMock).not.toHaveBeenCalled();
   });
 
@@ -70,7 +70,7 @@ describe('venuePortalService.updateStatus — venue transition enforcement', () 
     const { prismaMock, updateMock } = makePrismaMock({ venueStatus: 'COMPLETED' });
     const service = await loadServiceWith(prismaMock);
 
-    await expect(service.updateStatus('user-1', 'vb-1', 'READY')).rejects.toThrow(InvalidTransitionError);
+    await expect(service.updateStatus('vendor-1', 'vb-1', 'READY')).rejects.toThrow(InvalidTransitionError);
     expect(updateMock).not.toHaveBeenCalled();
   });
 
@@ -78,7 +78,7 @@ describe('venuePortalService.updateStatus — venue transition enforcement', () 
     const { prismaMock, updateMock } = makePrismaMock({ venueStatus: 'PENDING', bookingVendorId: 'some-other-vendor' });
     const service = await loadServiceWith(prismaMock);
 
-    await expect(service.updateStatus('user-1', 'vb-1', 'READY_FOR_SETUP')).rejects.toThrow(NotFoundError);
+    await expect(service.updateStatus('vendor-1', 'vb-1', 'READY_FOR_SETUP')).rejects.toThrow(NotFoundError);
     expect(updateMock).not.toHaveBeenCalled();
   });
 });
@@ -209,7 +209,7 @@ describe('venuePortalService.respond — the vendor answers a booking request (1
 
   test('confirm: the booking is confirmed, and the timeline says the vendor did it, by name', async () => {
     const { prismaMock, update, logCreate } = makeRespondMock();
-    const result = await (await loadServiceWith(prismaMock)).respond('user-1', 'vb-1', { answer: 'CONFIRM' });
+    const result = await (await loadServiceWith(prismaMock)).respond({ vendorId: 'vendor-1', userId: 'user-1' }, 'vb-1', { answer: 'CONFIRM' });
     expect(result.status).toBe('CONFIRMED');
     expect(update.mock.calls[0][0].data).toMatchObject({ status: 'CONFIRMED', declineReason: null });
     expect((logCreate.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data).toMatchObject({ summary: 'The vendor confirmed the booking in Vendor OS', performedBy: { connect: { id: 'user-1' } } });
@@ -217,19 +217,75 @@ describe('venuePortalService.respond — the vendor answers a booking request (1
 
   test('decline: needs a reason, which is kept on the booking for the team', async () => {
     const none = makeRespondMock();
-    expect(await (await loadServiceWith(none.prismaMock)).respond('user-1', 'vb-1', { answer: 'DECLINE', reason: ' ' }).catch((e) => e)).toBeInstanceOf(ValidationError);
+    expect(await (await loadServiceWith(none.prismaMock)).respond({ vendorId: 'vendor-1', userId: 'user-1' }, 'vb-1', { answer: 'DECLINE', reason: ' ' }).catch((e) => e)).toBeInstanceOf(ValidationError);
     expect(none.update).not.toHaveBeenCalled();
     const { prismaMock, update } = makeRespondMock();
-    const result = await (await loadServiceWith(prismaMock)).respond('user-1', 'vb-1', { answer: 'DECLINE', reason: 'Already booked that night' });
+    const result = await (await loadServiceWith(prismaMock)).respond({ vendorId: 'vendor-1', userId: 'user-1' }, 'vb-1', { answer: 'DECLINE', reason: 'Already booked that night' });
     expect(result).toMatchObject({ status: 'DECLINED', declineReason: 'Already booked that night' });
     expect(update.mock.calls[0][0].data).toMatchObject({ status: 'DECLINED', declineReason: 'Already booked that night' });
   });
 
+  test('a manager of the business answers for it: the same vendor, and the timeline names the manager', async () => {
+    const { prismaMock, logCreate } = makeRespondMock();
+    const result = await (await loadServiceWith(prismaMock)).respond({ vendorId: 'vendor-1', userId: 'manager-7' }, 'vb-1', { answer: 'CONFIRM' });
+    expect(result.status).toBe('CONFIRMED');
+    expect(prismaMock.vendorProfile.findUnique).not.toHaveBeenCalled(); // not through the owner link
+    expect((logCreate.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data).toMatchObject({ performedBy: { connect: { id: 'manager-7' } } });
+  });
+
   test('another vendor’s booking is not found; one already answered cannot be answered again', async () => {
     const other = makeRespondMock({ bookingVendorId: 'vendor-2' });
-    expect(await (await loadServiceWith(other.prismaMock)).respond('user-1', 'vb-1', { answer: 'CONFIRM' }).catch((e) => e)).toBeInstanceOf(NotFoundError);
+    expect(await (await loadServiceWith(other.prismaMock)).respond({ vendorId: 'vendor-1', userId: 'user-1' }, 'vb-1', { answer: 'CONFIRM' }).catch((e) => e)).toBeInstanceOf(NotFoundError);
     const done = makeRespondMock({ status: 'CONFIRMED' });
-    expect(await (await loadServiceWith(done.prismaMock)).respond('user-1', 'vb-1', { answer: 'DECLINE', reason: 'Changed my mind' }).catch((e) => e)).toBeInstanceOf(InvalidTransitionError);
+    expect(await (await loadServiceWith(done.prismaMock)).respond({ vendorId: 'vendor-1', userId: 'user-1' }, 'vb-1', { answer: 'DECLINE', reason: 'Changed my mind' }).catch((e) => e)).toBeInstanceOf(InvalidTransitionError);
     expect(done.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('venuePortalService.getDashboard — one vendor, and money only for those who may see it (13 Oct 2026)', () => {
+  function makeDashboardMock() {
+    const booking = {
+      id: 'vb-1', status: 'PENDING_VENDOR_CONFIRMATION', venueStatus: 'PENDING', agreedPrice: 25000, respondedAt: null, weddingEventId: 'we-1', vendorPackageId: null,
+      weddingEvent: { id: 'we-1', type: 'WEDDING', label: 'Reception', date: new Date('2026-12-01T00:00:00Z'), startTime: null, venueName: null, venueAddress: null, city: 'Patna', wedding: { id: 'w-1', weddingNumber: 'WED-2026-0001', weddingType: null, guestCount: 300, customer: { name: 'Asha' }, events: [] } },
+      vendorPackage: null,
+      tasks: [],
+    };
+    const payoutFind = mock(async () => [{ id: 'p-1', grossAmount: 25000, commissionRate: 10, commissionAmount: 2500, netAmount: 22500, status: 'PENDING', paidAt: null, createdAt: new Date('2026-12-02T00:00:00Z'), vendorBooking: booking }]);
+    const bookingFind = mock(async (_args: { where: { vendorId: string } }) => [booking]);
+    const prismaMock = {
+      vendorProfile: { findUnique: mock(async () => null) },
+      vendor: { findUnique: mock(async ({ where }: { where: { id: string } }) => (where.id === 'vendor-1' ? { id: 'vendor-1', name: 'Test Vendor', city: 'Patna', address: '', category: { name: 'Caterer' } } : null)) },
+      vendorBooking: { findMany: bookingFind },
+      document: { findMany: mock(async () => []) },
+      approvalRequest: { findMany: mock(async () => [{ id: 'a-1', subjectType: 'VENDOR_BOOKING', title: null, status: 'PENDING', amount: 25000, weddingEventId: 'we-1' }]) },
+      vendorAvailability: { findMany: mock(async () => []) },
+      payout: { findMany: payoutFind },
+    };
+    return { prismaMock, payoutFind, bookingFind };
+  }
+
+  test('with money: the agreed price, approval amounts and payouts — read by the vendor’s id, not through the owner link', async () => {
+    const { prismaMock, bookingFind } = makeDashboardMock();
+    const d = await (await loadServiceWith(prismaMock)).getDashboard('vendor-1', { seesMoney: true });
+    expect(bookingFind.mock.calls[0][0].where).toEqual({ vendorId: 'vendor-1' });
+    expect(prismaMock.vendorProfile.findUnique).not.toHaveBeenCalled();
+    expect(d.bookings[0]).toMatchObject({ amount: 25000, event: { name: 'Asha' } });
+    expect(d.approvals[0].amount).toBe(25000);
+    expect(d.payouts).toHaveLength(1);
+  });
+
+  test('without money: the work is all there, but no amount leaves the server and the payouts are never read', async () => {
+    const { prismaMock, payoutFind } = makeDashboardMock();
+    const d = await (await loadServiceWith(prismaMock)).getDashboard('vendor-1', { seesMoney: false });
+    expect(d.bookings[0]).toMatchObject({ amount: null, bookingStatus: 'PENDING_VENDOR_CONFIRMATION', event: { name: 'Asha', function: 'Reception' } });
+    expect(d.approvals[0].amount).toBeNull();
+    expect(d.payouts).toEqual([]);
+    expect(payoutFind).not.toHaveBeenCalled();
+    for (const money of ['25000', '22500', '2500']) expect(JSON.stringify(d)).not.toContain(money);
+  });
+
+  test('a vendor that does not exist is not found', async () => {
+    const { prismaMock } = makeDashboardMock();
+    await expect((await loadServiceWith(prismaMock)).getDashboard('nobody', { seesMoney: true })).rejects.toThrow(NotFoundError);
   });
 });

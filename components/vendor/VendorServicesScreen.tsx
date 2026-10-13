@@ -77,10 +77,12 @@ function ServiceCard({ service, isVenue, onAdvanceVenueStatus, advancing, onAnsw
 
       {/* IMPORTANT: this is the vendor's own agreed price for this one service — never the wedding's
           invoice, budget, amount paid, or outstanding balance. That data isn't in this query at all. */}
-      <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-2">
-        <span className="text-xs text-[var(--color-text-muted)]">Agreed amount</span>
-        <span className="text-sm font-semibold tabular-nums text-[var(--color-text-primary)]">₹{service.agreedAmount.toLocaleString('en-IN')}</span>
-      </div>
+      {service.agreedAmount !== null && (
+        <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-2">
+          <span className="text-xs text-[var(--color-text-muted)]">Agreed amount</span>
+          <span className="text-sm font-semibold tabular-nums text-[var(--color-text-primary)]">₹{service.agreedAmount.toLocaleString('en-IN')}</span>
+        </div>
+      )}
     </Card>
   );
 }

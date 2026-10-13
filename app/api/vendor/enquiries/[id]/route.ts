@@ -1,13 +1,13 @@
-import { requireRole } from '@/lib/auth/session';
-import { Role } from '@/lib/auth/roles';
+import { sharedRoute } from '@/lib/auth/workingVendor';
 import { makeVendorAnswer } from '@/lib/vendorEnquiry/handlers';
 import { vendorEnquiryService } from '@/services/vendorEnquiry.service';
 import { platformScoped } from '@/lib/ownership/entry';
 
-// POST /api/vendor/enquiries/[id] — the logged-in vendor answers one of their own enquiries (§9).
+// POST /api/vendor/enquiries/[id] — an availability request to the vendor the person is working in is answered by its owner or
+// anyone there who may work its enquiries (§9).
 const handlePOST = makeVendorAnswer({
-  requireVendor: () => requireRole([Role.VENDOR]),
-  answerAsVendor: (userId, id, input) => vendorEnquiryService.answerAsVendor(userId, id, input),
+  vendor: () => sharedRoute('enquiries'),
+  answerAsVendor: (who, id, input) => vendorEnquiryService.answerAsVendor(who, id, input),
 });
 
 // Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
