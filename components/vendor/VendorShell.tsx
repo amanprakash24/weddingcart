@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { ArrowLeftRight, LogOut, MoreHorizontal, Store, User, X } from 'lucide-react';
 import { canSeeScreen, screenOf, type WorkspaceView } from '@/lib/auth/workspaceView';
-import { PHONE_BAR, PHONE_MORE, PRIMARY, TO_CHECK_CHANGED } from './vendorNav';
+import { DESKTOP_BAR, DESKTOP_MORE, PHONE_BAR, PHONE_MORE, PRIMARY, TO_CHECK_CHANGED } from './vendorNav';
 import LoginCodeReminder from './LoginCodeReminder';
 
 // Operational shell for Vendor OS — the "Venue Owner" experience reuses this unchanged (a category-filtered
@@ -103,10 +103,15 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   const isLogin = pathname.startsWith('/vendor/login');
   const shown = (items: typeof PRIMARY) => (ws === undefined ? [] : ws === null ? items : items.filter((item) => canSeeScreen(item.key, ws)));
   const primary = shown(PRIMARY);
+  const desktopBar = shown(DESKTOP_BAR);
+  const desktopMore = shown(DESKTOP_MORE);
   const phoneBar = shown(PHONE_BAR);
   const phoneMore = shown(PHONE_MORE);
   const active = primary.find((item) => item.isActive(pathname));
   const inMore = phoneMore.some((item) => item.isActive(pathname));
+  // On the desktop bar the current page is named beside the logo while the bar shows icons only (below xl) — and always when
+  // the page is one of those kept in the business menu, since it has no label on the bar at any width.
+  const activeOffBar = Boolean(active && desktopMore.includes(active));
 
   const logout = () => signOut({ callbackUrl: '/vendor/login' });
 
@@ -134,8 +139,9 @@ export default function VendorShell({ children }: { children: ReactNode }) {
     );
   }
 
-  // `desktop`: the top bar has no room for eight labels below xl, so there it shows icons only and the "current workspace"
-  // text beside the logo names the page; from xl up the labels are back, each on one line.
+  // `desktop`: the top bar has no room for labels below xl, so there it shows icons only and the "current workspace" text beside
+  // the logo names the page; from xl up the labels are back, each on one line. Everything else (the phone's More sheet, the
+  // business menu) is a list: every row at least 44px tall.
   const navLink = (item: (typeof PRIMARY)[number], compact = false, desktop = false) => {
     const isActive = item.isActive(pathname);
     const Icon = item.icon;
@@ -150,7 +156,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
         title={desktop ? `${item.label}${markWords}` : undefined}
         className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
           isActive ? 'bg-[var(--primary)] text-white' : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]'
-        } ${compact ? 'flex-col gap-0.5 !px-1 !py-2 text-[10px]' : ''}`}
+        } ${compact ? 'flex-col gap-0.5 !px-1 !py-2 text-[10px]' : desktop ? 'shrink-0' : 'min-h-11'}`}
       >
         <span className="relative">
           <Icon className={compact ? 'h-5 w-5' : 'h-4 w-4'} />
@@ -169,40 +175,48 @@ export default function VendorShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[var(--color-bg-surface-muted)]">
       {/* Desktop header */}
       <header className="sticky top-0 z-30 hidden border-b border-[var(--color-border-subtle)] bg-white/95 backdrop-blur md:block">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-6">
+        {/* Nothing here may push anything off the right edge, at any width or zoom: the bar holds six screens (icons below xl),
+            the logo's byline and the business's name give way first, and the nav itself can shrink. */}
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:gap-6 lg:px-6">
           <Link href={ws?.home ?? '/vendor/today'} className="flex shrink-0 items-center gap-2 whitespace-nowrap">
             <span className="text-sm font-bold text-[var(--color-text-primary)]">Vendor OS</span>
-            <span className="text-[11px] text-[var(--color-text-muted)]">by ShaadiShopping</span>
+            <span className="hidden text-[11px] text-[var(--color-text-muted)] lg:inline">by ShaadiShopping</span>
           </Link>
 
           {/* Current workspace */}
           {active && (
             <>
-              <span className="h-5 w-px bg-[var(--color-border-default)] xl:hidden" aria-hidden />
-              <span className="whitespace-nowrap text-sm font-semibold text-[var(--color-text-primary)] xl:hidden">{active.label}</span>
+              <span className={`h-5 w-px shrink-0 bg-[var(--color-border-default)] ${activeOffBar ? '' : 'xl:hidden'}`} aria-hidden />
+              <span className={`min-w-0 truncate text-sm font-semibold text-[var(--color-text-primary)] ${activeOffBar ? '' : 'xl:hidden'}`}>{active.label}</span>
             </>
           )}
 
-          <nav aria-label="Vendor" className="ml-auto flex items-center gap-1">
-            {primary.map((item) => navLink(item, false, true))}
+          <nav aria-label="Vendor" className="ml-auto flex min-w-0 items-center gap-1">
+            {desktopBar.map((item) => navLink(item, false, true))}
           </nav>
 
           {/* Account / profile access */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <button
               type="button"
               onClick={() => setMoreOpen((open) => !open)}
               aria-expanded={moreOpen}
               aria-haspopup="menu"
-              className="flex items-center gap-2 rounded-lg border border-[var(--color-border-default)] py-1.5 pl-1.5 pr-3 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-muted)]"
+              aria-label={`${ws?.name ?? vendorName} — more screens and your account`}
+              className={`flex items-center gap-2 rounded-lg border py-1.5 pl-1.5 pr-1.5 text-sm font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-bg-surface-muted)] lg:pr-3 ${activeOffBar ? 'border-[var(--primary)]' : 'border-[var(--color-border-default)]'}`}
             >
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-bg-inverse)] text-white">
                 <User className="h-4 w-4" />
               </span>
-              <span className="max-w-[160px] truncate">{ws?.name ?? vendorName}</span>
+              <span className="hidden max-w-[160px] truncate lg:inline">{ws?.name ?? vendorName}</span>
+              <MoreHorizontal className="h-4 w-4 text-[var(--color-text-muted)]" aria-hidden />
             </button>
             {moreOpen && (
-              <div role="menu" className="absolute right-0 top-full mt-1 w-52 rounded-lg border border-[var(--color-border-subtle)] bg-white p-1 shadow-lg">
+              <div role="menu" className="absolute right-0 top-full mt-1 max-h-[calc(100vh-5rem)] w-60 overflow-y-auto rounded-lg border border-[var(--color-border-subtle)] bg-white p-1 shadow-lg">
+                {/* Whose business this is — the bar hides the name when it is short of room. */}
+                <p className="truncate px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)] lg:hidden">{ws?.name ?? vendorName}</p>
+                {desktopMore.map((item) => navLink(item))}
+                {desktopMore.length > 0 && <div className="my-1 h-px bg-[var(--color-border-subtle)]" aria-hidden />}
                 <Link
                   href="/vendor/profile"
                   onClick={() => setMoreOpen(false)}
@@ -267,11 +281,11 @@ export default function VendorShell({ children }: { children: ReactNode }) {
             </div>
             <div className="space-y-0.5">
               {phoneMore.map((item) => navLink(item))}
-              <Link href="/vendor/profile" onClick={() => setMoreOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]">
+              <Link href="/vendor/profile" onClick={() => setMoreOpen(false)} className="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]">
                 <Store className="h-4 w-4" /> Business profile
               </Link>
               {ws?.several && (
-                <a href="/workspace" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]">
+                <a href="/workspace" className="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-surface-muted)]">
                   <ArrowLeftRight className="h-4 w-4" /> Switch business
                 </a>
               )}

@@ -33,6 +33,12 @@ export const PRIMARY: NavItem[] = [
   { key: 'team', label: 'Team', href: '/vendor/team', icon: Users, isActive: (p) => p.startsWith('/vendor/team') },
 ];
 
+// Desktop / tablet top bar (13 Oct 2026): the six screens used every day. With ten screens the bar no longer fitted — at an
+// ordinary laptop width the last items and the business's own name were pushed off the right edge — so the rest are listed in
+// the business menu at the end of the bar, the same idea as the phone's More sheet.
+export const DESKTOP_BAR = PRIMARY.filter((item) => ['today', 'enquiries', 'weddings', 'services', 'availability', 'payments'].includes(item.key));
+export const DESKTOP_MORE = PRIMARY.filter((item) => !DESKTOP_BAR.includes(item));
+
 // Phone bottom bar: 4 daily items + a More button for the rest (same shape as adminNav.ts's PHONE_BAR).
 export const PHONE_BAR = PRIMARY.filter((item) => ['today', 'enquiries', 'weddings', 'payments'].includes(item.key));
 export const PHONE_MORE = PRIMARY.filter((item) => !PHONE_BAR.includes(item));
