@@ -4,7 +4,8 @@ import { handleApiError } from '@/lib/errors';
 import { venueWeddingService } from '@/services/venueWedding.service';
 import { venueScoped } from '@/lib/ownership/venueEntry';
 
-// POST /api/vendor-os/weddings/[id]/tasks — add a to-do to the business's own wedding: { title, dueOn?: YYYY-MM-DD }. Venue-scoped.
+// POST /api/vendor-os/weddings/[id]/tasks — add a to-do to the business's own wedding: { title, dueOn?: YYYY-MM-DD, assignTo?: a
+// team member's id — only from someone who may give out work }. Venue-scoped.
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await req.json().catch(() => ({}));

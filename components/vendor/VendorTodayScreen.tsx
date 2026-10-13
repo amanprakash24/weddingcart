@@ -10,6 +10,7 @@ import StatusPill, { type PillStatus } from '@/components/ui/StatusPill';
 import Link from 'next/link';
 import MoneyToCollect from '@/components/vendor/payments/MoneyToCollect';
 import GettingStarted from '@/components/vendor/GettingStarted';
+import YourWork from '@/components/vendor/YourWork';
 
 export interface VendorIdentity {
   businessName: string;
@@ -76,6 +77,9 @@ export default function VendorTodayScreen({
 
       {/* A business that has just set up its profile: what to do first. Gone once it is all done. */}
       <GettingStarted />
+
+      {/* The to-dos given to this person on the business's own weddings. Says nothing when there are none. */}
+      <YourWork />
 
       {/* Today summary */}
       <div className="grid grid-cols-3 gap-3">

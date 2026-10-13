@@ -292,7 +292,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     const [rahul] = (await inA(() => weddings.list())).filter((w) => w.customerName === 'Rahul Kumar');
     expect(await inA(() => weddings.addTask(rahul.id, { title: ' ' }, users[0]))).toEqual({ errors: { title: expect.any(String) } });
     const one = (await inA(() => weddings.addTask(rahul.id, { title: 'Confirm the generator', dueOn: later(50) }, users[0]))) as Awaited<ReturnType<typeof weddings.get>>;
-    expect(one.tasks).toEqual([{ id: expect.any(String), title: 'Confirm the generator', done: false, dueAt: expect.any(String), dueOn: later(50) }]);
+    expect(one.tasks).toEqual([{ id: expect.any(String), title: 'Confirm the generator', done: false, dueAt: expect.any(String), dueOn: later(50), assignee: null }]);
     const taskId = one.tasks[0].id;
     expect(await runAsSystem('test check', () => app.prisma.task.findUniqueOrThrow({ where: { id: taskId }, select: { context: true, weddingId: true, wedding: { select: { businessId: true } } } }))).toEqual({ context: 'WEDDING_TASK', weddingId: rahul.id, wedding: { businessId: scopeA.businessId } });
     expect((await inA(() => weddings.setTask(rahul.id, taskId, { done: true }))).tasks[0].done).toBe(true);
@@ -305,6 +305,70 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect((await inA(() => weddings.get(rahul.id))).tasks[0].done).toBe(false);
     expect((await inA(() => weddings.setTask(rahul.id, taskId, { remove: true }))).tasks).toEqual([]);
     expect(await runAsSystem('test check', () => app.prisma.task.findUniqueOrThrow({ where: { id: taskId }, select: { status: true } }))).toEqual({ status: 'CANCELLED' }); // kept, never deleted
+  });
+
+  // 13 Oct 2026 — giving out work, and "Your work" for the person it was given to.
+  test('giving out work: only to someone in THIS business, only by someone who may; the person sees just their own and ticks it', async () => {
+    const myWork = (await import('@/services/venueMyWork.service')).venueMyWorkService;
+    const [rahul] = (await inA(() => weddings.list())).filter((w) => w.customerName === 'Rahul Kumar');
+    const emp = await app.prisma.user.create({ data: { name: 'DBTEST Sunil', phone: `95001${fx.runId.replace(/\D/g, '').padEnd(4, '0').slice(0, 4)}9`, roles: { create: { role: 'VENDOR' } } } });
+    await app.prisma.businessMember.create({ data: { businessId: scopeA.businessId, userId: emp.id, role: 'EMPLOYEE', jobTitle: 'Electrician' } });
+    const asEmp = { kind: 'BUSINESS' as const, businessId: scopeA.businessId, role: 'EMPLOYEE' as const, permissions: [], userId: emp.id };
+    const empInB = { ...asEmp, businessId: scopeB.businessId };
+    const weddingsOnly = { kind: 'BUSINESS' as const, businessId: scopeA.businessId, role: 'STAFF' as const, permissions: ['weddings' as const], userId: users[0] };
+    type Detail = Awaited<ReturnType<typeof weddings.get>>;
+    try {
+      const before = await inA(() => weddings.get(rahul.id));
+      expect(before.canAssign).toBe(true);
+      expect(before.team).toEqual([{ id: users[0], name: 'Owner' }, { id: emp.id, name: 'DBTEST Sunil' }]);
+      // Venue B's owner does not work here: refused, and nothing is added.
+      expect(await inA(() => weddings.addTask(rahul.id, { title: 'Check the generator', assignTo: users[1] }, users[0]))).toEqual({ errors: { assignTo: expect.any(String) } });
+      expect((await inA(() => weddings.get(rahul.id))).tasks).toEqual(before.tasks);
+
+      const made = (await inA(() => weddings.addTask(rahul.id, { title: 'Check the generator', dueOn: later(2), assignTo: emp.id }, users[0]))) as Detail;
+      const task = made.tasks.find((t) => t.title === 'Check the generator')!;
+      expect(task.assignee).toEqual({ id: emp.id, name: 'DBTEST Sunil' });
+
+      // Someone who may work on weddings but not give out work: sees who has it, cannot change it, is offered nobody.
+      const seen = await runInScope(weddingsOnly, () => weddings.get(rahul.id));
+      expect(seen).toMatchObject({ canEdit: true, canAssign: false, team: [] });
+      expect(seen.tasks.find((t) => t.id === task.id)?.assignee?.name).toBe('DBTEST Sunil');
+      expect((await outcome(runInScope(weddingsOnly, () => weddings.assignTask(rahul.id, task.id, null))))?.name).toBe('ValidationError');
+      expect(await runInScope(weddingsOnly, () => weddings.addTask(rahul.id, { title: 'x', assignTo: emp.id }, users[0]))).toEqual({ errors: { assignTo: expect.any(String) } });
+
+      // The person it was given to: their own work, with the wedding's name, date and functions — no phone, no money.
+      const mine = await runInScope(asEmp, () => myWork.list());
+      expect(mine).toMatchObject({ open: 1, canOpenWeddings: false, items: [{ id: task.id, title: 'Check the generator', done: false, dueOn: later(2), overdue: false, wedding: { id: rahul.id, name: 'Rahul Kumar' } }] });
+      expect(mine.items[0].wedding.functions.length).toBeGreaterThan(0);
+      for (const hidden of [before.customerPhone, 'unitPrice', 'outstanding', 'total']) if (hidden) expect(JSON.stringify(mine)).not.toContain(hidden);
+      // Not the owner's work, and not there in another business the same person might work in.
+      expect((await inA(() => myWork.list())).items).toEqual([]);
+      expect((await runInScope(empInB, () => myWork.list())).items).toEqual([]);
+
+      // Only the person it was given to ticks it there; the owner sees it done on the wedding.
+      expect((await outcome(inA(() => myWork.setDone(task.id, true))))?.name).toBe('NotFoundError');
+      expect((await outcome(runInScope(empInB, () => myWork.setDone(task.id, true))))?.name).toBe('NotFoundError');
+      expect(await runInScope(asEmp, () => myWork.setDone(task.id, true))).toMatchObject({ open: 0, items: [{ id: task.id, done: true }] });
+      expect((await inA(() => weddings.get(rahul.id))).tasks.find((t) => t.id === task.id)).toMatchObject({ done: true, assignee: { id: emp.id } });
+      expect((await runInScope(asEmp, () => myWork.setDone(task.id, false))).open).toBe(1);
+
+      // Given to someone else, then to nobody: it leaves the first person's list.
+      expect((await inA(() => weddings.assignTask(rahul.id, task.id, users[0]))).tasks.find((t) => t.id === task.id)?.assignee).toEqual({ id: users[0], name: 'Owner' });
+      expect((await runInScope(asEmp, () => myWork.list())).items).toEqual([]);
+      expect((await inA(() => myWork.list())).items.map((i) => i.id)).toEqual([task.id]);
+      expect((await outcome(inA(() => weddings.assignTask(rahul.id, task.id, users[1]))))?.name).toBe('ValidationError');
+      expect((await outcome(inB(() => weddings.assignTask(rahul.id, task.id, users[1]))))?.name).toBe('NotFoundError');
+      expect((await inA(() => weddings.assignTask(rahul.id, task.id, ''))).tasks.find((t) => t.id === task.id)?.assignee).toBeNull();
+      // Taken off the list: nobody's work any more.
+      await inA(() => weddings.assignTask(rahul.id, task.id, emp.id));
+      await inA(() => weddings.setTask(rahul.id, task.id, { remove: true }));
+      expect((await runInScope(asEmp, () => myWork.list())).items).toEqual([]);
+      expect((await outcome(runInScope(asEmp, () => myWork.setDone(task.id, true))))?.name).toBe('NotFoundError');
+    } finally {
+      await runAsSystem('test clean-up', () => app.prisma.task.updateMany({ where: { assignedToId: emp.id }, data: { assignedToId: null } }));
+      await app.prisma.businessMember.deleteMany({ where: { userId: emp.id } });
+      await app.prisma.user.delete({ where: { id: emp.id } });
+    }
   });
 
   test('a member who may not work on weddings cannot change the plan from the page', async () => {

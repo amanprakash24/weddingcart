@@ -15,7 +15,7 @@ export interface FunctionForm {
 }
 
 export type FunctionErrors = Partial<Record<'type' | 'label' | 'date' | 'startTime' | 'place', string>>;
-export type TaskErrors = Partial<Record<'title' | 'dueOn', string>>;
+export type TaskErrors = Partial<Record<'title' | 'dueOn' | 'assignTo', string>>;
 
 const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 // A real YYYY-MM-DD in a believable year, as the start of that day — the way a wedding date is stored (lib/quotation/booking.ts).

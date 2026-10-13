@@ -128,15 +128,19 @@ export function WeddingFunctions({ w, onSaved }: { w: VenueWeddingDetail; onSave
 export function WeddingTasks({ w, onSaved }: { w: VenueWeddingDetail; onSaved: (w: VenueWeddingDetail) => void }) {
   const [title, setTitle] = useState('');
   const [dueOn, setDueOn] = useState('');
+  const [assignTo, setAssignTo] = useState('');
   const { busy, error, errors, save } = useSave(w.id, onSaved);
+  // Who a to-do can be given to — offered only to someone who may give out work (the server decides; w.team is empty otherwise).
+  const WHO = [{ value: '', label: 'No one yet' }, ...w.team.map((p) => ({ value: p.id, label: p.name }))];
   const open = w.tasks.filter((t) => !t.done).length;
 
   if (!w.canEdit && w.tasks.length === 0) return null;
 
   async function add() {
-    if (await save('/tasks', 'POST', { title, dueOn })) {
+    if (await save('/tasks', 'POST', { title, dueOn, assignTo })) {
       setTitle('');
       setDueOn('');
+      setAssignTo('');
     }
   }
 
@@ -155,6 +159,25 @@ export function WeddingTasks({ w, onSaved }: { w: VenueWeddingDetail; onSaved: (
                 <div className="min-w-0 flex-1">
                   <p className={`text-base ${t.done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-primary)]'}`}>{t.title}</p>
                   {t.dueOn && !t.done && <p className="text-xs text-[var(--color-text-muted)]">By {weddingDateWords(t.dueOn)}</p>}
+                  {w.canAssign ? (
+                    <select
+                      aria-label={`Who does: ${t.title}`}
+                      value={t.assignee?.id ?? ''}
+                      disabled={busy}
+                      onChange={(ev) => save(`/tasks/${t.id}`, 'PATCH', { assignTo: ev.target.value || null })}
+                      className="mt-1 min-h-11 w-full max-w-56 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] px-2 text-sm text-[var(--color-text-secondary)] disabled:opacity-60"
+                    >
+                      {/* Someone who has left the team since stays named until the to-do is given to someone else. */}
+                      {t.assignee && !w.team.some((p) => p.id === t.assignee?.id) && <option value={t.assignee.id}>{t.assignee.name}</option>}
+                      {WHO.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.value ? o.label : t.assignee ? 'No one' : 'Give to…'}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    t.assignee && <p className="text-xs text-[var(--color-text-muted)]">{t.assignee.name}</p>
+                  )}
                 </div>
                 {w.canEdit && (
                   <button type="button" aria-label={`Take off the list: ${t.title}`} disabled={busy} onClick={() => save(`/tasks/${t.id}`, 'PATCH', { remove: true })} className={icon}>
@@ -169,6 +192,7 @@ export function WeddingTasks({ w, onSaved }: { w: VenueWeddingDetail; onSaved: (
           <div className="space-y-3 border-t border-[var(--color-border-subtle)] pt-3">
             <Input label="Add a to-do" value={title} onChange={(ev) => setTitle(ev.target.value)} error={errors.title} placeholder="Confirm the generator" maxLength={WEDDING_PLAN_LIMITS.taskMax} className="min-h-12 text-base" />
             <Input label="By when (optional)" type="date" value={dueOn} onChange={(ev) => setDueOn(ev.target.value)} error={errors.dueOn} className="min-h-12 text-base" />
+            {w.canAssign && <Select label="Who does it (optional)" value={assignTo} onChange={(ev) => setAssignTo(ev.target.value)} error={errors.assignTo} options={WHO} className="min-h-12 text-base" />}
             <button type="button" disabled={busy || !title.trim()} onClick={add} className={primary}>{busy ? 'Saving…' : 'Add to the list'}</button>
           </div>
         )}
