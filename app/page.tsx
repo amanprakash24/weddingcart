@@ -5,7 +5,7 @@ import { JsonLd } from '@/components/JsonLd';
 import { blogRepository } from '@/repositories/blog.repository';
 import type { BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
 import type { HomeCategory } from '@/components/homepage/CategoriesSection';
-import { prisma } from '@/lib/prisma';
+import { categoryRepository } from '@/repositories/category.repository';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
@@ -42,12 +42,12 @@ async function getTopBlogPosts(): Promise<BlogHighlight[]> {
 // with each category's own name and picture. If the read fails the section is simply left out.
 async function getHomeCategories(): Promise<HomeCategory[]> {
   try {
-    return await prisma.category.findMany({
+    const { data } = await categoryRepository.findMany({
       where: { isSpecial: false, vendors: { some: {} } },
-      orderBy: [{ vendors: { _count: 'desc' } }, { name: 'asc' }],
+      orderBy: { vendors: { _count: 'desc' } },
       take: 8,
-      select: { slug: true, name: true, image: true },
     });
+    return data.map((c) => ({ slug: c.slug, name: c.name, image: c.image }));
   } catch {
     return [];
   }
