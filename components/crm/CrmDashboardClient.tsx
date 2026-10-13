@@ -34,6 +34,9 @@ export default function CrmDashboardClient() {
   const [total, setTotal] = useState(0);
   const [tableLoading, setTableLoading] = useState(true);
   const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
+  // Deleting a lead is the founder's alone (the server refuses everyone else); only the founder is shown the option.
+  const [isFounder, setIsFounder] = useState(false);
+  const [deleted, setDeleted] = useState<string | null>(null);
   const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') ?? '1')));
   const [filters, setFilters] = useState<LeadFiltersState>(() => filtersFromParams(searchParams));
 
@@ -56,6 +59,11 @@ export default function CrmDashboardClient() {
       .then((r) => r.json())
       .then((d) => { if (d.success) setStats(d.data); })
       .finally(() => setStatsLoading(false));
+
+    fetch('/api/admin/me')
+      .then((r) => r.json())
+      .then((d) => setIsFounder(d.role === 'super_admin'))
+      .catch(() => {});
 
     fetch('/api/crm/sales-reps')
       .then((r) => r.json())
@@ -109,7 +117,21 @@ export default function CrmDashboardClient() {
         <LeadFilters filters={filters} onChange={handleFiltersChange} salesReps={salesReps} />
       </div>
 
-      <LeadTable items={items} loading={tableLoading} />
+      {deleted && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{deleted} was deleted.</p>}
+
+      <LeadTable
+        items={items}
+        loading={tableLoading}
+        onDeleted={
+          isFounder
+            ? (name) => {
+                setDeleted(name);
+                fetchLeads();
+                fetch('/api/crm/stats').then((r) => r.json()).then((d) => { if (d.success) setStats(d.data); }).catch(() => {});
+              }
+            : undefined
+        }
+      />
 
       {total > 0 && (
         <div className="flex items-center justify-between text-sm text-gray-500">
