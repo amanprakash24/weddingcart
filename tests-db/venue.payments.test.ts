@@ -320,7 +320,12 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     try {
       const before = await inA(() => weddings.get(rahul.id));
       expect(before.canAssign).toBe(true);
-      expect(before.team).toEqual([{ id: users[0], name: 'Owner' }, { id: emp.id, name: 'DBTEST Sunil' }]);
+      // Who work can be given to — with what the ready WhatsApp message needs (a first name, a 10-digit mobile), since this person may give out work.
+      expect(before.team).toEqual([
+        { id: users[0], name: 'Owner', mobile: expect.stringMatching(/^\d{10}$/), firstName: null, isYou: true },
+        { id: emp.id, name: 'DBTEST Sunil', mobile: emp.phone, firstName: 'DBTEST', isYou: false },
+      ]);
+      expect(before.businessName).toContain('DBTEST Pay Venue A');
       // Venue B's owner does not work here: refused, and nothing is added.
       expect(await inA(() => weddings.addTask(rahul.id, { title: 'Check the generator', assignTo: users[1] }, users[0]))).toEqual({ errors: { assignTo: expect.any(String) } });
       expect((await inA(() => weddings.get(rahul.id))).tasks).toEqual(before.tasks);
@@ -331,7 +336,8 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
 
       // Someone who may work on weddings but not give out work: sees who has it, cannot change it, is offered nobody.
       const seen = await runInScope(weddingsOnly, () => weddings.get(rahul.id));
-      expect(seen).toMatchObject({ canEdit: true, canAssign: false, team: [] });
+      expect(seen).toMatchObject({ canEdit: true, canAssign: false, team: [], businessName: '' });
+      expect(JSON.stringify(seen)).not.toContain(emp.phone as string); // no colleague's number without the right to give out work
       expect(seen.tasks.find((t) => t.id === task.id)?.assignee?.name).toBe('DBTEST Sunil');
       expect((await outcome(runInScope(weddingsOnly, () => weddings.assignTask(rahul.id, task.id, null))))?.name).toBe('ValidationError');
       expect(await runInScope(weddingsOnly, () => weddings.addTask(rahul.id, { title: 'x', assignTo: emp.id }, users[0]))).toEqual({ errors: { assignTo: expect.any(String) } });

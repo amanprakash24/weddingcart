@@ -57,7 +57,10 @@ export interface VenueWeddingDetail extends VenueWeddingListItem {
   tasks: { id: string; title: string; done: boolean; dueAt: string | null; dueOn: string | null; assignee: { id: string; name: string } | null }[];
   // This member may give the to-dos out (the `tasks` permission) — and to whom: the people working in the business today.
   canAssign: boolean;
-  team: { id: string; name: string }[];
+  // `mobile` and `firstName` are for the ready WhatsApp message "work for you" (lib/venue/myWork.ts) — sent only to someone who
+  // may give out work (approved 13 Oct 2026); null when the person has none on file. `isYou` = the member asking.
+  team: { id: string; name: string; mobile: string | null; firstName: string | null; isYou: boolean }[];
+  businessName: string; // who that message is from; '' unless canAssign
   // null = this member may not see money (lib/auth/permissions.ts: view_financials), or there is no agreement.
   money: { total: number; received: number; outstanding: number } | null;
   moneyHidden: boolean;
@@ -115,16 +118,26 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
 
   // The people of the business in the scope, by their login's id. `ids` = only these (whoever a to-do was given to, even if they
   // have left since); without it, everyone working there today.
-  async function people(ids?: string[]): Promise<{ id: string; name: string }[]> {
+  // Their mobile number is read too, but only `team()` below ever passes it on.
+  async function members(ids?: string[]) {
     const scope = effectiveScope();
     if (scope.kind !== 'BUSINESS' || (ids && ids.length === 0)) return [];
     const rows = await deps.db.businessMember.findMany({
       where: { businessId: scope.businessId, ...(ids ? { userId: { in: ids } } : { removedAt: null }) },
-      select: { userId: true, role: true, jobTitle: true, user: { select: { name: true } } },
+      select: { userId: true, role: true, jobTitle: true, user: { select: { name: true, phone: true } }, business: { select: { name: true } } },
       orderBy: { createdAt: 'asc' },
     });
-    return rows.map((m) => ({ id: m.userId, name: memberLabel({ name: m.user.name, role: m.role as MemberRole, jobTitle: m.jobTitle }) }));
+    return rows.map((m) => ({
+      id: m.userId,
+      name: memberLabel({ name: m.user.name, role: m.role as MemberRole, jobTitle: m.jobTitle }),
+      mobile: m.user.phone?.replace(/\D/g, '').slice(-10) || null,
+      firstName: m.user.name?.trim().split(/\s+/)[0] || null,
+      isYou: m.userId === scope.userId,
+      businessName: m.business.name,
+    }));
   }
+  // Names only — what anyone who sees the to-do list may know.
+  const people = async (ids?: string[]): Promise<{ id: string; name: string }[]> => (await members(ids)).map(({ id, name }) => ({ id, name }));
 
   // Who a to-do is being given to: null = nobody. Refused unless the asker may give out work and the person works here today.
   async function assignee(raw: unknown): Promise<{ ok: true; userId: string | null } | { ok: false; error: string }> {
@@ -161,6 +174,7 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
       const canAssign = canEdit && can(effectiveScope(), 'tasks');
       const given = new Map((await people([...new Set(tasks.flatMap((t) => (t.assignedToId ? [t.assignedToId] : [])))])).map((p) => [p.id, p]));
       const agreement = quotationId && seesMoney ? await deps.money(quotationId, deps.now()) : null;
+      const team = canAssign ? await members() : [];
       return {
         ...listItem(w),
         customerPhone: w.sourceBooking?.phone ?? w.customerPhone ?? null,
@@ -170,7 +184,8 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
         functionList: w.events.map((e) => ({ id: e.id, type: e.type as FunctionType, name: functionName(e), date: istDay(e.date), startTime: e.startTime, place: e.venueName?.trim() || null })),
         canEdit,
         canAssign,
-        team: canAssign ? await people() : [],
+        team: team.map(({ businessName: _b, ...p }) => p),
+        businessName: team[0]?.businessName ?? '',
         agreed: (quotation?.items ?? []).map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.unitPrice * i.quantity, function: i.functionLabel?.trim() || null })),
         agreedTotals: quotation ? { discount: quotation.discount, gst: quotation.gstAmount, total: quotation.total } : null,
         tasks: tasks.map((t) => ({ id: t.id, title: t.title, done: t.status === 'DONE', dueAt: t.dueAt?.toISOString() ?? null, dueOn: t.dueAt ? istDay(t.dueAt) : null, assignee: t.assignedToId ? (given.get(t.assignedToId) ?? { id: t.assignedToId, name: 'Someone no longer in the team' }) : null })),

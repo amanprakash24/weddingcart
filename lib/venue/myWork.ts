@@ -31,4 +31,18 @@ export function sortMyWork<T extends { done: boolean; dueOn: string | null }>(it
   return [...items.filter((i) => !i.done).sort(byDue), ...items.filter((i) => i.done).sort(byDue)];
 }
 
+// "Work for you" — the text of a wa.me link the person who gave out a to-do taps and sends from their own WhatsApp (nothing is
+// sent by the app). What, by when, for which wedding, and where to find it. No phone number and no money.
+const dayWords = (d: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(`${d}T12:00:00+05:30`));
+
+export function workGivenMessage(m: { firstName: string | null; businessName: string; title: string; dueOn: string | null; weddingName: string; weddingDate: string; site: string }): string {
+  return [
+    m.firstName ? `Namaste ${m.firstName},` : 'Namaste,',
+    `Work for you${m.businessName ? ` from ${m.businessName}` : ''}:`,
+    `• ${m.title}${m.dueOn ? ` — by ${dayWords(m.dueOn)}` : ''}`,
+    `For: ${m.weddingName}, ${dayWords(m.weddingDate)}`,
+    `See it and tick it done in Vivah OS → Today → Your work: ${m.site.replace(/\/$/, '')}/vendor/login`,
+  ].join('\n');
+}
+
 export const isOverdue = (dueOn: string | null, done: boolean, today: string) => !done && dueOn !== null && dueOn < today;
