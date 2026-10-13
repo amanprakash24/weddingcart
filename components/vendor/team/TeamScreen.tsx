@@ -85,6 +85,30 @@ function MemberCard({ m, team, onChanged, onRemoved }: { m: TeamMemberView; team
   const [errors, setErrors] = useState<TeamErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // "Your name" — on one's own row only: each person names themselves.
+  const [naming, setNaming] = useState(false);
+  const [myName, setMyName] = useState(m.name ?? '');
+
+  const saveName = async () => {
+    setBusy(true);
+    setError(null);
+    setErrors({});
+    try {
+      const res = await fetch('/api/vendor-os/team/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: myName }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.success) {
+        setErrors(body.fieldErrors ?? {});
+        setError(body.fieldErrors ? null : (body.error ?? 'That did not go through — please try again'));
+        return;
+      }
+      onChanged({ ...m, name: body.data.name });
+      setNaming(false);
+    } catch {
+      setError('No connection — please try again');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const call = async (method: 'PATCH' | 'DELETE') => {
     setBusy(true);
@@ -125,6 +149,25 @@ function MemberCard({ m, team, onChanged, onRemoved }: { m: TeamMemberView; team
           {m.seesMoney && m.role !== 'OWNER' && <StatusPill status="info">Sees money</StatusPill>}
         </div>
       </div>
+
+      {m.isYou && !naming && (
+        <button type="button" className="mt-1 min-h-11 text-sm font-semibold underline underline-offset-2" onClick={() => (setMyName(m.name ?? ''), setError(null), setNaming(true))}>
+          {m.name ? 'Change your name' : 'Add your name'}
+        </button>
+      )}
+      {m.isYou && naming && (
+        <div className="mt-3 space-y-3">
+          <Input label="Your name" value={myName} onChange={(e) => setMyName(e.target.value)} error={errors.name} maxLength={TEAM_LIMITS.nameMax} placeholder="Rahul Kumar" helperText="Your team sees this where work is given out, and on your notes." className="min-h-12 text-base" />
+          <div className="grid grid-cols-2 gap-2">
+            <Button className="min-h-11" disabled={busy || myName.trim().length < 2} onClick={saveName}>
+              {busy ? 'Saving…' : 'Save'}
+            </Button>
+            <Button className="min-h-11" variant="outline" disabled={busy} onClick={() => setNaming(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
 
       {m.canChange && !editing && !confirmRemove && (
         <div className="mt-2 flex gap-4 text-sm font-semibold">

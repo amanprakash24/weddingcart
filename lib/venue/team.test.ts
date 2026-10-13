@@ -1,7 +1,16 @@
 /// <reference types="bun-types" />
 import { describe, expect, test } from 'bun:test';
 import { effectivePermissions } from '@/lib/auth/permissions';
-import { checkChange, checkNewMember, loginMessage, memberPermissions } from './team';
+import { checkChange, checkNewMember, checkOwnName, loginMessage, memberPermissions, TEAM_LIMITS } from './team';
+
+describe('checkOwnName — "Your name"', () => {
+  test('tidied; at least two letters; never longer than the limit', () => {
+    expect(checkOwnName('  Anil   Kumar ')).toEqual({ ok: true, name: 'Anil Kumar' });
+    for (const bad of ['', ' ', 'A', null, undefined, 42]) expect(checkOwnName(bad).ok).toBe(false);
+    expect(checkOwnName('x'.repeat(TEAM_LIMITS.nameMax)).ok).toBe(true);
+    expect(checkOwnName('x'.repeat(TEAM_LIMITS.nameMax + 1)).ok).toBe(false);
+  });
+});
 
 describe('checkNewMember', () => {
   test('a manager, typed the way people type', () => {

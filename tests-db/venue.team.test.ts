@@ -117,6 +117,23 @@ dbDescribe('the Team screen (real database)', () => {
     expect(await asOwner(() => team.add({ name: 'DBTEST Rahul', mobile: phone(10), role: 'MANAGER' }))).toMatchObject({ kind: 'EXISTING_LOGIN', member: { role: 'MANAGER' } });
     expect((await businessSvc.scopeForVendorLogin(login.id))?.role).toBe('MANAGER');
   });
+  // 13 Oct 2026 — "Your name": an owner's login has no name (it is made from the mobile number at approval).
+  test('a person sets their own name — and only their own; it then shows in the team', async () => {
+    expect((await asOwner(() => team.list())).members[0]).toMatchObject({ role: 'OWNER', isYou: true, name: null });
+    expect(await asOwner(() => team.setMyName(' '))).toEqual({ errors: { name: expect.any(String) } });
+    expect(await asOwner(() => team.setMyName('  Anil   Kumar '))).toEqual({ name: 'Anil Kumar' });
+    expect((await asOwner(() => team.list())).members[0]).toMatchObject({ role: 'OWNER', isYou: true, name: 'Anil Kumar' });
+    // The other venue's owner is untouched; someone with no permissions at all may still name themselves.
+    expect((await runInScope(otherOwner, () => team.list())).members[0].name).toBeNull();
+    const rahul = await app.prisma.user.findUniqueOrThrow({ where: { phone: phone(10) } });
+    const asRahul = { kind: 'BUSINESS' as const, businessId: owner.businessId, role: 'EMPLOYEE' as const, permissions: [], userId: rahul.id };
+    expect(await runInScope(asRahul, () => team.setMyName('Rahul Singh'))).toEqual({ name: 'Rahul Singh' });
+    expect((await app.prisma.user.findUniqueOrThrow({ where: { id: users[0] } })).name).toBe('Anil Kumar');
+    expect((await app.prisma.user.findUniqueOrThrow({ where: { id: rahul.id } })).name).toBe('Rahul Singh');
+    // Without a signed-in person there is nobody to name.
+    expect((await outcome(runInScope({ ...asRahul, userId: undefined }, () => team.setMyName('Nobody'))))?.name).toBe('NotFoundError');
+  });
+
   // 13 Oct 2026 — what Shaadi Shopping shares with a vendor (Today, Weddings, Services, Payments) is read for the vendor a person
   // is WORKING in, not the one they own.
   test('the vendor a person works in: a manager gets the owner’s vendor; an owner of another vendor gets the one they chose', async () => {

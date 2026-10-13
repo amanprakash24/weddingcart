@@ -4,7 +4,7 @@ import { effectiveScope } from '@/lib/ownership/scope';
 import { ASSIGNABLE_ROLES, can, effectivePermissions, type MemberRole } from '@/lib/auth/permissions';
 import { ADMIN_ROLES, Role } from '@/lib/auth/roles';
 import { hashLoginCode, newLoginCode } from '@/services/vendorLoginCode.service';
-import { checkChange, checkNewMember, memberPermissions, TEAM_LIMITS, type AddResult, type TeamErrors, type TeamMemberView, type TeamView } from '@/lib/venue/team';
+import { checkChange, checkNewMember, checkOwnName, memberPermissions, TEAM_LIMITS, type AddResult, type TeamErrors, type TeamMemberView, type TeamView } from '@/lib/venue/team';
 
 // The Team screen (lib/venue/team.ts): who works in the business, and the owner adding, changing and removing them. Always called
 // inside the business's scope (lib/ownership/venueEntry.ts), behind the `team` permission. Business and BusinessMember are not
@@ -116,6 +116,17 @@ export function createVenueTeamService(deps: VenueTeamDeps = defaultDeps()) {
       const perms = memberPermissions(checked.value.role, checked.value.seesMoney, m.role === checked.value.role ? m : undefined);
       const row = (await deps.db.businessMember.update({ where: { id: m.id }, data: { role: checked.value.role, jobTitle: checked.value.jobTitle, grants: perms.grants, denies: perms.denies }, select: memberSelect })) as MemberRow;
       return view(row, s.userId ?? '');
+    },
+
+    // "Your name": the signed-in person names themselves — nobody else, and no permission is needed for one's own name. It is
+    // the name on their own account (the person, not the membership). The person comes from the scope, never from the request.
+    async setMyName(raw: unknown): Promise<{ name: string } | { errors: TeamErrors }> {
+      const s = effectiveScope();
+      if (s.kind !== 'BUSINESS' || !s.userId) throw new NotFoundError('Team', 'current');
+      const checked = checkOwnName(raw);
+      if (!checked.ok) return { errors: { name: checked.error } };
+      await deps.db.user.update({ where: { id: s.userId }, data: { name: checked.name } });
+      return { name: checked.name };
     },
 
     // Out of the team: access ends at once; what they did still names them.

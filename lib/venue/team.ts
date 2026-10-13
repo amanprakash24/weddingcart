@@ -58,6 +58,16 @@ export function checkNewMember(input: Record<string, unknown>): { ok: true; valu
   return { ok: true, value: { name, mobile, role: changes.value.role, jobTitle: changes.value.jobTitle, seesMoney: changes.value.seesMoney } };
 }
 
+// A person's own name (13 Oct 2026). An owner's login is made when Shaadi Shopping approves the business, from the mobile number
+// alone, so it has no name — and the team's work then says "Owner" where a name belongs. Each person sets their own, and only
+// their own: it is their account's name, wherever they sign in.
+export function checkOwnName(raw: unknown): { ok: true; name: string } | { ok: false; error: string } {
+  const name = clean(raw);
+  if (name.length < 2) return { ok: false, error: 'Your name' };
+  if (name.length > TEAM_LIMITS.nameMax) return { ok: false, error: `Up to ${TEAM_LIMITS.nameMax} characters` };
+  return { ok: true, name };
+}
+
 // Role, job title and money — what can be changed later.
 export function checkChange(input: Record<string, unknown>): { ok: true; value: Pick<MemberInput, 'role' | 'jobTitle' | 'seesMoney'> } | { ok: false; errors: TeamErrors } {
   const errors: TeamErrors = {};
