@@ -38,18 +38,20 @@ async function getTopBlogPosts(): Promise<BlogHighlight[]> {
   }
 }
 
-// "Explore Wedding Categories": the everyday categories that have vendors today, busiest first — straight from the database,
+// "Explore Wedding Categories": the everyday categories that have published vendors today, busiest first — straight from the database,
 // with each category's own name and picture. If the read fails the section is simply left out.
-async function getHomeCategories(): Promise<HomeCategory[]> {
+async function getHomeCategories(): Promise<{ cards: HomeCategory[]; count: number }> {
   try {
     const { data } = await categoryRepository.findMany({
-      where: { isSpecial: false, vendors: { some: {} } },
+      where: { isSpecial: false, vendors: { some: { status: 'PUBLISHED' } } },
       orderBy: { vendors: { _count: 'desc' } },
       take: 8,
     });
-    return data.map((c) => ({ slug: c.slug, name: c.name, image: c.image }));
+    // The count on the facts row: every category (special ones too) that has a published vendor.
+    const { total } = await categoryRepository.findMany({ where: { vendors: { some: { status: 'PUBLISHED' } } }, take: 1 });
+    return { cards: data.map((c) => ({ slug: c.slug, name: c.name, image: c.image })), count: total };
   } catch {
-    return [];
+    return { cards: [], count: 0 };
   }
 }
 
@@ -216,7 +218,7 @@ export default async function HomePage() {
       <JsonLd data={organizationSchema} />
       <JsonLd data={faqSchema} />
       <Suspense>
-        <HomepageClient topBlogPosts={topBlogPosts} categories={categories} />
+        <HomepageClient topBlogPosts={topBlogPosts} categories={categories.cards} categoryCount={categories.count} />
       </Suspense>
     </>
   );

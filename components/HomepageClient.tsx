@@ -30,7 +30,7 @@ const MARQUEE_ITEMS = [
 
 const TRUST_BADGES = ['Verified Vendors', 'Transparent Quotations', 'Dedicated Wedding Expert', 'Free Consultation'];
 
-export default function HomepageClient({ topBlogPosts = [], categories = [] }: { topBlogPosts?: BlogHighlight[]; categories?: HomeCategory[] }) {
+export default function HomepageClient({ topBlogPosts = [], categories = [], categoryCount = 0 }: { topBlogPosts?: BlogHighlight[]; categories?: HomeCategory[]; categoryCount?: number }) {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -63,10 +63,8 @@ export default function HomepageClient({ topBlogPosts = [], categories = [] }: {
 
         <ValuePropsSection />
 
-        {/* 14 Oct 2026: the categories that really exist (read by app/page.tsx), then the introduction of Vivah OS. */}
+        {/* 14 Oct 2026: the categories that really exist, read by app/page.tsx. */}
         <CategoriesSection categories={categories} />
-
-        <VivahOsSection />
 
         <BudgetSection />
 
@@ -86,7 +84,7 @@ export default function HomepageClient({ topBlogPosts = [], categories = [] }: {
           </div>
         </div>
 
-        <TrustStats />
+        <TrustStats categoryCount={categoryCount} />
         <JourneySection />
         <WeddingStylesSection />
         <WeddingJournalSection />
@@ -95,6 +93,9 @@ export default function HomepageClient({ topBlogPosts = [], categories = [] }: {
         <ExpertSection />
         <FeaturedVendorsSection />
         <GrowthPartnerSection />
+
+        {/* 14 Oct 2026: Vivah OS, introduced after the venue and vendor sections so it never competes with finding a venue. */}
+        <VivahOsSection />
 
         {/* Trust Badges */}
         <div className="bg-[#FAF5EE] border-y border-[#C5A46D]/8 py-8 overflow-hidden">

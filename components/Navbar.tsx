@@ -95,6 +95,8 @@ const navLinks = [
   { href: '/#how-it-works', label: 'How It Works' },
   { href: '/about', label: 'About Us' },
   { href: '/blog', label: 'Blog' },
+  // Vivah OS (14 Oct 2026) — one quiet link; the venue journey stays the header's main action.
+  { href: '/vivah-os', label: 'Vivah OS' },
 ];
 
 export default function Navbar() {

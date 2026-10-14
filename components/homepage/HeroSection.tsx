@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Phone, Sparkles } from 'lucide-react';
+import { ArrowRight, Phone } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics/events';
 import { festive } from '@/lib/festive';
 import { Diya, MarigoldGarland } from '@/components/festive/Decor';
 
@@ -21,7 +22,7 @@ const EVERYDAY = {
 export default function HeroSection() {
   const on = festive.enabled;
   const copy = on
-    ? { eyebrow: festive.hero.eyebrow, headline: festive.hero.headline, tagline: 'Wedding planning in Patna, from venue to Vidai.', supporting: festive.hero.supporting }
+    ? { eyebrow: festive.hero.eyebrow, headline: festive.hero.headline, tagline: 'One dedicated wedding expert from planning to Vidai.', supporting: festive.hero.supporting }
     : EVERYDAY;
 
   return (
@@ -74,7 +75,7 @@ export default function HeroSection() {
           </motion.div>
 
           <h1
-            className={`font-semibold text-white leading-[1.14] mb-5 sm:mb-6 ${on ? 'text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.4rem]' : 'text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.75rem]'}`}
+            className={`font-semibold text-white leading-[1.14] mb-5 sm:mb-6 ${on ? 'text-[2.25rem] sm:text-5xl md:text-6xl lg:text-[4rem]' : 'text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.75rem]'}`}
             style={{ fontFamily: 'var(--font-playfair, serif)' }}
           >
             <span className="block">
@@ -120,18 +121,20 @@ export default function HeroSection() {
             {on ? (
               <>
                 <Link
-                  href="/vendors"
+                  href="/cities/patna/venue"
+                  onClick={() => trackEvent('home_hero_cta_click', { cta: 'explore_venues' })}
                   className="inline-flex min-h-[52px] items-center justify-center gap-2 bg-[#8B1A4A] text-white px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-semibold text-sm shadow-xl hover:opacity-90 transition-all"
                   style={{ boxShadow: '0 8px 40px rgba(139,26,74,0.45)' }}
                 >
-                  Explore Vendors <ArrowRight className="w-4 h-4" />
+                  Explore Wedding Venues <ArrowRight className="w-4 h-4" />
                 </Link>
-                <Link
-                  href="/vivah-os"
+                <a
+                  href="tel:+917646028228"
+                  onClick={() => trackEvent('home_hero_cta_click', { cta: 'talk_to_expert' })}
                   className="inline-flex min-h-[52px] items-center justify-center gap-2 bg-[#C5A46D]/14 backdrop-blur-sm border border-[#C5A46D]/55 text-[#F3E3C3] px-6 sm:px-7 py-3.5 sm:py-4 rounded-full font-medium text-sm hover:bg-[#C5A46D]/22 transition-all"
                 >
-                  <Sparkles className="w-4 h-4" /> Discover Vivah OS
-                </Link>
+                  <Phone className="w-4 h-4" /> Talk to a Wedding Expert
+                </a>
               </>
             ) : (
               <>

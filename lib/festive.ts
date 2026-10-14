@@ -10,10 +10,10 @@ const FESTIVE_ENABLED = true;
 
 export const festive = {
   enabled: FESTIVE_ENABLED && process.env.NEXT_PUBLIC_FESTIVE_THEME !== 'off',
-  announcement: 'Shubh Festive Season · From Venue to Vidai',
+  announcement: 'Shubh Wedding Season · From Venue to Vidai',
   hero: {
-    eyebrow: 'This Festive Season',
-    headline: ['This Festive Season,', 'Make Your Wedding', 'Even More Special'],
-    supporting: 'Celebrate new beginnings with Shaadi Shopping—discover wedding vendors, services, and inspiration for your special day.',
+    eyebrow: 'Wedding Season, Made More Special',
+    headline: ['Your Dream Wedding', 'Starts Here.'],
+    supporting: 'Discover wedding venues and trusted vendors in Patna, with expert support to help you plan your celebration.',
   },
 } as const;

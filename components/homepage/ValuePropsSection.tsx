@@ -25,11 +25,11 @@ const VALUE_PROPS = [
 ];
 
 // While the festive season is on (lib/festive.ts) the row carries the season's three plain benefits. Nothing here is a number,
-// a rating or a guarantee — only what Shaadi Shopping really does.
+// a rating or a guarantee (verified against what the business does, 14 Oct 2026) — only what Shaadi Shopping really does.
 const FESTIVE_PROPS = [
-  { icon: Store, title: 'Discover Wedding Vendors', desc: 'Venues, decorators, caterers, photographers, makeup artists and more.' },
-  { icon: Building2, title: 'Wedding Planning in One Place', desc: 'Your date, budget and guest count — planned together, not in pieces.' },
-  { icon: UserCheck, title: 'Dedicated Support', desc: 'One wedding expert with you from planning to Vidai.' },
+  { icon: Building2, title: 'Venues & Vendors in Patna', desc: 'Venues, decorators, caterers, photographers, makeup artists and more — in one place.' },
+  { icon: Store, title: 'A Clear, Written Quotation', desc: 'For your date, guest count and budget — every line set out before you decide.' },
+  { icon: UserCheck, title: 'One Wedding Expert', desc: 'One person with you from planning to Vidai, a call or a WhatsApp away.' },
 ];
 
 export default function ValuePropsSection() {

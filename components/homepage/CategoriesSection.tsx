@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { fadeUp, stagger } from './animations';
 import { festive } from '@/lib/festive';
+import { trackEvent } from '@/lib/analytics/events';
 import { OrnamentRule } from '@/components/festive/Decor';
 
 // "Explore Wedding Categories" — the categories that really exist, read from the database by the homepage (app/page.tsx): each
@@ -62,6 +63,7 @@ export default function CategoriesSection({ categories }: { categories: HomeCate
             <motion.li key={c.slug} variants={fadeUp}>
               <Link
                 href={`/cities/patna/${c.slug}`}
+                onClick={() => trackEvent('home_category_click', { category: c.slug })}
                 className="group relative block aspect-[4/5] overflow-hidden rounded-2xl bg-[#2A1F1B] shadow-[0_14px_40px_rgba(42,6,20,0.10)] outline-none ring-[#C5A46D] ring-offset-2 ring-offset-[#FFFAF5] focus-visible:ring-2 sm:rounded-[22px]"
               >
                 <CategoryPicture src={c.image} />
