@@ -50,7 +50,7 @@ export default function FeaturedVendorsSection() {
             Selected By Our <span className="gradient-text-maroon">Wedding Experts</span>
           </motion.h2>
           <motion.p variants={fadeUp} className="text-gray-400 text-sm mt-5 max-w-sm mx-auto">
-            We don&apos;t list every vendor. We curate only those who consistently deliver excellence.
+            A few of the wedding professionals you can explore on Shaadi Shopping.
           </motion.p>
         </motion.div>
 

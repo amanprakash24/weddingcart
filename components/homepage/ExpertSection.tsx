@@ -6,6 +6,9 @@ import { motion } from 'framer-motion';
 import { Phone } from 'lucide-react';
 import { slideLeft, slideRight, stagger } from './animations';
 
+// 14 Oct 2026 claim audit: this section used to introduce "Priya", a named consultant with "120+ weddings coordinated" across
+// "Patna · Delhi · Jaipur" and "one of 5 consultants" — none of it had a source. It now describes the service without a persona.
+// When a real team member is to be shown, put their real name and photo here.
 export default function ExpertSection() {
   return (
     <section className="py-16 sm:py-24 lg:py-32 bg-[#FFFCF7] overflow-hidden">
@@ -23,7 +26,7 @@ export default function ExpertSection() {
                 className="font-semibold text-5xl sm:text-7xl text-[#8B1A4A]/60 select-none"
                 style={{ fontFamily: 'var(--font-playfair, serif)' }}
               >
-                P
+                1
               </span>
             </div>
             <div className="flex items-center gap-2 mb-2">
@@ -45,24 +48,23 @@ export default function ExpertSection() {
               className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-900 mb-4 leading-tight"
               style={{ fontFamily: 'var(--font-playfair, serif)' }}
             >
-              Meet Priya.<br />Your Wedding Expert.
+              One Person.<br />Your Wedding Expert.
             </h2>
             <div className="w-12 h-px bg-[#C5A46D]/35 mb-6" />
             <p className="font-cormorant text-xl italic text-gray-500 mb-6 leading-relaxed">
-              &ldquo;I treat every wedding as if it were my own sister&apos;s. Every call, every vendor visit — I&apos;m there with you.&rdquo;
+              One person plans your wedding with you — every call, every vendor visit — from the first conversation to Vidai.
             </p>
             <div className="space-y-2 text-sm text-gray-400 mb-9">
-              <p><span className="text-[#C5A46D] font-semibold">Role ·</span> Senior Wedding Consultant</p>
-              <p><span className="text-[#C5A46D] font-semibold">Weddings ·</span> 120+ coordinated</p>
-              <p><span className="text-[#C5A46D] font-semibold">Speciality ·</span> Luxury &amp; Destination</p>
-              <p><span className="text-[#C5A46D] font-semibold">Cities ·</span> Patna · Delhi · Jaipur</p>
+              <p><span className="text-[#C5A46D] font-semibold">Based in ·</span> Patna</p>
+              <p><span className="text-[#C5A46D] font-semibold">Helps with ·</span> Venue, vendors, budget and the wedding day</p>
+              <p><span className="text-[#C5A46D] font-semibold">First consultation ·</span> Free</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
                 href="/plan"
                 className="inline-flex items-center justify-center gap-2 bg-[#8B1A4A] text-white px-7 py-3.5 rounded-full font-semibold hover:opacity-90 transition-all shadow-lg text-sm"
               >
-                Speak With Priya
+                Speak With an Expert
               </Link>
               <a
                 href="tel:+917646028228"
@@ -71,9 +73,6 @@ export default function ExpertSection() {
                 <Phone className="w-4 h-4" /> Call Now
               </a>
             </div>
-            <p className="text-gray-300 text-xs mt-6">
-              Priya is one of 5 dedicated consultants — each specializing in different wedding styles and regions across India.
-            </p>
           </motion.div>
         </motion.div>
       </div>

@@ -28,7 +28,7 @@ export default function VivahOsSection() {
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className="flex flex-wrap items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#B08D55]">
+          <p className="flex flex-wrap items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#8A6A2F]">
             <span className="h-px w-8 bg-[#C5A46D]" />
             Introducing Vivah OS
             <span className="rounded-full border border-[#C5A46D]/60 px-2.5 py-1 text-[10px] tracking-[0.18em] text-[#8B1A4A]">Early access</span>
@@ -46,14 +46,14 @@ export default function VivahOsSection() {
             <Link
               href="/vivah-os#couples"
               onClick={() => trackEvent('vivah_os_cta_click', { location: 'homepage', audience: 'couples' })}
-              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-[#8B1A4A] px-8 text-[15px] font-semibold tracking-wide text-white shadow-[0_12px_32px_rgba(139,26,74,0.28)] transition-opacity hover:opacity-90"
+              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-[#8B1A4A] px-8 text-[15px] font-semibold tracking-wide text-white shadow-[0_12px_32px_rgba(139,26,74,0.28)] transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-[#8B1A4A] focus-visible:ring-offset-2"
             >
               For Couples <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
             <Link
               href="/vivah-os#business"
               onClick={() => trackEvent('vivah_os_cta_click', { location: 'homepage', audience: 'business' })}
-              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border border-[#8B1A4A]/35 bg-white/60 px-8 text-[15px] font-semibold tracking-wide text-[#8B1A4A] transition-colors hover:bg-[#8B1A4A] hover:text-white"
+              className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border border-[#8B1A4A]/35 bg-white/60 px-8 text-[15px] font-semibold tracking-wide text-[#8B1A4A] transition-colors hover:bg-[#8B1A4A] hover:text-white outline-none focus-visible:ring-2 focus-visible:ring-[#8B1A4A] focus-visible:ring-offset-2"
             >
               For Venues &amp; Vendors <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>

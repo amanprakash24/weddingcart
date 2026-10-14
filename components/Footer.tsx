@@ -141,7 +141,6 @@ export default function Footer() {
                       Subscribe
                     </button>
                   </div>
-                  <p className="text-gray-600 text-xs mt-2.5">Join 5,000+ couples already subscribed.</p>
                 </>
               )}
             </div>

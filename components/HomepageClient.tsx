@@ -11,7 +11,6 @@ import TrustStats from './homepage/TrustStats';
 import JourneySection from './homepage/JourneySection';
 import WeddingStylesSection from './homepage/WeddingStylesSection';
 import WeddingJournalSection from './homepage/WeddingJournalSection';
-import TestimonialsSection from './homepage/TestimonialsSection';
 import CitiesSection from './homepage/CitiesSection';
 import ExpertSection from './homepage/ExpertSection';
 import FeaturedVendorsSection from './homepage/FeaturedVendorsSection';
@@ -28,7 +27,8 @@ const MARQUEE_ITEMS = [
   'Jewellery', 'Pandits',
 ];
 
-const TRUST_BADGES = ['Verified Vendors', 'Transparent Quotations', 'Dedicated Wedding Expert', 'Free Consultation'];
+// What Shaadi Shopping really does (14 Oct 2026 claim audit: "Verified Vendors" removed — there is no verification record to point to).
+const TRUST_BADGES = ['Written Quotations', 'Dedicated Wedding Expert', 'Free First Consultation'];
 
 export default function HomepageClient({ topBlogPosts = [], categories = [], categoryCount = 0 }: { topBlogPosts?: BlogHighlight[]; categories?: HomeCategory[]; categoryCount?: number }) {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
@@ -88,7 +88,6 @@ export default function HomepageClient({ topBlogPosts = [], categories = [], cat
         <JourneySection />
         <WeddingStylesSection />
         <WeddingJournalSection />
-        <TestimonialsSection />
         <CitiesSection />
         <ExpertSection />
         <FeaturedVendorsSection />

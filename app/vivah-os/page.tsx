@@ -4,6 +4,7 @@ import { ArrowRight, Briefcase, CalendarClock, FileText, Inbox, ListChecks, Rece
 import { festive } from '@/lib/festive';
 import { MarigoldGarland, OrnamentRule } from '@/components/festive/Decor';
 import ConnectedWedding from '@/components/vivah-os/ConnectedWedding';
+import TrackedLink from '@/components/vivah-os/TrackedLink';
 
 // The public page that introduces Vivah OS (14 Oct 2026) — honestly. Vivah OS is in early access: a small number of partner
 // businesses in Patna use it, and couples meet parts of it through Shaadi Shopping. So every list on this page says which of
@@ -24,9 +25,9 @@ export const metadata: Metadata = {
 };
 
 const serif = { fontFamily: 'var(--font-playfair), serif' };
-const eyebrow = 'text-[11px] font-semibold uppercase tracking-[0.3em] text-[#B08D55]';
-const primary = 'inline-flex min-h-[52px] whitespace-nowrap items-center justify-center gap-2 rounded-full bg-[#8B1A4A] px-8 text-[15px] font-semibold tracking-wide text-white shadow-[0_12px_32px_rgba(139,26,74,0.28)] transition-opacity hover:opacity-90';
-const secondary = 'inline-flex min-h-[52px] whitespace-nowrap items-center justify-center rounded-full border border-[#8B1A4A]/35 px-7 text-sm font-semibold text-[#8B1A4A] transition-colors hover:bg-[#8B1A4A] hover:text-white';
+const eyebrow = 'text-[11px] font-semibold uppercase tracking-[0.3em] text-[#8A6A2F]';
+const primary = 'inline-flex min-h-[52px] whitespace-nowrap items-center justify-center gap-2 rounded-full bg-[#8B1A4A] px-8 text-[15px] font-semibold tracking-wide text-white shadow-[0_12px_32px_rgba(139,26,74,0.28)] transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-[#8B1A4A] focus-visible:ring-offset-2';
+const secondary = 'inline-flex min-h-[52px] whitespace-nowrap items-center justify-center rounded-full border border-[#8B1A4A]/35 px-7 text-sm font-semibold text-[#8B1A4A] transition-colors hover:bg-[#8B1A4A] hover:text-white outline-none focus-visible:ring-2 focus-visible:ring-[#8B1A4A] focus-visible:ring-offset-2';
 
 type Status = 'today' | 'early' | 'planned';
 const STATUS: Record<Status, { label: string; cls: string }> = {
@@ -87,8 +88,8 @@ export default function VivahOsPage() {
               We are building it step by step, with real weddings in Patna. This page says plainly what is here today, what is in early access, and what is still planned.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <a href="#couples" className={primary}>For Couples <ArrowRight className="h-4 w-4" aria-hidden /></a>
-              <a href="#business" className={secondary}>For Venues &amp; Vendors</a>
+              <TrackedLink href="#couples" audience="couples" cta="choose_audience" className={primary}>For Couples <ArrowRight className="h-4 w-4" aria-hidden /></TrackedLink>
+              <TrackedLink href="#business" audience="business" cta="choose_audience" className={secondary}>For Venues &amp; Vendors</TrackedLink>
             </div>
           </div>
           <ConnectedWedding />
@@ -114,8 +115,8 @@ export default function VivahOsPage() {
             ))}
           </ul>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-            <Link href="/plan" className={primary}>Begin your wedding journey <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-            <Link href="/cities/patna/venue" className={secondary}>Explore wedding venues</Link>
+            <TrackedLink href="/plan" audience="couples" cta="begin_journey" className={primary}>Begin your wedding journey <ArrowRight className="h-4 w-4" aria-hidden /></TrackedLink>
+            <TrackedLink href="/cities/patna/venue" audience="couples" cta="explore_venues" className={secondary}>Explore wedding venues</TrackedLink>
           </div>
         </div>
       </section>
@@ -147,15 +148,15 @@ export default function VivahOsPage() {
           <ol className="mx-auto mt-14 grid max-w-5xl gap-5 sm:grid-cols-3">
             {STEPS.map((s) => (
               <li key={s.n} className="rounded-[22px] border border-[#EFE6D8] bg-white p-7">
-                <p className="font-cormorant text-4xl italic text-[#C5A46D]">{s.n}</p>
+                <p className="font-cormorant text-4xl italic text-[#9A7536]">{s.n}</p>
                 <h3 className="mt-3 text-xl" style={serif}>{s.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[#6B5B4D]">{s.text}</p>
               </li>
             ))}
           </ol>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-            <Link href="/vendor-onboarding" className={primary}>Request early access <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-            <Link href="/vendor/login" className={secondary}>Already with us? Sign in</Link>
+            <TrackedLink href="/vendor-onboarding" audience="business" cta="request_early_access" className={primary}>Request early access <ArrowRight className="h-4 w-4" aria-hidden /></TrackedLink>
+            <TrackedLink href="/vendor/login" audience="business" cta="sign_in" className={secondary}>Already with us? Sign in</TrackedLink>
           </div>
         </div>
       </section>
@@ -167,8 +168,8 @@ export default function VivahOsPage() {
           <h2 id="vivah-os-cta" className="text-3xl leading-tight text-white sm:text-[40px]" style={serif}>Discover your wedding with Shaadi Shopping. Experience the next chapter with Vivah OS.</h2>
           <p className="mt-4 text-[15px] leading-relaxed text-white/70">Questions about early access? Talk to our team in Patna.</p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-            <a href="tel:+917646028228" className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-[#C5A46D] px-8 text-[15px] font-semibold text-[#17151A] transition-opacity hover:opacity-90">Talk to our team</a>
-            <Link href="/" className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/25 px-7 text-sm font-semibold text-white/90 transition-colors hover:bg-white/10">Back to Shaadi Shopping</Link>
+            <a href="tel:+917646028228" className="inline-flex min-h-[52px] items-center justify-center rounded-full bg-[#C5A46D] px-8 text-[15px] font-semibold text-[#17151A] transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#17151A]">Talk to our team</a>
+            <Link href="/" className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/25 px-7 text-sm font-semibold text-white/90 transition-colors hover:bg-white/10 outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#17151A]">Back to Shaadi Shopping</Link>
           </div>
         </div>
       </section>

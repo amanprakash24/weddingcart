@@ -38,8 +38,30 @@ async function getTopBlogPosts(): Promise<BlogHighlight[]> {
   }
 }
 
-// "Explore Wedding Categories": the everyday categories that have published vendors today, busiest first — straight from the database,
-// with each category's own name and picture. If the read fails the section is simply left out.
+// Pictures for the category cards, from the photographs already in /public — used in place of the stock picture stored on the
+// category where we have a better, Indian-wedding one. They illustrate the CATEGORY; none is presented as a particular venue or
+// vendor. Add a line here when a better photograph for a category is added to /public.
+const CATEGORY_PICTURES: Record<string, string> = {
+  venue: '/cat-venue-guides.jpg',
+  decorator: '/guide-decor.jpg',
+  makeup: '/guide-bridal.jpg',
+  'photo-video': '/cat-photography.jpg',
+};
+
+// Does this picture address still answer with an image? (Two stored category pictures were dead links on 14 Oct 2026.)
+async function pictureLoads(url: string): Promise<boolean> {
+  if (url.startsWith('/')) return true; // our own file
+  try {
+    const res = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(4000), next: { revalidate: 3600 } });
+    return res.ok && (res.headers.get('content-type') ?? '').startsWith('image/');
+  } catch {
+    return false;
+  }
+}
+
+// "Explore Wedding Categories": the everyday categories that have published vendors today, busiest first — straight from the
+// database. A category is shown only if it has a picture that really loads; one without is left out until it is given a picture
+// (admin → Categories), rather than shown as a broken card. If the read fails the whole section is simply left out.
 async function getHomeCategories(): Promise<{ cards: HomeCategory[]; count: number }> {
   try {
     const { data } = await categoryRepository.findMany({
@@ -49,20 +71,25 @@ async function getHomeCategories(): Promise<{ cards: HomeCategory[]; count: numb
     });
     // The count on the facts row: every category (special ones too) that has a published vendor.
     const { total } = await categoryRepository.findMany({ where: { vendors: { some: { status: 'PUBLISHED' } } }, take: 1 });
-    return { cards: data.map((c) => ({ slug: c.slug, name: c.name, image: c.image })), count: total };
+    const withPictures = data.map((c) => ({ slug: c.slug, name: c.name, image: CATEGORY_PICTURES[c.slug] ?? c.image }));
+    const usable = await Promise.all(withPictures.map((c) => (c.image ? pictureLoads(c.image) : false)));
+    return { cards: withPictures.filter((_, i) => usable[i]), count: total };
   } catch {
     return { cards: [], count: 0 };
   }
 }
 
+// Re-read the categories (and re-check their pictures) at most once an hour.
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
-  title: "Shaadi Shopping | Trusted Wedding Planning & Verified Vendors in Patna",
+  title: "Shaadi Shopping | Trusted Wedding Planning & Wedding Vendors in Patna",
   description:
-    'Plan your wedding with confidence. Compare verified banquet halls, photographers, caterers, decorators and more in Patna. Get a dedicated Wedding Expert from planning to vidai—free of cost.',
+    'Plan your wedding with confidence. Compare banquet halls, photographers, caterers, decorators and more in Patna. Get a dedicated Wedding Expert from planning to vidai—free of cost.',
   alternates: { canonical: BASE_URL },
   openGraph: {
     title: "ShaadiShopping — Wedding Planning in Patna",
-    description: 'Your trusted wedding planner in Patna. Find verified wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
+    description: 'Your trusted wedding planner in Patna. Find wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
     url: BASE_URL,
     type: 'website',
     locale: 'en_IN',
@@ -72,7 +99,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "ShaadiShopping — Wedding Planning in Patna",
-    description: 'Your trusted wedding planner in Patna. Find verified wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
+    description: 'Your trusted wedding planner in Patna. Find wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
     images: ['/opengraph-image'],
   },
 };
@@ -83,7 +110,7 @@ const websiteSchema = {
   name: 'ShaadiShopping',
   alternateName: ['Shaadi Shopping', 'ShaadiShopping.com', 'शादी शॉपिंग'],
   url: BASE_URL,
-  description: 'Shaadi Shopping helps families plan weddings in Patna with verified venues, trusted vendors, transparent quotations, and one dedicated Wedding Expert from planning to vidai.',
+  description: 'Shaadi Shopping helps families plan weddings in Patna with wedding venues, trusted vendors, written quotations, and one dedicated Wedding Expert from planning to vidai.',
   potentialAction: {
     '@type': 'SearchAction',
     target: {
@@ -155,7 +182,7 @@ const faqSchema = {
       name: 'What wedding services does ShaadiShopping provide in Patna?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'ShaadiShopping provides complete wedding planning services in Patna including wedding venues, banquet halls, bridal makeup artists, wedding photographers, mehndi artists, wedding decorators, caterers, DJ services, wedding bands, and wedding planners. All vendors are verified and we offer free expert consultation.',
+        text: 'ShaadiShopping provides complete wedding planning services in Patna including wedding venues, banquet halls, bridal makeup artists, wedding photographers, mehndi artists, wedding decorators, caterers, DJ services, wedding bands, and wedding planners. The first expert consultation is free.',
       },
     },
     {
@@ -163,7 +190,7 @@ const faqSchema = {
       name: 'How much does a wedding cost in Patna?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'A wedding in Patna typically costs between ₹5 lakh to ₹50 lakh depending on guest count, venue, and services. Budget weddings for 200–300 guests start around ₹5–10 lakh. ShaadiShopping helps you plan within your budget with verified vendors offering competitive rates.',
+        text: 'A wedding in Patna typically costs between ₹5 lakh to ₹50 lakh depending on guest count, venue, and services. Budget weddings for 200–300 guests start around ₹5–10 lakh. ShaadiShopping helps you plan within your budget with vendors to fit it.',
       },
     },
     {

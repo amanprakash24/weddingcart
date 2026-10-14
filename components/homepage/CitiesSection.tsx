@@ -61,7 +61,7 @@ export default function CitiesSection() {
               We Plan Weddings Across Bihar
             </motion.h2>
             <motion.p variants={fadeUp} className="text-[#6B5B4D] text-sm mt-4 max-w-xs mx-auto leading-relaxed">
-              Expert coordination, verified vendors, and personal planning — wherever your celebration happens.
+              Expert coordination, trusted vendors, and personal planning — wherever your celebration happens.
             </motion.p>
           </motion.div>
 
@@ -100,7 +100,7 @@ export default function CitiesSection() {
                     Plan Your<br />Patna Wedding
                   </h3>
                   <p className="text-white/60 text-xs mb-5 leading-relaxed">
-                    Venues · Makeup · Catering · Decorators · SFX — all verified locally
+                    Venues · Makeup · Catering · Decorators · SFX — all in Patna
                   </p>
                   <span className="inline-flex items-center gap-2 text-[#C5A46D] text-[11px] font-semibold tracking-[0.12em] uppercase group-hover:gap-4 transition-all duration-300">
                     Explore Patna <ArrowRight className="w-3.5 h-3.5" />
@@ -180,7 +180,7 @@ export default function CitiesSection() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-end justify-between mb-8">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#C5A46D] mb-1">Verified by ShaadiShopping</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#C5A46D] mb-1">On Shaadi Shopping</p>
               <h2
                 className="text-2xl sm:text-3xl font-bold text-[#2A1F1B]"
                 style={{ fontFamily: 'var(--font-playfair, serif)' }}
@@ -273,7 +273,7 @@ export default function CitiesSection() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.2em] bg-[#C5A46D] text-white px-2.5 py-1 rounded-full">
-                  4.6★ · Saguna Mor
+                  Saguna Mor
                 </span>
               </div>
               <div className="p-5">
