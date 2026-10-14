@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Phone } from 'lucide-react';
-import { trackEvent } from '@/lib/analytics/events';
 import { festive } from '@/lib/festive';
 import { Diya, MarigoldGarland } from '@/components/festive/Decor';
 
@@ -122,7 +121,6 @@ export default function HeroSection() {
               <>
                 <Link
                   href="/cities/patna/venue"
-                  onClick={() => trackEvent('home_cta_click', { location: 'hero', cta: 'explore_venues' })}
                   className="inline-flex min-h-[52px] items-center justify-center gap-2 bg-[#8B1A4A] text-white px-7 sm:px-9 py-3.5 sm:py-4 rounded-full font-semibold text-sm shadow-xl hover:opacity-90 transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#F3E3C3] focus-visible:ring-offset-2 focus-visible:ring-offset-[#2A1F1B]"
                   style={{ boxShadow: '0 8px 40px rgba(139,26,74,0.45)' }}
                 >
@@ -130,7 +128,6 @@ export default function HeroSection() {
                 </Link>
                 <a
                   href="tel:+917646028228"
-                  onClick={() => trackEvent('home_cta_click', { location: 'hero', cta: 'talk_to_expert' })}
                   className="inline-flex min-h-[52px] items-center justify-center gap-2 bg-[#C5A46D]/14 backdrop-blur-sm border border-[#C5A46D]/55 text-[#F3E3C3] px-6 sm:px-7 py-3.5 sm:py-4 rounded-full font-medium text-sm hover:bg-[#C5A46D]/22 transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#F3E3C3] focus-visible:ring-offset-2 focus-visible:ring-offset-[#2A1F1B]"
                 >
                   <Phone className="w-4 h-4" /> Talk to a Wedding Expert

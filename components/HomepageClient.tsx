@@ -7,7 +7,6 @@ import { Phone } from 'lucide-react';
 import HeroSection from './homepage/HeroSection';
 import ValuePropsSection from './homepage/ValuePropsSection';
 import BudgetSection from './homepage/BudgetSection';
-import TrustStats from './homepage/TrustStats';
 import JourneySection from './homepage/JourneySection';
 import WeddingStylesSection from './homepage/WeddingStylesSection';
 import WeddingJournalSection from './homepage/WeddingJournalSection';
@@ -18,7 +17,6 @@ import GrowthPartnerSection from './homepage/GrowthPartnerSection';
 import FinalCtaSection from './homepage/FinalCtaSection';
 import AboutBrandSection from './homepage/AboutBrandSection';
 import BlogHighlightsSection, { type BlogHighlight } from './homepage/BlogHighlightsSection';
-import CategoriesSection, { type HomeCategory } from './homepage/CategoriesSection';
 import VivahOsSection from './homepage/VivahOsSection';
 
 const MARQUEE_ITEMS = [
@@ -27,10 +25,10 @@ const MARQUEE_ITEMS = [
   'Jewellery', 'Pandits',
 ];
 
-// What Shaadi Shopping really does (14 Oct 2026 claim audit: "Verified Vendors" removed — there is no verification record to point to).
-const TRUST_BADGES = ['Written Quotations', 'Dedicated Wedding Expert', 'Free First Consultation'];
+// "Verified Vendors" left out until there is a verification record to point to (14 Oct 2026).
+const TRUST_BADGES = ['Transparent Quotations', 'Dedicated Wedding Expert', 'Free Consultation'];
 
-export default function HomepageClient({ topBlogPosts = [], categories = [], categoryCount = 0 }: { topBlogPosts?: BlogHighlight[]; categories?: HomeCategory[]; categoryCount?: number }) {
+export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: BlogHighlight[] }) {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -63,9 +61,6 @@ export default function HomepageClient({ topBlogPosts = [], categories = [], cat
 
         <ValuePropsSection />
 
-        {/* 14 Oct 2026: the categories that really exist, read by app/page.tsx. */}
-        <CategoriesSection categories={categories} />
-
         <BudgetSection />
 
         {/* Marquee */}
@@ -84,7 +79,8 @@ export default function HomepageClient({ topBlogPosts = [], categories = [], cat
           </div>
         </div>
 
-        <TrustStats categoryCount={categoryCount} />
+        {/* The numbers row (components/homepage/TrustStats.tsx: "10,000+ couples · 500+ verified vendors · 25+ cities · 5 experts")
+            is left out until each number has a source (14 Oct 2026). Put <TrustStats /> back here once it does. */}
         <JourneySection />
         <WeddingStylesSection />
         <WeddingJournalSection />

@@ -4,8 +4,6 @@ import HomepageClient from '@/components/HomepageClient';
 import { JsonLd } from '@/components/JsonLd';
 import { blogRepository } from '@/repositories/blog.repository';
 import type { BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
-import type { HomeCategory } from '@/components/homepage/CategoriesSection';
-import { categoryRepository } from '@/repositories/category.repository';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
@@ -37,50 +35,6 @@ async function getTopBlogPosts(): Promise<BlogHighlight[]> {
     return [];
   }
 }
-
-// Pictures for the category cards, from the photographs already in /public — used in place of the stock picture stored on the
-// category where we have a better, Indian-wedding one. They illustrate the CATEGORY; none is presented as a particular venue or
-// vendor. Add a line here when a better photograph for a category is added to /public.
-const CATEGORY_PICTURES: Record<string, string> = {
-  venue: '/cat-venue-guides.jpg',
-  decorator: '/guide-decor.jpg',
-  makeup: '/guide-bridal.jpg',
-  'photo-video': '/cat-photography.jpg',
-};
-
-// Does this picture address still answer with an image? (Two stored category pictures were dead links on 14 Oct 2026.)
-async function pictureLoads(url: string): Promise<boolean> {
-  if (url.startsWith('/')) return true; // our own file
-  try {
-    const res = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(4000), next: { revalidate: 3600 } });
-    return res.ok && (res.headers.get('content-type') ?? '').startsWith('image/');
-  } catch {
-    return false;
-  }
-}
-
-// "Explore Wedding Categories": the everyday categories that have published vendors today, busiest first — straight from the
-// database. A category is shown only if it has a picture that really loads; one without is left out until it is given a picture
-// (admin → Categories), rather than shown as a broken card. If the read fails the whole section is simply left out.
-async function getHomeCategories(): Promise<{ cards: HomeCategory[]; count: number }> {
-  try {
-    const { data } = await categoryRepository.findMany({
-      where: { isSpecial: false, vendors: { some: { status: 'PUBLISHED' } } },
-      orderBy: { vendors: { _count: 'desc' } },
-      take: 8,
-    });
-    // The count on the facts row: every category (special ones too) that has a published vendor.
-    const { total } = await categoryRepository.findMany({ where: { vendors: { some: { status: 'PUBLISHED' } } }, take: 1 });
-    const withPictures = data.map((c) => ({ slug: c.slug, name: c.name, image: CATEGORY_PICTURES[c.slug] ?? c.image }));
-    const usable = await Promise.all(withPictures.map((c) => (c.image ? pictureLoads(c.image) : false)));
-    return { cards: withPictures.filter((_, i) => usable[i]), count: total };
-  } catch {
-    return { cards: [], count: 0 };
-  }
-}
-
-// Re-read the categories (and re-check their pictures) at most once an hour.
-export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Shaadi Shopping | Trusted Wedding Planning & Wedding Vendors in Patna",
@@ -237,7 +191,7 @@ const faqSchema = {
 };
 
 export default async function HomePage() {
-  const [topBlogPosts, categories] = await Promise.all([getTopBlogPosts(), getHomeCategories()]);
+  const topBlogPosts = await getTopBlogPosts();
 
   return (
     <>
@@ -245,7 +199,7 @@ export default async function HomePage() {
       <JsonLd data={organizationSchema} />
       <JsonLd data={faqSchema} />
       <Suspense>
-        <HomepageClient topBlogPosts={topBlogPosts} categories={categories.cards} categoryCount={categories.count} />
+        <HomepageClient topBlogPosts={topBlogPosts} />
       </Suspense>
     </>
   );

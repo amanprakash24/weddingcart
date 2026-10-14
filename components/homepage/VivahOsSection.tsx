@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import { trackEvent } from '@/lib/analytics/events';
 import { festive } from '@/lib/festive';
 import { MarigoldGarland } from '@/components/festive/Decor';
 import ConnectedWedding from '@/components/vivah-os/ConnectedWedding';
@@ -45,14 +44,12 @@ export default function VivahOsSection() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <Link
               href="/vivah-os#couples"
-              onClick={() => trackEvent('vivah_os_cta_click', { location: 'homepage', audience: 'couples' })}
               className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-[#8B1A4A] px-8 text-[15px] font-semibold tracking-wide text-white shadow-[0_12px_32px_rgba(139,26,74,0.28)] transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-[#8B1A4A] focus-visible:ring-offset-2"
             >
               For Couples <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
             <Link
               href="/vivah-os#business"
-              onClick={() => trackEvent('vivah_os_cta_click', { location: 'homepage', audience: 'business' })}
               className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full border border-[#8B1A4A]/35 bg-white/60 px-8 text-[15px] font-semibold tracking-wide text-[#8B1A4A] transition-colors hover:bg-[#8B1A4A] hover:text-white outline-none focus-visible:ring-2 focus-visible:ring-[#8B1A4A] focus-visible:ring-offset-2"
             >
               For Venues &amp; Vendors <ArrowRight className="h-4 w-4" aria-hidden />

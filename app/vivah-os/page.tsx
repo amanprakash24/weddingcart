@@ -4,7 +4,6 @@ import { ArrowRight, Briefcase, CalendarClock, FileText, Inbox, ListChecks, Rece
 import { festive } from '@/lib/festive';
 import { MarigoldGarland, OrnamentRule } from '@/components/festive/Decor';
 import ConnectedWedding from '@/components/vivah-os/ConnectedWedding';
-import TrackedLink from '@/components/vivah-os/TrackedLink';
 
 // The public page that introduces Vivah OS (14 Oct 2026) — honestly. Vivah OS is in early access: a small number of partner
 // businesses in Patna use it, and couples meet parts of it through Shaadi Shopping. So every list on this page says which of
@@ -88,8 +87,8 @@ export default function VivahOsPage() {
               We are building it step by step, with real weddings in Patna. This page says plainly what is here today, what is in early access, and what is still planned.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <TrackedLink href="#couples" audience="couples" cta="choose_audience" className={primary}>For Couples <ArrowRight className="h-4 w-4" aria-hidden /></TrackedLink>
-              <TrackedLink href="#business" audience="business" cta="choose_audience" className={secondary}>For Venues &amp; Vendors</TrackedLink>
+              <a href="#couples" className={primary}>For Couples <ArrowRight className="h-4 w-4" aria-hidden /></a>
+              <a href="#business" className={secondary}>For Venues &amp; Vendors</a>
             </div>
           </div>
           <ConnectedWedding />
@@ -115,8 +114,8 @@ export default function VivahOsPage() {
             ))}
           </ul>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-            <TrackedLink href="/plan" audience="couples" cta="begin_journey" className={primary}>Begin your wedding journey <ArrowRight className="h-4 w-4" aria-hidden /></TrackedLink>
-            <TrackedLink href="/cities/patna/venue" audience="couples" cta="explore_venues" className={secondary}>Explore wedding venues</TrackedLink>
+            <Link href="/plan" className={primary}>Begin your wedding journey <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+            <Link href="/cities/patna/venue" className={secondary}>Explore wedding venues</Link>
           </div>
         </div>
       </section>
@@ -155,8 +154,8 @@ export default function VivahOsPage() {
             ))}
           </ol>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
-            <TrackedLink href="/vendor-onboarding" audience="business" cta="request_early_access" className={primary}>Request early access <ArrowRight className="h-4 w-4" aria-hidden /></TrackedLink>
-            <TrackedLink href="/vendor/login" audience="business" cta="sign_in" className={secondary}>Already with us? Sign in</TrackedLink>
+            <Link href="/vendor-onboarding" className={primary}>Request early access <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+            <Link href="/vendor/login" className={secondary}>Already with us? Sign in</Link>
           </div>
         </div>
       </section>
