@@ -103,7 +103,7 @@ export default function LeadCapturePopup() {
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <CheckCircle className="w-12 h-12 text-emerald-500" />
               <p className="font-semibold text-gray-800">Thank you! We&apos;ll be in touch shortly.</p>
-              <p className="text-sm text-gray-400">Our wedding expert will call you.</p>
+              <p className="text-sm text-gray-400">Our wedding expert will call you within 24 hours.</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

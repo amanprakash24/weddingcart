@@ -3,13 +3,8 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Phone } from 'lucide-react';
-import { festive } from '@/lib/festive';
-import FestiveHero from './FestiveHero';
 
-// The everyday hero. While the wedding season is on (lib/festive.ts) the royal festive hero (FestiveHero.tsx) takes its place;
-// switching the season off brings this one back exactly as it was.
 export default function HeroSection() {
-  if (festive.enabled) return <FestiveHero />;
   return (
     <section className="relative h-screen min-h-[640px] flex items-center overflow-hidden">
       <div className="absolute inset-0">

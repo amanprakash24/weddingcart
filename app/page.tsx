@@ -37,13 +37,13 @@ async function getTopBlogPosts(): Promise<BlogHighlight[]> {
 }
 
 export const metadata: Metadata = {
-  title: "Shaadi Shopping | Trusted Wedding Planning & Wedding Vendors in Patna",
+  title: "Shaadi Shopping | Trusted Wedding Planning & Verified Vendors in Patna",
   description:
-    'Plan your wedding with confidence. Compare banquet halls, photographers, caterers, decorators and more in Patna. Get a dedicated Wedding Expert from planning to vidai—free of cost.',
+    'Plan your wedding with confidence. Compare verified banquet halls, photographers, caterers, decorators and more in Patna. Get a dedicated Wedding Expert from planning to vidai—free of cost.',
   alternates: { canonical: BASE_URL },
   openGraph: {
     title: "ShaadiShopping — Wedding Planning in Patna",
-    description: 'Your trusted wedding planner in Patna. Find wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
+    description: 'Your trusted wedding planner in Patna. Find verified wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
     url: BASE_URL,
     type: 'website',
     locale: 'en_IN',
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "ShaadiShopping — Wedding Planning in Patna",
-    description: 'Your trusted wedding planner in Patna. Find wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
+    description: 'Your trusted wedding planner in Patna. Find verified wedding vendors and wedding services, with a dedicated expert guiding you from planning to vidai.',
     images: ['/opengraph-image'],
   },
 };
@@ -64,7 +64,7 @@ const websiteSchema = {
   name: 'ShaadiShopping',
   alternateName: ['Shaadi Shopping', 'ShaadiShopping.com', 'शादी शॉपिंग'],
   url: BASE_URL,
-  description: 'Shaadi Shopping helps families plan weddings in Patna with wedding venues, trusted vendors, written quotations, and one dedicated Wedding Expert from planning to vidai.',
+  description: 'Shaadi Shopping helps families plan weddings in Patna with verified venues, trusted vendors, transparent quotations, and one dedicated Wedding Expert from planning to vidai.',
   potentialAction: {
     '@type': 'SearchAction',
     target: {
@@ -136,7 +136,7 @@ const faqSchema = {
       name: 'What wedding services does ShaadiShopping provide in Patna?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'ShaadiShopping provides complete wedding planning services in Patna including wedding venues, banquet halls, bridal makeup artists, wedding photographers, mehndi artists, wedding decorators, caterers, DJ services, wedding bands, and wedding planners. The first expert consultation is free.',
+        text: 'ShaadiShopping provides complete wedding planning services in Patna including wedding venues, banquet halls, bridal makeup artists, wedding photographers, mehndi artists, wedding decorators, caterers, DJ services, wedding bands, and wedding planners. All vendors are verified and we offer free expert consultation.',
       },
     },
     {
@@ -144,7 +144,7 @@ const faqSchema = {
       name: 'How much does a wedding cost in Patna?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'A wedding in Patna typically costs between ₹5 lakh to ₹50 lakh depending on guest count, venue, and services. Budget weddings for 200–300 guests start around ₹5–10 lakh. ShaadiShopping helps you plan within your budget with vendors to fit it.',
+        text: 'A wedding in Patna typically costs between ₹5 lakh to ₹50 lakh depending on guest count, venue, and services. Budget weddings for 200–300 guests start around ₹5–10 lakh. ShaadiShopping helps you plan within your budget with verified vendors offering competitive rates.',
       },
     },
     {

@@ -658,8 +658,6 @@ input[type="checkbox"], input[type="radio"] {
 
 /* ── Prefers reduced motion — disable decorative CSS animations ── */
 @media (prefers-reduced-motion: reduce) {
-  .festive-flame,
-  .festive-glow,
   .animate-marquee,
   .animate-marquee-fast,
   .animate-hero-glow,
@@ -699,16 +697,3 @@ input[type="checkbox"], input[type="radio"] {
 
   @page { margin: 1.5cm; }
 }
-
-/* Festive season (lib/festive.ts, components/festive/Decor.tsx): a diya's flame and its glow. Held still for reduced motion (above). */
-@keyframes festive-flicker {
-  0%, 100% { transform: scaleY(1) translateY(0); opacity: 1; }
-  40% { transform: scaleY(1.06) translateY(-0.5px); opacity: 0.92; }
-  70% { transform: scaleY(0.96) translateY(0.5px); opacity: 0.98; }
-}
-@keyframes festive-glow-pulse {
-  0%, 100% { opacity: 0.16; }
-  50% { opacity: 0.28; }
-}
-.festive-flame { transform-origin: 50% 46%; transform-box: fill-box; animation: festive-flicker 2.4s ease-in-out infinite; }
-.festive-glow { animation: festive-glow-pulse 3.2s ease-in-out infinite; }

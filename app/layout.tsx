@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     template: '%s | ShaadiShopping',
   },
   description:
-    "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book venues, catering, décor & more.",
+    "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
   keywords: [
     'shaadi', 'shadi', 'shaadi planning', 'shaadi vendors', 'online shaadi booking',
     'vivah', 'byah', 'vivah planning India',
@@ -80,7 +80,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   openGraph: {
     title: "ShaadiShopping — Patna's Trusted Wedding Planning Platform",
-    description: "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book venues, catering, décor & more.",
+    description: "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
     type: 'website',
     locale: 'en_IN',
     siteName: 'ShaadiShopping',
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "ShaadiShopping — Patna's Trusted Wedding Planning Platform",
-    description: "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book venues, catering, décor & more.",
+    description: "Patna's trusted wedding planning platform with one dedicated Wedding Expert from booking to vidaai. Book verified venues, catering, décor & more.",
     site: '@ShaadiShopping',
     images: ['/opengraph-image'],
   },

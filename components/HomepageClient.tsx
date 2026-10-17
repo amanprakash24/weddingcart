@@ -7,9 +7,11 @@ import { Phone } from 'lucide-react';
 import HeroSection from './homepage/HeroSection';
 import ValuePropsSection from './homepage/ValuePropsSection';
 import BudgetSection from './homepage/BudgetSection';
+import TrustStats from './homepage/TrustStats';
 import JourneySection from './homepage/JourneySection';
 import WeddingStylesSection from './homepage/WeddingStylesSection';
 import WeddingJournalSection from './homepage/WeddingJournalSection';
+import TestimonialsSection from './homepage/TestimonialsSection';
 import CitiesSection from './homepage/CitiesSection';
 import ExpertSection from './homepage/ExpertSection';
 import FeaturedVendorsSection from './homepage/FeaturedVendorsSection';
@@ -17,7 +19,6 @@ import GrowthPartnerSection from './homepage/GrowthPartnerSection';
 import FinalCtaSection from './homepage/FinalCtaSection';
 import AboutBrandSection from './homepage/AboutBrandSection';
 import BlogHighlightsSection, { type BlogHighlight } from './homepage/BlogHighlightsSection';
-import VivahOsSection from './homepage/VivahOsSection';
 
 const MARQUEE_ITEMS = [
   'Venues', 'Photographers', 'Decorators', 'Mehndi Artists',
@@ -25,8 +26,7 @@ const MARQUEE_ITEMS = [
   'Jewellery', 'Pandits',
 ];
 
-// "Verified Vendors" left out until there is a verification record to point to (14 Oct 2026).
-const TRUST_BADGES = ['Transparent Quotations', 'Dedicated Wedding Expert', 'Free Consultation'];
+const TRUST_BADGES = ['Verified Vendors', 'Transparent Quotations', 'Dedicated Wedding Expert', 'Free Consultation'];
 
 export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: BlogHighlight[] }) {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
@@ -79,18 +79,15 @@ export default function HomepageClient({ topBlogPosts = [] }: { topBlogPosts?: B
           </div>
         </div>
 
-        {/* The numbers row (components/homepage/TrustStats.tsx: "10,000+ couples · 500+ verified vendors · 25+ cities · 5 experts")
-            is left out until each number has a source (14 Oct 2026). Put <TrustStats /> back here once it does. */}
+        <TrustStats />
         <JourneySection />
         <WeddingStylesSection />
         <WeddingJournalSection />
+        <TestimonialsSection />
         <CitiesSection />
         <ExpertSection />
         <FeaturedVendorsSection />
         <GrowthPartnerSection />
-
-        {/* 14 Oct 2026: Vivah OS, introduced after the venue and vendor sections so it never competes with finding a venue. */}
-        <VivahOsSection />
 
         {/* Trust Badges */}
         <div className="bg-[#FAF5EE] border-y border-[#C5A46D]/8 py-8 overflow-hidden">

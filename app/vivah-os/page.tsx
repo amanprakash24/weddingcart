@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Briefcase, CalendarClock, FileText, Inbox, ListChecks, Receipt, Smartphone, Users } from 'lucide-react';
-import { festive } from '@/lib/festive';
-import { MarigoldGarland, OrnamentRule } from '@/components/festive/Decor';
 import ConnectedWedding from '@/components/vivah-os/ConnectedWedding';
 
 // The public page that introduces Vivah OS (14 Oct 2026) — honestly. Vivah OS is in early access: a small number of partner
@@ -67,7 +65,6 @@ export default function VivahOsPage() {
     <div className="bg-[#FFFAF5] text-[#2A1F1B]">
       {/* Opening — below the site header (36px announcement + 52 / 64 / 72px nav) */}
       <section className="relative overflow-hidden bg-[#F8F3EA] pt-[88px] sm:pt-[100px] lg:pt-[108px]">
-        {festive.enabled && <MarigoldGarland className="h-9 opacity-90 sm:h-11" />}
         <div aria-hidden className="pointer-events-none absolute -left-24 top-1/4 h-80 w-80 rounded-full bg-[#C5A46D]/14 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-[#8B1A4A]/8 blur-3xl" />
         <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:pb-24">
@@ -102,7 +99,7 @@ export default function VivahOsPage() {
             <p className={eyebrow}>For couples</p>
             <h2 id="vivah-os-couples" className="mt-4 text-3xl leading-tight sm:text-[40px]" style={serif}>Less to chase. More to celebrate.</h2>
             <p className="mt-4 text-[15px] leading-relaxed text-[#5A4A40]">You do not need to learn any software. You plan your wedding with Shaadi Shopping, and Vivah OS works quietly behind it.</p>
-            <OrnamentRule className="mt-6" />
+            <span aria-hidden className="mx-auto mt-6 block h-px w-16 bg-[#C5A46D]" />
           </div>
           <ul className="mt-12 grid gap-4 sm:grid-cols-2">
             {COUPLES.map((c) => (

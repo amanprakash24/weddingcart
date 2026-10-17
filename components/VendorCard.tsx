@@ -64,14 +64,11 @@ export default function VendorCard({ vendor }: Props) {
             </span>
           </div>
 
-          {/* Rating badge — only when there are reviews behind it. A new vendor row starts with a default rating of 4.5 and
-              no reviews; showing that number would be a rating nobody gave (14 Oct 2026 claim audit). */}
-          {vendor.reviewCount > 0 && (
-            <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm flex items-center gap-1 px-2.5 py-1 rounded-full shadow-sm">
-              <Star className="w-3 h-3 fill-[#C5A46D] text-[#C5A46D]" />
-              <span className="text-[11px] font-bold text-gray-900">{vendor.rating}</span>
-            </div>
-          )}
+          {/* Rating badge — gold star to match palette */}
+          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm flex items-center gap-1 px-2.5 py-1 rounded-full shadow-sm">
+            <Star className="w-3 h-3 fill-[#C5A46D] text-[#C5A46D]" />
+            <span className="text-[11px] font-bold text-gray-900">{vendor.rating}</span>
+          </div>
 
           {/* Featured */}
           {vendor.isFeatured && (
@@ -93,12 +90,8 @@ export default function VendorCard({ vendor }: Props) {
           <div className="flex items-center gap-1 text-gray-400 text-xs mb-3">
             <MapPin className="w-3 h-3 text-[#C5A46D] flex-shrink-0" />
             <span>{vendor.city}</span>
-            {vendor.reviewCount > 0 && (
-              <>
-                <span className="text-gray-200 mx-1">·</span>
-                <span className="text-gray-500">({vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'})</span>
-              </>
-            )}
+            <span className="text-gray-200 mx-1">·</span>
+            <span className="text-gray-500">({vendor.reviewCount} reviews)</span>
           </div>
 
           {/* Feature pills — ivory tone, no color clash */}

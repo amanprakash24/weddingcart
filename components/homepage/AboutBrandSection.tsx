@@ -24,10 +24,10 @@ export default function AboutBrandSection() {
               the right venue to coordinating every vendor on your wedding day.
             </p>
             <p className="text-[#6B5B4E] text-sm sm:text-base leading-relaxed mb-6">
-              Every couple gets one dedicated Wedding Expert from booking to vidaai, and the first consultation is
-              free. On Shaadi Shopping you will find banquet halls, bridal makeup artists, photographers, mehndi
-              artists, decorators, caterers, DJs, and wedding bands, and we recommend vendors to fit your date,
-              guest count and budget.
+              Every couple gets one dedicated Wedding Expert from booking to vidaai — completely free. Our network
+              includes verified vendors — banquet halls, bridal makeup artists, photographers, mehndi artists,
+              decorators, caterers, DJs, and wedding bands. Every vendor on Shaadi Shopping is personally verified
+              by our team, and we recommend vendors based on your budget, not commissions.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link
@@ -49,9 +49,9 @@ export default function AboutBrandSection() {
             {[
               { label: 'Founded', value: 'Patna, Bihar' },
               { label: 'Wedding Expert', value: '1 Dedicated Expert Per Couple' },
-              { label: 'Vendor Selection', value: 'To Fit Your Budget' },
+              { label: 'Vendor Selection', value: 'Budget-Based, Not Commissions' },
               { label: 'Expanding Across', value: 'Bihar' },
-              { label: 'First Consultation', value: 'Free' },
+              { label: 'Service', value: '100% Free for Couples' },
               { label: 'Contact', value: '+91-76460-28228' },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between items-center border-b border-[#C5A46D]/15 pb-3">
