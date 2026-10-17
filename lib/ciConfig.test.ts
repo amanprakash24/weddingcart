@@ -8,7 +8,7 @@ const root = join(import.meta.dir, '..');
 const workflow = readFileSync(join(root, '.github', 'workflows', 'ci.yml'), 'utf8');
 const eslint = readFileSync(join(root, 'eslint.config.mjs'), 'utf8');
 
-// The 10 files that already broke react-hooks/set-state-in-effect when CI started (3 Oct 2026).
+// The files (10 at the start, 9 since the 17 Oct 2026 homepage refresh removed one) that already broke react-hooks/set-state-in-effect when CI started (3 Oct 2026).
 const FROZEN_DEBT = [
   'components/AdminBlogClient.tsx',
   'components/AdminCategoryDetailClient.tsx',
@@ -19,7 +19,6 @@ const FROZEN_DEBT = [
   'components/CategoryPageClient.tsx',
   'components/PlanPageClient.tsx',
   'components/admin/EventAdminClient.tsx',
-  'components/homepage/FeaturedVendorsSection.tsx',
 ];
 
 describe('CI workflow', () => {
