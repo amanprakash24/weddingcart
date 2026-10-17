@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { shaadiWhatsAppLink } from '@/lib/shaadiContact';
 import RelatedGuides from '@/components/RelatedGuides';
+import { checkEnquiryForm, submitEnquiry } from '@/lib/enquiry/publicEnquiry';
 
 const RELATED_GUIDES = [
   { title: 'Best Banquet Halls in Patna', href: '/blog/best-banquet-halls-patna-wedding-marriage-hall', desc: 'Top wedding & marriage halls across Patna for 2025.' },
@@ -189,37 +190,32 @@ export default function TouchOfCozyVendorPageClient() {
   const [error, setError] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  const isValidPhone = (v: string) => /^\d{10}$/.test(v.replace(/[\s\-\+\(\)]/g, ''));
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!isValidPhone(form.phone)) {
-      setError('Please enter a valid 10-digit phone number.');
+    const problem = checkEnquiryForm(form);
+    if (problem) {
+      setError(problem);
       return;
     }
     setSubmitting(true);
     try {
-      await fetch('/api/enquiries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vendorId: 'touch-of-cozy-patna',
-          vendorName: 'Touch of Cozy',
-          vendorCategory: 'venue',
-          name: form.name,
-          phone: form.phone,
-          city: 'Patna',
-          eventDate: form.eventDate,
-          guestCount: form.guestCount,
-          eventType: 'wedding',
-          message: form.message || 'Enquiry from vendor page',
-          source: 'vendors-touch-of-cozy-patna',
-        }),
+      // "Received" only once the server has accepted it; otherwise the form stays filled for another try.
+      const result = await submitEnquiry({
+        vendorId: 'touch-of-cozy-patna',
+        vendorName: 'Touch of Cozy',
+        vendorCategory: 'venue',
+        name: form.name,
+        phone: form.phone,
+        city: 'Patna',
+        eventDate: form.eventDate,
+        guestCount: form.guestCount,
+        eventType: 'wedding',
+        message: form.message || 'Enquiry from vendor page',
+        source: 'vendors-touch-of-cozy-patna',
       });
-      setSubmitted(true);
-    } catch {
-      setError('Something went wrong. Please call us directly.');
+      if (result.ok) setSubmitted(true);
+      else setError(result.message);
     } finally {
       setSubmitting(false);
     }
@@ -394,7 +390,9 @@ export default function TouchOfCozyVendorPageClient() {
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <input
+                        required
                         type="date"
+                        aria-label="Event date (required)"
                         value={form.eventDate}
                         onChange={(e) => setForm({ ...form, eventDate: e.target.value })}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#8B1A4A]/20 focus:border-[#8B1A4A] transition-colors"
@@ -420,7 +418,7 @@ export default function TouchOfCozyVendorPageClient() {
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B1A4A]/20 focus:border-[#8B1A4A] transition-colors resize-none"
                     />
 
-                    {error && <p className="text-rose-500 text-xs">{error}</p>}
+                    {error && <p role="alert" className="text-rose-600 text-xs">{error}</p>}
 
                     <button
                       type="submit"
