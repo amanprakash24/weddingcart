@@ -160,12 +160,14 @@ export default function Navbar() {
 
             {/* Logo */}
             <Link href="/" className="flex-shrink-0" style={{ touchAction: 'manipulation' }}>
+              {/* Horizontal logo so the name is readable at header size; the light version (maroon ink in ivory)
+                  while the bar is see-through over a dark photo hero. */}
               <Image
-                src="/logo.png"
+                src={isTransparent ? '/logo-horizontal-light.png' : '/logo-horizontal.png'}
                 alt="ShaadiShopping"
-                width={240}
-                height={150}
-                className="h-[44px] sm:h-[52px] lg:h-[58px] w-auto object-contain"
+                width={749}
+                height={236}
+                className="h-[34px] sm:h-[40px] lg:h-[44px] w-auto object-contain"
                 priority
               />
             </Link>

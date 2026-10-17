@@ -100,11 +100,11 @@ export default function AboutClient() {
           <motion.div initial="hidden" animate="show" variants={stagger(0.15, 0.1)}>
             <motion.div variants={fadeUp} className="flex justify-center mb-9">
               <Image
-                src="/logo.jpeg"
+                src="/logo-horizontal-light.png"
                 alt="ShaadiShopping Logo"
-                width={260}
-                height={160}
-                className="object-contain drop-shadow-2xl rounded-2xl"
+                width={749}
+                height={236}
+                className="h-16 sm:h-20 w-auto object-contain"
                 priority
               />
             </motion.div>
@@ -356,7 +356,7 @@ export default function AboutClient() {
                   <Phone className="w-4 h-4" /> Talk to Us
                 </a>
                 <a
-                  href="mailto:shaadi.shopping51@gmail.com"
+                  href="mailto:care@shaadishopping.com"
                   className="flex items-center gap-2 border border-[#C5A46D]/40 text-[#8B1A4A] font-semibold px-6 py-3 rounded-full hover:bg-[#FAF5EE] transition-all text-sm"
                 >
                   <Mail className="w-4 h-4" /> Email Us
