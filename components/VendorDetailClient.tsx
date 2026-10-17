@@ -11,6 +11,7 @@ const GUEST_COUNT_CATEGORIES = new Set(['venue', 'catering', 'accommodation', 'h
 import { Vendor, Package } from '@/types';
 import { useCart } from '@/context/CartContext';
 import { getShaadiPhone } from '@/lib/shaadiPhone';
+import { checkEnquiryForm, isTenDigitPhone, submitEnquiry } from '@/lib/enquiry/publicEnquiry';
 import { ONLINE_RATING_LABEL, VERIFIED_REVIEWS_LABEL, type PublicReview } from '@/lib/reviews/reviewView';
 
 function whatsappUrl(vendorId: string, vendorName: string) {
@@ -39,6 +40,7 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
   const [enquiryForm, setEnquiryForm] = useState({ name: '', phone: '', email: '', city: 'Patna', eventDate: '', guestCount: '', eventType: 'wedding', message: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [enquiryError, setEnquiryError] = useState('');
   const { addItem, removeItem, items } = useCart();
 
   useEffect(() => {
@@ -70,23 +72,25 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
     addItem(vendor, pkg);
   };
 
-  const isValidPhone = (v: string) => /^\d{10}$/.test(v.replace(/[\s\-\+\(\)]/g, ''));
+  const isValidPhone = isTenDigitPhone;
 
   const handleEnquiry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vendor || !isValidPhone(enquiryForm.phone)) return;
+    if (!vendor) return;
+    setEnquiryError('');
+    const problem = checkEnquiryForm(enquiryForm);
+    if (problem) { setEnquiryError(problem); return; }
     setSubmitting(true);
     try {
-      await fetch('/api/enquiries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          vendorId: vendor.id,
-          vendorName: vendor.name,
-          vendorCategory: vendor.category,
-          ...enquiryForm,
-        }),
+      // The enquiry route looks the vendor up by SLUG in `vendorId` (services/enquiry.service.ts). This form sent the
+      // database id, so every enquiry was refused with a 404 while the page said "sent". The page's own id is the slug.
+      const result = await submitEnquiry({
+        vendorId: vendor.slug || id,
+        vendorName: vendor.name,
+        vendorCategory: vendor.category,
+        ...enquiryForm,
       });
+      if (!result.ok) { setEnquiryError(result.message); return; }
       setSubmitted(true);
       if (typeof window !== 'undefined' && typeof (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag === 'function') {
         (window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'generate_lead', {
@@ -730,6 +734,7 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Message</label>
                   <textarea rows={3} value={enquiryForm.message} onChange={(e) => setEnquiryForm({ ...enquiryForm, message: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors resize-none" placeholder="Any specific requirements or questions..." />
                 </div>
+                {enquiryError && <p role="alert" className="text-rose-600 text-xs">{enquiryError}</p>}
                 <button type="submit" disabled={submitting || !isValidPhone(enquiryForm.phone)} className="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-70 text-sm">
                   {submitting ? 'Sending...' : 'Send Enquiry'}
                 </button>
