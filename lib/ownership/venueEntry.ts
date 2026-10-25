@@ -5,6 +5,7 @@ import { can, type Permission } from '@/lib/auth/permissions';
 import { chosenWorkspace } from '@/lib/auth/workspace';
 import { venueBusinessService, type BusinessScope, type Workspace } from '@/services/venueBusiness.service';
 import { runInScope } from './scope';
+import { withRequestPath } from '@/lib/siteErrors/requestPath';
 
 // Entry for a business's OWN screens (Phase C; memberships since 7 Oct 2026): the scope is the business the signed-in person is
 // working in — resolved from their MEMBERSHIPS and the workspace they chose, never from the request — and everything the handler
@@ -56,7 +57,7 @@ export function createVenueScoped(deps: VenueEntryDeps = defaultDeps) {
       if (needs.length > 0 && !needs.some((p) => can(scope, p))) {
         return answer(403, { error: 'You do not have access to this. Ask the owner of the business if you need it.', forbidden: true });
       }
-      return runInScope(scope, () => fn(...args));
+      return runInScope(scope, () => withRequestPath(args[0], () => fn(...args)));
     };
   };
 }

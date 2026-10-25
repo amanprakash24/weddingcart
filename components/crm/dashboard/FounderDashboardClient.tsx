@@ -12,6 +12,7 @@ import FollowUpHealthCard from './FollowUpHealthCard';
 import TeamPerformanceCard from './TeamPerformanceCard';
 import type { FounderDashboard } from './types';
 import CommandCenter from './CommandCenter';
+import SiteErrorsNotice from '@/components/admin/SiteErrorsNotice';
 
 // The Command Center and Founder-specific sections come from one aggregate endpoint,
 // same "Workspace Loader" pattern as the Lead Workspace (Sprint 5.2).
@@ -41,6 +42,7 @@ export default function FounderDashboardClient() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <SiteErrorsNotice />
       {dashboardLoading || !dashboard ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">Loading…</div>
       ) : (

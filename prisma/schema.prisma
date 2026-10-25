@@ -254,6 +254,32 @@ model LoginAttempt {
   @@map("login_attempts")
 }
 
+// Errors people hit on the live site (25 Oct 2026), shown to staff on /admin/errors. One row per kind of problem
+// (fingerprint = where + what), with a running count, so a broken page shows once with "120 times", not 120 rows.
+// Holds no visitor data: no IP, no phone, and ids / private-link tokens are blanked out of addresses
+// (lib/siteErrors/normalize.ts). Platform data, not owned by a business.
+model SiteError {
+  id          String          @id @default(uuid())
+  fingerprint String          @unique
+  source      SiteErrorSource
+  message     String
+  location    String // page or API address, ids and tokens replaced by :id
+  detail      String? // first lines of the stack trace
+  count       Int             @default(1)
+  firstSeenAt DateTime        @default(now())
+  lastSeenAt  DateTime        @default(now())
+  lastBrowser String? // e.g. "Chrome · Android" for the latest browser error
+  resolvedAt  DateTime? // "Mark fixed"; set back to null if it happens again
+
+  @@index([resolvedAt, lastSeenAt])
+  @@map("site_errors")
+}
+
+enum SiteErrorSource {
+  SERVER
+  BROWSER
+}
+
 // ---------- Catalog ----------
 
 model Category {

@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
+import { reportBrowserError } from '@/lib/siteErrors/browser';
 
 // The last resort: the site's own frame (app/layout.tsx) failed, so nothing of it — styles, fonts, header — can be relied on.
 // It must bring its own <html> and <body>, and is styled inline for the same reason.
 export default function GlobalError({ error, unstable_retry }: { error: Error & { digest?: string }; unstable_retry: () => void }) {
   useEffect(() => {
     console.error(`[screen-error] root${error.digest ? ` ref ${error.digest}` : ''}:`, error);
+    reportBrowserError(error);
   }, [error]);
 
   return (

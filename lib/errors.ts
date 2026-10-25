@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { ZodError } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
 import { columnFromIndex, constraintFromMeta, friendlyDuplicateMessage } from '@/lib/duplicateConstraint';
+import { reportServerError, siteErrorsEnabled } from '@/lib/siteErrors/report';
+import { currentRequestPath } from '@/lib/siteErrors/requestPath';
 
 // Repository error contract — see docs/repository-contract.md.
 // Repositories catch known Prisma error codes and rethrow these; anything
@@ -110,6 +112,18 @@ export async function withPrismaErrors<T>(entity: string, fn: () => Promise<T>):
 // One shared mapping from thrown errors to HTTP responses, per
 // docs/repository-contract.md's "that mapping lives in one place" rule —
 // first real use is the Sprint 5.2 Lead Workspace mutation routes.
+// An unexpected error that reaches handleApiError was caught by its route, so Next.js's onRequestError (instrumentation.ts)
+// never sees it. Record it for /admin/errors once the response has been sent (outside a request: in the background).
+function reportUnexpected(err: unknown): void {
+  if (!siteErrorsEnabled()) return;
+  const location = currentRequestPath();
+  try {
+    after(() => reportServerError(err, { location }));
+  } catch {
+    void reportServerError(err, { location });
+  }
+}
+
 export function handleApiError(err: unknown): NextResponse {
   if (err instanceof NotFoundError) {
     console.warn(err.message);
@@ -136,5 +150,6 @@ export function handleApiError(err: unknown): NextResponse {
     return NextResponse.json({ success: false, error: USER_MESSAGES.invalid, issues: err.issues }, { status: 400 });
   }
   console.error(err);
+  reportUnexpected(err);
   return NextResponse.json({ success: false, error: USER_MESSAGES.unexpected }, { status: 500 });
 }
