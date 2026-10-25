@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { categoryHref } from '@/lib/home/categoryTiles';
 import { serif } from './styles';
 
-// Moving row of services under the hero (A+ "photo pills"). Photos from /public. Mehndi, Band & DJ and Invitations
-// (pill-mehndi/-band-dj/-invitations.jpg) are AI-made placeholders requested by the founder (25 Oct 2026) until real
+// Moving row of services under the hero (A+ "photo pills"). Photos from /public. Band & DJ is the founder's DJ & sangeet
+// photo. Mehndi and Invitations (pill-mehndi/-invitations.jpg) are AI-made placeholders requested by the founder (25 Oct 2026) until real
 // photos arrive; they show a service, never a vendor. A service without a photo shows a gold initial.
 const PILLS: { name: string; href: string; photo?: string; pos?: string }[] = [
   { name: 'Venues', href: categoryHref('venue'), photo: '/cat-venue-guides.jpg' },

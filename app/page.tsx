@@ -6,7 +6,7 @@ import { vendorService } from '@/services/vendor.service';
 import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { buildCategoryTiles, type CategoryTile } from '@/lib/home/categoryTiles';
 import { HOME_FAQ } from '@/lib/home/faq';
-import { blogCoverImage } from '@/lib/blog/coverImage';
+import { blogCoverImage } from '@/lib/images/workingImage';
 import type { Vendor } from '@/types';
 import BlogHighlightsSection, { type BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
 import HomeHero from '@/components/home/HomeHero';

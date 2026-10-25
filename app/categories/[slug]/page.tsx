@@ -7,6 +7,7 @@ import { categoryRepository } from '@/repositories/category.repository';
 import { vendorRepository } from '@/repositories/vendor.repository';
 import { toLegacyVendors } from '@/lib/serializers/vendor';
 import type { Vendor } from '@/types';
+import { workingImage } from '@/lib/images/workingImage';
 
 // City name → URL slug map for supported cities
 const CITY_NAME_TO_SLUG: Record<string, string> = {
@@ -178,7 +179,7 @@ async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
   try {
     const cat = await categoryRepository.findBySlug(slug);
     if (!cat) return null;
-    return { name: cat.name, description: cat.description, image: cat.image, updatedAt: cat.updatedAt };
+    return { name: cat.name, description: cat.description, image: workingImage(cat.image), updatedAt: cat.updatedAt };
   } catch {
     return null;
   }

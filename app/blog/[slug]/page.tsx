@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { blogRepository } from '@/repositories/blog.repository';
 import { JsonLd } from '@/components/JsonLd';
 import type { Blog } from '@/generated/prisma/client';
-import { blogCoverImage } from '@/lib/blog/coverImage';
+import { blogCoverImage } from '@/lib/images/workingImage';
 import { Calendar, Clock, ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
