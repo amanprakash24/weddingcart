@@ -30,9 +30,11 @@ export default function VendorCard({ vendor }: Props) {
   const hasPerPlate = vendor.packages.some(
     (p) => p.isPerPlate === true || p.features.some((f) => f.toLowerCase().includes('per plate'))
   );
-  const startingPrice = hasPerPlate
-    ? vendor.priceMin
-    : Math.min(...vendor.packages.map((p) => p.price));
+  const packagePrices = vendor.packages.map((p) => p.price).filter((n) => Number.isFinite(n) && n > 0);
+  // No packages: fall back to the vendor's own starting price instead of Math.min() of nothing (Infinity).
+  const startingPrice = hasPerPlate || packagePrices.length === 0 ? vendor.priceMin : Math.min(...packagePrices);
+  // The rating column defaults to 4.5 for every vendor, so a star is shown only when there are real reviews.
+  const showRating = (vendor.reviewCount ?? 0) > 0;
 
   return (
     <Link href={`/vendors/${vendor.slug ?? vendor.id}`} className="block group vendor-card-luxury">
@@ -64,11 +66,13 @@ export default function VendorCard({ vendor }: Props) {
             </span>
           </div>
 
-          {/* Rating badge — gold star to match palette */}
-          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm flex items-center gap-1 px-2.5 py-1 rounded-full shadow-sm">
-            <Star className="w-3 h-3 fill-[#C5A46D] text-[#C5A46D]" />
-            <span className="text-[11px] font-bold text-gray-900">{vendor.rating}</span>
-          </div>
+          {/* Rating badge — gold star to match palette; only with real reviews */}
+          {showRating && (
+            <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm flex items-center gap-1 px-2.5 py-1 rounded-full shadow-sm">
+              <Star className="w-3 h-3 fill-[#C5A46D] text-[#C5A46D]" />
+              <span className="text-[11px] font-bold text-gray-900">{vendor.rating}</span>
+            </div>
+          )}
 
           {/* Featured */}
           {vendor.isFeatured && (
@@ -90,8 +94,12 @@ export default function VendorCard({ vendor }: Props) {
           <div className="flex items-center gap-1 text-gray-400 text-xs mb-3">
             <MapPin className="w-3 h-3 text-[#C5A46D] flex-shrink-0" />
             <span>{vendor.city}</span>
-            <span className="text-gray-200 mx-1">·</span>
-            <span className="text-gray-500">({vendor.reviewCount} reviews)</span>
+            {showRating && (
+              <>
+                <span className="text-gray-200 mx-1">·</span>
+                <span className="text-gray-500">({vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'})</span>
+              </>
+            )}
           </div>
 
           {/* Feature pills — ivory tone, no color clash */}
@@ -119,10 +127,14 @@ export default function VendorCard({ vendor }: Props) {
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <div>
               <p className="text-[9px] text-gray-400 uppercase tracking-[0.15em] mb-0.5">Starting from</p>
-              <p className="text-[#8B1A4A] font-semibold text-base">
-                ₹{startingPrice.toLocaleString('en-IN')}
-                {vendor.priceUnit && <span className="text-xs font-normal text-gray-400">{PRICE_UNIT_SUFFIX[vendor.priceUnit]}</span>}
-              </p>
+              {startingPrice > 0 ? (
+                <p className="text-[#8B1A4A] font-semibold text-base">
+                  ₹{startingPrice.toLocaleString('en-IN')}
+                  {vendor.priceUnit && <span className="text-xs font-normal text-gray-400">{PRICE_UNIT_SUFFIX[vendor.priceUnit]}</span>}
+                </p>
+              ) : (
+                <p className="text-[#8B1A4A] font-semibold text-sm">Price on request</p>
+              )}
             </div>
             <div className="w-9 h-9 flex items-center justify-center rounded-full border border-[#C5A46D]/30 group-hover:bg-[#8B1A4A] group-hover:border-[#8B1A4A] transition-all duration-300">
               <ChevronRight className="w-4 h-4 text-[#C5A46D] group-hover:text-white transition-colors" />

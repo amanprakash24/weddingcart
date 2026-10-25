@@ -82,7 +82,7 @@ export default function ContactBanner() {
                 Call
               </a>
               <a
-                href="mailto:shaadi.shopping51@gmail.com"
+                href="mailto:care@shaadishopping.com"
                 className="flex-1 flex items-center justify-center gap-1.5 border border-[#C5A46D]/25 text-[#7A6A5A] px-3 py-2.5 rounded-xl text-xs font-medium hover:border-[#C5A46D]/50 hover:text-[#8B1A4A] transition-all"
               >
                 <Mail className="w-3.5 h-3.5" />

@@ -3,6 +3,7 @@ import { blogService } from '@/services/blog.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { Blog } from '@/generated/prisma/client';
+import { blogCoverImage } from '@/lib/blog/coverImage';
 import { platformScoped } from '@/lib/ownership/entry';
 
 // Admin/public callers still expect the legacy Mongo shape: lowercase
@@ -13,6 +14,7 @@ function toResponseShape(blog: Blog) {
   return {
     ...blog,
     _id: blog.id,
+    coverImage: blogCoverImage(blog.coverImage), // removed Unsplash photos → our own copy (lib/blog/coverImage.ts)
     status: blog.status === 'PUBLISHED' ? 'published' : 'draft',
   };
 }

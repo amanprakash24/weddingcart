@@ -7,7 +7,8 @@ import { join } from 'node:path';
 const root = join(import.meta.dir, '..', '..');
 const read = (f: string) => readFileSync(join(root, f), 'utf8');
 const page = read('components/growthPartner/GrowthPartnerPageClient.tsx');
-const home = read('components/homepage/GrowthPartnerSection.tsx');
+// The homepage introduces the program in its own section (A+ homepage, 25 Oct 2026).
+const home = read('components/home/GrowthPartnerSection.tsx');
 const forms = read('components/growthPartner/GrowthPartnerForms.tsx');
 
 describe('Growth Partner — public page rules', () => {
@@ -21,9 +22,9 @@ describe('Growth Partner — public page rules', () => {
   });
 
   test('the homepage section only introduces the program and links to /growth-partner — no form there', () => {
-    expect(home).toContain('href="/growth-partner"');
+    expect(home).toContain("href: '/growth-partner'");
     expect(home).not.toMatch(/<form|<input/);
-    expect(read('components/HomepageClient.tsx')).toMatch(/<FeaturedVendorsSection \/>\s*<GrowthPartnerSection \/>/);
+    expect(read('app/page.tsx')).toContain('<GrowthPartnerSection />');
   });
 
   test('both forms need consent; CTA clicks are tracked', () => {

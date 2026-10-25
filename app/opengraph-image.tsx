@@ -6,8 +6,8 @@ export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
 export default async function Image() {
-  const logoData = await readFile(path.join(process.cwd(), 'public/logo.jpeg'));
-  const logoSrc = `data:image/jpeg;base64,${logoData.toString('base64')}`;
+  const logoData = await readFile(path.join(process.cwd(), 'public/logo-horizontal-light.png'));
+  const logoSrc = `data:image/png;base64,${logoData.toString('base64')}`;
 
   return new ImageResponse(
     (
@@ -64,7 +64,7 @@ export default async function Image() {
         <img
           src={logoSrc}
           alt="ShaadiShopping"
-          style={{ width: '200px', height: '160px', objectFit: 'contain', marginBottom: '20px' }}
+          style={{ width: '440px', height: '139px', objectFit: 'contain', marginBottom: '24px' }}
         />
 
         {/* Gold divider */}

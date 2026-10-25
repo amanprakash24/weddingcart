@@ -1904,7 +1904,7 @@ At sunrise in winter, the morning mist over the Ganges from the bridge creates e
     tags: ['court marriage patna', 'marriage registration patna', 'civil marriage bihar', 'how to register marriage patna'],
     seoTitle: 'Court Marriage & Marriage Registration in Patna, Bihar — 2025 Guide',
     seoDescription: 'Complete guide to court marriage and marriage registration in Patna, Bihar. Documents required, process, fees & registration offices. Legal wedding in Bihar made easy.',
-    coverImage: 'https://images.unsplash.com/photo-1521791055366-0d553872952f?w=1200&q=80',
+    coverImage: '/images/blog/court-marriage-process-in-india.webp',
     status: 'published',
     readTime: 7,
     content: `

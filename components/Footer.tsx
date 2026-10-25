@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { isProposalPath, isVendorOsPath } from '@/lib/proposalPath';
-import { Heart, Phone, Mail, MapPin, CheckCircle } from 'lucide-react';
+import { Heart, Phone, Mail, CheckCircle } from 'lucide-react';
 import { BIHAR_CITIES } from '@/data/biharCities';
 
 const services = [
@@ -45,6 +46,9 @@ const company = [
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'Begin Your Journey', href: '/plan' },
   { label: 'For Vendors', href: '/vendor-onboarding' },
+  { label: 'Vivah OS', href: '/vivah-os' },
+  { label: 'Growth Partner', href: '/growth-partner' },
+  { label: 'Vendor Sign-in', href: '/vendor/login' },
   { label: 'Privacy Policy', href: '#' },
   { label: 'Terms of Service', href: '#' },
 ];
@@ -139,9 +143,7 @@ export default function Footer() {
                     >
                       Subscribe
                     </button>
-                  </div>
-                  <p className="text-gray-600 text-xs mt-2.5">Join 5,000+ couples already subscribed.</p>
-                </>
+                  </div>                </>
               )}
             </div>
           </div>
@@ -154,9 +156,8 @@ export default function Footer() {
 
           {/* Brand — spans 2 cols on mobile, 1 on lg */}
           <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Heart className="w-5 h-5 fill-[#8B1A4A] text-[#8B1A4A]" />
-              <span className="text-lg font-bold text-white tracking-wide" style={{ fontFamily: 'var(--font-playfair, serif)' }}>ShaadiShopping</span>
+            <div className="mb-2">
+              <Image src="/logo-horizontal-light.png" alt="ShaadiShopping" width={749} height={236} className="h-11 w-auto object-contain" />
             </div>
             <div className="h-px w-24 mb-5" style={{ background: 'linear-gradient(to right, #C5A46D, transparent)' }} />
             <p className="text-gray-500 text-sm leading-relaxed mb-2">
@@ -176,28 +177,8 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-3.5 h-3.5 text-[#C5A46D] flex-shrink-0" />
-                <a href="mailto:shaadi.shopping51@gmail.com" className="hover:text-[#C5A46D] transition-colors">shaadi.shopping51@gmail.com</a>
+                <a href="mailto:care@shaadishopping.com" className="hover:text-[#C5A46D] transition-colors">care@shaadishopping.com</a>
               </div>
-              <div className="flex items-start gap-2.5">
-                <MapPin className="w-3.5 h-3.5 text-[#C5A46D] flex-shrink-0 mt-0.5" />
-                <span className="text-gray-500">Gola Road, Adarsh Vihar Colony, Lane 5,<br />near T Point, beside Hotel King Regency,<br />Patna, Bihar 801503</span>
-              </div>
-              <a
-                href="https://maps.app.goo.gl/VxJRiNVLS3S9xseC8"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 block rounded-xl overflow-hidden border border-[#C5A46D]/20 hover:border-[#C5A46D]/50 transition-colors"
-              >
-                <iframe
-                  title="ShaadiShopping Location"
-                  src="https://maps.google.com/maps?q=Shaadi+Shopping+Patna&cid=12393945489471302150&output=embed&z=17"
-                  width="100%"
-                  height="200"
-                  style={{ border: 0, display: 'block', filter: 'grayscale(0.4) contrast(1.1)' }}
-                  loading="lazy"
-                  allowFullScreen
-                />
-              </a>
             </div>
           </div>
 
