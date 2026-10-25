@@ -12,6 +12,7 @@ import ContactBanner from '@/components/ContactBanner';
 import ScrollToTop from '@/components/ScrollToTop';
 import LeadCapturePopup from '@/components/LeadCapturePopup';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
+import SiteErrorReporter from '@/components/SiteErrorReporter';
 
 // Self-hosted (app/fonts/, SIL Open Font License — see the OFL-*.txt files there): the same Latin variable-font files
 // Google Fonts served, so a build never downloads fonts. next/font/google did, and a failed download failed the whole
@@ -105,6 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en-IN" className={`${playfair.variable} ${cormorant.variable} ${dmSans.variable}`}>
       <head>
         <GoogleAnalytics id={GA_ID} />
+        <SiteErrorReporter />
       </head>
       <body className="bg-[#FFFAF5] text-[#2D2D2D] min-h-screen antialiased" suppressHydrationWarning>
         <AuthSessionProvider>

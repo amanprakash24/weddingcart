@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { reportBrowserError } from '@/lib/siteErrors/browser';
 import { RefreshCw } from 'lucide-react';
 
 // What a person sees when a screen fails, instead of a bare error page: what happened in plain words, "Try again", and who to
@@ -22,8 +23,9 @@ export interface ErrorScreenProps {
 
 export default function ErrorScreen({ error, retry, where, title = 'Something went wrong', contact, compact = false }: ErrorScreenProps) {
   useEffect(() => {
-    // The one line a person looking at the browser, or an error service added later, gets to see.
+    // The one line a person looking at the browser gets to see; the error also goes to /admin/errors.
     console.error(`[screen-error] ${where}${error.digest ? ` ref ${error.digest}` : ''}:`, error);
+    reportBrowserError(error);
   }, [error, where]);
 
   return (
