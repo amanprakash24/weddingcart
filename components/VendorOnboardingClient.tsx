@@ -3,14 +3,16 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { CheckCircle, ArrowLeft, Sparkles, Phone, Mail, MapPin, Briefcase, IndianRupee, Star, AtSign, Globe, ChevronDown, ImagePlus, X } from 'lucide-react';
+import { CheckCircle, ArrowLeft, Sparkles, Phone, Mail, MapPin, Briefcase, IndianRupee, Star, AtSign, Globe, ChevronDown, ImagePlus, X, Video } from 'lucide-react';
 import { Category } from '@/types';
 import { INDIAN_MOBILE_ERROR, normalizeIndianMobile } from '@/lib/indianPhone';
 import { extractFieldErrors, summarizeFieldErrors, type FieldErrors } from '@/lib/apiFieldErrors';
+import { ONBOARDING_VIDEO_LIMITS } from '@/lib/onboardingUpload';
 
 // Prospective venues have no account yet, so the form uploads through the
 // dedicated public onboarding endpoint — NOT the admin-only /api/upload.
 const UPLOAD_ENDPOINT = '/api/vendor-applications/upload';
+const PHOTOS_MISSING = 'Please upload all 3 photos before submitting.';
 
 const FIELD_LABELS: Record<string, string> = {
   businessName: 'Business name',
@@ -23,6 +25,7 @@ const FIELD_LABELS: Record<string, string> = {
   priceMax: 'Maximum price',
   portfolioImages: 'Our Work images',
   foodMenuImages: 'Menu images',
+  tourVideo: 'Tour video',
 };
 import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS } from '@/lib/wedding/functions';
 
@@ -72,6 +75,9 @@ export default function VendorOnboardingClient() {
   const [imgUploading, setImgUploading] = useState<[boolean, boolean, boolean]>([false, false, false]);
   const [menuImages, setMenuImages]         = useState<[string, string]>(['', '']);
   const [menuUploading, setMenuUploading]   = useState<[boolean, boolean]>([false, false]);
+  const [tourVideo, setTourVideo]           = useState('');
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoError, setVideoError]         = useState('');
 
   const isVenue = categories.find((c) => c.id === form.category)?.name?.toLowerCase().includes('venue') ?? false;
 
@@ -98,6 +104,7 @@ export default function VendorOnboardingClient() {
       const data = await res.json();
       if (data.success) {
         setImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = data.url; return n; });
+        setError((e) => (e === PHOTOS_MISSING ? '' : e)); // the photo just added may be the one the message asked for
       } else {
         // Surface the server's specific reason (too large, wrong type, rate
         // limited) instead of a generic message.
@@ -135,6 +142,43 @@ export default function VendorOnboardingClient() {
     }
   };
 
+  // Length of a chosen video, read in the browser (null when the browser cannot tell — the server checks again).
+  const videoSeconds = (file: File) =>
+    new Promise<number | null>((resolve) => {
+      const el = document.createElement('video');
+      el.preload = 'metadata';
+      el.onloadedmetadata = () => { URL.revokeObjectURL(el.src); resolve(Number.isFinite(el.duration) ? el.duration : null); };
+      el.onerror = () => resolve(null);
+      el.src = URL.createObjectURL(file);
+    });
+
+  // The tour video goes straight to our storage with a one-use signature from our server.
+  const handleVideoUpload = async (file: File) => {
+    setVideoError('');
+    const seconds = await videoSeconds(file);
+    if (file.size > ONBOARDING_VIDEO_LIMITS.bytes || (seconds !== null && seconds > ONBOARDING_VIDEO_LIMITS.seconds + 1)) {
+      setVideoError(`Please choose a video of up to ${ONBOARDING_VIDEO_LIMITS.seconds} seconds and ${ONBOARDING_VIDEO_LIMITS.bytes / (1024 * 1024)} MB.`);
+      return;
+    }
+    setVideoUploading(true);
+    try {
+      const sig = await (await fetch('/api/vendor-applications/video-signature', { method: 'POST' })).json();
+      if (!sig.success) throw new Error(sig.error || 'Could not start the upload. Please try again.');
+      const body = new FormData();
+      body.append('file', file);
+      body.append('api_key', sig.apiKey);
+      body.append('signature', sig.signature);
+      for (const [k, v] of Object.entries(sig.params as Record<string, string | number>)) body.append(k, String(v));
+      const stored = await (await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/video/upload`, { method: 'POST', body })).json();
+      if (!stored.secure_url) throw new Error('The video did not upload. Please try again.');
+      setTourVideo(stored.secure_url);
+    } catch (err) {
+      setVideoError(err instanceof Error ? err.message : 'The video did not upload. Please try again.');
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
   const removeMenuImage = (index: 0 | 1) => {
     setMenuImages((prev) => { const n = [...prev] as [string,string]; n[index] = ''; return n; });
   };
@@ -151,8 +195,12 @@ export default function VendorOnboardingClient() {
       setError(`Please fix: ${FIELD_LABELS.ownerPhone}.`);
       return;
     }
+    if (videoUploading) {
+      setError('Please wait — the tour video is still uploading.');
+      return;
+    }
     if (images.some((url) => !url)) {
-      setError('Please upload all 3 "Our Work" images before submitting.');
+      setError(PHOTOS_MISSING);
       return;
     }
     // Menu photos are optional (12 Oct 2026): a pure-veg venue has no non-veg menu, and a venue without catering has none.
@@ -169,6 +217,7 @@ export default function VendorOnboardingClient() {
           priceMax: Number(form.priceMax) || 0,
           portfolioImages: images,
           ...(menus.length > 0 && { foodMenuImages: menus }),
+          ...(tourVideo && { tourVideo }),
         }),
       });
       const data = await res.json();
@@ -476,57 +525,6 @@ export default function VendorOnboardingClient() {
             </div>
           </motion.div>
 
-          {/* Work / Venue Images — all categories */}
-          <motion.div variants={fadeUp}>
-            <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
-              <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
-                <ImagePlus className="w-4 h-4 text-amber-600" />
-              </div>
-              {isVenue ? 'Venue Images' : 'Our Work'} <span className="text-rose-500">*</span>
-            </h2>
-            <p className="text-xs text-gray-400 mb-5">Upload 3 photos that best represent your craft. All 3 are required — they also become your first profile photos once you are approved.</p>
-            <div className="grid grid-cols-3 gap-4">
-              {([0, 1, 2] as const).map((i) => (
-                <div key={i} className="relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    id={`venue-img-${i}`}
-                    className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(i, f); e.target.value = ''; }}
-                  />
-                  {images[i] ? (
-                    <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-amber-300">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={images[i]} alt={`Venue ${i + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(i)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label
-                      htmlFor={`venue-img-${i}`}
-                      className="flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all cursor-pointer"
-                    >
-                      {imgUploading[i] ? (
-                        <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <ImagePlus className="w-6 h-6 text-gray-300 mb-1.5" />
-                          <span className="text-xs text-gray-400 font-medium">Image {i + 1}</span>
-                        </>
-                      )}
-                    </label>
-                  )}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
           {/* Food Menu Images — venue only */}
           {isVenue && (
             <motion.div variants={fadeUp} initial="hidden" animate="show">
@@ -534,9 +532,9 @@ export default function VendorOnboardingClient() {
                 <div className="w-7 h-7 bg-rose-100 rounded-lg flex items-center justify-center">
                   <ImagePlus className="w-4 h-4 text-rose-500" />
                 </div>
-                Food Menu Images <span className="text-sm font-normal text-gray-400">(optional)</span>
+                Menu Card <span className="text-sm font-normal text-gray-400">(optional)</span>
               </h2>
-              <p className="text-xs text-gray-400 mb-5">If you serve food, add a photo of your menu — Veg, Non Veg or both. Skip this if you don&apos;t.</p>
+              <p className="text-xs text-gray-400 mb-5">Your Veg and Non Veg menu cards — add one, both, or skip this if you don&apos;t serve food.</p>
               <div className="grid grid-cols-2 gap-4">
                 {([0, 1] as const).map((i) => {
                   const label = i === 0 ? 'Veg Menu' : 'Non Veg Menu';
@@ -586,6 +584,108 @@ export default function VendorOnboardingClient() {
               </div>
             </motion.div>
           )}
+
+          {/* Work / Venue Images — all categories */}
+          <motion.div variants={fadeUp}>
+            <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
+                <ImagePlus className="w-4 h-4 text-amber-600" />
+              </div>
+              {isVenue ? 'Venue Photos' : 'Our Work'} <span className="text-rose-500">*</span>
+            </h2>
+            <p className="text-xs text-gray-400 mb-5">{isVenue ? "Upload 3 photos of your venue." : "Upload 3 photos that best represent your craft."} All 3 are required — they also become your first profile photos once you are approved.</p>
+            <div className="grid grid-cols-3 gap-4">
+              {([0, 1, 2] as const).map((i) => (
+                <div key={i} className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id={`venue-img-${i}`}
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(i, f); e.target.value = ''; }}
+                  />
+                  {images[i] ? (
+                    <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-amber-300">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={images[i]} alt={`Venue ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(i)}
+                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor={`venue-img-${i}`}
+                      className="flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all cursor-pointer"
+                    >
+                      {imgUploading[i] ? (
+                        <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <ImagePlus className="w-6 h-6 text-gray-300 mb-1.5" />
+                          <span className="text-xs text-gray-400 font-medium">Image {i + 1}</span>
+                        </>
+                      )}
+                    </label>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Tour video — one, optional (25 Oct 2026). Sent straight to our storage: too big for our own upload route. */}
+          <motion.div variants={fadeUp} initial="hidden" animate="show">
+            <h2 className="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <Video className="w-4 h-4 text-indigo-500" />
+              </div>
+              {isVenue ? 'Venue Tour Video' : 'Video of Your Work'} <span className="text-sm font-normal text-gray-400">(optional)</span>
+            </h2>
+            <p className="text-xs text-gray-400 mb-5">
+              {isVenue ? 'A short walk-through of your venue' : 'A short video of your work'} — up to {ONBOARDING_VIDEO_LIMITS.seconds} seconds and {ONBOARDING_VIDEO_LIMITS.bytes / (1024 * 1024)} MB (MP4, MOV or WebM). It goes on your profile once you are approved.
+            </p>
+            <input
+              type="file"
+              accept="video/mp4,video/quicktime,video/webm"
+              id="tour-video"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVideoUpload(f); e.target.value = ''; }}
+            />
+            {tourVideo ? (
+              <div className="relative rounded-xl overflow-hidden border-2 border-indigo-300 bg-black">
+                <video src={tourVideo} controls preload="metadata" className="w-full max-h-80" />
+                <button
+                  type="button"
+                  onClick={() => setTourVideo('')}
+                  aria-label="Remove video"
+                  className="absolute top-1.5 right-1.5 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="tour-video"
+                className={`flex flex-col items-center justify-center h-36 rounded-xl border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all ${videoUploading ? 'pointer-events-none' : 'cursor-pointer'}`}
+              >
+                {videoUploading ? (
+                  <>
+                    <div className="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mb-2" />
+                    <span className="text-xs text-gray-500 font-medium">Uploading… please keep this page open</span>
+                  </>
+                ) : (
+                  <>
+                    <Video className="w-6 h-6 text-gray-300 mb-1.5" />
+                    <span className="text-xs text-gray-500 font-semibold">{isVenue ? 'Upload tour video' : 'Upload video'}</span>
+                  </>
+                )}
+              </label>
+            )}
+            {videoError && <p role="alert" className="mt-2 text-xs text-rose-600">{videoError}</p>}
+          </motion.div>
 
           {error && (
             <motion.div variants={fadeUp} role="alert" className="text-rose-500 text-sm bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">

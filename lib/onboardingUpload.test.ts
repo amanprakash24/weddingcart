@@ -3,6 +3,8 @@ import { describe, test, expect } from 'bun:test';
 import {
   MAX_ONBOARDING_IMAGE_BYTES,
   ONBOARDING_UPLOAD_FOLDER,
+  isOnboardingVideo,
+  onboardingPublicId,
   detectImageMime,
   validateOnboardingImage,
 } from './onboardingUpload';
@@ -84,5 +86,28 @@ describe('storage location', () => {
   test('is a fixed server constant, separate from vendors\' permanent media', () => {
     expect(ONBOARDING_UPLOAD_FOLDER).toBe('shaadishopping/vendor-onboarding');
     expect(ONBOARDING_UPLOAD_FOLDER).not.toContain('..');
+  });
+});
+
+describe('isOnboardingVideo — only a video our signature put in our onboarding folder', () => {
+  const ok = 'https://res.cloudinary.com/demo/video/upload/v17/shaadishopping/vendor-onboarding/tour-abc.mp4';
+  test('accepts our own onboarding video', () => {
+    expect(isOnboardingVideo(ok, 'demo')).toBe(true);
+    expect(onboardingPublicId(ok)).toBe('shaadishopping/vendor-onboarding/tour-abc');
+  });
+  test.each([
+    ['another cloud', ok.replace('/demo/', '/other/')],
+    ['an image, not a video', ok.replace('/video/', '/image/')],
+    ['another folder', ok.replace('vendor-onboarding', 'vendor-profile')],
+    ['a YouTube link', 'https://www.youtube.com/watch?v=x'],
+    ['plain http', ok.replace('https:', 'http:')],
+    ['a path trick', 'https://res.cloudinary.com/demo/video/upload/x/../shaadishopping/vendor-onboarding/a.mp4'],
+    ['a query string', ok + '?x=1'],
+  ])('refuses %s', (_name, url) => {
+    expect(isOnboardingVideo(url, 'demo')).toBe(false);
+  });
+  test('refuses when no cloud is configured or the value is not text', () => {
+    expect(isOnboardingVideo(ok, '')).toBe(false);
+    expect(isOnboardingVideo(42, 'demo')).toBe(false);
   });
 });

@@ -3,6 +3,7 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { can } from '@/lib/auth/permissions';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
+import { isOnboardingVideo } from '@/lib/onboardingUpload';
 import { isOwnUpload, missingProfileSteps, PROFILE_LIMITS, PROFILE_UPLOAD_FOLDER, validateProfile, videoLink, type ProfileErrors, type ProfileStep } from '@/lib/venue/profile';
 
 // The business profile a vendor completes on first sign-in (6 Oct 2026): name, logo, photos, an optional video and GST number.
@@ -64,7 +65,8 @@ export function createVenueProfileService(deps: VenueProfileDeps = defaultDeps()
       name: b.name,
       logoUrl: b.logoUrl,
       gstin: b.gstin,
-      video: b.videoUrl ? { url: b.videoUrl, isLink: !ours(b.videoUrl), status: b.videoStatus ?? 'PENDING' } : null,
+      // A video carried over from the registration (onboarding folder) is our upload too: it plays, it is not a link.
+      video: b.videoUrl ? { url: b.videoUrl, isLink: !ours(b.videoUrl) && !isOnboardingVideo(b.videoUrl, deps.cloudName()), status: b.videoStatus ?? 'PENDING' } : null,
       photos,
       missing: missingProfileSteps({ name: b.name, logoUrl: b.logoUrl, photoCount: photos.length }),
       canEdit,

@@ -444,6 +444,9 @@ model VendorApplication {
   coverImage      String             @default("")
   portfolioImages String[]           @default([])
   foodMenuImages  String[]           @default([])
+  // One tour video (25 Oct 2026), uploaded by the public form straight to our storage; "" = none. On approval it becomes the
+  // listing's video and the business profile's video (the admin watches it before approving).
+  tourVideo       String             @default("")
   // Draft capture at application time, mirroring portfolioImages/foodMenuImages's array-field convention
   // above rather than a second join table — this vendor doesn't exist yet, so there's no vendorId to key a
   // VendorCapability row on. Copied into real VendorCapability rows on Vendor when the application is
