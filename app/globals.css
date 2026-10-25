@@ -280,6 +280,18 @@ input[type="checkbox"], input[type="radio"] {
 }
 .animate-marquee:hover { animation-play-state: paused; }
 
+/* Homepage service pills: slow scroll, paused on hover or keyboard focus */
+.home-pills-track {
+  animation: marquee 50s linear infinite;
+  will-change: transform;
+}
+.home-pills:hover .home-pills-track,
+.home-pills:focus-within .home-pills-track { animation-play-state: paused; }
+.home-pills-fade {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
 /* Announcement bar marquee (faster) */
 @keyframes marquee-fast {
   from { transform: translateX(0); }
@@ -661,6 +673,7 @@ input[type="checkbox"], input[type="radio"] {
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee,
   .animate-marquee-fast,
+  .home-pills-track,
   .animate-hero-glow,
   .shimmer-text,
   .luxury-glow,

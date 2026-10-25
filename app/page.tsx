@@ -8,13 +8,16 @@ import { buildCategoryTiles, type CategoryTile } from '@/lib/home/categoryTiles'
 import { HOME_FAQ } from '@/lib/home/faq';
 import type { Vendor } from '@/types';
 import BlogHighlightsSection, { type BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
-import BudgetBands from '@/components/home/BudgetBands';
 import HomeHero from '@/components/home/HomeHero';
+import ServicePills from '@/components/home/ServicePills';
 import CategoryTiles from '@/components/home/CategoryTiles';
+import EveryFunction from '@/components/home/EveryFunction';
 import VenuesByArea from '@/components/home/VenuesByArea';
 import HowItWorks from '@/components/home/HowItWorks';
 import FounderSection from '@/components/home/FounderSection';
 import ForBusinesses from '@/components/home/ForBusinesses';
+import VivahOsSection from '@/components/home/VivahOsSection';
+import GrowthPartnerSection from '@/components/home/GrowthPartnerSection';
 import HomeFaq from '@/components/home/HomeFaq';
 import FinalCta from '@/components/home/FinalCta';
 import HomeStickyBar from '@/components/home/HomeStickyBar';
@@ -183,14 +186,18 @@ export default async function HomePage() {
       <JsonLd data={websiteSchema} />
       <JsonLd data={organizationSchema} />
       <JsonLd data={faqSchema} />
+      {/* A+ design (25 Oct 2026): families and wedding businesses both have a clear way in */}
       <HomeHero services={services} />
+      <ServicePills />
       <CategoryTiles tiles={tiles} />
+      <EveryFunction />
       <VenuesByArea venues={venues} />
       <HowItWorks />
-      <BudgetBands />
+      <ForBusinesses />
+      <VivahOsSection />
+      <GrowthPartnerSection />
       <FounderSection />
       <BlogHighlightsSection posts={topBlogPosts} />
-      <ForBusinesses />
       <HomeFaq />
       <FinalCta />
       <HomeStickyBar />

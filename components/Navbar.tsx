@@ -89,11 +89,14 @@ const MEGA_MENU = [
   },
 ];
 
-const navLinks = [
-  { href: '/', label: 'Home' },
+// "Home" is the logo. Growth Partner and Vivah OS added with the A+ homepage (25 Oct 2026).
+// wideOnly: shown in the desktop bar only on very wide screens (always in the phone menu and the footer).
+const navLinks: { href: string; label: string; badge?: string; wideOnly?: boolean }[] = [
   { href: '/#how-it-works', label: 'How It Works' },
-  { href: '/about', label: 'About Us' },
-  { href: '/blog', label: 'Blog' },
+  { href: '/growth-partner', label: 'Growth Partner' },
+  { href: '/vivah-os', label: 'Vivah OS', badge: 'New' },
+  { href: '/about', label: 'About Us', wideOnly: true },
+  { href: '/blog', label: 'Blog', wideOnly: true },
 ];
 
 export default function Navbar() {
@@ -105,7 +108,6 @@ export default function Navbar() {
   const megaRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const isAdmin = pathname.startsWith('/admin') || isVendorOsPath(pathname); // admin and Vendor OS have their own shells
-  const isHome = pathname === '/';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 60);
@@ -129,7 +131,8 @@ export default function Navbar() {
   }, [mobileOpen]);
 
   // Pages that open on a full-screen photo hero get the homepage's transparent navbar until scrolled.
-  const isTransparent = (isHome || pathname === '/growth-partner') && !scrolled && !mobileOpen;
+  // The homepage now opens on ivory (A+ design), so only /growth-partner keeps the see-through bar.
+  const isTransparent = pathname === '/growth-partner' && !scrolled && !mobileOpen;
 
   // The admin has its own shell; the couple's private proposal page (/proposal/…) is a focused page of its own.
   if (isAdmin || isProposalPath(pathname)) return null;
@@ -138,11 +141,11 @@ export default function Navbar() {
     <>
       {/* ── ANNOUNCEMENT BAR — single calm message ── */}
       <div className="announcement-bar fixed top-0 inset-x-0 z-[10000] h-9 flex items-center justify-center overflow-hidden px-4">
-        <p className="text-[0.62rem] tracking-[0.12em] sm:tracking-[0.22em] whitespace-nowrap truncate text-center">
-          <span className="text-[#C5A46D]/45 mr-3 sm:mr-5">✦</span>
-          <span className="hidden sm:inline">Expert Wedding Coordination · From Venue to Vidai</span>
-          <span className="sm:hidden">Expert Wedding Coordination · From Venue to Vidai</span>
-          <span className="text-[#C5A46D]/45 ml-3 sm:ml-5">✦</span>
+        <p className="text-[0.62rem] tracking-[0.12em] sm:tracking-[0.18em] whitespace-nowrap truncate text-center">
+          <span className="hidden md:inline">Planning a wedding? Free call with a Wedding Expert<span className="text-[#C5A46D]/45 mx-4">✦</span></span>
+          <Link href="/vivah-os" className="underline-offset-4 hover:underline">
+            <span className="hidden sm:inline">For venues &amp; wedding businesses: </span>Vivah OS early access is open →
+          </Link>
         </p>
       </div>
 
@@ -173,12 +176,12 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop nav — centered */}
-            <div className="hidden lg:flex items-center gap-7">
+            <div className="hidden lg:flex items-center gap-6 xl:gap-7">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
+                  className={`${link.wideOnly ? 'hidden 2xl:inline' : ''} whitespace-nowrap text-[0.82rem] font-medium tracking-[0.02em] transition-colors duration-200 ${
                     pathname === link.href
                       ? 'text-[#8B1A4A]'
                       : isTransparent
@@ -187,6 +190,7 @@ export default function Navbar() {
                   }`}
                 >
                   {link.label}
+                  {link.badge && <span className="ml-1.5 rounded-full bg-[#7A1238] px-1.5 py-0.5 align-middle text-[0.58rem] font-bold uppercase tracking-[0.06em] text-white">{link.badge}</span>}
                 </Link>
               ))}
 
@@ -305,7 +309,7 @@ export default function Navbar() {
                 }`}
               >
                 <Phone className="w-6 h-6 lg:w-4 lg:h-4" />
-                <span className="hidden lg:inline">Talk to Expert</span>
+                <span className="hidden 2xl:inline whitespace-nowrap">Talk to Expert</span>
               </a>
 
               {/* Divider */}
@@ -314,7 +318,7 @@ export default function Navbar() {
               {/* Vendor Registration */}
               <Link
                 href="/vendor-onboarding"
-                className={`hidden lg:inline-flex items-center text-[0.78rem] font-semibold tracking-[0.04em] px-4 py-2.5 rounded-lg border transition-all ${
+                className={`hidden xl:inline-flex whitespace-nowrap items-center text-[0.78rem] font-semibold tracking-[0.04em] px-4 py-2.5 rounded-lg border transition-all ${
                   isTransparent
                     ? 'border-white/30 text-white hover:bg-white/12'
                     : 'border-[#8B1A4A] text-[#8B1A4A] hover:bg-[#8B1A4A]/10'
@@ -326,14 +330,15 @@ export default function Navbar() {
               {/* Begin Your Wedding Journey CTA */}
               <Link
                 href="/plan"
-                className={`hidden sm:inline-flex items-center gap-2 text-[0.78rem] font-semibold tracking-[0.05em] px-5 py-2.5 rounded-full transition-all duration-300 relative overflow-hidden group ${
+                className={`hidden sm:inline-flex whitespace-nowrap items-center gap-2 text-[0.78rem] font-semibold tracking-[0.05em] px-5 py-2.5 rounded-full transition-all duration-300 relative overflow-hidden group ${
                   isTransparent
                     ? 'bg-white/15 border border-white/40 text-white hover:bg-white/25 backdrop-blur-sm'
                     : 'bg-gradient-to-r from-[#8B1A4A] via-[#A8234E] to-[#C5A46D] text-white hover:shadow-[0_6px_24px_rgba(139,26,74,0.45)] hover:scale-[1.03]'
                 }`}
               >
                 <Sparkles className="w-3 h-3 flex-shrink-0 relative z-10" />
-                <span className="relative z-10">Begin Your Wedding Journey</span>
+                <span className="relative z-10 xl:hidden">Begin Journey</span>
+                <span className="relative z-10 hidden xl:inline">Begin Your Wedding Journey</span>
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out pointer-events-none" />
               </Link>
 
@@ -369,6 +374,7 @@ export default function Navbar() {
                   }`}
                 >
                   {link.label}
+                  {link.badge && <span className="ml-2 rounded-full bg-[#7A1238] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.06em] text-white">{link.badge}</span>}
                 </Link>
               ))}
 

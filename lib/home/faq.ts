@@ -27,6 +27,14 @@ export const HOME_FAQ: { q: string; a: string }[] = [
     a: 'Our team and most of our vendors are in Patna. We also help families from other Bihar cities such as Muzaffarpur, Gaya, Bhagalpur and Darbhanga who are planning a wedding with Patna vendors.',
   },
   {
+    q: 'How do I list my venue or wedding service?',
+    a: 'Fill in the registration form on the "List your business" page with your business details, menu card, three photos and, if you like, a short tour video. Our team reviews every registration and gets in touch.',
+  },
+  {
+    q: 'What is Vivah OS?',
+    a: "Vivah OS is Shaadi Shopping's workspace for venues and wedding businesses: enquiries, quotations under your own name, payments and your team's work in one place, on your phone. It is in early access.",
+  },
+  {
     q: 'How is ShaadiShopping different from a listing website?',
     a: 'A listing site gives you phone numbers. We give you one person who plans with you: shortlisting, visits, quotations, coordination with vendors and support on the wedding days.',
   },
