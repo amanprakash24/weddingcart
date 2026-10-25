@@ -19,7 +19,7 @@ describe('workingImage', () => {
     expect(blogCoverImage(dead.court)).toBe('/images/blog/court-marriage-process-in-india.webp');
     expect(workingImage(dead.mehndi)).toBe('/images/hero-bg.jpg');
     expect(workingImage(dead.mehndiGuide)).toBe('/images/hero-bg.jpg');
-    expect(workingImage(dead.dj)).toBe('/images/homepage-poster.jpg');
+    expect(workingImage(dead.dj)).toBe('/images/dj-sangeet.jpg');
     expect(workingImage(dead.jewellery)).toBe('/cat-bridal-fashion.jpg');
     for (const u of Object.values(dead)) expect(publicFile(workingImage(u))).toBe(true);
   });

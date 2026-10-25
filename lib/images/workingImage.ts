@@ -8,8 +8,8 @@ const REPLACED: { deadPhoto: string; replacement: string }[] = [
   // Mehndi service picture + mehndi guides: our real photo of a bride's hands with mehndi
   { deadPhoto: 'photo-1591824353446-b4d49d58b8b7', replacement: '/images/hero-bg.jpg' },
   { deadPhoto: 'photo-1596740048408-2b0dda3c6a3d', replacement: '/images/hero-bg.jpg' },
-  // DJ service picture + DJ guide: a lit wedding stage from the founder's homepage video, until a real DJ photo arrives
-  { deadPhoto: 'photo-1571266028243-d220c6a8c270', replacement: '/images/homepage-poster.jpg' },
+  // DJ service picture + DJ guide: DJ & sangeet stage photo supplied by the founder
+  { deadPhoto: 'photo-1571266028243-d220c6a8c270', replacement: '/images/dj-sangeet.jpg' },
   // Bridal jewellery service picture: our bride photo
   { deadPhoto: 'photo-1601121141461-9d6647bef0a1', replacement: '/cat-bridal-fashion.jpg' },
 ];
