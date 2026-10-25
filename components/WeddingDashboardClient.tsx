@@ -1,0 +1,362 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Vendor } from '@/types';
+import {
+  CheckCircle, Calendar, Users, MapPin, Phone, Star,
+  ChevronRight, Heart, Sparkles, Building2, Crown
+} from 'lucide-react';
+import {
+  PlanFormData, EVENT_LABELS, SERVICE_ICONS, SERVICE_LABELS, EST_RANGES,
+  buildChecklist, daysUntil, formatDate, cateringEstimate, venueTag, emptyVenueMessage,
+  STYLE_LABELS, BUDGET_LABELS, BUDGET_TIPS,
+} from '@/lib/planPreview';
+
+interface Props {
+  form: PlanFormData;
+  cartTotal: number;
+}
+
+export default function WeddingDashboardClient({ form, cartTotal }: Props) {
+  const [checklistExpanded, setChecklistExpanded] = useState(false);
+  const [venues, setVenues] = useState<Vendor[]>([]);
+  const [venuesLoading, setVenuesLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/vendors?category=venue&city=${encodeURIComponent(form.city)}&limit=3&sort=rating`)
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setVenues(d.data); })
+      .finally(() => setVenuesLoading(false));
+  }, [form.city]);
+
+  const eventLabel = EVENT_LABELS[form.eventType] || 'Event';
+  const { catering, min: minCatering, max: maxCatering, perDayAvg: cateringPerDayAvg } = cateringEstimate(form.guestCount, form.foodPreference, form.days);
+  const checklist = buildChecklist(form.weddingDate, form.services);
+  const daysLeft = daysUntil(form.weddingDate);
+  const selectedServices = form.services.filter((s) => SERVICE_LABELS[s]);
+
+  return (
+    <div className="min-h-screen bg-[#FFFAF5] pt-16">
+
+      {/* ── SECTION 1 — Welcome Banner ── */}
+      <div className="bg-gradient-to-br from-rose-500 via-amber-500 to-rose-600 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-4 left-8 text-6xl">💍</div>
+          <div className="absolute top-8 right-12 text-5xl">🌸</div>
+          <div className="absolute bottom-4 left-1/3 text-4xl">✨</div>
+        </div>
+        <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16 relative">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-3xl shrink-0">
+              👰
+            </div>
+            <div>
+              <p className="text-white/80 text-sm font-medium mb-1">Your {eventLabel.toLowerCase()} plan is ready</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white font-playfair">
+                Congratulations, {form.name.split(' ')[0]}! 🎉
+              </h1>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {form.weddingDate && (
+              <div className="bg-white/15 backdrop-blur rounded-2xl p-4">
+                <Calendar className="w-5 h-5 text-white/70 mb-1" />
+                <p className="text-white/70 text-xs mb-0.5">{eventLabel} Date</p>
+                <p className="text-white font-semibold text-sm">{formatDate(form.weddingDate)}</p>
+                {daysLeft && <p className="text-amber-200 text-xs mt-1">{daysLeft} days to go</p>}
+              </div>
+            )}
+            <div className="bg-white/15 backdrop-blur rounded-2xl p-4">
+              <Users className="w-5 h-5 text-white/70 mb-1" />
+              <p className="text-white/70 text-xs mb-0.5">Guest Count</p>
+              <p className="text-white font-semibold text-sm">{form.guestCount.toLocaleString('en-IN')} guests</p>
+            </div>
+            <div className="bg-white/15 backdrop-blur rounded-2xl p-4">
+              <MapPin className="w-5 h-5 text-white/70 mb-1" />
+              <p className="text-white/70 text-xs mb-0.5">City</p>
+              <p className="text-white font-semibold text-sm">{form.city}</p>
+            </div>
+            {form.weddingStyle && (
+              <div className="bg-white/15 backdrop-blur rounded-2xl p-4">
+                <Crown className="w-5 h-5 text-white/70 mb-1" />
+                <p className="text-white/70 text-xs mb-0.5">Wedding Style</p>
+                <p className="text-white font-semibold text-sm capitalize">{STYLE_LABELS[form.weddingStyle] || form.weddingStyle}</p>
+              </div>
+            )}
+            {form.budgetRange && (
+              <div className="bg-white/15 backdrop-blur rounded-2xl p-4">
+                <Sparkles className="w-5 h-5 text-white/70 mb-1" />
+                <p className="text-white/70 text-xs mb-0.5">Budget Range</p>
+                <p className="text-white font-semibold text-sm">{BUDGET_LABELS[form.budgetRange] || form.budgetRange}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+
+        {/* ── SECTION 6 — Consultant Status (shown early, most urgent) ── */}
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-3xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+          <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center text-2xl shrink-0">
+            👨‍💼
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-semibold bg-emerald-500 text-white px-2 py-0.5 rounded-full">Confirmed</span>
+              <span className="text-xs text-gray-500">Your expert call is scheduled</span>
+            </div>
+            <p className="text-gray-900 font-semibold text-base">
+              Your Wedding Expert will call on <span className="text-emerald-700">{formatDate(form.consultationDate)}</span> at <span className="text-emerald-700">{form.preferredTime}</span>
+            </p>
+            <p className="text-gray-500 text-sm mt-1">They&apos;ll review your full plan, suggest vendors, and answer all your questions.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+            <a
+              href="https://wa.me/917646028228"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors"
+              style={{ background: '#25D366' }}
+            >
+              <span>💬</span> WhatsApp
+            </a>
+            <a
+              href="tel:+917646028228"
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-colors"
+            >
+              <Phone className="w-4 h-4" /> Call Now
+            </a>
+          </div>
+        </div>
+
+        {/* ── SECTION 2 — Recommended Venues ── */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 font-playfair">Recommended Venues for Your {eventLabel} in {form.city}</h2>
+              <p className="text-gray-500 text-sm mt-0.5">Shortlisted for {form.guestCount} guests · {form.days} day{form.days > 1 ? 's' : ''}</p>
+            </div>
+            <Link href="/categories/venue" className="text-sm text-rose-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all">
+              View all <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
+          {venuesLoading ? (
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 h-48 animate-pulse" />
+              ))}
+            </div>
+          ) : venues.length > 0 ? (
+            <div className="grid sm:grid-cols-3 gap-4">
+              {venues.map((v) => {
+                const tag = venueTag(v);
+                const price = `₹${(v.priceMin / 100000).toFixed(1)}–${(v.priceMax / 100000).toFixed(1)} L`;
+                return (
+                  <Link key={v.id} href={`/vendors/${v.id}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group block">
+                    <div className="relative h-28 overflow-hidden">
+                      {v.image ? (
+                        <Image src={v.image} alt={v.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 640px) 100vw, 33vw" />
+                      ) : (
+                        <div className="h-full bg-gradient-to-br from-amber-100 to-rose-100 flex items-center justify-center text-5xl">🏛️</div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <p className="font-semibold text-gray-900 text-sm leading-tight">{v.name}</p>
+                        <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full shrink-0">{tag}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">{v.city}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          <span className="text-xs font-semibold text-gray-700">{v.rating}</span>
+                        </div>
+                        <span className="text-xs font-semibold text-rose-600">{price}</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+              <p className="text-amber-800 font-semibold text-sm mb-1">{emptyVenueMessage(form.city).title}</p>
+              <p className="text-gray-500 text-xs mb-3">{emptyVenueMessage(form.city).body}</p>
+              <Link href="/categories/venue" className="inline-flex items-center gap-1 text-rose-600 font-semibold text-sm hover:underline">
+                Browse all venues <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* ── SECTION 3 — Catering Estimates ── */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-xl">
+              {catering.icon}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 font-playfair">Catering Estimate</h2>
+              <p className="text-gray-500 text-sm">{catering.label} for {form.guestCount} guests</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-4 mb-5">
+            <div className="bg-green-50 rounded-2xl p-4 text-center">
+              <p className="text-xs text-gray-500 mb-1">Budget Range</p>
+              <p className="text-lg font-bold text-green-700">₹{(minCatering / 100000).toFixed(1)}–{(maxCatering / 100000).toFixed(1)} L</p>
+              <p className="text-xs text-gray-500">(₹{catering.min}–{catering.max}/plate)</p>
+            </div>
+            <div className="bg-blue-50 rounded-2xl p-4 text-center">
+              <p className="text-xs text-gray-500 mb-1">Per Day Cost (approx)</p>
+              <p className="text-lg font-bold text-blue-700">₹{(cateringPerDayAvg / 100000).toFixed(1)} L</p>
+              <p className="text-xs text-gray-500">averaged over {form.days} days</p>
+            </div>
+            <div className="bg-purple-50 rounded-2xl p-4 text-center">
+              <p className="text-xs text-gray-500 mb-1">Food Pref</p>
+              <p className="text-lg font-bold text-purple-700">{catering.icon} {catering.label}</p>
+              <p className="text-xs text-gray-500">as selected by you</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-400 flex items-start gap-1.5">
+            <span className="mt-0.5">ℹ️</span>
+            Estimates are indicative. Final pricing depends on menu complexity, service style (buffet/plated), and vendor. Your expert will provide exact quotes.
+          </p>
+        </div>
+
+        {/* ── SECTION 4 — Suggested Vendors ── */}
+        {selectedServices.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-playfair">Services You&apos;ve Selected</h2>
+                <p className="text-gray-500 text-sm mt-0.5">We&apos;ll find top-rated vendors in {form.city} for your {eventLabel.toLowerCase()}</p>
+              </div>
+              <span className="text-xs font-semibold bg-rose-100 text-rose-700 px-3 py-1 rounded-full">{selectedServices.length} services</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {selectedServices.map((svc) => (
+                <Link
+                  key={svc}
+                  href={`/cities/${form.city.toLowerCase()}/${svc}`}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-start gap-3 hover:border-rose-300 hover:shadow-md transition-all group"
+                >
+                  <span className="text-2xl shrink-0">{SERVICE_ICONS[svc] || '✨'}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 text-sm truncate group-hover:text-rose-600 transition-colors">{SERVICE_LABELS[svc]}</p>
+                    <p className="text-xs text-rose-600 font-medium mt-0.5">{EST_RANGES[svc]}</p>
+                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-0.5">
+                      Browse in {form.city} <ChevronRight className="w-3 h-3" />
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-3 text-center">
+              Cost estimates are ranges. Your expert will shortlist vendors matching your budget.
+            </p>
+          </div>
+        )}
+
+        {/* ── SECTION 5 — Planning Checklist ── */}
+        {checklist.length > 0 && (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-playfair">Your Wedding Checklist</h2>
+                <p className="text-gray-500 text-sm mt-0.5">
+                  {checklist.filter((c) => !c.done).length} tasks remaining · {daysLeft ? `${daysLeft} days to wedding` : 'Date not set'}
+                </p>
+              </div>
+              <button
+                onClick={() => setChecklistExpanded((v) => !v)}
+                className="text-sm text-rose-600 font-semibold flex items-center gap-1 hover:gap-2 transition-all"
+              >
+                {checklistExpanded ? 'Show less' : 'Show all'} <ChevronRight className={`w-4 h-4 transition-transform ${checklistExpanded ? 'rotate-90' : ''}`} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(checklistExpanded ? checklist : checklist.slice(0, 5)).map((item, i) => (
+                <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                  item.done ? 'bg-gray-50 border-gray-100' :
+                  item.urgency === 'high' ? 'bg-red-50 border-red-100' :
+                  'bg-amber-50 border-amber-100'
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                    item.done ? 'bg-emerald-100' : item.urgency === 'high' ? 'bg-red-100' : 'bg-amber-100'
+                  }`}>
+                    {item.done
+                      ? <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      : <span className="text-xs">{item.urgency === 'high' ? '🔴' : '🟡'}</span>
+                    }
+                  </div>
+                  <span className={`text-sm font-medium flex-1 ${item.done ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                    {item.label}
+                  </span>
+                  {!item.done && item.urgency === 'high' && (
+                    <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full shrink-0">Urgent</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Budget Summary ── */}
+        {(form.budgetRange || cartTotal > 0) && (
+          <div className="bg-gradient-to-r from-amber-50 to-rose-50 border border-amber-200 rounded-3xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-xl">💰</div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg font-playfair">Budget Overview</h3>
+                {form.budgetRange && (
+                  <p className="text-amber-700 font-semibold text-sm">{BUDGET_LABELS[form.budgetRange]}</p>
+                )}
+              </div>
+            </div>
+
+            {form.budgetRange && BUDGET_TIPS[form.budgetRange] && (
+              <p className="text-gray-600 text-sm mb-4 leading-relaxed">{BUDGET_TIPS[form.budgetRange]}</p>
+            )}
+
+            {cartTotal > 0 && (
+              <div className="bg-white rounded-2xl p-4 border border-amber-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 font-medium">Cart items total</span>
+                  <span className="font-bold text-rose-600 text-base">₹{cartTotal.toLocaleString('en-IN')}</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Your expert will factor this into your final budget plan.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── CTA Row ── */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Link
+            href="/categories/venue"
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold px-6 py-4 rounded-2xl hover:opacity-90 transition-all shadow-lg shadow-rose-200"
+          >
+            <Building2 className="w-5 h-5" /> Explore {eventLabel} Vendors in {form.city}
+          </Link>
+          <Link
+            href="/"
+            className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 font-semibold px-6 py-4 rounded-2xl hover:border-rose-300 hover:text-rose-600 transition-all"
+          >
+            <Heart className="w-5 h-5" /> Back to Home
+          </Link>
+        </div>
+
+        <p className="text-center text-xs text-gray-400 pb-8">
+          Need help? Call us at <a href="tel:+917646028228" className="text-rose-500 font-medium">+91 76460 28228</a> or <a href="tel:+919942972484" className="text-rose-500 font-medium">+91 99429 72484</a>
+        </p>
+      </div>
+    </div>
+  );
+}
