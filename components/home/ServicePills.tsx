@@ -3,18 +3,19 @@ import Link from 'next/link';
 import { categoryHref } from '@/lib/home/categoryTiles';
 import { serif } from './styles';
 
-// Moving row of services under the hero (A+ "photo pills"). Our own photos from /public; a service without a
-// fitting photo yet shows a gold initial instead of an unrelated picture.
+// Moving row of services under the hero (A+ "photo pills"). Photos from /public. Mehndi, Band & DJ and Invitations
+// (pill-mehndi/-band-dj/-invitations.jpg) are AI-made placeholders requested by the founder (25 Oct 2026) until real
+// photos arrive; they show a service, never a vendor. A service without a photo shows a gold initial.
 const PILLS: { name: string; href: string; photo?: string; pos?: string }[] = [
   { name: 'Venues', href: categoryHref('venue'), photo: '/cat-venue-guides.jpg' },
   { name: 'Decor', href: categoryHref('decorator'), photo: '/cat-decor-flowers.jpg' },
   { name: 'Photo & Video', href: categoryHref('photo-video'), photo: '/cat-photography.jpg' },
   { name: 'Catering', href: categoryHref('catering'), photo: '/images/pill-catering.jpg' },
   { name: 'Bridal Makeup', href: categoryHref('makeup'), photo: '/cat-bridal-fashion.jpg', pos: 'object-[70%_30%]' },
-  { name: 'Mehndi', href: categoryHref('mehndi'), photo: '/images/hero-bg.jpg', pos: 'object-[85%_35%]' },
-  { name: 'Band & DJ', href: categoryHref('band') },
+  { name: 'Mehndi', href: categoryHref('mehndi'), photo: '/images/pill-mehndi.jpg' },
+  { name: 'Band & DJ', href: categoryHref('band'), photo: '/images/pill-band-dj.jpg' },
   { name: 'Pandits', href: '/categories/planning', photo: '/cat-wedding-tips.jpg' },
-  { name: 'Invitations', href: '/categories/invitations' },
+  { name: 'Invitations', href: '/categories/invitations', photo: '/images/pill-invitations.jpg' },
 ];
 
 function Row({ copy }: { copy: boolean }) {
