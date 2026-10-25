@@ -48,7 +48,8 @@ export async function checkOnboardingVideo(url: unknown): Promise<{ ok: true } |
   if (!publicId) return bad;
   let info: { bytes?: number; duration?: number };
   try {
-    info = await cloudinary.api.resource(publicId, { resource_type: 'video' });
+    // media_metadata: without it Cloudinary leaves out the duration.
+    info = await cloudinary.api.resource(publicId, { resource_type: 'video', media_metadata: true });
   } catch {
     return bad;
   }

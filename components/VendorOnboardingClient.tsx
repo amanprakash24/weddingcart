@@ -12,6 +12,7 @@ import { ONBOARDING_VIDEO_LIMITS } from '@/lib/onboardingUpload';
 // Prospective venues have no account yet, so the form uploads through the
 // dedicated public onboarding endpoint — NOT the admin-only /api/upload.
 const UPLOAD_ENDPOINT = '/api/vendor-applications/upload';
+const PHOTOS_MISSING = 'Please upload all 3 photos before submitting.';
 
 const FIELD_LABELS: Record<string, string> = {
   businessName: 'Business name',
@@ -103,6 +104,7 @@ export default function VendorOnboardingClient() {
       const data = await res.json();
       if (data.success) {
         setImages((prev) => { const n = [...prev] as [string,string,string]; n[index] = data.url; return n; });
+        setError((e) => (e === PHOTOS_MISSING ? '' : e)); // the photo just added may be the one the message asked for
       } else {
         // Surface the server's specific reason (too large, wrong type, rate
         // limited) instead of a generic message.
@@ -198,7 +200,7 @@ export default function VendorOnboardingClient() {
       return;
     }
     if (images.some((url) => !url)) {
-      setError('Please upload all 3 "Our Work" images before submitting.');
+      setError(PHOTOS_MISSING);
       return;
     }
     // Menu photos are optional (12 Oct 2026): a pure-veg venue has no non-veg menu, and a venue without catering has none.
