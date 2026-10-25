@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { Search, MapPin, SlidersHorizontal, Star, ChevronDown, X, ChevronRight, Grid, List, Plus, Minus } from 'lucide-react';
 import { Vendor, Category } from '@/types';
 import VendorCard from './VendorCard';
+import { workingImage } from '@/lib/images/workingImage';
 
 const CATEGORY_INFO: Record<string, { name: string; desc: string; image: string }> = {
   venue: { name: 'Wedding Venues', desc: 'Find the perfect venue for your dream wedding', image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80' },
@@ -95,7 +96,7 @@ export default function CategoryPageClient({ slug, initialCoverImage, initialNam
         <div className="absolute inset-0">
           {(initialCoverImage || category?.image || info.image) ? (
             <Image
-              src={initialCoverImage || category?.image || info.image}
+              src={workingImage(initialCoverImage || category?.image || info.image)}
               alt={initialName || category?.name || info.name}
               fill
               sizes="100vw"

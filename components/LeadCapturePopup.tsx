@@ -5,6 +5,7 @@ import { X, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { isCouplePromptPath } from '@/lib/proposalPath';
+import { callbackLeadDigits, submitCallbackLead } from '@/lib/leads/submitCallbackLead';
 
 const STORAGE_KEY = 'ss_lead_dismissed_v2';
 const DISMISS_MS = 10 * 60 * 1000; // 10 minutes
@@ -45,22 +46,15 @@ export default function LeadCapturePopup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length < 10) { setError('Please enter a valid 10-digit mobile number.'); return; }
+    const digits = callbackLeadDigits(phone);
+    if (!digits) { setError('Please enter a valid 10-digit mobile number.'); return; }
     setLoading(true);
-    try {
-      await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: `+91${digits}`, whatsapp }),
-      });
-      setSubmitted(true);
-      setTimeout(() => dismiss(), 2500);
-    } catch {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    // "Thank you" only once the server has saved the number (lib/leads/submitCallbackLead.ts).
+    const result = await submitCallbackLead(digits, whatsapp);
+    setLoading(false);
+    if (!result.ok) { setError(result.error); return; }
+    setSubmitted(true);
+    setTimeout(() => dismiss(), 2500);
   };
 
   // Also when it opened on another page and the person then went to one it does not belong on.

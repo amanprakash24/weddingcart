@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { categoryService } from '@/services/category.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { platformScoped } from '@/lib/ownership/entry';
+import { workingImage } from '@/lib/images/workingImage';
 
 async function handleGET(req: NextRequest) {
   try {
@@ -16,8 +17,8 @@ async function handleGET(req: NextRequest) {
       isSpecialParam === 'true' ? true : isSpecialParam === 'false' ? false : undefined;
 
     const { data } = await categoryService.list({ isSpecial });
-
-    return NextResponse.json({ success: true, data });
+    // Removed Unsplash pictures → our own (lib/images/workingImage.ts)
+    return NextResponse.json({ success: true, data: data.map((c) => ({ ...c, image: workingImage(c.image) })) });
   } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch categories' },
