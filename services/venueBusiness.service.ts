@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import type { Scope } from '@/lib/ownership/scope';
 import { effectivePermissions, type MemberRole, type Permission } from '@/lib/auth/permissions';
 import { photosFromRegistration } from '@/lib/venue/profile';
-import { ONBOARDING_UPLOAD_FOLDER } from '@/lib/onboardingUpload';
+import { ONBOARDING_UPLOAD_FOLDER, isOnboardingVideo } from '@/lib/onboardingUpload';
 
 // A person's place in a business (7 Oct 2026):  Person (User) → Business Membership → Role → Permissions.
 //
@@ -55,11 +55,14 @@ export function createVenueBusinessService(deps: VenueBusinessDeps = defaultDeps
     if (!profile) return;
     let business = await deps.db.business.findUnique({ where: { vendorId: profile.vendorId }, select: { id: true, kind: true } });
     if (!business) {
-      const application = await deps.db.vendorApplication.findUnique({ where: { vendorId: profile.vendorId }, select: { status: true, portfolioImages: true } });
-      const photos = application?.status === 'APPROVED' ? photosFromRegistration(application.portfolioImages, deps.cloudName(), ONBOARDING_UPLOAD_FOLDER) : [];
+      const application = await deps.db.vendorApplication.findUnique({ where: { vendorId: profile.vendorId }, select: { status: true, portfolioImages: true, tourVideo: true } });
+      const approved = application?.status === 'APPROVED';
+      const photos = approved ? photosFromRegistration(application.portfolioImages, deps.cloudName(), ONBOARDING_UPLOAD_FOLDER) : [];
+      // The registration's tour video (25 Oct 2026) becomes the profile's video. Already approved: the admin watched it with the registration.
+      const video = approved && isOnboardingVideo(application.tourVideo, deps.cloudName()) ? { videoUrl: application.tourVideo, videoStatus: 'APPROVED' as const } : {};
       try {
         business = await deps.db.business.create({
-          data: { name: profile.vendor.name, kind: 'VENDOR', vendorId: profile.vendorId, ...(photos.length ? { photos: { create: photos.map((url) => ({ url })) } } : {}) },
+          data: { name: profile.vendor.name, kind: 'VENDOR', vendorId: profile.vendorId, ...video, ...(photos.length ? { photos: { create: photos.map((url) => ({ url })) } } : {}) },
           select: { id: true, kind: true },
         });
       } catch (err) {

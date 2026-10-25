@@ -31,6 +31,7 @@ export interface VendorApplicationCreateData {
   coverImage?: string;
   portfolioImages?: string[];
   foodMenuImages?: string[];
+  tourVideo?: string; // checked by the route: a video our signature put in our storage
   capabilities?: WeddingEventType[]; // which wedding functions this vendor/venue serves — see VendorCapability
 }
 
@@ -77,6 +78,8 @@ async function approveVendorApplication(app: VendorApplicationWithCategory, tx: 
     images: app.coverImage ? [app.coverImage] : [DEFAULT_IMAGE],
     description: app.description || `${app.businessName} — a verified ShaadiShopping vendor.`,
     features,
+    // The registration's tour video becomes the listing's video (the admin watched it before approving).
+    ...(app.tourVideo ? { virtualTourVideo: app.tourVideo } : {}),
     // Explicit, not the Vendor.status column default (DRAFT) — approving an
     // application already IS this flow's review step, so the resulting
     // vendor should go live immediately, matching pre-status-field behavior,
@@ -179,6 +182,7 @@ export const vendorApplicationService = {
       coverImage: data.coverImage,
       portfolioImages: data.portfolioImages,
       foodMenuImages: data.foodMenuImages,
+      tourVideo: data.tourVideo,
       capabilities: data.capabilities,
     });
   },
