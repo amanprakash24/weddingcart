@@ -1,745 +1,185 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { User, Phone, Mail, Calendar, Users, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Clock, MapPin } from 'lucide-react';
-import WeddingDashboardClient from '@/components/WeddingDashboardClient';
+import { Check, Phone } from 'lucide-react';
 import { trackConsultationLeadConversion } from '@/lib/analytics/googleAds';
-import { PlanFormData, EVENT_LABELS } from '@/lib/planPreview';
-import LivePlanPreview from '@/components/plan/LivePlanPreview';
-
-const CITIES = ['Patna', 'Delhi', 'Mumbai', 'Jaipur', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Udaipur', 'Goa'];
 import { useCart } from '@/context/CartContext';
+import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY, shaadiWhatsAppLink } from '@/lib/shaadiContact';
+import { checkPlanForm, planPayload, BUDGET_OPTIONS, BUDGET_QUERY_MAP, PLAN_SERVICES, type PlanFields } from '@/lib/plan/shortPlan';
+import { serif } from '@/components/home/styles';
 
-const STEPS = ['Event Details', 'Services', 'Hospitality', 'Celebration', 'Consultation'];
+// /plan (25 Oct 2026, founder: "this form is too long"): one short form instead of the 5-step wizard. The four things the
+// server needs (name, mobile, date, guests) plus budget and services as optional taps; the Wedding Expert asks the rest on
+// the first call. Saved to the same place as before (POST /api/consultations → a consultation in the CRM).
+const WHATSAPP = shaadiWhatsAppLink('Hi, I just sent my wedding details on Shaadi Shopping.');
 
-const EVENT_TYPES = [
-  { id: 'wedding',     label: 'Wedding',     icon: '💍' },
-  { id: 'engagement',  label: 'Engagement',  icon: '💑' },
-  { id: 'birthday',    label: 'Birthday',    icon: '🎂' },
-  { id: 'anniversary', label: 'Anniversary', icon: '🥂' },
-  { id: 'corporate',   label: 'Corporate',   icon: '🏢' },
-  { id: 'other',       label: 'Other Event', icon: '🎉' },
-];
-
-const SERVICES = [
-  // ── Primary 8 categories (in original order) ──
-  { id: 'venue', label: 'Venues', icon: '🏛️', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-  { id: 'makeup', label: 'Makeup Artists', icon: '💄', color: 'bg-pink-50 border-pink-200 text-pink-700' },
-  { id: 'mehndi', label: 'Mehndi', icon: '🌿', color: 'bg-green-50 border-green-200 text-green-700' },
-  { id: 'decorator', label: 'Decorators', icon: '🌸', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-  { id: 'band', label: 'Band & Music', icon: '🎺', color: 'bg-orange-50 border-orange-200 text-orange-700' },
-  { id: 'dj', label: 'DJ', icon: '🎧', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-  { id: 'catering', label: 'Catering', icon: '🍽️', color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-  { id: 'photo-video', label: 'Photo & Video', icon: '📸', color: 'bg-teal-50 border-teal-200 text-teal-700' },
-  // ── Additional / On-demand services ──
-  { id: 'accommodation', label: 'Accommodation', icon: '🏨', color: 'bg-sky-50 border-sky-200 text-sky-700' },
-  { id: 'gifts', label: 'Gifts', icon: '🎁', color: 'bg-red-50 border-red-200 text-red-700' },
-  { id: 'invitations', label: 'Invitations & Stationery', icon: '✉️', color: 'bg-rose-50 border-rose-200 text-rose-700' },
-  { id: 'transport', label: 'Transportation', icon: '🚗', color: 'bg-gray-50 border-gray-200 text-gray-700' },
-  { id: 'legal', label: 'Legal & Documentation', icon: '📋', color: 'bg-slate-50 border-slate-200 text-slate-700' },
-  { id: 'hospitality', label: 'Hospitality', icon: '🤝', color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-  { id: 'planning', label: 'Wedding Planning & Coordination', icon: '📝', color: 'bg-violet-50 border-violet-200 text-violet-700' },
-  { id: 'bridal-lehenga', label: 'Bridal Lehenga', icon: '👗', color: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-700' },
-  { id: 'bridal-jewellery', label: 'Bridal Jewellery', icon: '💍', color: 'bg-amber-50 border-amber-200 text-amber-700' },
-  { id: 'sherwani', label: 'Sherwani / Groom Wear', icon: '🤵', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-  { id: 'trousseau', label: 'Trousseau Packing', icon: '🎀', color: 'bg-lime-50 border-lime-200 text-lime-700' },
-  { id: 'sfx',      label: 'SFX Effects', icon: '✨', color: 'bg-cyan-50 border-cyan-200 text-cyan-700' },
-  { id: 'security', label: 'Security Guards & Bouncers',    icon: '🛡️', color: 'bg-slate-50 border-slate-200 text-slate-700' },
-];
-
-const VENUE_TYPES = [
-  { id: '5star', label: '5-Star Hotel', icon: '⭐', desc: 'Luxury & prestige' },
-  { id: 'resort', label: 'Resort', icon: '🌴', desc: 'Nature & relaxation' },
-  { id: 'farmhouse', label: 'Farm House', icon: '🌾', desc: 'Open & spacious' },
-  { id: 'palace', label: 'Palace', icon: '🏰', desc: 'Royal & heritage' },
-  { id: 'banquet', label: 'Banquet Hall', icon: '🏛️', desc: 'Classic & elegant' },
-  { id: 'beach', label: 'Beach Venue', icon: '🏖️', desc: 'Romantic & scenic' },
-  { id: 'garden', label: 'Garden / Lawn', icon: '🌿', desc: 'Natural & fresh' },
-  { id: 'own-home', label: 'Own Home', icon: '🏠', desc: 'Personal & intimate' },
-];
-
-// Maps the homepage budget-picker slugs (?budget=...) to the nearest existing budgetRange tier below.
-const BUDGET_QUERY_MAP: Record<string, string> = {
-  'under-5': 'under-5L',
-  '5-10': '5-10L',
-  '10-15': '10-20L',
-  '15-25': '20-50L',
-  '25-plus': '20-50L',
-};
+const input =
+  'min-h-[52px] w-full min-w-0 rounded-[14px] border border-[#E2D3BC] bg-[#FBF6EE] px-3.5 text-base text-[#221714] outline-none focus-visible:border-[#7A1238] focus-visible:ring-2 focus-visible:ring-[#7A1238]/25';
+const chip = (on: boolean) =>
+  `min-h-[44px] rounded-full border px-4 text-[15px] font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238]/40 ${
+    on ? 'border-[#7A1238] bg-[#7A1238] text-white' : 'border-[#E2D3BC] bg-white text-[#221714] hover:border-[#7A1238]'
+  }`;
 
 export default function PlanPageClient() {
   const { items, total, clearCart } = useCart();
   const searchParams = useSearchParams();
-  const [step, setStep] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-  const [attempted, setAttempted] = useState(false);
+  const fromHomepage = BUDGET_QUERY_MAP[searchParams.get('budget') ?? ''] ?? '';
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setAttempted(false); }, [step]);
-  const [success, setSuccess] = useState(false);
-  const [form, setForm] = useState<PlanFormData>({
-    name: '', phone: '', email: '', city: 'Patna', weddingDate: '', days: 1,
-    guestCount: 100, foodPreference: 'veg', weddingStyle: '', budgetRange: '',
-    eventType: 'wedding',
-    services: [], meals: {}, venueType: '', consultationDate: '', preferredTime: '', message: '',
-  });
+  const [fields, setFields] = useState<PlanFields>({ name: '', phone: '', weddingDate: '', guests: '', budgetRange: fromHomepage, services: ['venue'] });
+  const [errors, setErrors] = useState<Partial<Record<keyof PlanFields, string>>>({});
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [sent, setSent] = useState(false);
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  useEffect(() => {
-    const mapped = BUDGET_QUERY_MAP[searchParams.get('budget') ?? ''];
-    if (mapped) setForm((f) => ({ ...f, budgetRange: mapped }));
-  }, [searchParams]);
-
-  const eventLabel = EVENT_LABELS[form.eventType] || 'Event';
-
-  const updateField = <K extends keyof PlanFormData>(key: K, value: PlanFormData[K]) =>
-    setForm((f) => ({ ...f, [key]: value }));
-
+  const set = <K extends keyof PlanFields>(key: K, value: PlanFields[K]) => {
+    setFields((f) => ({ ...f, [key]: value }));
+    setErrors((e) => ({ ...e, [key]: undefined }));
+  };
   const toggleService = (id: string) =>
-    updateField('services', form.services.includes(id)
-      ? form.services.filter((s) => s !== id)
-      : [...form.services, id]);
+    set('services', fields.services.includes(id) ? fields.services.filter((s) => s !== id) : [...fields.services, id]);
 
-  const toggleMeal = (day: number, meal: string) => {
-    const current = form.meals[day] || [];
-    updateField('meals', {
-      ...form.meals,
-      [day]: current.includes(meal) ? current.filter((m) => m !== meal) : [...current, meal],
-    });
-  };
-
-  const toggleVenueType = (id: string) =>
-    updateField('venueType', form.venueType === id ? '' : id);
-
-  const isValidPhone = (v: string) => /^\d{10}$/.test(v.replace(/[\s\-\+\(\)]/g, ''));
-
-
-  const canNext = () => {
-    if (step === 0) return form.name && isValidPhone(form.phone) && form.weddingDate && form.city && form.guestCount > 0;
-    if (step === 1) return form.services.length > 0;
-    if (step === 4) return true;
-    return true;
-  };
-
-  const handleSubmit = async () => {
-    setSubmitting(true);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendError('');
+    const problems = checkPlanForm(fields, today);
+    setErrors(problems);
+    if (Object.keys(problems).length > 0) return;
+    setSending(true);
     try {
       const res = await fetch('/api/consultations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          cartItems: items,
-          totalBudget: total,
-        }),
+        body: JSON.stringify(planPayload(fields, items, total)),
       });
-      const data = await res.json();
-      if (data.success) {
-        setSuccess(true);
-        clearCart();
-        trackConsultationLeadConversion();
-      } else {
-        alert('Something went wrong. Please try again.');
-      }
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) throw new Error();
+      setSent(true);
+      clearCart();
+      trackConsultationLeadConversion();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
-      alert('Network error. Please check your connection and try again.');
+      setSendError(`We could not send your details. Please try again, or call us on ${SHAADI_PHONE_DISPLAY}.`);
     } finally {
-      setSubmitting(false);
+      setSending(false);
     }
   };
 
-  if (success) return <WeddingDashboardClient form={form} cartTotal={total} />;
+  const err = (key: keyof PlanFields) =>
+    errors[key] ? <p id={`plan-${key}-error`} role="alert" className="text-[13px] font-medium text-[#B42318]">{errors[key]}</p> : null;
+  const label = 'flex flex-col gap-1.5 text-sm font-semibold text-[#221714]';
 
   return (
-    <div className="pt-16 min-h-screen bg-[#FFFAF5]">
-      {/* Header */}
-      <div className="py-12 sm:py-16" style={{ background: '#8B1A4A' }}>
-        <div className="max-w-3xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/20 text-white px-4 py-1.5 rounded-full text-sm font-medium mb-4">
-            <Sparkles className="w-4 h-4" /> Free Wedding Planning Wizard
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white font-playfair mb-3">
-            Plan Your Dream Wedding
+    <div className="min-h-screen bg-[#FBF6EE] text-[#221714]">
+      {/* Clears the fixed announcement bar (36px) and the navbar (52 / 64 / 72px) */}
+      <div className="mx-auto flex max-w-[1240px] flex-wrap items-start gap-10 px-4 pb-24 pt-[112px] sm:px-6 sm:pt-[128px] lg:gap-14 lg:pt-[144px]">
+        <section className="min-w-0 flex-[1_1_380px]">
+          <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-[#8A6A2F]">Free for families · under a minute</p>
+          <h1 className="mt-3 text-[2.6rem] font-semibold leading-[1.03] tracking-[-0.01em] sm:text-[3.4rem] lg:text-[4rem]" style={serif}>
+            Get your free <span className="italic text-[#7A1238]">wedding shortlist.</span>
           </h1>
-          <p className="text-white/80 text-sm">Complete the wizard in 5 simple steps. Our expert planners will do the rest.</p>
-        </div>
-      </div>
-
-      {/* Progress */}
-      {/* Sticks just under the site header (announcement 36px + nav 52 / 64 / 72px — components/Navbar.tsx). */}
-      <div className="bg-white border-b border-gray-100 shadow-sm sticky top-[88px] sm:top-[100px] lg:top-[108px] z-20">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            {STEPS.map((s, i) => (
-              <div key={s} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                    i < step ? 'bg-emerald-500 text-white' :
-                    i === step ? 'bg-[#8B1A4A] text-white shadow-lg' :
-                    'bg-gray-100 text-gray-400'
-                  }`}>
-                    {i < step ? <CheckCircle className="w-4 h-4" /> : i + 1}
-                  </div>
-                  <span className={`mt-1 text-[10px] sm:text-xs font-medium hidden sm:block ${i === step ? 'text-amber-600' : i < step ? 'text-emerald-600' : 'text-gray-400'}`}>
-                    {s}
-                  </span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className={`h-0.5 w-6 sm:w-12 mx-1 sm:mx-2 transition-all ${i < step ? 'bg-emerald-400' : 'bg-gray-200'}`} />
-                )}
-              </div>
+          <p className="mt-5 max-w-[520px] text-[17px] leading-relaxed text-[#4D3E36] sm:text-lg">
+            Four quick details. Your Wedding Expert calls you, asks the rest in a friendly chat, and sends venues and vendors that fit your guests and budget.
+          </p>
+          <ul className="mt-7 hidden space-y-3.5 text-base text-[#4D3E36] sm:block">
+            {['One person for your whole wedding', 'Real Patna venues with their prices', 'Visits and quotations arranged for you'].map((t) => (
+              <li key={t} className="flex items-center gap-3"><Check className="h-[18px] w-[18px] text-[#7A1238]" strokeWidth={2.4} aria-hidden />{t}</li>
             ))}
+          </ul>
+          <div className="mt-8 hidden max-w-[420px] items-center gap-3.5 rounded-[20px] border border-[#EADFCC] bg-white px-4 py-3.5 sm:flex">
+            <Image src="/images/anisha.jpg" alt="" width={56} height={56} className="h-14 w-14 rounded-full border-2 border-[#E9C98E] object-cover object-top" />
+            <div>
+              <p className="font-bold">Talk to a Wedding Expert</p>
+              <p className="text-sm text-[#6B5A4E]">Mon–Sat, 10am–7pm · <a href={`tel:${SHAADI_PHONE}`} className="font-semibold text-[#7A1238]">{SHAADI_PHONE_DISPLAY}</a></p>
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Form */}
-      <div className="max-w-3xl lg:max-w-6xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6 lg:items-start">
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* Step content */}
-          <div className="p-6 sm:p-8">
-            {/* STEP 1: Event Details */}
-            {step === 0 && (
-              <div className="animate-fade-in space-y-5">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">Let&apos;s Begin Planning Your {eventLabel}</h2>
-                  <p className="text-gray-500 text-sm">Tell us about yourself and your celebration</p>
-                </div>
-
-                {/* Event Type Selector */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">What Are You Planning? *</label>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {EVENT_TYPES.map((et) => (
-                      <button
-                        key={et.id}
-                        type="button"
-                        onClick={() => updateField('eventType', et.id)}
-                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-semibold transition-all ${
-                          form.eventType === et.id
-                            ? 'border-[#8B1A4A] bg-rose-50 text-[#8B1A4A]'
-                            : 'border-gray-200 text-gray-600 hover:border-rose-300'
-                        }`}
-                      >
-                        <span className="text-xl">{et.icon}</span>
-                        {et.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Full Name *</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        required
-                        value={form.name}
-                        onChange={(e) => updateField('name', e.target.value)}
-                        className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm transition-colors border ${attempted && !form.name ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
-                        placeholder="Priya Sharma"
-                      />
-                    </div>
-                    {attempted && !form.name && (
-                      <p className="text-xs text-rose-500 mt-1">Please enter your name</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Phone Number *</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        required
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={10}
-                        value={form.phone}
-                        onChange={(e) => updateField('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm transition-colors border ${(form.phone && !isValidPhone(form.phone)) || (attempted && !form.phone) ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
-                        placeholder="10-digit mobile number"
-                      />
-                    </div>
-                    {form.phone && !isValidPhone(form.phone) && (
-                      <p className="text-xs text-rose-500 mt-1">Enter a valid 10-digit mobile number</p>
-                    )}
-                    {attempted && !form.phone && (
-                      <p className="text-xs text-rose-500 mt-1">Phone number is required</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Email Address</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 transition-colors" placeholder="priya@email.com" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Your City *</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <select required value={form.city} onChange={(e) => updateField('city', e.target.value)} className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 transition-colors appearance-none">
-                        {CITIES.map((c) => <option key={c}>{c}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">{eventLabel} Date *</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        required
-                        type="date"
-                        value={form.weddingDate}
-                        onChange={(e) => updateField('weddingDate', e.target.value)}
-                        className={`w-full rounded-xl pl-10 pr-4 py-3 text-sm transition-colors border ${attempted && !form.weddingDate ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200 focus:border-amber-400'}`}
-                      />
-                    </div>
-                    {attempted && !form.weddingDate && (
-                      <p className="text-xs text-rose-500 mt-1">Please select a date</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Number of Days</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <select value={form.days} onChange={(e) => updateField('days', Number(e.target.value))} className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 transition-colors appearance-none">
-                        {[1, 2, 3, 4, 5, 7].map((d) => <option key={d} value={d}>{d} Day{d > 1 ? 's' : ''}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Guest Count</label>
-                    <div className="relative">
-                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={form.guestCount === 0 ? '' : String(form.guestCount)}
-                        onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, '');
-                          updateField('guestCount', digits === '' ? 0 : parseInt(digits, 10));
-                        }}
-                        onBlur={() => {
-                          if (form.guestCount === 0) updateField('guestCount', 100);
-                        }}
-                        className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 transition-colors"
-                        placeholder="200"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Celebration Style</label>
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {[
-                      { id: 'traditional', label: 'Traditional', icon: '🪔' },
-                      { id: 'luxury', label: 'Luxury', icon: '👑' },
-                      { id: 'royal', label: 'Royal', icon: '🏰' },
-                      { id: 'destination', label: 'Destination', icon: '✈️' },
-                      { id: 'intimate', label: 'Intimate', icon: '🌸' },
-                      { id: 'modern', label: 'Modern', icon: '✨' },
-                    ].map((style) => (
-                      <button
-                        key={style.id}
-                        onClick={() => updateField('weddingStyle', form.weddingStyle === style.id ? '' : style.id)}
-                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-semibold transition-all ${
-                          form.weddingStyle === style.id
-                            ? 'border-[#8B1A4A] bg-rose-50 text-[#8B1A4A]'
-                            : 'border-gray-200 text-gray-600 hover:border-rose-300'
-                        }`}
-                      >
-                        <span className="text-xl">{style.icon}</span>
-                        {style.label}
-                      </button>
-                    ))}
-                  </div>
-                  {form.weddingStyle && (
-                    <p className="text-xs text-amber-600 mt-2 font-medium">
-                      {form.weddingStyle === 'intimate' && '✨ Perfect for an intimate, close-knit celebration with your loved ones.'}
-                      {form.weddingStyle === 'destination' && '✈️ Great choice for a destination-style celebration — we handle the logistics.'}
-                      {form.weddingStyle === 'luxury' && '👑 We work with premium vendors to create an extraordinary luxury experience.'}
-                      {form.weddingStyle === 'royal' && '🏰 Royal-style weddings deserve royal coordination — we\'re here for it.'}
-                      {form.weddingStyle === 'traditional' && '🪔 Beautiful traditional wedding values — we honour every custom and ritual.'}
-                      {form.weddingStyle === 'modern' && '✨ A modern, stylish celebration crafted around your unique vision.'}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Food Preference</label>
-                  <div className="flex gap-3">
-                    {['veg', 'non-veg', 'both'].map((pref) => (
-                      <button key={pref} onClick={() => updateField('foodPreference', pref)}
-                        className={`flex-1 py-3 rounded-xl border-2 text-sm font-semibold capitalize transition-all ${
-                          form.foodPreference === pref
-                            ? 'border-amber-400 bg-amber-50 text-amber-700'
-                            : 'border-gray-200 text-gray-500 hover:border-amber-200'
-                        }`}
-                      >
-                        {pref === 'veg' ? '🥗 Veg' : pref === 'non-veg' ? '🍖 Non-Veg' : '🍽️ Both'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Total Wedding Budget *</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {[
-                      { id: 'under-5L',  label: 'Under ₹5 Lakh',   icon: '💰' },
-                      { id: '5-10L',     label: '₹5 – 10 Lakh',    icon: '💰' },
-                      { id: '10-20L',    label: '₹10 – 20 Lakh',   icon: '💎' },
-                      { id: '20-50L',    label: '₹20 – 50 Lakh',   icon: '💎' },
-                      { id: '50L-1Cr',   label: '₹50L – 1 Crore',  icon: '👑' },
-                      { id: 'above-1Cr', label: 'Above ₹1 Crore',  icon: '🏆' },
-                    ].map((b) => (
-                      <button
-                        key={b.id}
-                        onClick={() => updateField('budgetRange', b.id)}
-                        className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-semibold transition-all ${
-                          form.budgetRange === b.id
-                            ? 'border-[#8B1A4A] bg-rose-50 text-[#8B1A4A]'
-                            : 'border-gray-200 text-gray-600 hover:border-rose-300'
-                        }`}
-                      >
-                        <span>{b.icon}</span>
-                        <span>{b.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {!form.budgetRange && (
-                    <p className="text-xs text-gray-400 mt-2">Selecting a budget helps us recommend the right vendors for you.</p>
-                  )}
-                </div>
-
-                {/* Cart summary if items */}
-                {items.length > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                    <p className="text-amber-700 font-semibold text-sm mb-2">Your Wedding Plan Cart</p>
-                    <div className="space-y-1.5 mb-2">
-                      {items.map((item) => (
-                        <div key={`${item.vendor.id}-${item.package.id}`} className="flex items-center justify-between text-sm">
-                          <span className="text-gray-700">{item.vendor.name} — {item.package.name}</span>
-                          <span className="font-semibold text-amber-600">₹{item.package.price.toLocaleString('en-IN')}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="border-t border-amber-200 pt-2 flex justify-between font-bold text-sm">
-                      <span>Total Budget</span>
-                      <span className="gradient-text">₹{total.toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                )}
+        <main className="min-w-0 flex-[1_1_520px] rounded-[28px] border border-[#EADFCC] bg-white p-5 shadow-[0_18px_50px_rgba(34,23,20,0.08)] sm:p-8">
+          {sent ? (
+            <div className="px-2 py-8 text-center sm:py-10" role="status">
+              <span className="mx-auto flex h-[72px] w-[72px] items-center justify-center rounded-full bg-[#E6F0E9]"><Check className="h-9 w-9 text-[#2F6B45]" strokeWidth={2.2} aria-hidden /></span>
+              <h2 className="mt-5 text-[2.2rem] font-semibold leading-tight sm:text-[2.6rem]" style={serif}>Thank you, {fields.name.trim().split(/\s+/)[0]}! Your expert will call you</h2>
+              <p className="mx-auto mt-3 max-w-[440px] text-base leading-relaxed text-[#4D3E36]">
+                Our Wedding Experts call Mon–Sat, 10am–7pm, on the number you gave. Keep your phone close.
+              </p>
+              <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+                <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-[#1F7A4D] px-6 font-bold text-white">WhatsApp us now</a>
+                <Link href="/cities/patna/venue" className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-[#D9C7AA] px-6 font-semibold text-[#221714]">Browse venues</Link>
               </div>
-            )}
-
-            {/* STEP 2: Services */}
-            {step === 1 && (
-              <div className="animate-fade-in space-y-5">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">What Would You Like Help With?</h2>
-                  <p className="text-gray-500 text-sm">Choose the services you need — we&apos;ll coordinate everything for you</p>
-                </div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-gray-400">{form.services.length} service{form.services.length !== 1 ? 's' : ''} selected</p>
-                  <button
-                    onClick={() => {
-                      const recommended = ['venue', 'catering', 'photo-video', 'decorator', 'makeup', 'mehndi'];
-                      updateField('services', recommended);
-                    }}
-                    className="text-xs text-amber-600 font-semibold border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-full transition-all"
-                  >
-                    ✨ Recommend for me
-                  </button>
-                </div>
-                {form.services.length > 0 && (
-                  <p className="text-xs text-amber-600 mb-3 font-medium">Most couples with similar weddings select these services.</p>
-                )}
-                {attempted && form.services.length === 0 && (
-                  <p className="text-xs text-rose-500 mb-3 font-medium">Please select at least one service to continue.</p>
-                )}
-                <div className="space-y-5">
-                  {[
-                    { group: '📋 Planning & Coordination', ids: ['planning', 'hospitality', 'legal', 'security'] },
-                    { group: '🏛️ Venue & Experience', ids: ['venue', 'accommodation', 'transport'] },
-                    { group: '🍽️ Food & Entertainment', ids: ['catering', 'dj', 'band'] },
-                    { group: '💄 Beauty & Fashion', ids: ['makeup', 'mehndi', 'bridal-lehenga', 'bridal-jewellery', 'sherwani', 'trousseau'] },
-                    { group: '📸 Decor & Media', ids: ['decorator', 'photo-video', 'invitations', 'gifts', 'sfx'] },
-                  ].map((groupItem) => (
-                    <div key={groupItem.group}>
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{groupItem.group}</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {SERVICES.filter((s) => groupItem.ids.includes(s.id)).map((s) => {
-                          const selected = form.services.includes(s.id);
-                          return (
-                            <button key={s.id} onClick={() => toggleService(s.id)}
-                              className={`relative p-3 rounded-xl border-2 text-left transition-all ${
-                                selected ? 'border-amber-400 bg-amber-50' : 'border-gray-200 hover:border-amber-300 bg-white'
-                              }`}
-                            >
-                              {selected && (
-                                <div className="absolute top-2 right-2 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center">
-                                  <CheckCircle className="w-3 h-3 text-white" />
-                                </div>
-                              )}
-                              <div className="text-xl mb-1">{s.icon}</div>
-                              <p className={`text-xs font-semibold leading-tight ${selected ? 'text-amber-700' : 'text-gray-700'}`}>{s.label}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            </div>
+          ) : (
+            <form onSubmit={submit} noValidate aria-label="Get your free wedding shortlist" className="flex flex-col gap-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className={label}>
+                  Your name
+                  <input className={input} value={fields.name} onChange={(e) => set('name', e.target.value)} placeholder="Full name" autoComplete="name" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'plan-name-error' : undefined} />
+                  {err('name')}
+                </label>
+                <label className={label}>
+                  Mobile number
+                  <span className={`${input} flex items-center overflow-hidden px-0 focus-within:border-[#7A1238] focus-within:ring-2 focus-within:ring-[#7A1238]/25`}>
+                    <span className="border-r border-[#E2D3BC] px-3 font-semibold text-[#6B5A4E]">+91</span>
+                    <input className="min-h-[50px] min-w-0 flex-1 bg-transparent px-3 text-base outline-none" type="tel" inputMode="numeric" value={fields.phone} onChange={(e) => set('phone', e.target.value)} placeholder="10 digits" autoComplete="tel-national" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'plan-phone-error' : undefined} />
+                  </span>
+                  {err('phone')}
+                </label>
+                <label className={label}>
+                  Wedding date
+                  <input className={input} type="date" min={today} value={fields.weddingDate} onChange={(e) => set('weddingDate', e.target.value)} aria-invalid={!!errors.weddingDate} aria-describedby={errors.weddingDate ? 'plan-weddingDate-error' : undefined} />
+                  {err('weddingDate')}
+                </label>
+                <label className={label}>
+                  Number of guests
+                  <input className={input} type="number" inputMode="numeric" min={1} value={fields.guests} onChange={(e) => set('guests', e.target.value)} placeholder="e.g. 300" aria-invalid={!!errors.guests} aria-describedby={errors.guests ? 'plan-guests-error' : undefined} />
+                  {err('guests')}
+                </label>
               </div>
-            )}
 
-            {/* STEP 3: Meal Plan */}
-            {step === 2 && (
-              <div className="animate-fade-in space-y-5">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">Wedding Hospitality Planning</h2>
-                  <p className="text-gray-500 text-sm">Select meal requirements for each wedding event</p>
-                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2">
-                    💡 We use this information to estimate catering and hospitality requirements for your wedding.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    { id: 0, name: 'Mehndi', icon: '🌿', desc: 'Mehndi ceremony' },
-                    { id: 1, name: 'Haldi', icon: '💛', desc: 'Haldi ceremony' },
-                    { id: 2, name: 'Sangeet', icon: '🎵', desc: 'Sangeet night' },
-                    { id: 3, name: 'Wedding', icon: '💍', desc: 'Main wedding ceremony' },
-                    { id: 4, name: 'Reception', icon: '🎊', desc: 'Wedding reception' },
-                  ].map((event) => (
-                    <div key={event.id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="font-semibold text-gray-800 text-sm flex items-center gap-2">
-                          <span className="text-lg">{event.icon}</span>
-                          {event.name}
-                          <span className="text-gray-400 text-xs font-normal">{event.desc}</span>
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {['Breakfast', 'Lunch', 'High Tea', 'Dinner'].map((meal) => {
-                          const selected = (form.meals[event.id] || []).includes(meal);
-                          return (
-                            <button key={meal} onClick={() => toggleMeal(event.id, meal)}
-                              className={`text-xs font-semibold px-4 py-2 rounded-full border-2 transition-all ${
-                                selected
-                                  ? 'border-amber-400 bg-amber-500 text-white'
-                                  : 'border-gray-200 text-gray-600 hover:border-amber-300 bg-white'
-                              }`}
-                            >{meal}</button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* STEP 4: Venue Preference */}
-            {step === 3 && (
-              <div className="animate-fade-in space-y-5">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">What Kind Of Celebration Do You Envision?</h2>
-                  <p className="text-gray-500 text-sm">Choose a venue style that matches your dream wedding</p>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {VENUE_TYPES.map((vt) => (
-                    <button key={vt.id} onClick={() => toggleVenueType(vt.id)}
-                      className={`relative p-4 rounded-2xl border-2 text-center transition-all ${
-                        form.venueType === vt.id
-                          ? 'border-amber-400 bg-amber-50'
-                          : 'border-gray-200 bg-white hover:border-amber-300'
-                      }`}
-                    >
-                      {form.venueType === vt.id && (
-                        <div className="absolute top-2 right-2 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                          <CheckCircle className="w-3.5 h-3.5 text-white" />
-                        </div>
-                      )}
-                      <div className="text-3xl mb-2">{vt.icon}</div>
-                      <p className={`text-xs font-semibold ${form.venueType === vt.id ? 'text-amber-700' : 'text-gray-700'}`}>{vt.label}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{vt.desc}</p>
+              <fieldset>
+                <legend className="mb-2 text-sm font-bold">Budget <span className="font-normal text-[#6B5A4E]">(optional)</span></legend>
+                <div className="flex flex-wrap gap-2">
+                  {BUDGET_OPTIONS.map((b) => (
+                    <button key={b.id} type="button" aria-pressed={fields.budgetRange === b.id} onClick={() => set('budgetRange', fields.budgetRange === b.id ? '' : b.id)} className={chip(fields.budgetRange === b.id)}>
+                      {b.label}
                     </button>
                   ))}
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Setting Preference</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { id: 'indoor', label: 'Indoor', icon: '🏛️', desc: 'AC & covered' },
-                      { id: 'outdoor', label: 'Outdoor', icon: '🌳', desc: 'Open air & natural' },
-                      { id: 'both', label: 'Both', icon: '⚖️', desc: 'Mix of both' },
-                    ].map((opt) => (
-                      <button
-                        key={opt.id}
-                        onClick={() => updateField('venueType', form.venueType === opt.id ? '' : opt.id)}
-                        className={`p-3 rounded-xl border-2 text-center transition-all ${
-                          form.venueType === opt.id ? 'border-amber-400 bg-amber-50' : 'border-gray-200 hover:border-amber-300 bg-white'
-                        }`}
-                      >
-                        <div className="text-2xl mb-1">{opt.icon}</div>
-                        <p className={`text-xs font-bold ${form.venueType === opt.id ? 'text-amber-700' : 'text-gray-700'}`}>{opt.label}</p>
-                        <p className="text-[10px] text-gray-400">{opt.desc}</p>
-                      </button>
-                    ))}
-                  </div>
+              </fieldset>
+
+              <fieldset>
+                <legend className="mb-2 text-sm font-bold">What do you need? <span className="font-normal text-[#6B5A4E]">(optional, tap any)</span></legend>
+                <div className="flex flex-wrap gap-2">
+                  {PLAN_SERVICES.map((s) => (
+                    <button key={s.id} type="button" aria-pressed={fields.services.includes(s.id)} onClick={() => toggleService(s.id)} className={chip(fields.services.includes(s.id))}>
+                      {s.label}
+                    </button>
+                  ))}
                 </div>
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                  <p className="text-xs font-bold text-blue-800 mb-2">📊 Venue Capacity Guide</p>
-                  <div className="space-y-1 text-xs text-blue-700">
-                    <p>🏛️ <strong>Banquet Hall</strong> — Best for 100–400 guests</p>
-                    <p>🌾 <strong>Farmhouse / Lawn</strong> — Perfect for open-air, 200–800 guests</p>
-                    <p>🏰 <strong>Palace / Heritage</strong> — Ideal for 150–500 guests, royal feel</p>
-                    <p>🌴 <strong>Resort</strong> — Great for destination weddings, 100–300 guests</p>
-                    <p>🏖️ <strong>Beach Venue</strong> — Romantic setting for 50–200 guests</p>
-                  </div>
-                </div>
-              </div>
-            )}
+              </fieldset>
 
-            {/* STEP 5: Consultation */}
-            {step === 4 && (
-              <div className="animate-fade-in space-y-5">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 font-playfair mb-1">Speak With Your Wedding Expert</h2>
-                  <p className="text-gray-500 text-sm">Book your free 30-minute strategy call — we&apos;ll coordinate your entire wedding</p>
-                </div>
+              {items.length > 0 && (
+                <p className="rounded-2xl bg-[#F4ECDF] px-4 py-3 text-sm text-[#4D3E36]">
+                  The {items.length === 1 ? 'service' : `${items.length} services`} in your cart will be sent with this, so your expert can see them.
+                </p>
+              )}
 
-                <div className="bg-white border border-gray-200 rounded-2xl p-5 flex items-start gap-4 shadow-sm">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-100 to-rose-100 flex items-center justify-center text-2xl flex-shrink-0">
-                    👨‍💼
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-bold text-gray-900 text-sm">Your Dedicated Wedding Consultant</p>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Available</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-2">500+ weddings coordinated · Responds within 24 hours</p>
-                    <p className="text-xs text-amber-700 italic font-medium">&quot;We&apos;ll help coordinate your complete wedding stress-free — from first call to your special day.&quot;</p>
-                  </div>
-                </div>
+              {sendError && <p role="alert" className="rounded-2xl bg-[#FEF3F2] px-4 py-3 text-sm font-medium text-[#B42318]">{sendError}</p>}
 
-                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: '#8B1A4A' }}>
-                      <Sparkles className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-gray-900 text-sm">Free 30-Minute Expert Call</p>
-                      <p className="text-gray-500 text-xs">Get personalized vendor recommendations</p>
-                    </div>
-                  </div>
-
-                  {/* Date picker */}
-                  <div className="mb-4">
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
-                      Preferred Date <span className="text-gray-400 font-normal normal-case">(optional)</span>
-                    </label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="date"
-                        min={new Date().toISOString().split('T')[0]}
-                        value={form.consultationDate}
-                        onChange={(e) => updateField('consultationDate', e.target.value)}
-                        className="w-full border border-amber-200 bg-white rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Time picker */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
-                      Preferred Time <span className="text-gray-400 font-normal normal-case">(optional)</span>
-                    </label>
-                    <div className="relative">
-                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="time"
-                        value={form.preferredTime}
-                        onChange={(e) => updateField('preferredTime', e.target.value)}
-                        className="w-full border border-amber-200 bg-white rounded-xl pl-10 pr-4 py-3 text-sm focus:border-amber-400 outline-none transition-colors"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Additional Notes</label>
-                  <textarea rows={4} value={form.message} onChange={(e) => updateField('message', e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-amber-400 transition-colors resize-none" placeholder="Any specific requirements, theme ideas, or questions for our expert..." />
-                </div>
-
-                {/* Summary */}
-                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-                  <h4 className="font-bold text-gray-800 text-sm mb-3">Your Wedding Plan Summary</h4>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex justify-between"><span>Name</span><span className="font-medium text-gray-900">{form.name}</span></div>
-                    <div className="flex justify-between"><span>Event Type</span><span className="font-medium text-gray-900">{EVENT_LABELS[form.eventType] || 'Event'}</span></div>
-                    <div className="flex justify-between"><span>{eventLabel} Date</span><span className="font-medium text-gray-900">{form.weddingDate || 'Not set'}</span></div>
-                    <div className="flex justify-between"><span>Duration</span><span className="font-medium text-gray-900">{form.days} day{form.days > 1 ? 's' : ''}</span></div>
-                    <div className="flex justify-between"><span>Guests</span><span className="font-medium text-gray-900">{form.guestCount}</span></div>
-                    <div className="flex justify-between"><span>Services</span><span className="font-medium text-gray-900">{form.services.length} selected</span></div>
-                    {form.venueType && <div className="flex justify-between"><span>Venue Type</span><span className="font-medium text-gray-900 capitalize">{form.venueType.replace(/-/g, ' ')}</span></div>}
-                    {form.consultationDate && <div className="flex justify-between"><span>Consultation Date</span><span className="font-medium text-gray-900">{form.consultationDate}</span></div>}
-                    {total > 0 && <div className="flex justify-between border-t border-gray-200 pt-2 mt-2"><span className="font-semibold">Cart Total</span><span className="font-bold gradient-text">₹{total.toLocaleString('en-IN')}</span></div>}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Navigation */}
-          <div className="border-t border-gray-100 px-6 sm:px-8 py-5 flex items-center justify-between bg-gray-50">
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              disabled={step === 0}
-              className="flex items-center gap-2 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-            >
-              <ChevronLeft className="w-4 h-4" /> Back
-            </button>
-
-            <div className="flex items-center gap-2">
-              {STEPS.map((_, i) => (
-                <div key={i} className={`rounded-full transition-all ${i === step ? 'w-5 h-2 bg-amber-500' : i < step ? 'w-2 h-2 bg-emerald-400' : 'w-2 h-2 bg-gray-200'}`} />
-              ))}
-            </div>
-
-            {step < STEPS.length - 1 ? (
-              <button
-                onClick={() => {
-                  if (canNext()) {
-                    setStep((s) => s + 1);
-                  } else {
-                    setAttempted(true);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }
-                }}
-                className={`flex items-center gap-2 bg-[#8B1A4A] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all ${!canNext() ? 'opacity-50' : ''}`}
-              >
-                Continue <ChevronRight className="w-4 h-4" />
+              <button type="submit" disabled={sending} className="min-h-[58px] rounded-2xl bg-[#7A1238] text-[17px] font-bold text-white transition-colors hover:bg-[#5A0D29] disabled:opacity-60 outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238] focus-visible:ring-offset-2">
+                {sending ? 'Sending…' : 'Get my free shortlist'}
               </button>
-            ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || !canNext()}
-                className="flex items-center gap-2 bg-[#8B1A4A] text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-60"
-              >
-                {submitting ? 'Submitting...' : <><Sparkles className="w-4 h-4" /> Confirm Plan</>}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-6 lg:mt-0 lg:sticky lg:top-[196px]">
-          <LivePlanPreview form={form} step={step} />
-        </div>
+              <p className="text-center text-[13px] leading-snug text-[#6B5A4E]">
+                We&apos;ll call or WhatsApp you about your wedding only. No charges for families. Prefer to talk?{' '}
+                <a href={`tel:${SHAADI_PHONE}`} className="inline-flex items-center gap-1 font-semibold text-[#7A1238]"><Phone className="h-3.5 w-3.5" aria-hidden />{SHAADI_PHONE_DISPLAY}</a>
+              </p>
+            </form>
+          )}
+        </main>
       </div>
-
     </div>
   );
 }

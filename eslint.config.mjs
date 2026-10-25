@@ -27,7 +27,6 @@ const eslintConfig = defineConfig([
       "components/AdminVendorListClient.tsx",
       "components/AdminVendorProspectsClient.tsx",
       "components/CategoryPageClient.tsx",
-      "components/PlanPageClient.tsx",
       "components/admin/EventAdminClient.tsx",
     ],
     rules: { "react-hooks/set-state-in-effect": "warn" },
