@@ -94,8 +94,12 @@ export default function VendorCard({ vendor }: Props) {
           <div className="flex items-center gap-1 text-gray-400 text-xs mb-3">
             <MapPin className="w-3 h-3 text-[#C5A46D] flex-shrink-0" />
             <span>{vendor.city}</span>
-            <span className="text-gray-200 mx-1">·</span>
-            <span className="text-gray-500">({vendor.reviewCount} reviews)</span>
+            {showRating && (
+              <>
+                <span className="text-gray-200 mx-1">·</span>
+                <span className="text-gray-500">({vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'})</span>
+              </>
+            )}
           </div>
 
           {/* Feature pills — ivory tone, no color clash */}
