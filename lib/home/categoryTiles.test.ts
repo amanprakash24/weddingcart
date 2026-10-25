@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { buildCategoryTiles, categoryHref } from './categoryTiles';
 
 const CATS = [
@@ -26,9 +28,9 @@ describe('buildCategoryTiles', () => {
     expect(categoryHref('sherwani')).toBe('/categories/sherwani');
   });
   test('pictures only from /public, none for others', () => {
-    const tiles = buildCategoryTiles(['venue', 'security'], CATS);
-    expect(tiles[0].picture).toBe('/cat-venue-guides.jpg');
-    expect(tiles[1].picture).toBeNull();
+    const tiles = buildCategoryTiles(['venue', 'security', 'sherwani'], CATS);
+    expect(tiles.map((t) => t.picture)).toEqual(['/cat-venue-guides.jpg', '/cat-security.jpg', null]);
+    for (const t of tiles) if (t.picture) expect(existsSync(join(import.meta.dir, '..', '..', 'public', t.picture))).toBe(true);
   });
   test('capped', () => {
     expect(buildCategoryTiles(['venue', 'decorator', 'security'], CATS, 2)).toHaveLength(2);

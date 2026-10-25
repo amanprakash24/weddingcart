@@ -11,6 +11,7 @@ const PICTURES: Record<string, string> = {
   makeup: '/cat-bridal-fashion.jpg',
   'photo-video': '/cat-photography.jpg',
   catering: '/cat-food-catering.jpg',
+  security: '/cat-security.jpg', // photo supplied by the founder (25 Oct 2026)
 };
 
 // Order couples usually plan in; anything else follows by vendor count.

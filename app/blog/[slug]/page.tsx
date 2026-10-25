@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { blogRepository } from '@/repositories/blog.repository';
 import { JsonLd } from '@/components/JsonLd';
 import type { Blog } from '@/generated/prisma/client';
+import { blogCoverImage } from '@/lib/blog/coverImage';
 import { Calendar, Clock, ArrowLeft, BookOpen, ChevronRight } from 'lucide-react';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
@@ -50,7 +51,7 @@ function toBlogData(blog: Blog): BlogData {
     slug: blog.slug,
     excerpt: blog.excerpt,
     content: blog.content,
-    coverImage: blog.coverImage,
+    coverImage: blogCoverImage(blog.coverImage),
     author: blog.author,
     category: blog.category,
     tags: blog.tags,

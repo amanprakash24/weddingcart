@@ -6,6 +6,7 @@ import { vendorService } from '@/services/vendor.service';
 import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { buildCategoryTiles, type CategoryTile } from '@/lib/home/categoryTiles';
 import { HOME_FAQ } from '@/lib/home/faq';
+import { blogCoverImage } from '@/lib/blog/coverImage';
 import type { Vendor } from '@/types';
 import BlogHighlightsSection, { type BlogHighlight } from '@/components/homepage/BlogHighlightsSection';
 import HomeHero from '@/components/home/HomeHero';
@@ -48,7 +49,7 @@ async function getTopBlogPosts(): Promise<BlogHighlight[]> {
         title: p.title,
         slug: p.slug,
         excerpt: p.excerpt,
-        coverImage: p.coverImage,
+        coverImage: blogCoverImage(p.coverImage),
         category: p.category,
         readTime: p.readTime,
       }));
