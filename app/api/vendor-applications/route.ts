@@ -9,6 +9,7 @@ import type { VendorApplicationWithCategory } from '@/repositories/vendorApplica
 import type { ApplicationStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
 import { WeddingEventType } from '@/generated/prisma/enums';
+import { checkOnboardingVideo } from '@/lib/onboardingVideo';
 
 // Public, unauthenticated POST with previously zero rate limiting or
 // validation (audit finding) — reuses the exact throttle mechanism and
@@ -59,6 +60,8 @@ const schema = z.object({
   coverImage: z.string().trim().url().optional().or(z.literal('')),
   portfolioImages: z.array(z.string().trim().url()).max(10).optional(),
   foodMenuImages: z.array(z.string().trim().url()).max(5).optional(),
+  // The one tour video (25 Oct 2026): optional; when sent it must be a video our signature put in our storage (checked below).
+  tourVideo: z.string().trim().max(500).optional(),
   // Which wedding functions this vendor/venue serves (docs/wedding-os/11-vivah-os-ux-architecture.md §15).
   // Capped at the enum's own size — there's no meaningful way to send more distinct values than exist.
   capabilities: z.array(z.nativeEnum(WeddingEventType)).max(Object.keys(WeddingEventType).length).optional(),
@@ -116,6 +119,10 @@ async function handlePOST(req: NextRequest) {
     // vendorId (same whitelist intent as before) and now also rejects a
     // malformed payload before it ever reaches the service/database.
     const parsed = schema.parse(body);
+    if (parsed.tourVideo) {
+      const video = await checkOnboardingVideo(parsed.tourVideo);
+      if (!video.ok) return NextResponse.json({ success: false, error: video.error, issues: [{ path: ['tourVideo'], message: video.error }] }, { status: 400 });
+    }
 
     const application = await vendorApplicationService.create({
       businessName: parsed.businessName,
@@ -133,6 +140,7 @@ async function handlePOST(req: NextRequest) {
       coverImage: parsed.coverImage,
       portfolioImages: parsed.portfolioImages,
       foodMenuImages: parsed.foodMenuImages,
+      tourVideo: parsed.tourVideo || undefined,
       capabilities: parsed.capabilities,
     });
 

@@ -2695,6 +2695,21 @@ Create a separate standalone invoice anyway?`)) return;
                         )}
                       </div>
 
+                      {/* What the vendor uploaded: menu card, photos, tour video — checked before approving */}
+                      {(a.foodMenuImages?.length > 0 || a.portfolioImages?.length > 0 || a.tourVideo) && (
+                        <div className="mt-3 flex flex-wrap items-start gap-2">
+                          {[...(a.foodMenuImages ?? []), ...(a.portfolioImages ?? [])].map((url: string, i: number) => (
+                            <a key={url + i} href={url} target="_blank" rel="noopener noreferrer" className="block h-16 w-16 overflow-hidden rounded-lg border border-gray-200">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={url} alt={i < (a.foodMenuImages?.length ?? 0) ? 'Menu card' : 'Photo'} className="h-full w-full object-cover" />
+                            </a>
+                          ))}
+                          {a.tourVideo && (
+                            <video src={a.tourVideo} controls preload="metadata" className="h-32 rounded-lg border border-gray-200 bg-black" aria-label="Tour video" />
+                          )}
+                        </div>
+                      )}
+
                       {a.status === 'approved' && a.vendorId && (
                         <VendorLoginCode key={freshCodes[a._id] ?? 'none'} vendorId={a.vendorId} mobile={a.ownerPhone} firstCode={freshCodes[a._id]} existingLogin={existingLogins.has(a._id)} />
                       )}

@@ -13,7 +13,7 @@ let profiles: Record<string, { vendorId: string; vendor: { name: string } }>;
 let businesses: { id: string; vendorId: string | null; kind: Kind; name: string }[];
 let members: MemberRow[];
 let raceOnCreate = false;
-let applications: Record<string, { status: 'NEW' | 'APPROVED' | 'REJECTED'; portfolioImages: string[] }>;
+let applications: Record<string, { status: 'NEW' | 'APPROVED' | 'REJECTED'; portfolioImages: string[]; tourVideo?: string }>;
 const CLOUD = 'democloud';
 const regPhoto = (name: string) => `https://res.cloudinary.com/${CLOUD}/image/upload/v1/shaadishopping/vendor-onboarding/${name}.jpg`;
 
@@ -98,6 +98,20 @@ describe('a vendor’s owner — the link from before memberships still works', 
     members = [];
     db.business.create.mockClear();
     applications['v-kush'] = { status: 'REJECTED', portfolioImages: [regPhoto('a')] };
+    await service.scopeForVendorLogin('u-kush');
+    expect((db.business.create.mock.calls[0] as unknown as [{ data: unknown }])[0].data).toEqual({ name: 'Kush Travel', kind: 'VENDOR', vendorId: 'v-kush' });
+  });
+
+  test('the registration tour video becomes the profile video, already approved; any other address is ignored', async () => {
+    const tour = `https://res.cloudinary.com/${CLOUD}/video/upload/v1/shaadishopping/vendor-onboarding/tour-1.mp4`;
+    applications['v-kush'] = { status: 'APPROVED', portfolioImages: [], tourVideo: tour };
+    await service.scopeForVendorLogin('u-kush');
+    expect((db.business.create.mock.calls[0] as unknown as [{ data: unknown }])[0].data).toEqual({ name: 'Kush Travel', kind: 'VENDOR', vendorId: 'v-kush', videoUrl: tour, videoStatus: 'APPROVED' });
+
+    businesses = businesses.filter((b) => b.vendorId !== 'v-kush');
+    members = [];
+    db.business.create.mockClear();
+    applications['v-kush'] = { status: 'APPROVED', portfolioImages: [], tourVideo: 'https://evil.example/v.mp4' };
     await service.scopeForVendorLogin('u-kush');
     expect((db.business.create.mock.calls[0] as unknown as [{ data: unknown }])[0].data).toEqual({ name: 'Kush Travel', kind: 'VENDOR', vendorId: 'v-kush' });
   });

@@ -67,3 +67,26 @@ export function validateOnboardingImage(declaredType: string, bytes: Uint8Array)
   }
   return { ok: true, mime: detected };
 }
+
+// ---- the one tour video (25 Oct 2026) ----
+// A video is too big for our own route, so the browser sends it straight to Cloudinary with a short-lived signature
+// (lib/onboardingVideo.ts). The same limits as the business profile's video, so it carries over on approval unchanged.
+export const ONBOARDING_VIDEO_LIMITS = { seconds: 60, bytes: 50 * 1024 * 1024 } as const;
+export const ONBOARDING_VIDEO_TAGS = [...ONBOARDING_UPLOAD_TAGS, 'tour-video'];
+export const ONBOARDING_VIDEO_FORMATS = ['mp4', 'mov', 'webm'];
+
+// A tour video the public form uploaded through our signature: an https Cloudinary VIDEO address in our own cloud, under the
+// onboarding folder. Anything else the browser sends as "tourVideo" is refused.
+export function isOnboardingVideo(url: unknown, cloudName: string): url is string {
+  if (typeof url !== 'string' || !cloudName) return false;
+  const prefix = `https://res.cloudinary.com/${cloudName}/video/upload/`;
+  if (!url.startsWith(prefix) || /[\s"'<>\?#]/.test(url) || url.includes('..')) return false;
+  return `/${url.slice(prefix.length)}`.includes(`/${ONBOARDING_UPLOAD_FOLDER}/`);
+}
+
+// …/video/upload/v123/shaadishopping/vendor-onboarding/abc.mp4 → shaadishopping/vendor-onboarding/abc
+export function onboardingPublicId(url: string): string | null {
+  const at = url.indexOf(`/${ONBOARDING_UPLOAD_FOLDER}/`);
+  if (at < 0) return null;
+  return url.slice(at + 1).replace(/\.[A-Za-z0-9]+$/, '');
+}
