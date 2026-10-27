@@ -1,21 +1,9 @@
 import { redirect } from 'next/navigation';
-import ClientPortalClient from '@/components/ClientPortalClient';
-import { requireRole } from '@/lib/auth/session';
-import { Role } from '@/lib/auth/roles';
-import { clientPortalService } from '@/services/clientPortal.service';
 import { platformScoped } from '@/lib/ownership/entry';
 
-export const metadata = {
-  title: 'Customer Portal',
-  robots: { index: false, follow: false },
-};
-
+// The couple's portal moved to My Wedding (28 Oct 2026). Old links and bookmarks still land there.
 async function CustomerHomePage() {
-  const session = await requireRole([Role.CUSTOMER]);
-  if (!session?.user?.id) redirect('/customer/login');
-  const events = await clientPortalService.getEventsForClient(session.user.id);
-  return <ClientPortalClient events={events} />;
+  redirect('/my-wedding');
 }
 
-// Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).
 export default platformScoped(CustomerHomePage);

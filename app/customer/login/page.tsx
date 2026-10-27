@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function CustomerLoginPage() {
-  return <OtpLoginClient portalName="Customer" redirectPath="/customer" />;
+  return <OtpLoginClient portalName="Customer" redirectPath="/my-wedding" />;
 }

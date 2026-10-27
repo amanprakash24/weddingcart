@@ -14,6 +14,7 @@ export function isCouplePromptPath(pathname: string | null | undefined): boolean
   return !(pathname === '/admin' || pathname.startsWith('/admin/') || isVendorOsPath(pathname) || isProposalPath(pathname) || pathname.startsWith('/growth-partner') || pathname === '/vendor-onboarding' || pathname.startsWith('/vendor-onboarding/'));
 }
 
+// Also My Wedding (/my-wedding, 28 Oct 2026) — the couple's side of Vivah OS has its own shell too.
 export function isVendorOsPath(pathname: string | null | undefined): boolean {
-  return pathname === '/vendor' || !!pathname?.startsWith('/vendor/') || pathname === '/workspace';
+  return pathname === '/vendor' || !!pathname?.startsWith('/vendor/') || pathname === '/workspace' || pathname === '/my-wedding' || !!pathname?.startsWith('/my-wedding/');
 }
