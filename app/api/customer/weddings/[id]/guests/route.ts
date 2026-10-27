@@ -6,6 +6,7 @@ import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
 import { GuestRsvpStatus } from '@/generated/prisma/enums';
 import { platformScoped } from '@/lib/ownership/entry';
+import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 
 const schema = z.object({
   name: z.string().trim().min(1), phone: z.string().optional(),
@@ -19,7 +20,11 @@ const schema = z.object({
 async function handleGET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  try { return NextResponse.json({ success: true, data: await guestService.listForClient((await params).id, session.user.id) }); } catch (error) { return handleApiError(error); }
+  try {
+    const { id } = await params;
+    const userId = session.user.id;
+    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => guestService.listForClient(id, userId)) });
+  } catch (error) { return handleApiError(error); }
 }
 
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -27,11 +32,17 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
     const body = schema.parse(await req.json());
-    await guestService.listForClient((await params).id, session.user.id);
-    return NextResponse.json({ success: true, data: await guestService.create((await params).id, body) }, { status: 201 });
+    const { id } = await params;
+    const userId = session.user.id;
+    const created = await asCoupleWedding(id, userId, async () => {
+      await guestService.listForClient(id, userId);
+      return guestService.create(id, body);
+    });
+    return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) { return handleApiError(error); }
 }
 
-// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+// Record ownership: entered as Shaadi Shopping (lib/ownership/entry.ts), then run in the business of the couple's own wedding —
+// Shaadi Shopping's or a venue's on Vivah OS (lib/customer/coupleEntry.ts).
 export const GET = platformScoped(handleGET);
 export const POST = platformScoped(handlePOST);

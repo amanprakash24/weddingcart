@@ -2,6 +2,10 @@ import { prisma } from '@/lib/prisma';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { approvalService } from '@/services/approval.service';
 import { customerActivityText } from '@/lib/customer/activityText';
+import { coupleWeddings, weddingScope } from '@/lib/customer/coupleEntry';
+import { runInScope } from '@/lib/ownership/scope';
+import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
+import { upiLink, upiPayeeFrom, upiPayeeOf } from '@/lib/payments/upi';
 
 
 export interface ClientPortalEvent {
@@ -39,19 +43,28 @@ export interface ClientPortalEvent {
   activity: { id: string; type: string; summary: string; createdAt: string }[];
   approvals: { id: string; type: string; title: string; description: string | null; amount: number | null; deadline: string | null; functionName: string | null; status: string; clientComment: string | null }[];
   guests: { id: string; name: string; phone: string | null; email: string | null; category: string | null; accompanyingGuests: number; rsvpStatus: string; rsvpToken: string; functionResponses: { status: string; weddingEvent: { id: string; type: string; label: string | null } }[] }[];
+  // My Wedding (28 Oct 2026): who runs this wedding (Shaadi Shopping, or a venue / vendor on Vivah OS) and how to reach them.
+  business: { name: string; isShaadiShopping: boolean; phone: string | null };
+  budget: number | null;
+  // The agreed total (the accepted quotation; else what was invoiced), what was received, what is still due, the next amount to
+  // pay, and where to pay it by UPI (the business's own UPI; Shaadi Shopping's from the server env). payTo null = not set up.
+  money: { agreed: number; received: number; due: number; next: number | null; payTo: { upiId: string; payee: string; link: string } | null };
 }
 
 export const clientPortalService = {
   async getEventsForClient(userId: string): Promise<ClientPortalEvent[]> {
-    const ownedWeddings = await prisma.wedding.findMany({
-      where: { customerId: userId },
-      select: { id: true },
-      orderBy: { primaryDate: 'asc' },
-    });
+    // The couple's weddings, each read AS ITS OWN BUSINESS — Shaadi Shopping's, or a venue's on Vivah OS (lib/customer/coupleEntry.ts).
+    const owned = await coupleWeddings(userId);
+    return Promise.all(owned.map((w) => runInScope(weddingScope(w.businessId), () => this.buildEvent(w.id, w.businessId, userId))));
+  },
 
-    const workspaces = await Promise.all(ownedWeddings.map(({ id }) => weddingWorkspaceService.getWorkspace(id)));
-    const approvals = await approvalService.listForClient(userId);
-    return workspaces.map((workspace) => {
+  async buildEvent(weddingId: string, businessId: string, userId: string): Promise<ClientPortalEvent> {
+    const [workspace, approvals, biz] = await Promise.all([
+      weddingWorkspaceService.getWorkspace(weddingId),
+      approvalService.listForClient(userId),
+      prisma.business.findUnique({ where: { id: businessId }, select: { name: true, contactPhone: true, upiId: true, upiName: true } }),
+    ]);
+    return [workspace].map((workspace) => {
       const { wedding, couple, events, tasks, timeline, finance, documents, activity, guests } = workspace;
       const services = events.flatMap((event) =>
         event.vendorBookings.map((booking) => ({
@@ -141,7 +154,22 @@ export const clientPortalService = {
           clientComment: approval.clientComment,
         })),
         guests,
+        business: {
+          name: biz?.name ?? 'Shaadi Shopping',
+          isShaadiShopping: businessId === PLATFORM_BUSINESS_ID,
+          phone: businessId === PLATFORM_BUSINESS_ID ? null : biz?.contactPhone ?? null,
+        },
+        budget: wedding.totalBudget ?? null,
+        money: (() => {
+          const deal = finance.agreement;
+          const agreed = deal?.money?.agreementTotal ?? deal?.total ?? finance.totals.invoicedTotal;
+          const received = deal?.money ? deal.money.received : finance.totals.collected;
+          const due = Math.max(0, agreed - received);
+          const next = nextPayment?.pending ?? (due > 0 ? due : null);
+          const payee = businessId === PLATFORM_BUSINESS_ID ? upiPayeeFrom({ SHAADI_UPI_ID: process.env.SHAADI_UPI_ID, SHAADI_UPI_NAME: process.env.SHAADI_UPI_NAME }) : biz ? upiPayeeOf(biz) : null;
+          return { agreed, received, due, next, payTo: payee && next ? { upiId: payee.vpa, payee: payee.payee, link: upiLink(payee, next, `${wedding.weddingNumber} payment`) } : null };
+        })(),
       };
-    });
+    })[0];
   },
 };

@@ -1,4 +1,4 @@
-import { PLATFORM_SCOPE, runInScope } from '@/lib/ownership/scope';
+import { runAsSystem } from '@/lib/ownership/scope';
 import type { Prisma } from '@/generated/prisma/client';
 import { prisma } from '@/lib/prisma';
 import { normalizeIndianMobile } from '@/lib/indianPhone';
@@ -35,9 +35,10 @@ export async function linkWeddingsOnLogin(userId: string, phone: string, db: Db 
     if (!mobile) return 0;
     const isCustomer = await db.userRole.findFirst({ where: { userId, role: 'CUSTOMER' }, select: { userId: true } });
     if (!isCustomer) return 0;
-    // A login has no business of its own, so the scope is stated here: the couple's SHAADI SHOPPING weddings become theirs. A
-    // venue's own customers are not linked — a venue's weddings have no couple portal yet.
-    const { count } = await runInScope(PLATFORM_SCOPE, () => db.wedding.updateMany({ where: { customerPhone: mobile, customerId: null }, data: { customerId: userId } }));
+    // A login has no business of its own, and a couple's wedding may be Shaadi Shopping's or a venue's on Vivah OS — My Wedding
+    // shows either (28 Oct 2026, lib/customer/coupleEntry.ts). So this is a named SYSTEM write, allowlisted in CI, pinned to the
+    // mobile OTP has just verified and to weddings nobody is linked to yet.
+    const { count } = await runAsSystem('couple login: link weddings by the OTP-verified mobile', () => db.wedding.updateMany({ where: { customerPhone: mobile, customerId: null }, data: { customerId: userId } }));
     return count;
   } catch (err) {
     console.error('linking weddings on login failed:', err instanceof Error ? err.message : err);

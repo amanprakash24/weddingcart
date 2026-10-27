@@ -6,6 +6,7 @@ import { GuestRsvpStatus } from '@/generated/prisma/enums';
 import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 
 const schema = z.object({
   name: z.string().trim().min(1),
@@ -24,8 +25,12 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const body = schema.parse(await req.json());
     const { id, guestId } = await params;
-    await guestService.listForClient(id, session.user.id);
-    return NextResponse.json({ success: true, data: await guestService.update(id, guestId, body) });
+    const userId = session.user.id;
+    const updated = await asCoupleWedding(id, userId, async () => {
+      await guestService.listForClient(id, userId);
+      return guestService.update(id, guestId, body);
+    });
+    return NextResponse.json({ success: true, data: updated });
   } catch (error) { return handleApiError(error); }
 }
 
@@ -34,12 +39,16 @@ async function handleDELETE(_req: Request, { params }: { params: Promise<{ id: s
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
     const { id, guestId } = await params;
-    await guestService.listForClient(id, session.user.id);
-    await guestService.remove(id, guestId);
+    const userId = session.user.id;
+    await asCoupleWedding(id, userId, async () => {
+      await guestService.listForClient(id, userId);
+      await guestService.remove(id, guestId);
+    });
     return NextResponse.json({ success: true });
   } catch (error) { return handleApiError(error); }
 }
 
-// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
+// Record ownership: entered as Shaadi Shopping (lib/ownership/entry.ts), then run in the business of the couple's own wedding —
+// Shaadi Shopping's or a venue's on Vivah OS (lib/customer/coupleEntry.ts).
 export const PATCH = platformScoped(handlePATCH);
 export const DELETE = platformScoped(handleDELETE);

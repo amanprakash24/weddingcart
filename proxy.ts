@@ -11,6 +11,8 @@ const PORTALS: { prefix: string; loginPath: string; roles: Role[] }[] = [
   { prefix: '/admin', loginPath: '/admin/login', roles: ADMIN_ROLES },
   { prefix: '/vendor', loginPath: '/vendor/login', roles: [Role.VENDOR] },
   { prefix: '/customer', loginPath: '/customer/login', roles: [Role.CUSTOMER] },
+  // My Wedding, the couple's dashboard on Vivah OS (28 Oct 2026) — same login as /customer.
+  { prefix: '/my-wedding', loginPath: '/customer/login', roles: [Role.CUSTOMER] },
 ];
 
 export async function proxy(req: NextRequest) {
@@ -49,5 +51,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/vendor/:path*', '/customer/:path*'],
+  matcher: ['/admin/:path*', '/vendor/:path*', '/customer/:path*', '/my-wedding/:path*'],
 };
