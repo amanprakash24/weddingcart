@@ -11,7 +11,7 @@ const PAGE_URL = `${BASE_URL}/venues/patna/danapur`;
 const WHATSAPP_MESSAGE = 'Hi, I am looking for a wedding venue in Danapur, Patna. Please help.';
 
 export const metadata: Metadata = {
-  title: 'Banquet Halls in Danapur, Patna — Verified Venues & Pricing | ShaadiShopping',
+  title: 'Banquet Halls in Danapur, Patna — Verified Venues & Pricing',
   description:
     'Looking for a banquet hall in Danapur, Patna? Compare verified venues like Swayamvar Hall & Homestay — real pricing from ₹1,000/plate, capacity up to 500 guests. Free consultation with a ShaadiShopping Wedding Expert.',
   keywords: [

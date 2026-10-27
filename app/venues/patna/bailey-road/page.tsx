@@ -11,7 +11,7 @@ const PAGE_URL = `${BASE_URL}/venues/patna/bailey-road`;
 const WHATSAPP_MESSAGE = 'Hi, I am planning a wedding near Bailey Road, Patna. Please recommend verified venues.';
 
 export const metadata: Metadata = {
-  title: 'Wedding Venues Near Bailey Road, Patna — Area Guide | ShaadiShopping',
+  title: 'Wedding Venues Near Bailey Road, Patna — Area Guide',
   description:
     'Planning a wedding near Bailey Road, Patna? Get honest budget, capacity, and parking guidance, plus verified wedding venues elsewhere in Patna. Free consultation with a ShaadiShopping Wedding Expert.',
   keywords: [

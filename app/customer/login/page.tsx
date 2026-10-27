@@ -1,7 +1,7 @@
 import OtpLoginClient from '@/components/OtpLoginClient';
 
 export const metadata = {
-  title: 'Customer Login | ShaadiShopping',
+  title: 'Customer Login',
   robots: { index: false, follow: false },
 };
 

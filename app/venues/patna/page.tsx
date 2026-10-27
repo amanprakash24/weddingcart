@@ -10,7 +10,7 @@ const PAGE_URL = `${BASE_URL}/venues/patna`;
 const SHAADI_WA = shaadiWhatsAppLink('Hi, I am looking for a wedding venue in Patna. Please help.');
 
 export const metadata: Metadata = {
-  title: 'Wedding Venues in Patna — Compare & Book Top Halls (2025) | ShaadiShopping',
+  title: 'Wedding Venues in Patna — Compare & Book Top Halls (2025)',
   description:
     'Find the best wedding venues in Patna. Compare verified banquet halls — Touch of Cozy (Rajeev Nagar), Swayamvar Hall (Danapur), 7 Vachan (Saguna Mor) & Ashiyana Resort (Digha). Real pricing, photos & free quotes. Book via ShaadiShopping.',
   keywords: [

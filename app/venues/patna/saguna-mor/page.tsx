@@ -11,7 +11,7 @@ const PAGE_URL = `${BASE_URL}/venues/patna/saguna-mor`;
 const WHATSAPP_MESSAGE = 'Hi, I am looking for a wedding venue in Saguna Mor, Patna. Please help.';
 
 export const metadata: Metadata = {
-  title: 'Banquet Halls in Saguna Mor, Patna — Verified Venues & Pricing | ShaadiShopping',
+  title: 'Banquet Halls in Saguna Mor, Patna — Verified Venues & Pricing',
   description:
     'Looking for a banquet hall in Saguna Mor, Patna? Compare verified venues like 7 Vachan — real pricing from ₹1,100/plate, in-house DJ, rooftop option, capacity 500+ guests. Free consultation with a ShaadiShopping Wedding Expert.',
   keywords: [

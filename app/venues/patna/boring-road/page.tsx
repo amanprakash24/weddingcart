@@ -11,7 +11,7 @@ const PAGE_URL = `${BASE_URL}/venues/patna/boring-road`;
 const WHATSAPP_MESSAGE = 'Hi, I am planning a wedding near Boring Road, Patna. Please recommend verified venues.';
 
 export const metadata: Metadata = {
-  title: 'Wedding Venues Near Boring Road, Patna — Area Guide | ShaadiShopping',
+  title: 'Wedding Venues Near Boring Road, Patna — Area Guide',
   description:
     'Planning a wedding near Boring Road, Patna? Get honest budget, capacity, and parking guidance, plus the closest verified wedding venue (Ashiyana Resort, Digha). Free consultation with a ShaadiShopping Wedding Expert.',
   keywords: [

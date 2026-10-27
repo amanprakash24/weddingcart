@@ -4,7 +4,7 @@ import AdminClient from '@/components/AdminClient';
 import { OLD_TAB_REDIRECTS } from '@/components/admin/adminNav';
 
 export const metadata = {
-  title: 'Admin Panel | ShaadiShopping',
+  title: 'Admin Panel',
   robots: { index: false, follow: false },
 };
 

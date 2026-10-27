@@ -206,7 +206,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     `Find and book the best ${name.toLowerCase()} for your wedding in India. Compare verified vendors, browse packages, read real reviews, and get free quotes. Patna, Delhi, Mumbai & more.`;
 
   return {
-    title,
+    // Written with the site name already (shared with openGraph / twitter), so the layout template must not add it again.
+    title: { absolute: title },
     description,
     keywords: [
       `${name} India`, `wedding ${slug} India`, `best ${name.toLowerCase()} India`,
