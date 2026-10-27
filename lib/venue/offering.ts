@@ -4,6 +4,7 @@
 // what a couple sees when they ask to add a function on their proposal link. Pure and client-safe: the form and the server share
 // these rules.
 import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS, type FunctionType } from '@/lib/wedding/functions';
+import { isDiet, validateMenu, type CateringMenu, type Diet } from './menu';
 
 export { FUNCTION_TYPES, FUNCTION_TYPE_LABELS, type FunctionType };
 
@@ -54,6 +55,9 @@ export interface OfferingInput {
   price: number; // whole rupees — a starting price
   perPlate: boolean; // food and packages only
   active: boolean; // false = kept in the list but not offered on quotations or to couples
+  // Catering only (Phase 4, lib/venue/menu.ts): the food type and the menu — dishes by course and the extras a quotation may add.
+  diet: Diet | null;
+  menu: CateringMenu | null;
 }
 
 export interface Offering extends OfferingInput {
@@ -77,7 +81,8 @@ export interface Catalog {
   listingPackages: ListingPackage[];
 }
 
-export type OfferingErrors = Partial<Record<'kind' | 'function' | 'name' | 'description' | 'price', string>>;
+// One message per box: kind, function, name, description, price, diet, and the menu's boxes as "menu.dishes.<i>.name" etc.
+export type OfferingErrors = Partial<Record<'kind' | 'function' | 'name' | 'description' | 'price' | 'diet', string>> & Record<string, string | undefined>;
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '');
 
@@ -107,6 +112,18 @@ export function validateOffering(input: Record<string, unknown>): { ok: true; va
   const price = /^\d{1,10}$/.test(priceRaw) ? Number(priceRaw) : null;
   if (price === null || price > OFFERING_LIMITS.maxPrice) errors.price = 'Enter the starting price in whole rupees';
 
+  // A menu belongs to food only; for any other kind it is ignored.
+  let diet: Diet | null = null;
+  let menu: CateringMenu | null = null;
+  if (kind === 'CATERING') {
+    const dietRaw = str(input.diet);
+    if (dietRaw && !isDiet(dietRaw)) errors.diet = 'Choose veg, non-veg, Jain or both';
+    else diet = isDiet(dietRaw) ? dietRaw : null;
+    const checkedMenu = validateMenu(input.menu);
+    if (!checkedMenu.ok) for (const [k, v] of Object.entries(checkedMenu.errors)) errors[`menu.${k}`] = v;
+    else menu = checkedMenu.value.dishes.length || checkedMenu.value.extras.length ? checkedMenu.value : null;
+  }
+
   if (!kind || price === null || Object.keys(errors).length) return { ok: false, errors };
   return {
     ok: true,
@@ -118,6 +135,8 @@ export function validateOffering(input: Record<string, unknown>): { ok: true; va
       price,
       perPlate: allowsPerPlate(kind) && (input.perPlate === true || input.perPlate === 'true'),
       active: !(input.active === false || input.active === 'false'),
+      diet,
+      menu,
     },
   };
 }

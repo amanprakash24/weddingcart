@@ -9,7 +9,7 @@ import { quoteStage, validateVenueQuote, type QuoteStage, type VenueQuoteErrors 
 import { gstTotals } from '@/lib/quotation/lineGst';
 import { validateVenuePayment, type VenuePaymentErrors } from '@/lib/venue/payment';
 import { FUNCTION_TYPE_LABELS, functionOfLabel, type FunctionType, type Offering } from '@/lib/venue/offering';
-import { OFFERING_ORDER, OFFERING_SELECT } from './venueOffering.service';
+import { OFFERING_ORDER, OFFERING_SELECT, offeringOf } from './venueOffering.service';
 import { quotationService, type QuotationView } from '@/services/quotation.service';
 import { loadAgreementMoney, recordAgreementPayment } from '@/services/agreement.service';
 import { bookingService } from '@/services/booking.service';
@@ -34,7 +34,7 @@ export interface VenueQuotationView {
   revision: number;
   stage: QuoteStage;
   // lineTotal = how many × price each. taxable = that minus the line's share of the discount; gst = the GST on it (0 without a rate).
-  items: { description: string; quantity: number; unitPrice: number; lineTotal: number; function: FunctionType | null; gstRateBp: number | null; taxable: number; gst: number }[];
+  items: { description: string; quantity: number; unitPrice: number; lineTotal: number; function: FunctionType | null; gstRateBp: number | null; details: string | null; taxable: number; gst: number }[];
   subtotal: number;
   discount: number;
   gstAmount: number; // the sum of the lines' GST — 0 when no line carries a rate
@@ -95,7 +95,8 @@ export interface VenueClaim {
 }
 
 export interface VenueQuotationState {
-  customer: { name: string; phone: string; weddingDate: string | null };
+  // guests: the enquiry's guest count — a per-plate line starts with this many plates (lib/venue/menu.ts). null = not known.
+  customer: { name: string; phone: string; weddingDate: string | null; guests: number | null };
   venueName: string;
   rules: Pick<CommercialRules, 'confirmationPercent' | 'holdWindowDays'>;
   quotation: VenueQuotationView | null;
@@ -149,7 +150,7 @@ const defaultDeps = (): VenueQuotationDeps => ({
 
 export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDeps()) {
   async function enquiry(id: string) {
-    const row = await deps.db.consultation.findUnique({ where: { id }, select: { id: true, name: true, phone: true, weddingDate: true, city: true, pipelineStage: true } });
+    const row = await deps.db.consultation.findUnique({ where: { id }, select: { id: true, name: true, phone: true, weddingDate: true, city: true, pipelineStage: true, guestCount: true } });
     if (!row) throw new NotFoundError('Enquiry', id);
     return row;
   }
@@ -190,7 +191,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       number: q.quotationNumber,
       revision: q.revision,
       stage,
-      items: q.items.map((i, n) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal, function: functionOfLabel(i.functionLabel), gstRateBp: i.gstRateBp ?? null, taxable: gst.lines[n].taxable, gst: gst.lines[n].gst })),
+      items: q.items.map((i, n) => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal, function: functionOfLabel(i.functionLabel), gstRateBp: i.gstRateBp ?? null, details: i.details ?? null, taxable: gst.lines[n].taxable, gst: gst.lines[n].gst })),
       subtotal: q.subtotal,
       discount: q.discount,
       gstAmount: q.gstAmount,
@@ -240,11 +241,11 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       ? await deps.db.vendorPackage.findMany({ where: { vendorId: v.vendorId }, select: { id: true, name: true, price: true, isPerPlate: true }, orderBy: { price: 'asc' }, take: 20 })
       : [];
     const offerings: Offering[] = [
-      ...own.filter((o) => o.active).map((o) => ({ id: o.id, kind: o.kind, function: o.function, name: o.name, description: o.description, price: o.price, perPlate: o.perPlate, active: o.active })),
-      ...listed.filter((p) => !copied.has(p.id)).map((p) => ({ id: `listing-${p.id}`, kind: 'PACKAGE' as const, function: null, name: p.name, description: null, price: p.price, perPlate: p.isPerPlate, active: true })),
+      ...own.filter((o) => o.active).map(({ sourcePackageId: _source, ...o }) => offeringOf(o)),
+      ...listed.filter((p) => !copied.has(p.id)).map((p) => ({ id: `listing-${p.id}`, kind: 'PACKAGE' as const, function: null, name: p.name, description: null, price: p.price, perPlate: p.isPerPlate, active: true, diet: null, menu: null })),
     ];
     return {
-      customer: { name: e.name, phone: e.phone, weddingDate: e.weddingDate || null },
+      customer: { name: e.name, phone: e.phone, weddingDate: e.weddingDate || null, guests: e.guestCount && e.guestCount > 0 ? e.guestCount : null },
       venueName: v.business.name,
       rules: { confirmationPercent: v.rules.confirmationPercent, holdWindowDays: v.rules.holdWindowDays },
       quotation: q ? await toView(q, v.rules, v.letterhead) : null,
@@ -275,7 +276,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       // A document that charges GST must carry the seller's GST number (founder's rule, 5 Oct 2026) — asked for here, once.
       if (money.hasGst && !v.letterhead.gstin) return { errors: { gst: 'Add your GST number in your business profile before charging GST on a quotation' } };
       const body = {
-        items: value.items.map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, functionLabel: l.function ? FUNCTION_TYPE_LABELS[l.function] : null, gstRateBp: l.gstRateBp })),
+        items: value.items.map((l) => ({ description: l.description, quantity: l.quantity, unitPrice: l.unitPrice, functionLabel: l.function ? FUNCTION_TYPE_LABELS[l.function] : null, gstRateBp: l.gstRateBp, details: l.details })),
         discount: value.discount,
         gstEnabled: money.gst > 0,
         gstAmount: money.gst,

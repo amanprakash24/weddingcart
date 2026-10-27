@@ -21,6 +21,8 @@ import {
   type OfferingErrors,
   type OfferingKind,
 } from '@/lib/venue/offering';
+import { DIET_LABELS, dishesByCourse, extraPriceWords } from '@/lib/venue/menu';
+import MenuEditor, { emptyMenuForm, type MenuForm } from './MenuEditor';
 
 // "What we offer" — the business's ONE price list, sorted by kind: the space and things it rents out, food, decoration, services,
 // packages. Each item has a starting price, may say what is provided, and may be for one wedding function (Haldi, Reception …) or
@@ -28,7 +30,7 @@ import {
 // Phone-first: one kind per card; add, change, hide and remove in place. A business is shown the kinds that fit it first
 // (a caterer is not asked about halls) — the others are one tap away.
 
-type Form = { id: string | null; kind: OfferingKind; function: FunctionType | ''; name: string; description: string; price: string; perPlate: boolean; active: boolean };
+type Form = { id: string | null; kind: OfferingKind; function: FunctionType | ''; name: string; description: string; price: string; perPlate: boolean; active: boolean; menu: MenuForm };
 
 const ICON: Record<OfferingKind, LucideIcon> = { RENTAL: Building2, CATERING: UtensilsCrossed, DECORATION: Flower2, SERVICE: Camera, PACKAGE: Package, OTHER: MoreHorizontal };
 
@@ -40,8 +42,14 @@ const tag = 'rounded-full border border-[var(--color-border-subtle)] px-2 py-0.5
 
 const KIND_OPTIONS = OFFERING_KINDS.map((kind) => ({ value: kind, label: OFFERING_KIND_LABELS[kind] }));
 const FUNCTION_OPTIONS = [{ value: '', label: 'Any function' }, ...FUNCTION_TYPES.map((fn) => ({ value: fn, label: FUNCTION_TYPE_LABELS[fn] }))];
-const blank = (kind: OfferingKind): Form => ({ id: null, kind, function: '', name: '', description: '', price: '', perPlate: false, active: true });
-const formOf = (o: Offering): Form => ({ id: o.id, kind: o.kind, function: o.function ?? '', name: o.name, description: o.description ?? '', price: String(o.price), perPlate: o.perPlate, active: o.active });
+// A new food item starts as a per-plate menu with one dish row ready.
+const blank = (kind: OfferingKind): Form => ({ id: null, kind, function: '', name: '', description: '', price: '', perPlate: kind === 'CATERING', active: true, menu: emptyMenuForm() });
+const formOf = (o: Offering): Form => ({
+  id: o.id, kind: o.kind, function: o.function ?? '', name: o.name, description: o.description ?? '', price: String(o.price), perPlate: o.perPlate, active: o.active,
+  menu: o.menu
+    ? { diet: o.diet ?? '', dishes: o.menu.dishes.length ? o.menu.dishes : emptyMenuForm().dishes, extras: o.menu.extras.map((x) => ({ name: x.name, price: String(x.price), perPlate: x.perPlate })) }
+    : { ...emptyMenuForm(), diet: o.diet ?? '' },
+});
 
 export default function OfferingsScreen() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -86,7 +94,10 @@ export default function OfferingsScreen() {
 
   async function save() {
     if (!form) return;
-    const body = { kind: form.kind, function: form.function, name: form.name, description: form.description, price: form.price, perPlate: form.perPlate, active: form.active };
+    const body = {
+      kind: form.kind, function: form.function, name: form.name, description: form.description, price: form.price, perPlate: form.perPlate, active: form.active,
+      ...(form.kind === 'CATERING' ? { diet: form.menu.diet, menu: { dishes: form.menu.dishes, extras: form.menu.extras } } : {}),
+    };
     if (await (form.id ? call(`/${form.id}`, 'PUT', body) : call('', 'POST', body))) setForm(null);
   }
 
@@ -135,6 +146,7 @@ export default function OfferingsScreen() {
           This price is per plate
         </label>
       )}
+      {form.kind === 'CATERING' && <MenuEditor value={form.menu} onChange={(menu) => setForm({ ...form, menu })} errors={errors} />}
       <Select label="For which function?" value={form.function} onChange={(ev) => setForm({ ...form, function: ev.target.value as Form['function'] })} error={errors.function} options={FUNCTION_OPTIONS} className="min-h-12 text-base" />
       {error && <p role="alert" className="text-sm text-[var(--color-danger-text)]">{error}</p>}
       <button type="button" disabled={busy} onClick={save} className={primary}>{busy ? 'Saving…' : 'Save'}</button>
@@ -180,9 +192,18 @@ export default function OfferingsScreen() {
                         <div className="min-w-0 space-y-1">
                           <p className="text-sm font-semibold text-[var(--color-text-primary)]">{o.name}</p>
                           {o.description && <p className="whitespace-pre-line text-sm text-[var(--color-text-secondary)]">{o.description}</p>}
+                          {o.menu && o.menu.dishes.length > 0 && (
+                            <p className="text-sm text-[var(--color-text-secondary)]">
+                              {o.menu.dishes.length} {o.menu.dishes.length === 1 ? 'dish' : 'dishes'}: {dishesByCourse(o.menu).map((g) => g.course).join(' · ')}
+                            </p>
+                          )}
+                          {o.menu && o.menu.extras.length > 0 && (
+                            <p className="text-sm text-[var(--color-text-secondary)]">Extras: {o.menu.extras.map((x) => `${x.name} ${extraPriceWords(x)}`).join(', ')}</p>
+                          )}
                           <p className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-primary)]">
                             <span className="font-medium tabular-nums">{offeringPriceWords(o)}</span>
                             <span className={tag}>{o.function ? FUNCTION_TYPE_LABELS[o.function] : 'Any function'}</span>
+                            {o.diet && <span className={tag}>{DIET_LABELS[o.diet]}</span>}
                             {!o.active && <span className={tag}>Hidden</span>}
                           </p>
                         </div>

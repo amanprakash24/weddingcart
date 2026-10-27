@@ -121,7 +121,7 @@ export interface ProposalQuotationInput {
   terms: string | null;
   inclusions: string | null;
   exclusions: string | null;
-  items: { sortOrder: number; description: string; category: string | null; functionLabel: string | null; vendorId: string | null; unitPrice: number; quantity: number; gstRateBp?: number | null }[];
+  items: { sortOrder: number; description: string; category: string | null; functionLabel: string | null; vendorId: string | null; unitPrice: number; quantity: number; gstRateBp?: number | null; details?: string | null }[];
 }
 
 // A linked vendor's PUBLIC profile — only what already shows on their public page on the site (Step 7, §16). Never the
@@ -182,7 +182,7 @@ export interface CustomerProposal {
   couple: { name: string | null };
   wedding: { date: string | null; guestCount: number | null; city: string | null; eventType: string | null };
   venueName: string | null; // only when exactly one venue line names a vendor
-  items: { service: string | null; functionLabel: string | null; description: string; vendor: ProposalVendor | null; quantity: number; unitPrice: number; lineTotal: number; gstPercent: string | null; gst: number; taxable: number }[]; // gstPercent: the line's own rate as typed ("18"), null = no GST on it
+  items: { service: string | null; functionLabel: string | null; description: string; vendor: ProposalVendor | null; quantity: number; unitPrice: number; lineTotal: number; gstPercent: string | null; gst: number; taxable: number; details: string | null }[]; // gstPercent: the line's own rate as typed ("18"), null = no GST on it; details: what the line includes (a menu's dishes)
   confirmedVendors: { name: string; category: string; function: string; date: string; venueName: string | null }[];
   subtotal: number;
   discount: number;
@@ -275,6 +275,7 @@ export function toCustomerProposal(
         gstPercent: i.gstRateBp ? gstPercentText(i.gstRateBp) : null,
         gst: gst.lines[n].gst,
         taxable: gst.lines[n].taxable, // the line after its share of the discount — what its GST is worked out on
+        details: i.details?.trim() || null, // frozen on the quotation (a catering menu's dishes by course)
       };
     });
   // A venue line: its service is "Venue", or its linked vendor is in the Venues category.

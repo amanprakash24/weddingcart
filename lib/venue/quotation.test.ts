@@ -9,7 +9,7 @@ describe('validateVenueQuote', () => {
   test('a simple quotation: lines, valid-until; everything else is optional', () => {
     expect(validateVenueQuote(good, TODAY)).toEqual({
       ok: true,
-      value: { items: [{ description: 'Hall hire', quantity: 1, unitPrice: 200000, function: null, gstRateBp: null }], discount: 0, validUntil: '2026-10-12', inclusions: null, exclusions: null, terms: null },
+      value: { items: [{ description: 'Hall hire', quantity: 1, unitPrice: 200000, function: null, gstRateBp: null, details: null }], discount: 0, validUntil: '2026-10-12', inclusions: null, exclusions: null, terms: null },
     });
   });
 
@@ -50,7 +50,7 @@ describe('validateVenueQuote', () => {
   test('totals, tax and the amount to confirm are never taken from the request', () => {
     const r = validateVenueQuote({ ...good, total: 1, subtotal: 1, advanceAmount: 1, gstEnabled: true, gstAmount: 36000, items: [{ ...good.items[0], vendorId: 'someone-else', lineTotal: 1 }] }, TODAY);
     expect(r.ok && Object.keys(r.value).sort()).toEqual(['discount', 'exclusions', 'inclusions', 'items', 'terms', 'validUntil']);
-    expect(r.ok && Object.keys(r.value.items[0]).sort()).toEqual(['description', 'function', 'gstRateBp', 'quantity', 'unitPrice']);
+    expect(r.ok && Object.keys(r.value.items[0]).sort()).toEqual(['description', 'details', 'function', 'gstRateBp', 'quantity', 'unitPrice']);
   });
 });
 

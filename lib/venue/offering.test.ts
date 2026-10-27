@@ -6,7 +6,7 @@ describe('validateOffering', () => {
   test('a kind, what is offered and a starting price — the function is optional', () => {
     expect(validateOffering({ kind: 'DECORATION', function: 'HALDI', name: '  Haldi   decoration ', price: '₹25,000' })).toEqual({
       ok: true,
-      value: { kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true },
+      value: { kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true, diet: null, menu: null },
     });
     expect(validateOffering({ kind: 'RENTAL', name: 'Banquet hall', price: '200000', description: '  5,000 sq ft,   AC ' })).toMatchObject({ ok: true, value: { function: null, description: '5,000 sq ft, AC' } });
     expect(validateOffering({ kind: 'RENTAL', function: '', name: 'Lawn', price: 1 })).toMatchObject({ ok: true, value: { function: null } });
@@ -33,7 +33,7 @@ describe('validateOffering', () => {
 
   test('a price of ₹0 is allowed (included at no charge); nothing else is taken from the request', () => {
     const r = validateOffering({ kind: 'SERVICE', function: 'HALDI', name: 'Parking', price: '0', businessId: 'someone-else', id: 'x', sourcePackageId: 'p1' });
-    expect(r).toEqual({ ok: true, value: { kind: 'SERVICE', function: 'HALDI', name: 'Parking', description: null, price: 0, perPlate: false, active: true } });
+    expect(r).toEqual({ ok: true, value: { kind: 'SERVICE', function: 'HALDI', name: 'Parking', description: null, price: 0, perPlate: false, active: true, diet: null, menu: null } });
   });
 });
 

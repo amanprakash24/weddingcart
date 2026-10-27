@@ -7,7 +7,7 @@
 import { isFunctionType, type FunctionType } from './offering';
 import { gstTotals, parseGstPercent } from '@/lib/quotation/lineGst';
 
-export const VENUE_QUOTE_LIMITS = { maxLines: 30, descriptionMax: 200, textMax: 4000, maxUnitPrice: 100_000_000, maxQuantity: 100_000 } as const;
+export const VENUE_QUOTE_LIMITS = { maxLines: 30, descriptionMax: 200, detailsMax: 2000, textMax: 4000, maxUnitPrice: 100_000_000, maxQuantity: 100_000 } as const;
 
 export interface VenueQuoteLine {
   description: string;
@@ -15,6 +15,7 @@ export interface VenueQuoteLine {
   unitPrice: number;
   function: FunctionType | null; // the wedding function this line is for (Haldi, Reception …) — optional
   gstRateBp: number | null; // GST on this line in hundredths of a percent (18% = 1800); null = none
+  details: string | null; // what the line includes (a catering menu's dishes), shown to the couple under the line
 }
 
 export interface VenueQuoteInput {
@@ -62,7 +63,11 @@ export function validateVenueQuote(input: Record<string, unknown>, today: string
       const gstRateBp = parseGstPercent(raw?.gstPercent);
       if (gstRateBp === undefined) errors[`items.${i}.gstPercent`] = 'Enter the GST rate as a number, like 5, 12 or 18 — or leave it empty';
 
-      items.push({ description, quantity: quantity ?? 1, unitPrice: unitPrice ?? 0, function: isFunctionType(fn) ? fn : null, gstRateBp: gstRateBp ?? null });
+      // What the line includes (a menu's dishes): optional, kept line by line as typed.
+      const details = str(raw?.details).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n');
+      if (details.length > L.detailsMax) errors[`items.${i}.details`] = `Please keep this under ${L.detailsMax} characters`;
+
+      items.push({ description, quantity: quantity ?? 1, unitPrice: unitPrice ?? 0, function: isFunctionType(fn) ? fn : null, gstRateBp: gstRateBp ?? null, details: details || null });
     });
   }
 

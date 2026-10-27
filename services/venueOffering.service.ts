@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/generated/prisma/client';
+import { isDiet, menuOf } from '@/lib/venue/menu';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
@@ -22,7 +24,17 @@ export interface VenueOfferingDeps {
 
 const defaultDeps = (): VenueOfferingDeps => ({ db: prisma });
 
-export const OFFERING_SELECT = { id: true, kind: true, function: true, name: true, description: true, price: true, perPlate: true, active: true } as const;
+export const OFFERING_SELECT = { id: true, kind: true, function: true, name: true, description: true, price: true, perPlate: true, active: true, diet: true, menu: true } as const;
+
+// A stored row as a price-list item: the menu (JSON) and food type read back safely (lib/venue/menu.ts).
+type OfferingRow = Omit<Offering, 'diet' | 'menu'> & { diet: string | null; menu: unknown };
+export const offeringOf = (row: OfferingRow): Offering => ({
+  ...row,
+  diet: row.kind === 'CATERING' && isDiet(row.diet) ? row.diet : null,
+  menu: row.kind === 'CATERING' ? menuOf(row.menu) : null,
+});
+// The two menu columns as written: no menu = SQL NULL.
+const menuData = (v: { diet: Offering['diet']; menu: Offering['menu'] }) => ({ diet: v.diet, menu: v.menu ? (v.menu as unknown as Prisma.InputJsonValue) : Prisma.DbNull });
 export const OFFERING_ORDER = [{ kind: 'asc' }, { createdAt: 'asc' }] as const;
 
 export function createVenueOfferingService(deps: VenueOfferingDeps = defaultDeps()) {
@@ -34,7 +46,8 @@ export function createVenueOfferingService(deps: VenueOfferingDeps = defaultDeps
   }
 
   async function list(): Promise<Offering[]> {
-    return deps.db.businessOffering.findMany({ where: { businessId: businessId() }, select: OFFERING_SELECT, orderBy: [...OFFERING_ORDER] });
+    const rows = await deps.db.businessOffering.findMany({ where: { businessId: businessId() }, select: OFFERING_SELECT, orderBy: [...OFFERING_ORDER] });
+    return rows.map(offeringOf);
   }
 
   // The business's public listing, if it has one: its category (which kinds to show first) and its packages there.
@@ -68,7 +81,7 @@ export function createVenueOfferingService(deps: VenueOfferingDeps = defaultDeps
       const checked = validateOffering(input);
       if (!checked.ok) return { errors: checked.errors };
       await tooMany(id, checked.value.kind);
-      await deps.db.businessOffering.create({ data: { ...checked.value, businessId: id } });
+      await deps.db.businessOffering.create({ data: { ...checked.value, ...menuData(checked.value), businessId: id } });
       return list();
     },
 
@@ -76,7 +89,7 @@ export function createVenueOfferingService(deps: VenueOfferingDeps = defaultDeps
       const id = businessId();
       const checked = validateOffering(input);
       if (!checked.ok) return { errors: checked.errors };
-      const changed = await deps.db.businessOffering.updateMany({ where: { id: offeringId, businessId: id }, data: checked.value });
+      const changed = await deps.db.businessOffering.updateMany({ where: { id: offeringId, businessId: id }, data: { ...checked.value, ...menuData(checked.value) } });
       if (changed.count === 0) throw new NotFoundError('Offering', offeringId);
       return list();
     },

@@ -57,6 +57,7 @@ export interface QuotationItemInput {
   unitPrice: number;
   quantity: number;
   gstRateBp?: number | null; // GST on this line in hundredths of a percent; null / absent = none (lib/quotation/lineGst.ts)
+  details?: string | null; // what the line includes, frozen here — e.g. a catering menu's dishes (lib/venue/menu.ts)
 }
 
 export interface QuotationInput {
@@ -211,6 +212,7 @@ function itemRows(items: QuotationItemInput[]) {
     unitPrice: item.unitPrice,
     quantity: item.quantity,
     gstRateBp: item.gstRateBp ?? null,
+    details: item.details?.trim() || null,
   }));
 }
 
@@ -636,6 +638,7 @@ export const quotationService = {
                 unitPrice: item.unitPrice,
                 quantity: item.quantity,
                 gstRateBp: item.gstRateBp,
+                details: item.details,
               })),
             },
           },
