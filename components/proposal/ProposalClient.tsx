@@ -162,6 +162,14 @@ function ServiceShowcase({ item, grouped }: { item: Item; grouped: boolean }) {
         )}
         {meta.length > 0 && <p className="mt-2 text-sm text-[#7A6556]">{meta.join(' · ')}</p>}
 
+        {/* What this line includes — e.g. a catering menu's dishes by course, as the business wrote it on the quotation */}
+        {item.details && (
+          <div className="mt-4 rounded-2xl border border-[#EFE6D8] bg-[#FFFAF5] px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B08D55]">What is included</p>
+            <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-[#4A3F38]">{item.details}</p>
+          </div>
+        )}
+
         {profile?.about && (
           <p className="mt-4 text-[15px] leading-relaxed text-[#4A3F38]">{profile.about}</p>
         )}

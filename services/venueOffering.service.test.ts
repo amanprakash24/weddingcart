@@ -61,7 +61,7 @@ describe('the price list', () => {
   test('a business adds to its own list and sees only its own', async () => {
     expect(await inA(() => service.list())).toEqual([]);
     const after = await inA(() => service.create({ kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', price: '25,000', description: 'Marigold' }));
-    expect(after).toEqual([{ id: 'o2', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: 'Marigold', price: 25000, perPlate: false, active: true }]);
+    expect(after).toEqual([{ id: 'o2', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: 'Marigold', price: 25000, perPlate: false, active: true, diet: null, menu: null }]);
     expect(rows.find((r) => r.id === 'o2')?.businessId).toBe('venue-a');
     expect((await inB(() => service.list())).map((o) => o.name)).toEqual(['B lawn']);
   });
@@ -130,7 +130,7 @@ describe('the whole catalog screen', () => {
 
   test('a package is copied into the list once, as the business’s own package', async () => {
     const after = await inA(() => service.copyListingPackage('pa2'));
-    expect(after).toEqual([{ id: 'o2', kind: 'PACKAGE', function: null, name: 'Royal plate', description: null, price: 1200, perPlate: true, active: true }]);
+    expect(after).toEqual([{ id: 'o2', kind: 'PACKAGE', function: null, name: 'Royal plate', description: null, price: 1200, perPlate: true, active: true, diet: null, menu: null }]);
     expect(rows.at(-1)).toMatchObject({ businessId: 'venue-a', sourcePackageId: 'pa2' });
     expect((await inA(() => service.catalog())).listingPackages.map((p) => [p.name, p.copied])).toEqual([['Gold package', false], ['Royal plate', true]]);
     expect((await outcome(inA(() => service.copyListingPackage('pa2'))))?.name).toBe('ConflictError');

@@ -26,7 +26,7 @@ import { reviewService } from '@/services/review.service';
 import type { ProposalReviews } from '@/lib/reviews/reviewView';
 import { proposalBrandFor } from '@/lib/ownership/business';
 import { FUNCTION_TYPE_LABELS, type Offering } from '@/lib/venue/offering';
-import { OFFERING_ORDER, OFFERING_SELECT } from './venueOffering.service';
+import { OFFERING_ORDER, OFFERING_SELECT, offeringOf } from './venueOffering.service';
 import { loadAgreementMoney } from '@/services/agreement.service';
 import { toCoupleBooking, type CoupleBookingWedding } from '@/lib/quotation/coupleBooking';
 import { upiPayeeOf, type UpiPayee } from '@/lib/payments/upi';
@@ -99,12 +99,14 @@ const defaultDeps = (): ProposalDeps => ({
     const b = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true, upiId: true, upiName: true } });
     return b ? upiPayeeOf(b) : null;
   },
-  offerings: (businessId) =>
-    prisma.businessOffering.findMany({
-      where: { businessId, active: true }, // a hidden item is never shown to a couple
-      select: OFFERING_SELECT,
-      orderBy: [...OFFERING_ORDER],
-    }),
+  offerings: async (businessId) =>
+    (
+      await prisma.businessOffering.findMany({
+        where: { businessId, active: true }, // a hidden item is never shown to a couple
+        select: OFFERING_SELECT,
+        orderBy: [...OFFERING_ORDER],
+      })
+    ).map(offeringOf),
 });
 
 export function createProposalService(deps: ProposalDeps = defaultDeps()) {

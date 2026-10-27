@@ -58,7 +58,7 @@ const createWedding = mock(async (_bookingId: string) => {
 });
 
 const consultationUpdate = mock(async ({ where, data }: { where: { id: string }; data: Record<string, string> }) => Object.assign(enquiries[where.id], data));
-const body = (input: { items: { description: string; quantity: number; unitPrice: number; functionLabel?: string | null; gstRateBp?: number | null }[]; discount: number; gstEnabled?: boolean; gstAmount?: number; sellerGstin?: string | null; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
+const body = (input: { items: { description: string; quantity: number; unitPrice: number; functionLabel?: string | null; gstRateBp?: number | null; details?: string | null }[]; discount: number; gstEnabled?: boolean; gstAmount?: number; sellerGstin?: string | null; advanceAmount: number; validUntil: Date; inclusions: string | null; exclusions: string | null; terms: string | null }) => {
   const subtotal = input.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   return { items: input.items.map((i) => ({ ...i, lineTotal: i.quantity * i.unitPrice })), subtotal, discount: input.discount, gstEnabled: input.gstEnabled ?? false, gstAmount: input.gstAmount ?? 0, sellerGstin: input.sellerGstin ?? null, total: subtotal - input.discount + (input.gstAmount ?? 0), advanceAmount: input.advanceAmount, validUntil: input.validUntil, inclusions: input.inclusions, exclusions: input.exclusions, terms: input.terms };
 };
@@ -131,16 +131,16 @@ beforeEach(() => {
 describe('a venue’s own quotation', () => {
   test('before any quotation: the customer, the venue’s rule and ONE list of one-tap lines', async () => {
     expect(await service.get('e1')).toEqual({
-      customer: { name: 'Rahul Kumar', phone: '9876543210', weddingDate: '2026-12-09' },
+      customer: { name: 'Rahul Kumar', phone: '9876543210', weddingDate: '2026-12-09', guests: null },
       venueName: 'Swayamvar Hall',
       rules: { confirmationPercent: 30, holdWindowDays: 5 },
       quotation: null,
       // Its own items that it currently offers (the hidden DJ is left out), then the package on its public page that it has not
       // copied — "Veg plate" was copied, so only the business's own copy shows.
       offerings: [
-        { id: 'o1', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true },
-        { id: 'o3', kind: 'PACKAGE', function: null, name: 'Veg plate (our price)', description: null, price: 950, perPlate: true, active: true },
-        { id: 'listing-p1', kind: 'PACKAGE', function: null, name: 'Gold package', description: null, price: 150000, perPlate: false, active: true },
+        { id: 'o1', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true, diet: null, menu: null },
+        { id: 'o3', kind: 'PACKAGE', function: null, name: 'Veg plate (our price)', description: null, price: 950, perPlate: true, active: true, diet: null, menu: null },
+        { id: 'listing-p1', kind: 'PACKAGE', function: null, name: 'Gold package', description: null, price: 150000, perPlate: false, active: true, diet: null, menu: null },
       ],
       payTo: null,
     });
@@ -165,8 +165,8 @@ describe('a venue’s own quotation', () => {
   test('a line’s function is stored as its label, and read back as the function', async () => {
     await service.save('e1', { ...good, items: [{ description: 'Haldi decoration', quantity: '1', unitPrice: '25000', function: 'HALDI' }, { description: 'Hall hire', quantity: '1', unitPrice: '200000' }] }, 'u1');
     expect(create.mock.calls[0][2].items).toEqual([
-      { description: 'Haldi decoration', quantity: 1, unitPrice: 25000, functionLabel: 'Haldi', gstRateBp: null },
-      { description: 'Hall hire', quantity: 1, unitPrice: 200000, functionLabel: null, gstRateBp: null },
+      { description: 'Haldi decoration', quantity: 1, unitPrice: 25000, functionLabel: 'Haldi', gstRateBp: null, details: null },
+      { description: 'Hall hire', quantity: 1, unitPrice: 200000, functionLabel: null, gstRateBp: null, details: null },
     ]);
     Object.assign(quotes[0].items[0], { functionLabel: 'Haldi' });
     expect((await service.get('e1')).quotation?.items.map((i) => i.function)).toEqual(['HALDI', null]);

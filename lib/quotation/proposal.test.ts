@@ -235,7 +235,7 @@ describe('toCustomerProposal — allow-list only', () => {
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW)).sort()).toEqual(
       ['acceptedAt', 'addable', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'brand', 'inclusions', 'items', 'number', 'payments', 'reviews', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding', 'yourBooking'].sort()
     );
-    expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'functionLabel', 'gst', 'gstPercent', 'lineTotal', 'quantity', 'service', 'taxable', 'unitPrice', 'vendor']);
+    expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'details', 'functionLabel', 'gst', 'gstPercent', 'lineTotal', 'quantity', 'service', 'taxable', 'unitPrice', 'vendor']);
   });
 
   test('GST is shown when charged', () => {
@@ -255,7 +255,7 @@ describe('canIssueCustomerLink (Roadmap 1.4)', () => {
 
 describe('Add an event', () => {
   test('toAddable: grouped in the order a wedding runs, only functions with something, only name and price words', () => {
-    const item = { description: null, active: true } as const;
+    const item = { description: null, active: true, diet: null, menu: null } as const;
     const groups = toAddable([
       { ...item, id: 'r1', kind: 'RENTAL', function: 'RECEPTION', name: 'Banquet hall', price: 150000, perPlate: false },
       { ...item, id: 'h1', kind: 'CATERING', function: 'HALDI', name: 'Veg plate', price: 450, perPlate: true },
@@ -268,8 +268,8 @@ describe('Add an event', () => {
 
   test('toAddable: an item for any function can be added to every function', () => {
     const groups = toAddable([
-      { id: 'hall', kind: 'RENTAL', function: null, name: 'Banquet hall', description: 'AC, 500 guests', price: 150000, perPlate: false, active: true },
-      { id: 'h1', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true },
+      { id: 'hall', kind: 'RENTAL', function: null, name: 'Banquet hall', description: 'AC, 500 guests', price: 150000, perPlate: false, active: true, diet: null, menu: null },
+      { id: 'h1', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true, diet: null, menu: null },
     ]);
     expect(groups).toHaveLength(7);
     expect(groups.find((g) => g.function === 'HALDI')?.items.map((i) => i.id)).toEqual(['h1', 'hall']);

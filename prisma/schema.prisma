@@ -1218,6 +1218,9 @@ model QuotationItem {
   // GST on this line, typed by the vendor (6 Oct 2026; lib/quotation/lineGst.ts) — in hundredths of a percent: 18% = 1800.
   // null = no GST on this line. There is no default rate anywhere. Quotation.gstAmount is the sum of the lines' GST.
   gstRateBp     Int?
+  // What this line includes, frozen when the quotation is saved — e.g. a catering menu's dishes by course (27 Oct 2026).
+  // A menu changed later in "What we offer" never changes a quotation already made.
+  details       String?
 
   @@index([quotationId])
   @@index([vendorId])
@@ -2433,6 +2436,11 @@ model BusinessOffering {
   price           Int // whole rupees
   perPlate        Boolean           @default(false)
   active          Boolean           @default(true)
+  // Catering menus (Phase 4, 27 Oct 2026; lib/venue/menu.ts) — only for kind CATERING. diet: VEG | NON_VEG | JAIN | MIXED.
+  // menu: { dishes: [{ course, name }], extras: [{ name, price, perPlate }] } — the extras are the ONLY additions a quotation
+  // can make to this menu (founder: fixed menus + controlled customisation).
+  diet            String?
+  menu            Json?
   sourcePackageId String?
   sourcePackage   VendorPackage?    @relation(fields: [sourcePackageId], references: [id], onDelete: SetNull)
   createdAt       DateTime          @default(now())

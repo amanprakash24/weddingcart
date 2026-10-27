@@ -121,7 +121,7 @@ dbDescribe('what a venue offers, and functions on its quotations (real database)
     expect((await outcome(inA(() => offerings.setActive(bLawnId, false))))?.name).toBe('NotFoundError');
     expect((await outcome(inA(() => offerings.remove(bLawnId))))?.name).toBe('NotFoundError');
     expect((await outcome(inB(() => offerings.remove(haldiDecorId))))?.name).toBe('NotFoundError');
-    expect(await inB(() => offerings.list())).toEqual([{ id: bLawnId, kind: 'RENTAL', function: 'HALDI', name: 'B lawn', description: null, price: 30000, perPlate: false, active: true }]);
+    expect(await inB(() => offerings.list())).toEqual([{ id: bLawnId, kind: 'RENTAL', function: 'HALDI', name: 'B lawn', description: null, price: 30000, perPlate: false, active: true, diet: null, menu: null }]);
     expect((await inB(() => offerings.catalog())).listingPackages.map((p) => p.name)).toEqual(['Gold B']);
   });
 

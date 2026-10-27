@@ -13,6 +13,7 @@ import { whatsappTo } from '@/lib/venue/enquiry';
 import { FUNCTION_TYPES, FUNCTION_TYPE_LABELS, groupByKind, offeringPriceWords, type FunctionType, type Offering } from '@/lib/venue/offering';
 import { QUOTE_STAGE_LABEL, quoteShareMessage, VENUE_QUOTE_LIMITS, type QuoteStage, type VenueQuoteErrors } from '@/lib/venue/quotation';
 import { gstPercentText, gstTotals, parseGstPercent } from '@/lib/quotation/lineGst';
+import { extraLine, extraPriceWords, menuDetails, platesFor, type MenuExtra } from '@/lib/venue/menu';
 import type { VenueQuotationState, VenueQuotationView } from '@/services/venueQuotation.service';
 import BookingMoney from './BookingMoney';
 import SameDateWarning from './SameDateWarning';
@@ -23,7 +24,8 @@ import SameDateWarning from './SameDateWarning';
 // GST (6 Oct 2026): each line has its own "GST %" box, empty until the venue types a rate — there is no default. The form shows the
 // GST and the line total as they type, worked out by the same code the server uses (lib/quotation/lineGst.ts).
 
-type Line = { description: string; quantity: string; unitPrice: string; function: FunctionType | ''; gstPercent: string };
+// details: what the line includes (a catering menu's dishes), frozen on the quotation and shown to the couple under the line.
+type Line = { description: string; quantity: string; unitPrice: string; function: FunctionType | ''; gstPercent: string; details: string };
 type Form = { items: Line[]; discount: string; validUntil: string; inclusions: string; exclusions: string; terms: string };
 
 const TONE: Record<QuoteStage, PillStatus> = { DRAFT: 'dateHeld', SENT: 'info', CHANGES: 'overdue', ACCEPTED: 'confirmed', ENDED: 'neutral' };
@@ -37,10 +39,10 @@ const dayWords = (value: string) => new Intl.DateTimeFormat('en-IN', { day: 'num
 const num = (raw: string) => Number(raw.replace(/[₹,\s]/g, '')) || 0;
 
 const FUNCTION_OPTIONS = [{ value: '', label: 'Not for one function' }, ...FUNCTION_TYPES.map((fn) => ({ value: fn, label: FUNCTION_TYPE_LABELS[fn] }))];
-const emptyLine = (): Line => ({ description: '', quantity: '1', unitPrice: '', function: '', gstPercent: '' });
+const emptyLine = (): Line => ({ description: '', quantity: '1', unitPrice: '', function: '', gstPercent: '', details: '' });
 const blankForm = (): Form => ({ items: [emptyLine()], discount: '', validUntil: istDay(7), inclusions: '', exclusions: '', terms: '' });
 const formOf = (q: VenueQuotationView): Form => ({
-  items: q.items.map((i) => ({ description: i.description, quantity: String(i.quantity), unitPrice: String(i.unitPrice), function: i.function ?? '', gstPercent: i.gstRateBp === null ? '' : gstPercentText(i.gstRateBp) })),
+  items: q.items.map((i) => ({ description: i.description, quantity: String(i.quantity), unitPrice: String(i.unitPrice), function: i.function ?? '', gstPercent: i.gstRateBp === null ? '' : gstPercentText(i.gstRateBp), details: i.details ?? '' })),
   discount: q.discount ? String(q.discount) : '',
   validUntil: q.validUntil && q.validUntil >= istDay() ? q.validUntil : istDay(7),
   inclusions: q.inclusions ?? '',
@@ -116,12 +118,28 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
     setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== key)));
   };
   // One tap adds a line from the business's price list ("What we offer") — it carries its function (Haldi, Reception …) if it has one.
-  const addOffering = (o: Offering) =>
+  // Food is per guest: a per-plate item starts with the enquiry's guest count as its number of plates (still changeable). A catering
+  // menu brings its dishes as the line's details (lib/venue/menu.ts).
+  const pushLine = (line: Line) =>
     setForm((f) => {
-      const line: Line = { description: o.perPlate ? `${o.name} (per plate)` : o.name, quantity: '1', unitPrice: String(o.price), function: o.function ?? '', gstPercent: '' };
       const only = f.items.length === 1 && !f.items[0].description.trim() && !f.items[0].unitPrice.trim();
       return { ...f, items: only ? [line] : [...f.items, line] };
     });
+  const plates = platesFor(state.customer.guests);
+  const addOffering = (o: Offering) =>
+    pushLine({
+      description: o.perPlate ? `${o.name} (per plate)` : o.name,
+      quantity: String(o.perPlate ? plates : 1),
+      unitPrice: String(o.price),
+      function: o.function ?? '',
+      gstPercent: '',
+      details: o.menu && o.menu.dishes.length ? menuDetails(o.menu, o.diet) : '',
+    });
+  // An extra can only come from the menu it belongs to — the business's own list (founder: controlled customisation).
+  const addExtra = (o: Offering, x: MenuExtra) => {
+    const l = extraLine(o.name, x, state.customer.guests);
+    pushLine({ description: l.description, quantity: String(l.quantity), unitPrice: String(l.unitPrice), function: o.function ?? '', gstPercent: '', details: '' });
+  };
 
   const startEditing = () => {
     setForm(q?.stage === 'DRAFT' ? formOf(q) : blankForm());
@@ -176,6 +194,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
           {state.offerings.length > 0 && (
             <div aria-label="Add from your price list" role="group" className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Add from your price list</p>
+              {state.customer.guests && <p className="text-xs text-[var(--color-text-muted)]">Food per plate starts at {state.customer.guests} plates, the guests on this enquiry. You can change it on the line.</p>}
               {groupByKind(state.offerings).map((g) => (
                 <div key={g.kind}>
                   <p className="mb-2 text-xs font-medium text-[var(--color-text-muted)]">{g.label}</p>
@@ -187,6 +206,19 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
                       </button>
                     ))}
                   </div>
+                  {/* A menu's extras: the only additions this business allows to that menu */}
+                  {g.items.filter((o) => o.menu && o.menu.extras.length > 0).map((o) => (
+                    <div key={`${o.id}-extras`} className="mt-2 rounded-lg bg-[var(--color-bg-surface-muted)] p-2.5">
+                      <p className="mb-1.5 text-xs font-medium text-[var(--color-text-muted)]">Extras for {o.name}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {o.menu!.extras.map((x) => (
+                          <button key={x.name} type="button" onClick={() => addExtra(o, x)} className="min-h-10 rounded-full border border-dashed border-[var(--color-border-default)] bg-[var(--color-bg-surface)] px-3 text-left text-sm text-[var(--color-text-primary)]">
+                            + {x.name} · {extraPriceWords(x)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -201,6 +233,9 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
             {form.items.map((l, i) => (
               <li key={i} className="space-y-2 border-b border-[var(--color-border-subtle)] pb-4 last:border-b-0 last:pb-0">
                 <Input label={`Line ${i + 1}`} value={l.description} onChange={(ev) => setLine(i, 'description', ev.target.value)} error={errors[`items.${i}.description`]} placeholder="Hall for the reception" maxLength={VENUE_QUOTE_LIMITS.descriptionMax} className="min-h-12 text-base" />
+                {(l.details || /per plate/i.test(l.description)) && (
+                  <Textarea label="What this includes (optional)" value={l.details} onChange={(ev) => setLine(i, 'details', ev.target.value)} error={errors[`items.${i}.details`]} rows={Math.min(8, Math.max(2, l.details.split('\n').length))} maxLength={VENUE_QUOTE_LIMITS.detailsMax} helperText="The couple sees this under the line. Change it for this couple if you like — your menu stays as it is." />
+                )}
                 <Select label="For which function? (optional)" value={l.function} onChange={(ev) => setLine(i, 'function', ev.target.value)} error={errors[`items.${i}.function`]} options={FUNCTION_OPTIONS} className="min-h-12 text-base" />
                 <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto] items-start gap-2">
                   <Input label="How many" inputMode="numeric" value={l.quantity} onChange={(ev) => setLine(i, 'quantity', ev.target.value)} error={errors[`items.${i}.quantity`]} className="min-h-12 text-base" />
@@ -294,7 +329,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
         <ul className="space-y-2 text-sm">
           {q.items.map((i, n) => (
             <li key={n} className="flex justify-between gap-3">
-              <span className="text-[var(--color-text-primary)]">{i.function && <span className="text-[var(--color-text-muted)]">{FUNCTION_TYPE_LABELS[i.function]} · </span>}{i.description}{i.quantity > 1 && <span className="text-[var(--color-text-muted)]"> · {i.quantity.toLocaleString('en-IN')} × {inr(i.unitPrice)}</span>}</span>
+              <span className="text-[var(--color-text-primary)]">{i.function && <span className="text-[var(--color-text-muted)]">{FUNCTION_TYPE_LABELS[i.function]} · </span>}{i.description}{i.quantity > 1 && <span className="text-[var(--color-text-muted)]"> · {i.quantity.toLocaleString('en-IN')} × {inr(i.unitPrice)}</span>}{i.details && <span className="mt-0.5 block whitespace-pre-line text-xs text-[var(--color-text-muted)]">{i.details}</span>}</span>
               <span className="shrink-0 text-right text-[var(--color-text-primary)]">
                 {inr(i.lineTotal)}
                 {i.gstRateBp !== null && i.gstRateBp > 0 && <span className="block text-xs text-[var(--color-text-muted)]">+ GST {gstPercentText(i.gstRateBp)}%{i.taxable !== i.lineTotal && <> on {inr(i.taxable)}</>} {inr(i.gst)}</span>}
