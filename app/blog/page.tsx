@@ -6,7 +6,7 @@ import { JsonLd } from '@/components/JsonLd';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
-  title: 'Wedding Blog — Tips, Trends & Real Weddings | ShaadiShopping',
+  title: 'Wedding Blog — Tips, Trends & Real Weddings',
   description:
     'Explore wedding tips, venue guides, bridal fashion trends, real wedding stories, and budget planning advice from India\'s top wedding planning experts.',
   keywords: [

@@ -6,7 +6,7 @@ import { JsonLd } from '@/components/JsonLd';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
 
 export const metadata: Metadata = {
-  title: 'Plan Your Wedding in Patna — Free Wedding Shortlist | ShaadiShopping',
+  title: 'Plan Your Wedding in Patna — Free Wedding Shortlist',
   description:
     'Tell us your name, wedding date and guest count in under a minute. A Wedding Expert from our Patna team calls you with venues and vendors that fit your guests and budget. Free for families.',
   keywords: [

@@ -6,7 +6,7 @@ import { clientPortalService } from '@/services/clientPortal.service';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'Customer Portal | ShaadiShopping',
+  title: 'Customer Portal',
   robots: { index: false, follow: false },
 };
 

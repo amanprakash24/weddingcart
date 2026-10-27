@@ -3,7 +3,7 @@ import { guestService } from '@/services/guest.service';
 import RsvpClient from '@/components/RsvpClient';
 import { platformScoped } from '@/lib/ownership/entry';
 
-export const metadata = { title: 'RSVP | ShaadiShopping', robots: { index: false, follow: false } };
+export const metadata = { title: 'RSVP', robots: { index: false, follow: false } };
 
 async function RsvpPage({ params }: { params: Promise<{ token: string }> }) {
   const guest = await guestService.getPublicByToken((await params).token);

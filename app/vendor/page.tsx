@@ -5,7 +5,7 @@ import { venuePortalService } from '@/services/venuePortal.service';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'Vendor Portal | ShaadiShopping',
+  title: 'Vendor Portal',
   robots: { index: false, follow: false },
 };
 

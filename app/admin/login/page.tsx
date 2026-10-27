@@ -2,7 +2,7 @@ import AdminLoginClient from '@/components/AdminLoginClient';
 import VendorCodeLoginClient from '@/components/vendor/VendorCodeLoginClient';
 
 export const metadata = {
-  title: 'Admin Login | ShaadiShopping',
+  title: 'Admin Login',
   robots: { index: false, follow: false },
 };
 

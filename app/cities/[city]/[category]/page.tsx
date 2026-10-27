@@ -210,7 +210,7 @@ export async function generateMetadata({
   // Bihar cities are indexed — they are genuinely served from the Patna network.
   if (city.state !== 'Bihar') {
     return {
-      title: `${cat.plural} in ${city.name}, ${city.state} — Book Top ${cat.plural} | ShaadiShopping`,
+      title: `${cat.plural} in ${city.name}, ${city.state} — Book Top ${cat.plural}`,
       description: `Find the best ${cat.plural} in ${city.name}, ${city.state}. Compare verified ${cat.desc} with real packages, photos & pricing. ${cat.priceNote}. Get free quotes from top ${cat.plural} in ${city.name}.`,
       robots: { index: false, follow: false },
     };
@@ -218,7 +218,7 @@ export async function generateMetadata({
 
   // Bihar cities other than Patna: indexed, city-targeted metadata
   if (citySlug !== 'patna') {
-    const title = `${cat.plural} in ${city.name}, Bihar — Book Top ${cat.plural} | ShaadiShopping`;
+    const title = `${cat.plural} in ${city.name}, Bihar — Book Top ${cat.plural}`;
     const description = `Book the best ${cat.plural.toLowerCase()} in ${city.name}, Bihar. Verified ${cat.desc} serving ${city.name} from ShaadiShopping's Patna network. ${cat.priceNote}. Free quotes & expert help.`;
     return {
       title,
@@ -250,7 +250,7 @@ export async function generateMetadata({
   // Per-category Patna SEO — targeted title, description & keyword set
   const PATNA_CATEGORY_SEO: Record<string, { title: string; description: string; keywords: string[] }> = {
     venue: {
-      title: 'Venues in Patna for Wedding & Marriage — Banquet Halls, Lawns | ShaadiShopping',
+      title: 'Venues in Patna for Wedding & Marriage — Banquet Halls, Lawns',
       description: 'Find the best wedding venues in Patna, Bihar — banquet halls, marriage gardens, convention centres & lawn venues. Compare verified venues with real photos, pricing & packages. Venue rental from ₹80,000. Get free quotes.',
       keywords: [
         'venues in patna', 'venue in patna', 'wedding venues in patna',
@@ -262,7 +262,7 @@ export async function generateMetadata({
       ],
     },
     dj: {
-      title: 'DJ in Patna for Wedding & Sangeet — Book Top Wedding DJs | ShaadiShopping',
+      title: 'DJ in Patna for Wedding & Sangeet — Book Top Wedding DJs',
       description: 'Book the best DJ in Patna for your wedding sangeet & reception. Professional DJs with LED rigs, laser lights & premium sound systems. Packages from ₹15,000. Compare verified DJs and get free quotes.',
       keywords: [
         'dj in patna', 'dj patna', 'wedding dj patna', 'dj for wedding patna',
@@ -273,7 +273,7 @@ export async function generateMetadata({
       ],
     },
     'photo-video': {
-      title: 'Photographer in Patna for Wedding — Candid & Traditional Photography | ShaadiShopping',
+      title: 'Photographer in Patna for Wedding — Candid & Traditional Photography',
       description: 'Book the best wedding photographers in Patna, Bihar. Candid, traditional & pre-wedding shoot specialists. Packages from ₹35,000. Compare verified photographers with real portfolios. Free quotes.',
       keywords: [
         'photographer in patna', 'wedding photographer patna', 'photographer patna',
@@ -285,7 +285,7 @@ export async function generateMetadata({
       ],
     },
     makeup: {
-      title: 'Makeup Artist in Patna for Bridal — Book Top Bridal Makeup Artists | ShaadiShopping',
+      title: 'Makeup Artist in Patna for Bridal — Book Top Bridal Makeup Artists',
       description: 'Book the best bridal makeup artists in Patna, Bihar. HD, airbrush & traditional bridal makeup from ₹15,000. Verified artists with real portfolio photos. Book months before your wedding.',
       keywords: [
         'makeup artist in patna', 'makeup artist patna', 'bridal makeup patna',
@@ -296,7 +296,7 @@ export async function generateMetadata({
       ],
     },
     mehndi: {
-      title: 'Mehndi Artist in Patna for Wedding — Book Bridal Henna Artists | ShaadiShopping',
+      title: 'Mehndi Artist in Patna for Wedding — Book Bridal Henna Artists',
       description: 'Book top mehndi artists in Patna, Bihar for bridal & guest mehndi. Arabic, Rajasthani & fusion designs. Packages from ₹8,000. Verified artists with real portfolio photos.',
       keywords: [
         'mehndi artist in patna', 'mehndi artist patna', 'mehndi in patna',
@@ -307,7 +307,7 @@ export async function generateMetadata({
       ],
     },
     catering: {
-      title: 'Caterer in Patna for Wedding — Book Top Wedding Catering Services | ShaadiShopping',
+      title: 'Caterer in Patna for Wedding — Book Top Wedding Catering Services',
       description: 'Book the best wedding caterers in Patna, Bihar. Veg, non-veg & multi-cuisine catering from ₹450/plate. Experienced in large-scale events from 200–3,000 guests. Get free quotes.',
       keywords: [
         'caterer in patna', 'catering in patna', 'catering patna',
@@ -319,7 +319,7 @@ export async function generateMetadata({
       ],
     },
     decorator: {
-      title: 'Decorator in Patna for Wedding — Book Top Wedding Decoration Services | ShaadiShopping',
+      title: 'Decorator in Patna for Wedding — Book Top Wedding Decoration Services',
       description: 'Book the best wedding decorators in Patna, Bihar. Floral, themed & LED décor packages from ₹50,000. Compare verified decorators with real project photos. Get free quotes.',
       keywords: [
         'decorator in patna', 'decorator patna', 'wedding decorator patna',
@@ -331,7 +331,7 @@ export async function generateMetadata({
       ],
     },
     band: {
-      title: 'Band in Patna for Baraat & Wedding — Book Top Brass Bands | ShaadiShopping',
+      title: 'Band in Patna for Baraat & Wedding — Book Top Brass Bands',
       description: 'Book the best baraat bands in Patna, Bihar for your wedding procession. 15–35 player ensembles with LED instruments & dhol. Packages from ₹25,000. Verified bands with real performance videos.',
       keywords: [
         'band in patna', 'baraat band patna', 'wedding band patna',
@@ -343,7 +343,7 @@ export async function generateMetadata({
       ],
     },
     planning: {
-      title: 'Wedding Planner in Patna, Bihar — Book Top Wedding Planning Services | ShaadiShopping',
+      title: 'Wedding Planner in Patna, Bihar — Book Top Wedding Planning Services',
       description: 'Book experienced wedding planners in Patna, Bihar for full-service & day-of coordination. Packages from ₹50,000. Manage vendors, décor, logistics & guest coordination seamlessly.',
       keywords: [
         'wedding planner in patna', 'wedding planner patna', 'planner in patna',
@@ -357,7 +357,7 @@ export async function generateMetadata({
   };
 
   const patnaSeо = PATNA_CATEGORY_SEO[catSlug];
-  const title = patnaSeо?.title ?? `${cat.plural} in ${city.name}, ${city.state} — Book Top ${cat.plural} | ShaadiShopping`;
+  const title = patnaSeо?.title ?? `${cat.plural} in ${city.name}, ${city.state} — Book Top ${cat.plural}`;
   const description = patnaSeо?.description ?? `Find the best ${cat.plural} in ${city.name}, ${city.state}. Compare verified ${cat.desc} with real packages, photos & pricing. ${cat.priceNote}. Get free quotes from top ${cat.plural} in ${city.name}.`;
   const extraKeywords = patnaSeо?.keywords ?? [];
 
