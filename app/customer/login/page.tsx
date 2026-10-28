@@ -5,7 +5,7 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-// The couple's sign-in to My Wedding on Vivah OS (28 Oct 2026): mobile number, then a 6-digit SMS code.
+// The couple's sign-in to My Wedding on Vivah OS (28 Oct 2026): mobile number + their 6-digit login code, like everyone on Vivah OS.
 export default function CustomerLoginPage() {
   return <CoupleLoginClient redirectPath="/my-wedding" />;
 }

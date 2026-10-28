@@ -63,9 +63,8 @@ export default function WorkspaceChooser() {
     <div className="flex min-h-screen items-center justify-center bg-[#1E0510] px-5 py-10">
       <div className="w-full max-w-md">
         <div className="mb-7 text-center">
-          <Image src="/logo.png" alt="Shaadi Shopping" width={240} height={150} priority className="mx-auto h-20 w-auto object-contain" />
-          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#E8C98A]">Vivah OS</p>
-        </div>
+          {/* Vivah OS's own logo (28 Oct 2026) — this screen is inside Vivah OS, not the Shaadi Shopping website. */}
+          <Image src="/images/vivah-os/logo-on-dark.png" alt="Vivah OS — the operating system for celebrations" width={800} height={711} priority className="mx-auto h-auto w-[200px]" />        </div>
 
         <div className="rounded-[24px] bg-[#FFFAF5] p-6 sm:p-8">
           {(state === 'loading' || (list?.length === 1 && state !== 'error')) && (
