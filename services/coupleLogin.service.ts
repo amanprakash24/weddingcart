@@ -49,11 +49,11 @@ const defaultDeps = (): CoupleLoginDeps => ({
   now: () => new Date(),
 });
 
-const loginSelect = { id: true, loginCodeHash: true, roles: { select: { role: true } }, _count: { select: { businessMemberships: true } } } as const;
-type Login = { id: string; loginCodeHash: string | null; roles: { role: Role }[]; _count: { businessMemberships: number } };
+export const loginSelect = { id: true, loginCodeHash: true, roles: { select: { role: true } }, _count: { select: { businessMemberships: true } } } as const;
+export type Login = { id: string; loginCodeHash: string | null; roles: { role: Role }[]; _count: { businessMemberships: number } };
 
 // Only a couple's own login may have its code replaced by the founder: nothing but the couple door, and no business it works in.
-const coupleOnly = (l: Login) => l.roles.every((r) => r.role === Role.CUSTOMER) && l._count.businessMemberships === 0;
+export const coupleOnly = (l: Login) => l.roles.length > 0 && l.roles.every((r) => r.role === Role.CUSTOMER) && l._count.businessMemberships === 0;
 
 export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) {
   // The caller's own wedding (the scope filters out every other business's) and the couple's mobile on it.
