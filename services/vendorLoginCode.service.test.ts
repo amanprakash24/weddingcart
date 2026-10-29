@@ -115,7 +115,8 @@ describe('verify — signing in with mobile number + code', () => {
 describe('issuing a code', () => {
   test('for a person: returned once, only its hash stored, and they are signed out everywhere', async () => {
     expect(await service.issueForUser('u3')).toEqual({ code: '815204', mobile: '9111111111' });
-    expect(users[2]).toMatchObject({ loginCodeHash: 'hash(815204)', loginCodeSetAt: NOW, sessionVersion: 2 });
+    // A code someone else gave: My Wedding reminds the person to choose their own.
+    expect(users[2]).toMatchObject({ loginCodeHash: 'hash(815204)', loginCodeSetAt: NOW, loginCodeGiven: true, sessionVersion: 2 });
     expect(JSON.stringify(users)).not.toContain('"815204"');
     expect(await service.verify('9111111111', '730518')).toBeNull(); // the old code is dead
     expect((await service.verify('9111111111', '815204'))?.id).toBe('u3');
@@ -153,7 +154,8 @@ describe('change — a person changes their own code', () => {
 
   test('with the right current code: the new hash is stored, the date moves, and they stay signed in', async () => {
     expect(await service.change('u1', input)).toEqual({ changed: true });
-    expect(users[0]).toMatchObject({ loginCodeHash: 'hash(730519)', loginCodeSetAt: NOW, sessionVersion: 3 });
+    // Their own code now: the "choose your own code" reminder is gone.
+    expect(users[0]).toMatchObject({ loginCodeHash: 'hash(730519)', loginCodeSetAt: NOW, loginCodeGiven: false, sessionVersion: 3 });
     expect(attempts).toEqual([{ identifier: 'vendor-code-change:u1', success: true }]);
   });
 

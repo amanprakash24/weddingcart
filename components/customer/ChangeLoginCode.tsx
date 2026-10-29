@@ -9,8 +9,9 @@ import { KeyRound } from 'lucide-react';
 type Errors = Partial<Record<'current' | 'next' | 'confirm', string>>;
 const field = 'h-12 w-full rounded-xl border-[1.5px] border-[#D9C9B2] bg-white px-3 text-lg tracking-[0.3em] outline-none focus:border-[#7A1238]';
 
-export default function ChangeLoginCode() {
-  const [open, setOpen] = useState(false);
+// open/onOpenChange: My Wedding's "choose your own code" reminder opens this form from the top of the page. onChanged: the
+// reminder goes away once the couple's own code is saved.
+export default function ChangeLoginCode({ open, onOpenChange: setOpen, onChanged }: { open: boolean; onOpenChange: (open: boolean) => void; onChanged?: () => void }) {
   const [v, setV] = useState({ current: '', next: '', confirm: '' });
   const [errors, setErrors] = useState<Errors>({});
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export default function ChangeLoginCode() {
         setDone(true);
         setOpen(false);
         setV({ current: '', next: '', confirm: '' });
+        onChanged?.();
       } else if (body.fieldErrors) {
         setErrors(body.fieldErrors);
       } else {
@@ -43,7 +45,7 @@ export default function ChangeLoginCode() {
   const box = (key: keyof typeof v, label: string) => (
     <label className="block space-y-1.5">
       <span className="text-sm font-semibold">{label}</span>
-      <input type="password" inputMode="numeric" autoComplete={key === 'current' ? 'current-password' : 'new-password'} maxLength={6} value={v[key]} onChange={(e) => setV((s) => ({ ...s, [key]: e.target.value.replace(/\D/g, '').slice(0, 6) }))} className={field} />
+      <input type="password" inputMode="numeric" autoFocus={key === 'current'} autoComplete={key === 'current' ? 'current-password' : 'new-password'} maxLength={6} value={v[key]} onChange={(e) => setV((s) => ({ ...s, [key]: e.target.value.replace(/\D/g, '').slice(0, 6) }))} className={field} />
       {errors[key] && <span className="block text-sm text-rose-700">{errors[key]}</span>}
     </label>
   );

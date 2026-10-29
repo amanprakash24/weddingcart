@@ -98,7 +98,7 @@ export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) 
         let userId: string;
         try {
           userId = (await tx.user.create({
-            data: { phone: mobile, name: w.sourceBooking?.name?.trim() || null, loginCodeHash: await deps.hash(code), loginCodeSetAt: deps.now(), roles: { create: { role: Role.CUSTOMER } } },
+            data: { phone: mobile, name: w.sourceBooking?.name?.trim() || null, loginCodeHash: await deps.hash(code), loginCodeSetAt: deps.now(), loginCodeGiven: true, roles: { create: { role: Role.CUSTOMER } } },
             select: { id: true },
           })).id;
         } catch (err) {

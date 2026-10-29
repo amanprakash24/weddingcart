@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { signOut } from 'next-auth/react';
-import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, LogOut, MapPin, Phone, ShoppingBag, Users } from 'lucide-react';
+import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, KeyRound, LogOut, MapPin, Phone, ShoppingBag, Users } from 'lucide-react';
 import type { ClientPortalEvent } from '@/services/clientPortal.service';
 import GuestRsvp from '@/components/wedding/workspace/GuestRsvp';
 import VivahOsLogo from '@/components/vivah-os/VivahOsLogo';
@@ -70,7 +70,28 @@ function Approvals({ approvals, onDecision }: { approvals: ClientPortalEvent['ap
   );
 }
 
-export default function MyWeddingDashboard({ events, phone }: { events: ClientPortalEvent[]; phone: string | null }) {
+// The "choose your own code" reminder (29 Oct 2026): shown while the couple still signs in with the code Shaadi Shopping or their
+// venue gave them (User.loginCodeGiven). A reminder only — the whole dashboard still works.
+function CodeReminder({ onChoose }: { onChoose: () => void }) {
+  return (
+    <div role="status" className="flex flex-wrap items-center gap-3 rounded-[18px] border border-[#E9D3A6] bg-[#FBF1DC] px-4 py-3 text-[#5C3F0A]">
+      <KeyRound className="h-5 w-5 shrink-0" aria-hidden />
+      <p className="min-w-0 flex-[1_1_220px] text-sm leading-snug">
+        <span className="font-bold">Choose your own login code.</span> You are signing in with the code you were given, so the person who gave it can still use it.
+      </p>
+      <button type="button" onClick={onChoose} className="min-h-11 shrink-0 rounded-full bg-[#7A1238] px-4 text-sm font-bold text-white">Choose my own code</button>
+    </div>
+  );
+}
+
+export default function MyWeddingDashboard({ events, phone, codeGiven }: { events: ClientPortalEvent[]; phone: string | null; codeGiven: boolean }) {
+  const [remind, setRemind] = useState(codeGiven);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const chooseCode = () => {
+    setCodeOpen(true);
+    requestAnimationFrame(() => document.getElementById('sign-in')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+  const codeBox = <ChangeLoginCode open={codeOpen} onOpenChange={setCodeOpen} onChanged={() => setRemind(false)} />;
   const [selectedId, setSelectedId] = useState(events[0]?.id ?? '');
   const [approvals, setApprovals] = useState<Record<string, ClientPortalEvent['approvals']>>(() => Object.fromEntries(events.map((e) => [e.id, e.approvals])));
   const event = events.find((e) => e.id === selectedId) ?? events[0];
@@ -98,6 +119,7 @@ export default function MyWeddingDashboard({ events, phone }: { events: ClientPo
       <div className="min-h-screen bg-[#F7F1E8]">
         {header}
         <main className="mx-auto max-w-xl px-4 py-20 text-center">
+          {remind && <div className="mb-8 text-left"><CodeReminder onChoose={chooseCode} /></div>}
           <h1 className="font-cormorant text-4xl font-semibold text-[#221714]">Your wedding will appear here</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[#4D3E36]">
             We could not find a booked wedding for {phone ? `+91 ${phone}` : 'this number'} yet. It appears here once your venue or Shaadi Shopping links it to this mobile number.
@@ -105,7 +127,7 @@ export default function MyWeddingDashboard({ events, phone }: { events: ClientPo
           <a href={whatsappTo('+917646028228', `Hi, I signed in to My Wedding with ${phone ?? 'my number'} but cannot see our wedding.`)} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[#7A1238] px-6 font-bold text-white">
             Ask us on WhatsApp
           </a>
-          <div className="mt-10 text-left"><ChangeLoginCode /></div>
+          <div className="mt-10 text-left">{codeBox}</div>
         </main>
       </div>
     );
@@ -150,6 +172,7 @@ export default function MyWeddingDashboard({ events, phone }: { events: ClientPo
         </nav>
 
         <main id="overview" className="min-w-0 flex-[999_1_640px] space-y-5 scroll-mt-4">
+          {remind && <CodeReminder onChoose={chooseCode} />}
           {events.length > 1 && (
             <label className="flex flex-wrap items-center gap-2 text-sm font-semibold">
               Your weddings
@@ -329,7 +352,7 @@ export default function MyWeddingDashboard({ events, phone }: { events: ClientPo
             )}
           </section>
 
-          <ChangeLoginCode />
+          {codeBox}
         </main>
       </div>
 
