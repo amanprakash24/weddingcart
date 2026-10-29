@@ -87,6 +87,10 @@ export const MORE: NavItem[] = [
 // Shaadi Shopping's own people (services/adminTeam.service.ts) — shown to the founder only; the server refuses everyone else.
 export const OUR_TEAM: NavItem = { key: 'our-team', label: 'Our team', href: '/admin/team', icon: UsersRound, isActive: ({ pathname }) => pathname.startsWith('/admin/team') };
 
+// A couple's My Wedding sign-in by mobile number, and a new code if they lost theirs (services/coupleLogin.service.ts) — founder only,
+// like Our team: a new code is a way to sign in as the couple.
+export const COUPLE_SIGN_IN: NavItem = { key: 'couple-sign-in', label: 'Couple sign-in', href: '/admin/couple-sign-in', icon: Heart, isActive: ({ pathname }) => pathname.startsWith('/admin/couple-sign-in') };
+
 // Development / setup only — shown to super admins.
 export const SETUP: NavItem = { key: 'setup', label: 'Setup & seed data', href: '/admin?tab=dashboard', icon: Database, isActive: onTab('dashboard') };
 
