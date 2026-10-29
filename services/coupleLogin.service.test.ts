@@ -3,7 +3,7 @@ import { describe, test, expect, mock } from 'bun:test';
 
 // The couple's My Wedding sign-in (services/coupleLogin.service.ts). A fake database; nothing real is touched.
 mock.module('@/lib/prisma', () => ({ prisma: {} }));
-const { createCoupleLoginService } = await import('./coupleLogin.service');
+const { createCoupleLoginService, createCoupleLookupService } = await import('./coupleLogin.service');
 
 type Login = { id: string; loginCodeHash: string | null; roles: { role: string }[]; _count: { businessMemberships: number } };
 const couple = (over: Partial<Login> = {}): Login => ({ id: 'u-couple', loginCodeHash: 'hash', roles: [{ role: 'CUSTOMER' }], _count: { businessMemberships: 0 }, ...over });
@@ -87,5 +87,52 @@ describe('status', () => {
 
   test('falls back to the booking’s phone when the wedding has none stored', async () => {
     expect(await setup({ wedding: { customerPhone: null, bookingPhone: '+91 91234 56789' } }).service.status('w1')).toEqual({ state: 'NOT_SET_UP', mobile: '9123456789' });
+  });
+});
+
+describe('the founder’s "Couple sign-in" search (founder only — checked by the route)', () => {
+  function lookup(login: (Login & { name: string | null }) | null) {
+    const issueForUser = mock(async () => ({ code: '640275', mobile: '9876543210' }));
+    const weddings = mock(async () => [{ weddingNumber: 'KUS-WED-2026-0002', primaryDate: new Date('2026-12-07T00:00:00Z'), businessName: 'Kush Travel' }]);
+    const service = createCoupleLookupService({ db: { user: { findUnique: mock(async () => login) } } as never, weddings, issueForUser });
+    return { service, issueForUser, weddings };
+  }
+  const named = (over: Partial<Login> = {}) => ({ ...couple(over), name: 'Priya Sharma' });
+
+  test('finds a couple by mobile: name, whether they have a code, and every wedding it opens (any business)', async () => {
+    expect(await lookup(named()).service.find('+91 98765 43210')).toEqual({
+      found: true, mobile: '9876543210', name: 'Priya Sharma', hasCode: true, canReplace: true,
+      weddings: [{ weddingNumber: 'KUS-WED-2026-0002', date: '2026-12-07T00:00:00.000Z', businessName: 'Kush Travel' }],
+    });
+  });
+
+  test('a number with no sign-in, or only a vendor/team one, is "not found" — and its weddings are never read', async () => {
+    for (const login of [null, named({ roles: [{ role: 'VENDOR' }] })]) {
+      const { service, weddings } = lookup(login);
+      expect(await service.find('9876543210')).toEqual({ found: false, mobile: '9876543210' });
+      expect(weddings).not.toHaveBeenCalled();
+    }
+  });
+
+  test('a couple who is also a vendor or on a team is shown, but cannot be given a new code here', async () => {
+    for (const over of [{ roles: [{ role: 'CUSTOMER' }, { role: 'VENDOR' }] }, { _count: { businessMemberships: 1 } }]) {
+      const { service, issueForUser } = lookup(named(over));
+      expect((await service.find('9876543210')) as { canReplace: boolean }).toMatchObject({ found: true, canReplace: false });
+      await expect(service.replace('9876543210')).rejects.toBeInstanceOf(Error);
+      expect(issueForUser).not.toHaveBeenCalled();
+    }
+  });
+
+  test('a new code for a couple-only sign-in comes back once', async () => {
+    const { service, issueForUser } = lookup(named());
+    expect(await service.replace('9876543210')).toEqual({ mobile: '9876543210', code: '640275' });
+    expect(issueForUser).toHaveBeenCalledWith('u-couple');
+  });
+
+  test('no couple sign-in, or a bad number: nothing is made', async () => {
+    const { service, issueForUser } = lookup(null);
+    await expect(service.replace('9876543210')).rejects.toBeInstanceOf(Error);
+    await expect(service.find('12345')).rejects.toBeInstanceOf(Error);
+    expect(issueForUser).not.toHaveBeenCalled();
   });
 });
