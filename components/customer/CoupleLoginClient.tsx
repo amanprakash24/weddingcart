@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { getSession, signIn } from 'next-auth/react';
 import { MessageCircle, ShieldCheck } from 'lucide-react';
 import VivahOsLogo from '@/components/vivah-os/VivahOsLogo';
+import CoupleResetCode from '@/components/customer/CoupleResetCode';
 import { shaadiWhatsAppLink } from '@/lib/shaadiContact';
 
 // The couple's sign-in to My Wedding on Vivah OS (28 Oct 2026, design: Couple Login canvas): their mobile number + their 6-digit
@@ -25,6 +26,8 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
   // Signed in, but this number has no couple account (a vendor's or a team member's) — My Wedding would send them straight back
   // here with no word, so say so instead.
   const [notCouple, setNotCouple] = useState<'vendor' | 'other' | null>(null);
+  // "Forgot your code?" — choose a new one with a WhatsApp code (components/customer/CoupleResetCode.tsx).
+  const [resetting, setResetting] = useState(false);
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
   const code = digits.join('');
 
@@ -114,7 +117,9 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
       {/* Form side */}
       <main className="relative -mt-6 flex flex-1 justify-center rounded-t-3xl bg-[#F7F0E6] px-5 pb-8 pt-7 sm:px-8 lg:mt-0 lg:items-center lg:rounded-none lg:py-12">
         <div className="flex w-full max-w-[420px] flex-col gap-6">
-          {notCouple ? (
+          {resetting ? (
+            <CoupleResetCode initialPhone={phone} redirectPath={redirectPath} helpLink={HELP} onBack={() => { setResetting(false); setDigits(EMPTY); setError(''); }} />
+          ) : notCouple ? (
             <div className="flex flex-col gap-4">
               <h1 className="font-cormorant text-[2.1rem] font-semibold leading-[1.1] lg:text-[2.75rem]">No wedding on this number</h1>
               <p className="text-[15px] leading-relaxed text-[#6B5A4E]">
@@ -176,6 +181,9 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
                       />
                     ))}
                   </div>
+                  <button type="button" onClick={() => { setResetting(true); setError(''); }} className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[#7A1238] underline-offset-2 hover:underline">
+                    Forgot your code?
+                  </button>
                 </fieldset>
 
                 {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>}

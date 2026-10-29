@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { otpService } from '@/services/otp.service';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { platformScoped } from '@/lib/ownership/entry';
+import { sendWhatsAppCode } from '@/lib/whatsappOtp';
 
 // Production-readiness audit (2026-09-17) — public, unauthenticated, and the
 // only trigger for a real, billable WhatsApp Business API send. The existing
@@ -47,68 +48,10 @@ async function handlePOST(req: NextRequest) {
       );
     }
     const { code } = result;
-
-    const phoneId    = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const token      = process.env.WHATSAPP_ACCESS_TOKEN;
-    // Meta only delivers free-form text inside a 24h customer-service window, which a first-time
-    // OTP user never has — so the code is sent through an approved AUTHENTICATION template
-    // (copy-code button). Name/language must match the template approved in WhatsApp Manager.
-    const template   = process.env.WHATSAPP_OTP_TEMPLATE;
-    const language   = process.env.WHATSAPP_OTP_TEMPLATE_LANGUAGE || 'en_US';
-
-    if (phoneId && token && template) {
-      const res = await fetch(
-        `https://graph.facebook.com/v22.0/${phoneId}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: `91${phone}`,           // India country code
-            type: 'template',
-            template: {
-              name: template,
-              language: { code: language },
-              // Authentication templates take the code twice: the body text and the copy-code button.
-              components: [
-                { type: 'body', parameters: [{ type: 'text', text: code }] },
-                { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: code }] },
-              ],
-            },
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json();
-        console.error('[WhatsApp OTP error]', JSON.stringify(err));
-        return NextResponse.json(
-          { success: false, message: err?.error?.message || 'Failed to send WhatsApp message' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({ success: true });
-    } else if (process.env.NODE_ENV !== 'production') {
-      // Dev mode — WhatsApp not configured, return code in response for testing
-      console.log(`\n[OTP DEV] ─────────────────────────────`);
-      console.log(`  WhatsApp : +91 ${phone}`);
-      console.log(`  Code     : ${code}`);
-      console.log(`────────────────────────────────────────\n`);
-      return NextResponse.json({ success: true, devCode: code });
-    } else {
-      // Production with WhatsApp unconfigured/misconfigured — never expose
-      // the OTP. Fail with a safe error instead.
-      console.error('[OTP send] WhatsApp is not configured in production');
-      return NextResponse.json(
-        { success: false, message: 'Unable to send OTP right now. Please try again later.' },
-        { status: 500 }
-      );
-    }
+    // The WhatsApp send itself (template, dev-mode code, production safety) lives in lib/whatsappOtp.ts — shared with the couple's code reset.
+    const sent = await sendWhatsAppCode(phone, code);
+    if (!sent.ok) return NextResponse.json({ success: false, message: sent.message }, { status: sent.status });
+    return NextResponse.json(sent.devCode ? { success: true, devCode: sent.devCode } : { success: true });
   } catch (err) {
     console.error('[OTP send]', err);
     return NextResponse.json({ success: false, message: 'Failed to send OTP' }, { status: 500 });
