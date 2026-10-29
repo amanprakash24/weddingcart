@@ -62,7 +62,7 @@ export function createVendorLoginCodeService(deps: VendorLoginCodeDeps = default
     // No mobile number, no code login: the code is only ever half of "mobile number + code".
     if (!user.phone) throw new ConflictError('This person has no mobile number yet — add it first');
     const code = deps.newCode();
-    await deps.db.user.update({ where: { id: userId }, data: { loginCodeHash: await deps.hash(code), loginCodeSetAt: deps.now(), sessionVersion: { increment: 1 } } });
+    await deps.db.user.update({ where: { id: userId }, data: { loginCodeHash: await deps.hash(code), loginCodeSetAt: deps.now(), loginCodeGiven: true, sessionVersion: { increment: 1 } } });
     return { code, mobile: user.phone };
   }
 
@@ -113,7 +113,7 @@ export function createVendorLoginCodeService(deps: VendorLoginCodeDeps = default
       await deps.record(identifier, ok);
       if (!ok) return { errors: { current: 'That is not your current code' } };
 
-      await deps.db.user.update({ where: { id: user.id }, data: { loginCodeHash: await deps.hash(input.next as string), loginCodeSetAt: deps.now() } });
+      await deps.db.user.update({ where: { id: user.id }, data: { loginCodeHash: await deps.hash(input.next as string), loginCodeSetAt: deps.now(), loginCodeGiven: false } });
       return { changed: true };
     },
 

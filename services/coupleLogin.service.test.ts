@@ -32,7 +32,7 @@ describe('giving the couple My Wedding', () => {
     const { db, service } = setup();
     expect(await service.give('w1')).toEqual({ kind: 'NEW_CODE', mobile: '9876543210', code: '715302' });
     const created = (db.user.create.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data;
-    expect(created).toMatchObject({ phone: '9876543210', name: 'Priya Sharma', loginCodeHash: 'hash:715302', roles: { create: { role: 'CUSTOMER' } } });
+    expect(created).toMatchObject({ phone: '9876543210', name: 'Priya Sharma', loginCodeHash: 'hash:715302', loginCodeGiven: true, roles: { create: { role: 'CUSTOMER' } } });
     expect((db.wedding.updateMany.mock.calls[0] as unknown as [{ data: unknown }])[0].data).toEqual({ customerId: 'u-new', customerPhone: '9876543210' });
   });
 

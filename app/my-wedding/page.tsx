@@ -15,9 +15,9 @@ export const metadata = {
 async function MyWeddingPage() {
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) redirect('/customer/login');
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { phone: true } });
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { phone: true, loginCodeGiven: true } });
   const events = await clientPortalService.getEventsForClient(session.user.id);
-  return <MyWeddingDashboard events={events} phone={user?.phone ?? null} />;
+  return <MyWeddingDashboard events={events} phone={user?.phone ?? null} codeGiven={user?.loginCodeGiven ?? false} />;
 }
 
 // Record ownership: entered as Shaadi Shopping (lib/ownership/entry.ts); each wedding is then read as its own business
