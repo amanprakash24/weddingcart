@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import { KeyRound, Phone } from 'lucide-react';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
+import VivahOsLogo from '@/components/vivah-os/VivahOsLogo';
 
 // Sign-in for every person (vendor owners since 6 Oct 2026; founder, managers and employees since 7 Oct): their own mobile number
 // + their own 6-digit login code. Afterwards they go to "Choose Workspace", which opens by itself when they belong to one business. One step, no message is sent. Every kind of "no" gets the same sentence — a wrong code, an unknown number, a number
@@ -38,19 +39,29 @@ export default function VendorCodeLoginClient({ redirectPath = '/workspace', tea
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#1E0510] lg:flex-row">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#1E0510] lg:flex-row">
+      {/* Background: a wedding photo under a maroon shade, behind the whole page (same photo as the couple's sign-in). */}
+      <Image src="/images/homepage-poster.jpg" alt="" fill priority sizes="100vw" className="object-cover" />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-[#2E0A16]/70 via-[#2E0A16]/80 to-[#1E0510]/95" />
+
       {/* Brand side */}
-      <div className="relative flex flex-col justify-between overflow-hidden px-6 pb-8 pt-10 lg:w-1/2 lg:px-14 lg:py-14">
-        <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#8B1A4A]/40 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-[#C5A46D]/10 blur-3xl" />
+      <div className="relative flex flex-col justify-between px-6 pb-10 pt-8 lg:w-1/2 lg:px-14 lg:py-12">
         <div className="relative">
-          <Image src="/logo.png" alt="Shaadi Shopping" width={240} height={150} priority className="h-20 w-auto object-contain lg:h-24" />
+          {team ? (
+            <Image src="/logo.png" alt="Shaadi Shopping" width={240} height={150} priority className="h-20 w-auto object-contain lg:h-24" />
+          ) : (
+            // Vendors sign in to Vivah OS (28 Oct 2026): its logo, not Shaadi Shopping's. The full logo with the tagline on a computer.
+            <>
+              <div className="lg:hidden"><VivahOsLogo size={44} tone="light" /></div>
+              <Image src="/images/vivah-os/logo-on-dark.png" alt="Vivah OS — the operating system for celebrations" width={800} height={711} priority className="hidden h-auto w-[200px] lg:block" />
+            </>
+          )}
         </div>
         <div className="relative mt-8 lg:mt-0">
           <p className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#E8C98A]">
-            <span className="h-px w-8 bg-[#E8C98A]/70" /> Vivah OS
+            <span className="h-px w-8 bg-[#E8C98A]/70" /> {team ? 'Vivah OS' : 'Vendor OS'}
           </p>
-          <h1 className="mt-4 font-playfair text-3xl leading-tight text-[#FFF7EA] sm:text-4xl lg:text-5xl">
+          <h1 className="mt-3 max-w-md font-playfair text-[1.6rem] leading-snug text-[#FFF7EA] sm:text-[1.9rem] lg:text-[2.25rem]">
             {team ? (
               <>The Shaadi Shopping<br className="hidden sm:block" /> Command Center.</>
             ) : (
@@ -59,11 +70,11 @@ export default function VendorCodeLoginClient({ redirectPath = '/workspace', tea
           </h1>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-[#E9D9C3]/80">{team ? 'For the Shaadi Shopping team.' : 'For venues and wedding professionals working with Shaadi Shopping.'}</p>
         </div>
-        <p className="relative mt-8 hidden text-xs text-[#E9D9C3]/50 lg:block">Powered by Vivah OS</p>
+        {team && <p className="relative mt-8 hidden text-xs text-[#E9D9C3]/50 lg:block">Powered by Vivah OS</p>}
       </div>
 
       {/* Sign-in side */}
-      <div className="flex flex-1 items-center justify-center rounded-t-[28px] bg-[#FFFAF5] px-5 py-10 lg:rounded-l-[36px] lg:rounded-tr-none lg:px-14">
+      <div className="relative flex flex-1 items-center justify-center rounded-t-[28px] bg-[#FFFAF5] px-5 py-10 lg:rounded-l-[36px] lg:rounded-tr-none lg:px-14">
         <div className="w-full max-w-sm">
           <h2 className="font-playfair text-2xl font-bold text-[#2A1F1B]">Sign in</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-[#6B5B4D]">Use the mobile number you registered with and the 6-digit code we shared with you.</p>

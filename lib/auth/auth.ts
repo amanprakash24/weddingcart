@@ -2,9 +2,8 @@ import type { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-import { Role, ADMIN_ROLES, withoutInternalRoles } from '@/lib/auth/roles';
+import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
-import { linkWeddingsOnLogin } from '@/lib/customer/weddingLink';
 import { vendorLoginCodeService } from '@/services/vendorLoginCode.service';
 
 // Auth.js v4 (stable/GA), not v5 — see docs/postgres-migration-plan.md for why
@@ -76,73 +75,8 @@ export const authOptions: AuthOptions = {
         },
       })
     ),
-    // Vendor / Customer — phone + OTP. Structurally complete against the
-    // Postgres `Otp` table, but NOT independently testable yet: /api/otp/send
-    // and /api/otp/verify still write to MongoDB today (not migrated — see
-    // the Milestone 4 module list in docs/postgres-migration-plan.md, which
-    // does not currently name OTP explicitly). This provider will only work
-    // once OTP send/verify is repointed at Prisma.
-    CredentialsProvider({
-      id: 'otp',
-      name: 'Phone and OTP',
-      credentials: {
-        phone: { label: 'Phone', type: 'text' },
-        code: { label: 'Code', type: 'text' },
-      },
-      async authorize(credentials) {
-        if (!credentials?.phone || !credentials.code) return null;
-
-        // Same rate limiting as the credentials provider, keyed on phone —
-        // without this, a 6-digit OTP code is brute-forceable (only 1M
-        // combinations, no limit otherwise on verify attempts).
-        if (await isRateLimited(credentials.phone)) return null;
-
-        const otp = await prisma.otp.findFirst({
-          where: { phone: credentials.phone, code: credentials.code, expiresAt: { gt: new Date() } },
-        });
-        if (!otp) {
-          await recordLoginAttempt(credentials.phone, false);
-          return null;
-        }
-
-        await prisma.otp.delete({ where: { id: otp.id } });
-        await recordLoginAttempt(credentials.phone, true);
-
-        let user = await prisma.user.findUnique({
-          where: { phone: credentials.phone },
-          include: { roles: true, vendorProfile: true },
-        });
-        if (!user) {
-          // First-time phone login defaults to CUSTOMER. VENDOR accounts are
-          // provisioned deliberately (on VendorApplication approval, linked
-          // via VendorProfile) rather than auto-created here — a phone with
-          // no existing account is assumed to be a customer, not a vendor.
-          // Flagged for product sign-off, not a unilateral final decision.
-          // A CUSTOMER role here doesn't preclude this same User later also
-          // gaining a VENDOR role (see lib/auth/roles.ts — multi-role per
-          // phone number, resolved in the Step 4 schema review) — this just
-          // sets up their first role, not their only possible one.
-          user = await prisma.user.create({
-            data: { phone: credentials.phone, roles: { create: { role: Role.CUSTOMER } } },
-            include: { roles: true, vendorProfile: true },
-          });
-        }
-
-        // The couple's wedding(s) with this mobile become theirs (MASTER-GAP-ANALYSIS §2.4.1). Never fails the login.
-        await linkWeddingsOnLogin(user.id, credentials.phone);
-
-        // A one-time code sent to a phone never opens the Command Center (7 Oct 2026). Once a member of Shaadi Shopping's own team
-        // registers their mobile number, this sign-in would otherwise be a second way in that skips their login code — whoever
-        // holds the phone for a minute would be the founder. Internal roles come only from the login code or the password.
-        return {
-          id: user.id,
-          name: user.name,
-          roles: withoutInternalRoles(user.roles.map((r) => r.role)),
-          vendorId: user.vendorProfile?.vendorId ?? undefined,
-          sessionVersion: user.sessionVersion,
-        };
-      },
-    }),
+    // The WhatsApp one-time-code sign-in ('otp') was removed on 28 Oct 2026: couples now sign in like everyone else, with their mobile
+    // number + their own 6-digit login code (services/coupleLogin.service.ts).
   ],
   callbacks: {
     async jwt({ token, user }) {

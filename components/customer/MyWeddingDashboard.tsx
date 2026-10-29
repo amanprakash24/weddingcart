@@ -7,6 +7,7 @@ import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, LogOut, MapPin,
 import type { ClientPortalEvent } from '@/services/clientPortal.service';
 import GuestRsvp from '@/components/wedding/workspace/GuestRsvp';
 import VivahOsLogo from '@/components/vivah-os/VivahOsLogo';
+import ChangeLoginCode from '@/components/customer/ChangeLoginCode';
 import { contactPhone, dateRangeWords, daysToGo, daysToGoWords, rupeesShort, serviceStatus, weddingStatusWords, whatsappTo } from '@/lib/customer/myWedding';
 
 // My Wedding — the couple's own dashboard on Vivah OS (design approved 28 Oct 2026: canvas "My Wedding Couple Dashboard").
@@ -99,11 +100,12 @@ export default function MyWeddingDashboard({ events, phone }: { events: ClientPo
         <main className="mx-auto max-w-xl px-4 py-20 text-center">
           <h1 className="font-cormorant text-4xl font-semibold text-[#221714]">Your wedding will appear here</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-[#4D3E36]">
-            We could not find a booked wedding for {phone ? `+91 ${phone}` : 'this number'} yet. It appears here once your booking is confirmed under this mobile number.
+            We could not find a booked wedding for {phone ? `+91 ${phone}` : 'this number'} yet. It appears here once your venue or Shaadi Shopping links it to this mobile number.
           </p>
           <a href={whatsappTo('+917646028228', `Hi, I signed in to My Wedding with ${phone ?? 'my number'} but cannot see our wedding.`)} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[#7A1238] px-6 font-bold text-white">
             Ask us on WhatsApp
           </a>
+          <div className="mt-10 text-left"><ChangeLoginCode /></div>
         </main>
       </div>
     );
@@ -326,6 +328,8 @@ export default function MyWeddingDashboard({ events, phone }: { events: ClientPo
               </ul>
             )}
           </section>
+
+          <ChangeLoginCode />
         </main>
       </div>
 

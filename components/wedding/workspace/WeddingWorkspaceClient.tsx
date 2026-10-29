@@ -12,6 +12,7 @@ import ControlRoomTabs, { isTabKey, type TabKey } from '@/components/wedding/con
 import { buildControlRoom } from '@/lib/wedding/controlRoom';
 import type { ActionTarget } from '@/lib/wedding/stage';
 import CoupleCard from './CoupleCard';
+import CoupleSignInCard from '@/components/vivah-os/CoupleSignInCard';
 import FunctionsPanel from '@/components/wedding/functions/FunctionsPanel';
 import type { FunctionPayload } from '@/components/wedding/functions/FunctionForm';
 import TimelineMilestones from './TimelineMilestones';
@@ -275,6 +276,7 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
       {tab === 'people' && (
         <div className="space-y-4">
           <CoupleCard couple={workspace.couple} onSave={saveCouple} />
+          <CoupleSignInCard apiPath={`${basePath}/couple-login`} coupleName={workspace.couple?.brideName ?? undefined} />
           <GuestRsvp weddingId={id} events={workspace.events} initialGuests={workspace.guests} />
         </div>
       )}

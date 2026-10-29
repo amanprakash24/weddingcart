@@ -7,7 +7,7 @@ import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 // / vendor that runs it on Vivah OS. A couple's login has no business of its own, so — like the proposal link
 // (lib/quotation/proposalEntry.ts) — the entry first asks, as named SYSTEM lookups allowlisted in CI, only "which weddings are this
 // signed-in couple's, and whose are they", then reads each wedding AS ITS OWN BUSINESS. Every lookup is pinned to the signed-in
-// user's id (Wedding.customerId, set only by an OTP-verified mobile — lib/customer/weddingLink.ts), never to anything in a request.
+// user's id (Wedding.customerId, set only by the wedding's own business — lib/customer/weddingLink.ts, services/coupleLogin.service.ts), never to anything in a request.
 
 export interface CoupleWedding {
   id: string;

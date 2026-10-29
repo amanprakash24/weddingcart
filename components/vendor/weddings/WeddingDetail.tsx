@@ -9,6 +9,7 @@ import { whatsappTo } from '@/lib/venue/enquiry';
 import type { VenueWeddingDetail } from '@/services/venueWedding.service';
 import { daysWords, weddingDateWords } from './YourWeddings';
 import { WeddingFunctions, WeddingNotes, WeddingTasks } from './WeddingPlan';
+import CoupleSignInCard from '@/components/vivah-os/CoupleSignInCard';
 
 // One of the business's own weddings: who and when, the functions, what was agreed, the money and what is still to do. The functions
 // and the to-do list are planned here (WeddingPlan.tsx); the quotation and the payments are changed on the enquiry it came from,
@@ -84,6 +85,8 @@ export default function WeddingDetail({ id }: { id: string }) {
           </div>
         )}
       </Card>
+
+      <CoupleSignInCard apiPath={`/api/vendor-os/weddings/${id}/couple-login`} coupleName={w.customerName} />
 
       <WeddingFunctions w={w} onSaved={setW} />
 
