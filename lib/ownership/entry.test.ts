@@ -119,7 +119,7 @@ describe('every entry point states its business', () => {
       const src = readFileSync(r, 'utf8');
       const exported = [...src.matchAll(/^export (?:async function|const|function) (GET|POST|PUT|PATCH|DELETE)\b(.*)$/gm)];
       expect({ name, count: exported.length > 0 }).toEqual({ name, count: true });
-      for (const e of exported) expect({ name, line: e[0] }).toEqual({ name, line: expect.stringMatching(/= (platformScoped|scoped|venueScoped|proposalScoped)\(/) });
+      for (const e of exported) expect({ name, line: e[0] }).toEqual({ name, line: expect.stringMatching(/= (platformScoped|scoped|venueScoped|proposalScoped|enquiryPageScoped)\(/) });
     }
   });
 

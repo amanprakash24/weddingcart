@@ -708,8 +708,19 @@ model Consultation {
   preferredTime  String?
   message        String?
   // Where the enquiry came from (docs/wedding-os/15-record-ownership.md §4.4): null = Shaadi Shopping's website (the /plan wizard);
-  // a venue's own enquiry records its channel — PHONE, WALK_IN, WHATSAPP, INSTAGRAM, GOOGLE, REFERENCE, EXISTING_CUSTOMER, OTHER.
+  // a venue's own enquiry records its channel — PHONE, WALK_IN, WHATSAPP, INSTAGRAM, FACEBOOK, GOOGLE, WEBSITE, REFERENCE,
+  // EXISTING_CUSTOMER, OTHER.
   channel        String?
+  // How it arrived when that is more than the channel (11 Nov 2026), e.g. "Enquiry page" — the venue's own public enquiry page,
+  // whose link records the channel (?src=google …). Null = typed in by the venue's team, or Shaadi Shopping's website.
+  sourceDetail   String?
+  // The functions a wedding enquiry is for (Haldi, Mehndi, Sangeet, Wedding …) — empty for other events or when not known.
+  functions      WeddingEventType[] @default([])
+  // The person this enquiry belongs to inside the venue (11 Nov 2026, Vivah OS phase 1): one record per mobile number per
+  // business, so a second enquiry from the same couple is attached to them, not added as a stranger. Null on Shaadi Shopping's
+  // own records (its CRM keeps the three capture tables apart — decision of 20 Sep 2026).
+  clientId       String?
+  client         BusinessClient? @relation(fields: [clientId], references: [id], onDelete: SetNull)
   // A venue's own enquiry for a couple Shaadi Shopping already brought to THAT venue (decision D4): the Shaadi Shopping record it
   // was linked to — "ENQUIRY:<id>", "CONSULTATION:<id>", "LEAD:<id>" or "BOOKING:<id>" — so commission applies to its booking.
   platformMatch     String?
@@ -762,7 +773,27 @@ model Consultation {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
 
   @@index([businessId])
+  @@index([clientId])
   @@map("consultations")
+}
+
+// A venue's client (11 Nov 2026, Vivah OS phase 1): one per mobile number per business. Every enquiry from that number — typed in
+// by the team, or sent from the venue's enquiry page — hangs from it, so the same couple is never two strangers. Owned by the
+// business like its enquiries (lib/ownership/owned.ts): another venue never sees it, and the same mobile at two venues is two
+// separate clients.
+model BusinessClient {
+  id            String         @id @default(uuid())
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  phone         String // 10-digit Indian mobile, as lib/venue/enquiry.ts cleans it
+  name          String // as given on their latest enquiry
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  consultations Consultation[]
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+  @@map("business_clients")
 }
 
 model ConsultationVendorSelection {
@@ -2400,6 +2431,9 @@ model Business {
   gstin               String?
   videoUrl            String?
   videoStatus         BusinessPhotoStatus?
+  // The address of its own public enquiry page, /enquire/<enquirySlug> (11 Nov 2026, Vivah OS phase 1). Made from the name the first
+  // time the team opens it; null until then.
+  enquirySlug         String?           @unique
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -2408,6 +2442,7 @@ model Business {
   leads                 Lead[]
   enquiries             Enquiry[]
   consultations         Consultation[]
+  clients               BusinessClient[]
   offerings             BusinessOffering[]
   quotations            Quotation[]
   bookings              Booking[]

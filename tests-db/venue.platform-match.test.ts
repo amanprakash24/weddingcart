@@ -49,6 +49,7 @@ dbDescribe('a couple who came through Shaadi Shopping (D4, real database)', () =
       await app.prisma.activityLog.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.task.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.consultation.deleteMany({ where: { businessId: { in: ids } } });
+      await app.prisma.businessClient.deleteMany({ where: { businessId: { in: ids } } });
       await app.prisma.vendorEnquiry.deleteMany({ where: { vendorId: { in: vendorIds } } });
       await app.prisma.consultationVendorSelection.deleteMany({ where: { vendorId: { in: vendorIds } } });
     });

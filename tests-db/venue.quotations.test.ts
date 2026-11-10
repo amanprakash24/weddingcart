@@ -77,6 +77,7 @@ dbDescribe('a venue’s own quotations (real database)', () => {
       await app.prisma.activityLog.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.task.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.consultation.deleteMany({ where: { businessId: { in: ids } } });
+      await app.prisma.businessClient.deleteMany({ where: { businessId: { in: ids } } });
     });
     await app.prisma.businessMember.deleteMany({ where: { userId: { in: users } } });
     await app.prisma.business.deleteMany({ where: { id: { in: ids } } });

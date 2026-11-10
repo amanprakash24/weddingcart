@@ -7,6 +7,7 @@ import { Card, CardEmptyState, CardSkeleton } from '@/components/ui/Card';
 import StatusPill, { type PillStatus } from '@/components/ui/StatusPill';
 import type { NextAction } from '@/lib/venue/enquiry';
 import type { VenueEnquiryListItem } from '@/services/venueEnquiry.service';
+import EnquiryPageCard from './EnquiryPageCard';
 
 // "Your Enquiries" (Phase C) — the venue's own enquiries from calls, walk-ins, WhatsApp … with the one next step for each, the most
 // urgent first. Phone-first: big rows, one tap to open, one tap to call.
@@ -56,7 +57,7 @@ export default function YourEnquiries() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="font-playfair text-2xl font-bold text-[var(--color-text-primary)]">Your Enquiries</h1>
-          <p className="text-sm text-[var(--color-text-muted)]">From calls, walk-ins, WhatsApp and more — only you can see these.</p>
+          <p className="text-sm text-[var(--color-text-muted)]">From calls, walk-ins, WhatsApp, your enquiry page and more — only your business can see these.</p>
         </div>
       </div>
       <Link
@@ -65,13 +66,14 @@ export default function YourEnquiries() {
       >
         <Plus className="h-5 w-5" aria-hidden /> New Enquiry
       </Link>
+      <EnquiryPageCard />
 
       {error && <p role="alert" className="text-sm text-[var(--color-danger-text)]">{error}</p>}
       {!items && !error && <CardSkeleton lines={3} />}
       {items && items.length === 0 && (
         <CardEmptyState
           title="No enquiries yet"
-          description="When someone calls, walks in or messages you about a wedding, add them here. Vivah OS will tell you what to do next."
+          description="When someone calls, walks in or messages you, add them here — or share your enquiry page above and couples add themselves. Vivah OS will tell you what to do next."
           icon={<Phone className="h-6 w-6" aria-hidden />}
         />
       )}
@@ -87,7 +89,7 @@ export default function YourEnquiries() {
                     <span className="text-xs text-[var(--color-text-muted)]">{e.viaShaadiShopping ? 'Via Shaadi Shopping' : e.channel}</span>
                   </div>
                   <p className="text-sm text-[var(--color-text-secondary)]">
-                    {[dateWords(e.weddingDate) ?? 'Date not decided', e.guestCount ? `${e.guestCount.toLocaleString('en-IN')} guests` : null].filter(Boolean).join(' · ')}
+                    {[e.event, dateWords(e.weddingDate) ?? 'Date not decided', e.guestCount ? `${e.guestCount.toLocaleString('en-IN')} guests` : null].filter(Boolean).join(' · ')}
                   </p>
                   <StatusPill status={TONE[e.next.kind]}>Next: {e.next.label}</StatusPill>
                 </Card>

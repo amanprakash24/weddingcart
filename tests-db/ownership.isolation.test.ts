@@ -38,6 +38,7 @@ dbDescribe('record ownership — two businesses cannot see each other (real data
     await runAsSystem('test clean-up', async () => {
       await app.prisma.lead.deleteMany({ where: { businessId: venueBusinessId } });
       await app.prisma.consultation.deleteMany({ where: { businessId: venueBusinessId } });
+      await app.prisma.businessClient.deleteMany({ where: { businessId: venueBusinessId } });
     });
     if (venueBusinessId) await app.prisma.business.deleteMany({ where: { id: venueBusinessId } });
     if (fx) await fx.purge();

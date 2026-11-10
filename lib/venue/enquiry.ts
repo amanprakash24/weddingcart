@@ -2,7 +2,7 @@
 // enquiry from a phone call, a walk-in, WhatsApp … and the app always says what to do next. Plain words, no CRM terms.
 // Pure and client-safe: the form, the list and the server share these rules.
 
-export const CHANNELS = ['PHONE', 'WALK_IN', 'WHATSAPP', 'INSTAGRAM', 'GOOGLE', 'REFERENCE', 'EXISTING_CUSTOMER', 'OTHER'] as const;
+export const CHANNELS = ['PHONE', 'WALK_IN', 'WHATSAPP', 'INSTAGRAM', 'FACEBOOK', 'GOOGLE', 'WEBSITE', 'REFERENCE', 'EXISTING_CUSTOMER', 'OTHER'] as const;
 export type Channel = (typeof CHANNELS)[number];
 
 export const CHANNEL_LABEL: Record<Channel, string> = {
@@ -10,42 +10,102 @@ export const CHANNEL_LABEL: Record<Channel, string> = {
   WALK_IN: 'Walk-in',
   WHATSAPP: 'WhatsApp',
   INSTAGRAM: 'Instagram',
+  FACEBOOK: 'Facebook',
   GOOGLE: 'Google',
+  WEBSITE: 'Website',
   REFERENCE: 'Reference',
   EXISTING_CUSTOMER: 'Existing customer',
   OTHER: 'Other',
 };
 
+// What they are celebrating (11 Nov 2026, Vivah OS phase 1: every event, not only weddings). The same ids the /plan form uses.
+export const EVENT_KINDS = [
+  { id: 'wedding', label: 'Wedding' },
+  { id: 'engagement', label: 'Engagement' },
+  { id: 'birthday', label: 'Birthday' },
+  { id: 'anniversary', label: 'Anniversary' },
+  { id: 'corporate', label: 'Corporate event' },
+  { id: 'other', label: 'Other event' },
+] as const;
+export type EventKind = (typeof EVENT_KINDS)[number]['id'];
+export const eventLabel = (id: string | null | undefined): string => EVENT_KINDS.find((k) => k.id === id?.toLowerCase())?.label ?? 'Wedding';
+
+// The functions of a wedding (asked only for a wedding). The values are the database's WeddingEventType.
+export const WEDDING_FUNCTIONS = [
+  { id: 'ENGAGEMENT', label: 'Engagement' },
+  { id: 'HALDI', label: 'Haldi' },
+  { id: 'MEHNDI', label: 'Mehndi' },
+  { id: 'SANGEET', label: 'Sangeet' },
+  { id: 'WEDDING', label: 'Wedding' },
+  { id: 'RECEPTION', label: 'Reception' },
+] as const;
+export type WeddingFunction = (typeof WEDDING_FUNCTIONS)[number]['id'];
+export const functionLabel = (id: string): string => WEDDING_FUNCTIONS.find((f) => f.id === id)?.label ?? id;
+
 export const NAME_MAX = 80;
 export const NEED_MAX = 500;
+export const DAYS_MAX = 7;
+export const BUDGET_MAX = 100_00_00_000; // ₹100 crore — anything above is a typing slip
 
 export interface NewEnquiry {
   name: string;
   phone: string; // 10-digit Indian mobile
-  weddingDate: string; // YYYY-MM-DD, or '' when not decided
+  eventType: EventKind;
+  weddingDate: string; // YYYY-MM-DD, or '' when not decided (the event's date — the column keeps its older name)
+  days: number; // 1 when not said
+  functions: WeddingFunction[]; // a wedding's functions; always empty for other events
   guestCount: number; // 0 when not known
+  budget: number | null; // whole rupees, when they said
   need: string | null;
   channel: Channel;
 }
 
-// Returns the clean enquiry, or one error per field — so the phone form can show each message under its own box.
+// "5,00,000", "₹ 500000", 500000 → 500000; '' → null; anything else → NaN.
+function rupees(raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  if (typeof raw === 'number') return raw;
+  if (typeof raw !== 'string') return Number.NaN;
+  const clean = raw.replace(/[₹,\s]/g, '');
+  return clean === '' ? null : /^\d+$/.test(clean) ? Number(clean) : Number.NaN;
+}
+
+// Returns the clean enquiry, or one error per field — so the phone form can show each message under its own box. The same rules
+// for the venue's team ("+ New Enquiry") and for the couple on the venue's enquiry page.
 export function validateNewEnquiry(input: Record<string, unknown>, today: string): { ok: true; value: NewEnquiry } | { ok: false; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
   const name = typeof input.name === 'string' ? input.name.trim().replace(/\s+/g, ' ') : '';
-  if (name.length < 2) errors.name = 'Enter the customer’s name';
+  if (name.length < 2) errors.name = 'Enter the name';
   else if (name.length > NAME_MAX) errors.name = `Please keep the name under ${NAME_MAX} characters`;
 
   const digits = typeof input.phone === 'string' ? input.phone.replace(/\D/g, '') : '';
   const local = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits.length === 11 && digits.startsWith('0') ? digits.slice(1) : digits;
   if (!/^[6-9]\d{9}$/.test(local)) errors.phone = 'Enter a 10-digit mobile number, e.g. 98765 43210';
 
+  // Not sent (an older form) = a wedding, as every enquiry was before.
+  const rawKind = input.eventType === undefined || input.eventType === null || input.eventType === '' ? 'wedding' : input.eventType;
+  const eventType = EVENT_KINDS.find((k) => k.id === rawKind)?.id ?? null;
+  if (!eventType) errors.eventType = 'Choose what they are celebrating';
+
   const date = typeof input.weddingDate === 'string' ? input.weddingDate.trim() : '';
-  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.weddingDate = 'Pick the wedding date, or leave it empty';
-  else if (date && date < today) errors.weddingDate = 'The wedding date has already passed';
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.weddingDate = 'Pick the date, or leave it empty';
+  else if (date && date < today) errors.weddingDate = 'That date has already passed';
+
+  const rawDays = input.days;
+  const days = rawDays === undefined || rawDays === null || rawDays === '' ? 1 : Number(rawDays);
+  if (!Number.isInteger(days) || days < 1 || days > DAYS_MAX) errors.days = `Choose 1 to ${DAYS_MAX} days`;
+
+  const picked = Array.isArray(input.functions) ? input.functions : [];
+  const known = new Set<string>(WEDDING_FUNCTIONS.map((f) => f.id));
+  if (picked.some((f) => typeof f !== 'string' || !known.has(f))) errors.functions = 'Choose the functions from the list';
+  // In the list's order, once each; only a wedding has them.
+  const functions = eventType === 'wedding' ? WEDDING_FUNCTIONS.map((f) => f.id).filter((id) => picked.includes(id)) : [];
 
   const rawGuests = input.guestCount;
   const guests = rawGuests === undefined || rawGuests === null || rawGuests === '' ? 0 : Number(rawGuests);
   if (!Number.isInteger(guests) || guests < 0 || guests > 100000) errors.guestCount = 'Enter the number of guests, or leave it empty';
+
+  const budget = rupees(input.budget);
+  if (budget !== null && (!Number.isInteger(budget) || budget <= 0 || budget > BUDGET_MAX)) errors.budget = 'Enter the budget in rupees, or leave it empty';
 
   const need = typeof input.need === 'string' ? input.need.trim() : '';
   if (need.length > NEED_MAX) errors.need = `Please keep this under ${NEED_MAX} characters`;
@@ -54,7 +114,44 @@ export function validateNewEnquiry(input: Record<string, unknown>, today: string
   if (!channel) errors.channel = 'Where did this enquiry come from?';
 
   if (Object.keys(errors).length) return { ok: false, errors };
-  return { ok: true, value: { name, phone: local, weddingDate: date, guestCount: guests, need: need || null, channel: channel as Channel } };
+  return {
+    ok: true,
+    value: { name, phone: local, eventType: eventType as EventKind, weddingDate: date, days, functions, guestCount: guests, budget, need: need || null, channel: channel as Channel },
+  };
+}
+
+// ---------- the venue's own enquiry page (11 Nov 2026) ----------
+
+// Where the venue puts its link. `src` is added to the link so each enquiry records where it came from without anyone typing it.
+export const ENQUIRY_PAGE_PLACES = [
+  { src: 'website', label: 'Your website', channel: 'WEBSITE' },
+  { src: 'google', label: 'Google Business Profile', channel: 'GOOGLE' },
+  { src: 'instagram', label: 'Instagram bio', channel: 'INSTAGRAM' },
+  { src: 'facebook', label: 'Facebook page', channel: 'FACEBOOK' },
+  { src: 'whatsapp', label: 'WhatsApp (status, replies)', channel: 'WHATSAPP' },
+] as const satisfies readonly { src: string; label: string; channel: Channel }[];
+
+export const ENQUIRY_PAGE_SOURCE = 'Enquiry page';
+
+// The channel an enquiry from the page is recorded under: from its link's `src`; a link without one (shared some other way) = Other.
+export function pageChannel(src: unknown): Channel {
+  return ENQUIRY_PAGE_PLACES.find((p) => p.src === (typeof src === 'string' ? src.trim().toLowerCase() : ''))?.channel ?? 'OTHER';
+}
+
+// A form sent by a program, not a person: the hidden box (people never see it, so never fill it) has text, or it came back faster
+// than anyone can type. Such a form is answered like any other and quietly not saved. `openMs` is how long the form was open, measured
+// on the phone itself — never the phone's clock against the server's, which a wrong phone clock would turn into a lost enquiry.
+export const MIN_FILL_MS = 3000;
+export function looksAutomated(input: { trap?: unknown; openMs?: unknown }): boolean {
+  if (typeof input.trap === 'string' && input.trap.trim() !== '') return true;
+  const open = typeof input.openMs === 'number' ? input.openMs : Number(input.openMs);
+  return !Number.isFinite(open) || open < MIN_FILL_MS;
+}
+
+// "Google · Enquiry page" — where an enquiry came from, as the venue's list shows it.
+export function sourceLabel(channel: string | null | undefined, sourceDetail: string | null | undefined): string {
+  const base = CHANNEL_LABEL[channel as Channel] ?? 'Shaadi Shopping';
+  return sourceDetail ? `${base} · ${sourceDetail}` : base;
 }
 
 // ---------- what to do next ----------
