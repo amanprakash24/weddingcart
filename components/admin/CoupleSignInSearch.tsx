@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { Check, Copy, KeyRound, MessageCircle, Search } from 'lucide-react';
 import { whatsappTo } from '@/lib/venue/enquiry';
 import type { CoupleLookup } from '@/services/coupleLogin.service';
+import type { CodeHistoryEntry } from '@/services/loginCodeEvent';
 
 // Command Center → More → Couple sign-in (29 Oct 2026, founder only). A couple who forgot their My Wedding code and could not reset
 // it on WhatsApp ("Forgot your code?") asks Shaadi Shopping. Their wedding may be a venue's, which no Command Center wedding page
-// shows, so the founder finds the sign-in by mobile number: whose it is, which weddings it opens, and — after a confirm — a new
-// code, shown once. The server decides everything (/api/admin/couple-logins → services/coupleLogin.service.ts).
+// shows, so the founder finds the sign-in by mobile number: whose it is, which weddings it opens, who set its code and when
+// (10 Nov 2026), and — after a confirm — a new code, shown once. The server decides everything (/api/admin/couple-logins →
+// services/coupleLogin.service.ts).
 
 const field = 'w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-3 text-sm text-gray-900 outline-none transition focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100';
 const card = 'rounded-2xl border border-gray-100 bg-white p-5 shadow-sm';
@@ -16,6 +18,17 @@ const dark = 'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-f
 const light = 'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 disabled:opacity-50';
 const spaced = (m: string) => `${m.slice(0, 5)} ${m.slice(5)}`;
 const day = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
+const when = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
+
+// One line per record: what happened and who did it.
+function happened(e: CodeHistoryEntry): string {
+  switch (e.kind) {
+    case 'GIVEN': return `First code given by ${e.by}`;
+    case 'REPLACED': return `New code given by ${e.by}`;
+    case 'RESET_ON_WHATSAPP': return 'The couple chose a new code with “Forgot your code?”';
+    case 'CHANGED_BY_THEMSELVES': return 'The couple chose their own code';
+  }
+}
 
 async function call(url: string, method: 'GET' | 'POST', body?: unknown) {
   const res = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
@@ -60,6 +73,9 @@ export default function CoupleSignInSearch() {
         setIssued(b.data);
         setConfirming(false);
         setResult({ ...result, hasCode: true });
+        // The new record, as the server saved it (who and when) — read back rather than guessed here.
+        const fresh = await call(`/api/admin/couple-logins?mobile=${encodeURIComponent(result.mobile)}`, 'GET').catch(() => null);
+        if (fresh?.ok && fresh.b.data?.found) setResult(fresh.b.data);
       } else {
         setError(b.error ?? 'Could not make a new code. Please try again.');
       }
@@ -133,6 +149,22 @@ export default function CoupleSignInSearch() {
                   <li key={w.weddingNumber} className="flex flex-wrap justify-between gap-x-3 gap-y-0.5 px-3.5 py-2.5 text-sm">
                     <span className="font-semibold text-gray-900">{w.weddingNumber}</span>
                     <span className="text-gray-600">{day(w.date)} · {w.businessName}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-xs font-semibold text-gray-600">Who set this code</p>
+            {result.history.length === 0 ? (
+              <p className="text-sm text-gray-600">No record yet. Codes set before 10 Nov 2026 were not recorded.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
+                {result.history.map((e, i) => (
+                  <li key={`${e.at}-${i}`} className="px-3.5 py-2.5 text-sm">
+                    <p className="font-semibold text-gray-900">{happened(e)}</p>
+                    <p className="text-gray-600">{when(e.at)} · {e.via}</p>
                   </li>
                 ))}
               </ul>

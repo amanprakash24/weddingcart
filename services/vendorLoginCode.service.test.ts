@@ -202,3 +202,22 @@ describe('status — for the dashboard', () => {
     expect(await service.status('nobody')).toEqual({ hasCode: false, setAt: null, reminder: false });
   });
 });
+
+describe('the record of who set a couple’s code (services/loginCodeEvent.ts)', () => {
+  const lastData = () => (db.user.update.mock.calls.at(-1) as unknown as [{ data: Record<string, unknown> }])[0].data;
+
+  test('issueForUser: the record is saved in the same write as the new code', async () => {
+    await service.issueForUser('u3', { kind: 'REPLACED', byUserId: 'u-founder', via: 'Command Center · Couple sign-in' });
+    expect(lastData().loginCodeEvents).toEqual({ create: { kind: 'REPLACED', byUserId: 'u-founder', via: 'Command Center · Couple sign-in' } });
+  });
+
+  test('change: the record is saved in the same write as their own new code', async () => {
+    expect(await service.change('u1', { current: '482913', next: '730519', confirm: '730519' }, { kind: 'CHANGED_BY_THEMSELVES', byUserId: 'u1', via: 'My Wedding · Choose my own code' })).toEqual({ changed: true });
+    expect(lastData().loginCodeEvents).toEqual({ create: { kind: 'CHANGED_BY_THEMSELVES', byUserId: 'u1', via: 'My Wedding · Choose my own code' } });
+  });
+
+  test('no record asked for (a vendor or team code): nothing extra is written', async () => {
+    await service.issueForUser('u3');
+    expect(lastData()).not.toHaveProperty('loginCodeEvents');
+  });
+});

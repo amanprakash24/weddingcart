@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import { isRateLimited, recordLoginAttempt } from '@/lib/auth/rateLimit';
 import { ADMIN_ROLES, type Role } from '@/lib/auth/roles';
+import { codeEventWrite, type CodeEvent } from '@/services/loginCodeEvent';
 import { codeNeedsReminder, generateLoginCode, isWellFormedCode, normalizeMobile, validateCodeChange, type NewCodeErrors } from '@/lib/auth/vendorCode';
 
 // The login code (built 6 Oct 2026 for vendor owners; since 7 Oct 2026 for EVERY person). A person signs in with their own mobile
@@ -55,14 +56,15 @@ const defaultDeps = (): VendorLoginCodeDeps => ({
 });
 
 export function createVendorLoginCodeService(deps: VendorLoginCodeDeps = defaultDeps()) {
-  // A new code for one person. The old one stops working and every device signed in as them is signed out.
-  async function issueForUser(userId: string): Promise<{ code: string; mobile: string | null }> {
+  // A new code for one person. The old one stops working and every device signed in as them is signed out. `event`: the record of
+  // who did it (a couple's code — services/loginCodeEvent.ts), saved in the same write as the code.
+  async function issueForUser(userId: string, event?: CodeEvent): Promise<{ code: string; mobile: string | null }> {
     const user = await deps.db.user.findUnique({ where: { id: userId }, select: { id: true, phone: true } });
     if (!user) throw new NotFoundError('Login', userId);
     // No mobile number, no code login: the code is only ever half of "mobile number + code".
     if (!user.phone) throw new ConflictError('This person has no mobile number yet — add it first');
     const code = deps.newCode();
-    await deps.db.user.update({ where: { id: userId }, data: { loginCodeHash: await deps.hash(code), loginCodeSetAt: deps.now(), loginCodeGiven: true, sessionVersion: { increment: 1 } } });
+    await deps.db.user.update({ where: { id: userId }, data: { loginCodeHash: await deps.hash(code), loginCodeSetAt: deps.now(), loginCodeGiven: true, sessionVersion: { increment: 1 }, ...codeEventWrite(event) } });
     return { code, mobile: user.phone };
   }
 
@@ -100,8 +102,9 @@ export function createVendorLoginCodeService(deps: VendorLoginCodeDeps = default
       return issueForUser(profile.userId);
     },
 
-    // A person changes their own code: the current one, and the new one twice. They stay signed in on this device.
-    async change(userId: string, input: { current?: unknown; next?: unknown; confirm?: unknown }): Promise<{ changed: true } | { errors: NewCodeErrors }> {
+    // A person changes their own code: the current one, and the new one twice. They stay signed in on this device. `event`: a
+    // couple's change is recorded (services/loginCodeEvent.ts).
+    async change(userId: string, input: { current?: unknown; next?: unknown; confirm?: unknown }, event?: CodeEvent): Promise<{ changed: true } | { errors: NewCodeErrors }> {
       const errors = validateCodeChange(input);
       if (errors) return { errors };
       const identifier = `vendor-code-change:${userId}`;
@@ -113,7 +116,7 @@ export function createVendorLoginCodeService(deps: VendorLoginCodeDeps = default
       await deps.record(identifier, ok);
       if (!ok) return { errors: { current: 'That is not your current code' } };
 
-      await deps.db.user.update({ where: { id: user.id }, data: { loginCodeHash: await deps.hash(input.next as string), loginCodeSetAt: deps.now(), loginCodeGiven: false } });
+      await deps.db.user.update({ where: { id: user.id }, data: { loginCodeHash: await deps.hash(input.next as string), loginCodeSetAt: deps.now(), loginCodeGiven: false, ...codeEventWrite(event) } });
       return { changed: true };
     },
 

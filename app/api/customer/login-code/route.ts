@@ -4,6 +4,7 @@ import { Role } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { vendorLoginCodeService } from '@/services/vendorLoginCode.service';
+import { VIA_MY_WEDDING } from '@/services/loginCodeEvent';
 
 // POST /api/customer/login-code — the couple changes their own My Wedding code: { current, next, confirm }. Same rules as everyone
 // else's code (lib/auth/vendorCode.ts). About the signed-in couple's own login only: the user comes from the session.
@@ -15,7 +16,11 @@ async function handlePOST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Please sign in to My Wedding' }, { status: 401 });
   try {
     const body = await req.json().catch(() => ({}));
-    const result = await vendorLoginCodeService.change(session.user.id, { current: body?.current, next: body?.next, confirm: body?.confirm });
+    const result = await vendorLoginCodeService.change(session.user.id, { current: body?.current, next: body?.next, confirm: body?.confirm }, {
+      kind: 'CHANGED_BY_THEMSELVES',
+      byUserId: session.user.id,
+      via: VIA_MY_WEDDING,
+    });
     if ('errors' in result) return NextResponse.json({ success: false, error: 'Please check the highlighted fields', fieldErrors: result.errors }, { status: 400, ...noStore });
     return NextResponse.json({ success: true }, noStore);
   } catch (err) {

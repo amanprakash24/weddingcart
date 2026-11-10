@@ -5,6 +5,7 @@ import { coupleMobile } from '@/lib/customer/weddingLink';
 import { coupleWeddingSummaries } from '@/lib/customer/coupleEntry';
 import { normalizeMobile } from '@/lib/auth/vendorCode';
 import { hashLoginCode, newLoginCode, vendorLoginCodeService } from '@/services/vendorLoginCode.service';
+import { codeEventWrite, codeHistory, VIA_COUPLE_SEARCH, weddingVia, type CodeEvent, type CodeHistoryEntry } from '@/services/loginCodeEvent';
 
 // The couple's sign-in to My Wedding (28 Oct 2026): mobile number + their own 6-digit login code — the same sign-in as everyone
 // else on Vivah OS (services/vendorLoginCode.service.ts). The WhatsApp one-time code is no longer used for couples.
@@ -39,7 +40,7 @@ export interface CoupleLoginDeps {
   db: typeof prisma;
   hash: (code: string) => Promise<string>;
   newCode: () => string;
-  issueForUser: (userId: string) => Promise<{ code: string; mobile: string | null }>;
+  issueForUser: (userId: string, event: CodeEvent) => Promise<{ code: string; mobile: string | null }>;
   now: () => Date;
 }
 
@@ -47,7 +48,7 @@ const defaultDeps = (): CoupleLoginDeps => ({
   db: prisma,
   hash: hashLoginCode,
   newCode: newLoginCode,
-  issueForUser: (userId) => vendorLoginCodeService.issueForUser(userId),
+  issueForUser: (userId, event) => vendorLoginCodeService.issueForUser(userId, event),
   now: () => new Date(),
 });
 
@@ -60,9 +61,12 @@ export const coupleOnly = (l: Login) => l.roles.length > 0 && l.roles.every((r) 
 export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) {
   // The caller's own wedding (the scope filters out every other business's) and the couple's mobile on it.
   async function wedding(weddingId: string) {
-    const w = await deps.db.wedding.findFirst({ where: { id: weddingId }, select: { id: true, customerId: true, customerPhone: true, sourceBooking: { select: { name: true, phone: true } } } });
+    const w = await deps.db.wedding.findFirst({
+      where: { id: weddingId },
+      select: { id: true, weddingNumber: true, customerId: true, customerPhone: true, business: { select: { name: true } }, sourceBooking: { select: { name: true, phone: true } } },
+    });
     if (!w) throw new NotFoundError('Wedding', weddingId);
-    return { ...w, mobile: coupleMobile(w.customerPhone) ?? coupleMobile(w.sourceBooking?.phone) };
+    return { ...w, mobile: coupleMobile(w.customerPhone) ?? coupleMobile(w.sourceBooking?.phone), via: weddingVia(w.business?.name, w.weddingNumber) };
   }
 
   const loginFor = (mobile: string) => deps.db.user.findUnique({ where: { phone: mobile }, select: loginSelect }) as Promise<Login | null>;
@@ -85,7 +89,8 @@ export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) 
     },
 
     // Give the couple My Wedding: a new login with a new code, or — when the number already has a login — this wedding linked to it.
-    async give(weddingId: string): Promise<GiveResult> {
+    // byUserId: the signed-in person giving it — a new code is recorded with who gave it (services/loginCodeEvent.ts).
+    async give(weddingId: string, byUserId: string | null): Promise<GiveResult> {
       const w = await wedding(weddingId);
       if (!w.mobile) throw new ConflictError("Add the couple's 10-digit mobile number to this wedding first");
       const mobile = w.mobile;
@@ -100,7 +105,7 @@ export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) 
         let userId: string;
         try {
           userId = (await tx.user.create({
-            data: { phone: mobile, name: w.sourceBooking?.name?.trim() || null, loginCodeHash: await deps.hash(code), loginCodeSetAt: deps.now(), loginCodeGiven: true, roles: { create: { role: Role.CUSTOMER } } },
+            data: { phone: mobile, name: w.sourceBooking?.name?.trim() || null, loginCodeHash: await deps.hash(code), loginCodeSetAt: deps.now(), loginCodeGiven: true, roles: { create: { role: Role.CUSTOMER } }, ...codeEventWrite({ kind: 'GIVEN', byUserId, via: w.via }) },
             select: { id: true },
           })).id;
         } catch (err) {
@@ -113,8 +118,8 @@ export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) 
     },
 
     // The founder replaces the couple's code (lost, or never had one). The old code stops working; they are signed out everywhere.
-    // The route allows SUPER_ADMIN only.
-    async replace(weddingId: string): Promise<{ mobile: string; code: string }> {
+    // The route allows SUPER_ADMIN only. byUserId: the founder — recorded with the new code.
+    async replace(weddingId: string, byUserId: string | null): Promise<{ mobile: string; code: string }> {
       const w = await wedding(weddingId);
       if (!w.mobile) throw new ConflictError("Add the couple's 10-digit mobile number to this wedding first");
       const login = await loginFor(w.mobile);
@@ -122,7 +127,7 @@ export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) 
       if (w.customerId && w.customerId !== login.id) throw new ConflictError('This wedding is linked to another sign-in. Please check the mobile number.');
       if (!coupleOnly(login)) throw new ConflictError('This number is also a vendor or team sign-in. Only that person can change its code.');
       await link(deps.db, w.id, login.id, w.mobile);
-      const { code } = await deps.issueForUser(login.id);
+      const { code } = await deps.issueForUser(login.id, { kind: 'REPLACED', byUserId, via: w.via });
       return { mobile: w.mobile, code };
     },
   };
@@ -133,15 +138,24 @@ export const coupleLoginService = createCoupleLoginService();
 // The founder's "Couple sign-in" search (28 Oct 2026, Command Center → More → Couple sign-in). A couple who forgot their code and
 // could not reset it on WhatsApp asks Shaadi Shopping; their wedding may be a venue's, which no Command Center wedding page shows,
 // so the founder finds the sign-in by mobile number instead. SUPER_ADMIN only (checked by the route). Same rule as everywhere:
-// only a couple-only login's code is ever replaced here.
+// only a couple-only login's code is ever replaced here. `history` (10 Nov 2026): who set the code, and when — newest first.
 export type CoupleLookup =
   | { found: false; mobile: string }
-  | { found: true; mobile: string; name: string | null; hasCode: boolean; canReplace: boolean; weddings: { weddingNumber: string; date: string; businessName: string }[] };
+  | {
+      found: true;
+      mobile: string;
+      name: string | null;
+      hasCode: boolean;
+      canReplace: boolean;
+      weddings: { weddingNumber: string; date: string; businessName: string }[];
+      history: CodeHistoryEntry[];
+    };
 
 export interface CoupleLookupDeps {
   db: Pick<typeof prisma, 'user'>;
   weddings: (userId: string) => Promise<{ weddingNumber: string; primaryDate: Date; businessName: string }[]>;
-  issueForUser: (userId: string) => Promise<{ code: string; mobile: string | null }>;
+  history: (userId: string) => Promise<CodeHistoryEntry[]>;
+  issueForUser: (userId: string, event: CodeEvent) => Promise<{ code: string; mobile: string | null }>;
 }
 
 export function createCoupleLookupService(deps: CoupleLookupDeps) {
@@ -156,16 +170,25 @@ export function createCoupleLookupService(deps: CoupleLookupDeps) {
     async find(mobileInput: unknown): Promise<CoupleLookup> {
       const { mobile, user } = await login(mobileInput);
       if (!user || !user.roles.some((r) => r.role === Role.CUSTOMER)) return { found: false, mobile };
-      const weddings = (await deps.weddings(user.id)).map((w) => ({ weddingNumber: w.weddingNumber, date: w.primaryDate.toISOString(), businessName: w.businessName }));
-      return { found: true, mobile, name: user.name, hasCode: !!user.loginCodeHash, canReplace: coupleOnly(user), weddings };
+      const [weddings, history] = await Promise.all([deps.weddings(user.id), deps.history(user.id)]);
+      return {
+        found: true,
+        mobile,
+        name: user.name,
+        hasCode: !!user.loginCodeHash,
+        canReplace: coupleOnly(user),
+        weddings: weddings.map((w) => ({ weddingNumber: w.weddingNumber, date: w.primaryDate.toISOString(), businessName: w.businessName })),
+        history,
+      };
     },
 
     // A new code for the couple. The old one stops working and they are signed out everywhere. Shown once, in this answer.
-    async replace(mobileInput: unknown): Promise<{ mobile: string; code: string }> {
+    // byUserId: the founder — recorded with the new code (services/loginCodeEvent.ts).
+    async replace(mobileInput: unknown, byUserId: string | null): Promise<{ mobile: string; code: string }> {
       const { mobile, user } = await login(mobileInput);
       if (!user || !user.roles.some((r) => r.role === Role.CUSTOMER)) throw new ConflictError('No couple sign-in has this number');
       if (!coupleOnly(user)) throw new ConflictError('This number is also a vendor or team sign-in. Only that person can change its code.');
-      const { code } = await deps.issueForUser(user.id);
+      const { code } = await deps.issueForUser(user.id, { kind: 'REPLACED', byUserId, via: VIA_COUPLE_SEARCH });
       return { mobile, code };
     },
   };
@@ -174,5 +197,6 @@ export function createCoupleLookupService(deps: CoupleLookupDeps) {
 export const coupleLookupService = createCoupleLookupService({
   db: prisma,
   weddings: (userId) => coupleWeddingSummaries(userId),
-  issueForUser: (userId) => vendorLoginCodeService.issueForUser(userId),
+  history: (userId) => codeHistory(prisma, userId),
+  issueForUser: (userId, event) => vendorLoginCodeService.issueForUser(userId, event),
 });

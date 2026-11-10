@@ -73,10 +73,10 @@ describe('step 1 — the WhatsApp code', () => {
 describe('step 2 — the new code', () => {
   const input = { mobile: MOBILE, otp: '305917', next: '730519', confirm: '730519' };
 
-  test('the right WhatsApp code saves the new code: signed out everywhere, reminder gone', async () => {
+  test('the right WhatsApp code saves the new code: signed out everywhere, reminder gone, and recorded as the couple’s own reset', async () => {
     const { service, updates, attempts } = setup();
     expect(await service.confirm(input)).toEqual({ done: true });
-    expect(updates).toEqual([{ where: { id: 'u-couple' }, data: { loginCodeHash: 'hash:730519', loginCodeSetAt: NOW, loginCodeGiven: false, sessionVersion: { increment: 1 } } }]);
+    expect(updates).toEqual([{ where: { id: 'u-couple' }, data: { loginCodeHash: 'hash:730519', loginCodeSetAt: NOW, loginCodeGiven: false, sessionVersion: { increment: 1 }, loginCodeEvents: { create: { kind: 'RESET_ON_WHATSAPP', byUserId: 'u-couple', via: 'Forgot your code? (WhatsApp)' } } } }]);
     expect(attempts).toEqual([{ identifier: `couple-reset:${MOBILE}`, success: true }]);
   });
 
