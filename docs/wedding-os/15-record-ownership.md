@@ -77,6 +77,11 @@ businesses is not a feature; it would be a support action, logged).
 
 ### 4.4 Where an enquiry came from — and commission
 
+> **Changed 10 Nov 2026 (founder decision, built 11 Nov — `04-vendor-os.md` §26):** a Shaadi Shopping enquiry for a venue that is
+> on Vivah OS now goes straight into the venue's own Enquiries too (automatically for listing enquiries; by the team for any other),
+> linked to Shaadi Shopping's record so the commission applies. Shaadi Shopping keeps its own record. The availability-request route
+> below remains for vendors not on Vivah OS and for vendors on a Shaadi Shopping quote.
+
 Every enquiry also records its **source**: *Shaadi Shopping* (the website, a Shaadi Shopping salesperson, a Growth Partner) or the
 venue's **own** (phone, walk-in, WhatsApp, Instagram, Google, reference, existing customer).
 

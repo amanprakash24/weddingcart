@@ -4,8 +4,11 @@
 
 export const CHANNELS = ['PHONE', 'WALK_IN', 'WHATSAPP', 'INSTAGRAM', 'FACEBOOK', 'GOOGLE', 'WEBSITE', 'REFERENCE', 'EXISTING_CUSTOMER', 'OTHER'] as const;
 export type Channel = (typeof CHANNELS)[number];
+// Where an enquiry can come from: what the team may pick (CHANNELS), plus SHAADI_SHOPPING — set only when Shaadi Shopping hands an
+// enquiry to the venue (services/platformHandoff.service.ts), never picked by hand, so it cannot be claimed without being true.
+export type IntakeChannel = Channel | 'SHAADI_SHOPPING';
 
-export const CHANNEL_LABEL: Record<Channel, string> = {
+export const CHANNEL_LABEL: Record<IntakeChannel, string> = {
   PHONE: 'Phone call',
   WALK_IN: 'Walk-in',
   WHATSAPP: 'WhatsApp',
@@ -16,6 +19,7 @@ export const CHANNEL_LABEL: Record<Channel, string> = {
   REFERENCE: 'Reference',
   EXISTING_CUSTOMER: 'Existing customer',
   OTHER: 'Other',
+  SHAADI_SHOPPING: 'Shaadi Shopping',
 };
 
 // What they are celebrating (11 Nov 2026, Vivah OS phase 1: every event, not only weddings). The same ids the /plan form uses.
@@ -57,7 +61,7 @@ export interface NewEnquiry {
   guestCount: number; // 0 when not known
   budget: number | null; // whole rupees, when they said
   need: string | null;
-  channel: Channel;
+  channel: IntakeChannel;
 }
 
 // "5,00,000", "₹ 500000", 500000 → 500000; '' → null; anything else → NaN.
@@ -150,7 +154,7 @@ export function looksAutomated(input: { trap?: unknown; openMs?: unknown }): boo
 
 // "Google · Enquiry page" — where an enquiry came from, as the venue's list shows it.
 export function sourceLabel(channel: string | null | undefined, sourceDetail: string | null | undefined): string {
-  const base = CHANNEL_LABEL[channel as Channel] ?? 'Shaadi Shopping';
+  const base = CHANNEL_LABEL[channel as IntakeChannel] ?? 'Shaadi Shopping';
   return sourceDetail ? `${base} · ${sourceDetail}` : base;
 }
 
