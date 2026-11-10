@@ -6,6 +6,7 @@ import { otpService } from '@/services/otp.service';
 import { sendWhatsAppCode, type WhatsAppCodeResult } from '@/lib/whatsappOtp';
 import { hashLoginCode } from '@/services/vendorLoginCode.service';
 import { coupleOnly, loginSelect, type Login } from '@/services/coupleLogin.service';
+import { codeEventWrite, VIA_FORGOT_CODE } from '@/services/loginCodeEvent';
 
 // "Forgot your code?" on the couple's sign-in (28 Oct 2026). The couple proves they hold the mobile — a one-time code on WhatsApp
 // — and chooses a new 6-digit login code. Nobody else is involved and nobody else ever sees the new code.
@@ -78,7 +79,7 @@ export function createCoupleCodeResetService(deps: CoupleCodeResetDeps = default
       await deps.record(lock, ok);
       if (!ok || !user) return { errors: { otp: 'That WhatsApp code is wrong or has expired. Send a new one.' } };
 
-      await deps.db.user.update({ where: { id: user.id }, data: { loginCodeHash: await deps.hash(input.next as string), loginCodeSetAt: deps.now(), loginCodeGiven: false, sessionVersion: { increment: 1 } } });
+      await deps.db.user.update({ where: { id: user.id }, data: { loginCodeHash: await deps.hash(input.next as string), loginCodeSetAt: deps.now(), loginCodeGiven: false, sessionVersion: { increment: 1 }, ...codeEventWrite({ kind: 'RESET_ON_WHATSAPP', byUserId: user.id, via: VIA_FORGOT_CODE }) } });
       return { done: true };
     },
   };

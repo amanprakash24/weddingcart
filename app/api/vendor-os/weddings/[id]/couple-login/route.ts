@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { handleApiError } from '@/lib/errors';
 import { coupleLoginService } from '@/services/coupleLogin.service';
 import { venueScoped } from '@/lib/ownership/venueEntry';
@@ -7,6 +8,7 @@ import { venueScoped } from '@/lib/ownership/venueEntry';
 // POST /api/vendor-os/weddings/[id]/couple-login — give the couple My Wedding: a NEW login's 6-digit code is in this answer only;
 //      a number that already has a login keeps its own code and only gets this wedding linked (services/coupleLogin.service.ts).
 // Venue-scoped, `weddings` permission: always one of the business's own weddings. A venue never replaces anyone's code.
+// A new code is recorded with who gave it (services/loginCodeEvent.ts).
 const noStore = { 'Cache-Control': 'no-store' };
 
 async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -19,7 +21,7 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: 
 
 async function handlePOST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    return NextResponse.json({ success: true, data: await coupleLoginService.give((await params).id) }, { headers: noStore });
+    return NextResponse.json({ success: true, data: await coupleLoginService.give((await params).id, (await getSession())?.user?.id ?? null) }, { headers: noStore });
   } catch (err) {
     return handleApiError(err);
   }

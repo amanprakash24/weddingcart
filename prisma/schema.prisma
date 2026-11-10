@@ -166,7 +166,37 @@ model User {
 
   businessMemberships BusinessMember[] // the businesses this login works in (Owner / Staff)
 
+  loginCodeEvents   LoginCodeEvent[] @relation("LoginCodeEventFor") // every time this person's code was set, and by whom
+  loginCodeEventsBy LoginCodeEvent[] @relation("LoginCodeEventBy") // codes this person gave or replaced for someone else
+
   @@map("users")
+}
+
+// A record of every time a couple's My Wedding login code was set, and who did it (10 Nov 2026) — so when a couple says "I never
+// asked for a new code", the founder can see who gave it and when. Written in the same save as the code itself
+// (services/loginCodeEvent.ts), so a code is never changed without its record. Append-only: never edited or deleted by the app.
+model LoginCodeEvent {
+  id        String             @id @default(uuid())
+  userId    String // whose code
+  user      User               @relation("LoginCodeEventFor", fields: [userId], references: [id], onDelete: Cascade)
+  kind      LoginCodeEventKind
+  // Who did it. The couple themselves for a WhatsApp reset or a change of their own. Null only if that person's login was deleted.
+  byUserId  String?
+  by        User?              @relation("LoginCodeEventBy", fields: [byUserId], references: [id], onDelete: SetNull)
+  // Where it was done, as it read at the time, e.g. "Kush Travel · wedding KUS-WED-2026-0002" or "Command Center · Couple sign-in".
+  // Plain text on purpose: the record must still read the same if the wedding or business is later renamed or removed.
+  via       String
+  createdAt DateTime           @default(now())
+
+  @@index([userId, createdAt])
+  @@map("login_code_events")
+}
+
+enum LoginCodeEventKind {
+  GIVEN // a first code, given with My Wedding (by a venue or Shaadi Shopping)
+  REPLACED // the founder replaced the code (a lost code)
+  RESET_ON_WHATSAPP // the couple chose a new one with "Forgot your code?"
+  CHANGED_BY_THEMSELVES // the couple changed it, signed in, with their current code
 }
 
 model UserRole {

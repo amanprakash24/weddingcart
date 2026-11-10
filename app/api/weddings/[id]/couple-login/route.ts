@@ -32,9 +32,9 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
     const body = await req.json().catch(() => ({}));
     if (body?.action === 'replace') {
       if (!hasSuperAdmin(session.user.roles ?? [])) return NextResponse.json({ success: false, error: "Only the founder can replace a couple's code" }, { status: 403 });
-      return NextResponse.json({ success: true, data: { kind: 'NEW_CODE', ...(await coupleLoginService.replace(id)) } }, { headers: noStore });
+      return NextResponse.json({ success: true, data: { kind: 'NEW_CODE', ...(await coupleLoginService.replace(id, session.user.id ?? null)) } }, { headers: noStore });
     }
-    return NextResponse.json({ success: true, data: await coupleLoginService.give(id) }, { headers: noStore });
+    return NextResponse.json({ success: true, data: await coupleLoginService.give(id, session.user.id ?? null) }, { headers: noStore });
   } catch (err) {
     return handleApiError(err);
   }
