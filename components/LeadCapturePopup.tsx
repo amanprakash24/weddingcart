@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { isCouplePromptPath } from '@/lib/proposalPath';
 import { callbackLeadDigits, submitCallbackLead } from '@/lib/leads/submitCallbackLead';
+import { readStored, writeStored } from '@/lib/browserStorage';
 
 const STORAGE_KEY = 'ss_lead_dismissed_v2';
 const DISMISS_MS = 10 * 60 * 1000; // 10 minutes
@@ -28,7 +29,7 @@ export default function LeadCapturePopup() {
   useEffect(() => {
     // A prompt for couples only (lib/proposalPath.ts): never on the admin, Vendor OS, a private proposal or a sign-up form.
     if (!isCouplePromptPath(pathname)) return;
-    const dismissed = localStorage.getItem(STORAGE_KEY);
+    const dismissed = readStored(STORAGE_KEY); // null when the browser refuses storage — the popup then simply shows
     if (dismissed) {
       const until = Number(dismissed);
       if (Date.now() < until) return;
@@ -39,7 +40,7 @@ export default function LeadCapturePopup() {
 
   const dismiss = (permanent = false) => {
     const ms = permanent ? 24 * 3600000 : DISMISS_MS;
-    localStorage.setItem(STORAGE_KEY, String(Date.now() + ms));
+    writeStored(STORAGE_KEY, String(Date.now() + ms));
     setVisible(false);
   };
 

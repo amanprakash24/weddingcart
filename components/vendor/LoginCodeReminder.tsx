@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { KeyRound, X } from 'lucide-react';
 import { LOGIN_CODE_REMINDER_DAYS } from '@/lib/auth/vendorCode';
+import { readStored, writeStored } from '@/lib/browserStorage';
 
 // The monthly reminder (6 Oct 2026): once a login code is 30 days old, every Vendor OS screen carries one quiet line asking the
 // vendor to change it. A reminder only — nothing is blocked — and it can be put away until the browser is closed.
@@ -14,11 +15,8 @@ export default function LoginCodeReminder() {
 
   useEffect(() => {
     let live = true;
-    try {
-      if (window.sessionStorage.getItem(HIDDEN_KEY)) return;
-    } catch {
-      // No session storage (private window): the line simply shows again on the next screen.
-    }
+    // No session storage (a private window): the line simply shows again on the next screen.
+    if (readStored(HIDDEN_KEY, 'session')) return;
     fetch('/api/vendor-os/login-code')
       .then((r) => r.json())
       .then((b) => live && setShow(Boolean(b.success && b.data?.reminder)))
@@ -32,11 +30,7 @@ export default function LoginCodeReminder() {
 
   const hide = () => {
     setShow(false);
-    try {
-      window.sessionStorage.setItem(HIDDEN_KEY, '1');
-    } catch {
-      // see above
-    }
+    writeStored(HIDDEN_KEY, '1', 'session');
   };
 
   return (
