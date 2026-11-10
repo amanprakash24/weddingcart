@@ -22,6 +22,16 @@ export async function coupleWeddings(userId: string): Promise<CoupleWedding[]> {
   );
 }
 
+/** For the founder's "Couple sign-in" search (28 Oct 2026, founder only): which weddings this sign-in shows, and whose they are —
+ *  the number, the date and the business name only, so the founder can confirm it is the right couple before making a new code. */
+export async function coupleWeddingSummaries(userId: string): Promise<{ weddingNumber: string; primaryDate: Date; businessName: string }[]> {
+  if (!userId) return [];
+  const rows = await runAsSystem("founder: which weddings a couple's sign-in shows (Couple sign-in search)", () =>
+    prisma.wedding.findMany({ where: { customerId: userId }, select: { weddingNumber: true, primaryDate: true, business: { select: { name: true } } }, orderBy: { primaryDate: 'asc' } })
+  );
+  return rows.map((w) => ({ weddingNumber: w.weddingNumber, primaryDate: w.primaryDate, businessName: w.business?.name ?? 'Shaadi Shopping' }));
+}
+
 /** The scope a wedding is read in: its own business (Shaadi Shopping's weddings as Shaadi Shopping). */
 export const weddingScope = (businessId: string): Scope =>
   businessId === PLATFORM_BUSINESS_ID ? PLATFORM_SCOPE : { kind: 'BUSINESS', businessId, role: 'STAFF' };

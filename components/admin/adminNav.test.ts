@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MORE, OLD_SCREENS, OLD_TAB_REDIRECTS, PHONE_BAR, PRIMARY, SETUP, UPCOMING_SECTION, type ActiveContext } from './adminNav';
+import { COUPLE_SIGN_IN, MORE, OLD_SCREENS, OLD_TAB_REDIRECTS, PHONE_BAR, PRIMARY, SETUP, UPCOMING_SECTION, type ActiveContext } from './adminNav';
 
 // The admin navigation is the product structure: Today / Leads & Quotes / Weddings / Vendors / Invoices, everything else
 // under More. These tests pin that structure and guard against dead links.
@@ -45,7 +45,7 @@ describe('primary navigation', () => {
   });
 
   test('each More / old-screen entry lights up on its own screen only', () => {
-    for (const item of [...MORE, SETUP, ...OLD_SCREENS]) {
+    for (const item of [...MORE, COUPLE_SIGN_IN, SETUP, ...OLD_SCREENS]) {
       const tab = item.href.includes('?tab=') ? item.href.split('?tab=')[1] : null;
       const pathname = tab ? '/admin' : item.href;
       expect(item.isActive(ctx(pathname, tab))).toBe(true);
@@ -54,8 +54,16 @@ describe('primary navigation', () => {
   });
 });
 
+describe('founder-only screens', () => {
+  test('Couple sign-in is not in More for everyone — the shell adds it for the founder only', () => {
+    expect(MORE.map((item) => item.key)).not.toContain('couple-sign-in');
+    const shell = readFileSync(join(root, 'components', 'admin', 'AdminShell.tsx'), 'utf8');
+    expect(shell).toContain("role === 'super_admin' ? [...MORE, OUR_TEAM, COUPLE_SIGN_IN, SETUP] : MORE");
+  });
+});
+
 describe('no dead links', () => {
-  const all = [...PRIMARY, ...MORE, SETUP, ...OLD_SCREENS];
+  const all = [...PRIMARY, ...MORE, COUPLE_SIGN_IN, SETUP, ...OLD_SCREENS];
 
   test('nothing points at /admin/weddings, which has no list page (V1 uses the Upcoming weddings list on Today)', () => {
     expect(all.map((item) => item.href.split(/[?#]/)[0])).not.toContain('/admin/weddings');

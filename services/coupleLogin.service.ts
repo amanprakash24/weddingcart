@@ -2,6 +2,8 @@ import { prisma } from '@/lib/prisma';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import { Role } from '@/lib/auth/roles';
 import { coupleMobile } from '@/lib/customer/weddingLink';
+import { coupleWeddingSummaries } from '@/lib/customer/coupleEntry';
+import { normalizeMobile } from '@/lib/auth/vendorCode';
 import { hashLoginCode, newLoginCode, vendorLoginCodeService } from '@/services/vendorLoginCode.service';
 
 // The couple's sign-in to My Wedding (28 Oct 2026): mobile number + their own 6-digit login code — the same sign-in as everyone
@@ -127,3 +129,50 @@ export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) 
 }
 
 export const coupleLoginService = createCoupleLoginService();
+
+// The founder's "Couple sign-in" search (28 Oct 2026, Command Center → More → Couple sign-in). A couple who forgot their code and
+// could not reset it on WhatsApp asks Shaadi Shopping; their wedding may be a venue's, which no Command Center wedding page shows,
+// so the founder finds the sign-in by mobile number instead. SUPER_ADMIN only (checked by the route). Same rule as everywhere:
+// only a couple-only login's code is ever replaced here.
+export type CoupleLookup =
+  | { found: false; mobile: string }
+  | { found: true; mobile: string; name: string | null; hasCode: boolean; canReplace: boolean; weddings: { weddingNumber: string; date: string; businessName: string }[] };
+
+export interface CoupleLookupDeps {
+  db: Pick<typeof prisma, 'user'>;
+  weddings: (userId: string) => Promise<{ weddingNumber: string; primaryDate: Date; businessName: string }[]>;
+  issueForUser: (userId: string) => Promise<{ code: string; mobile: string | null }>;
+}
+
+export function createCoupleLookupService(deps: CoupleLookupDeps) {
+  async function login(mobileInput: unknown) {
+    const mobile = normalizeMobile(mobileInput);
+    if (!mobile) throw new ConflictError('Enter a 10-digit mobile number');
+    const user = (await deps.db.user.findUnique({ where: { phone: mobile }, select: { ...loginSelect, name: true } })) as (Login & { name: string | null }) | null;
+    return { mobile, user };
+  }
+
+  return {
+    async find(mobileInput: unknown): Promise<CoupleLookup> {
+      const { mobile, user } = await login(mobileInput);
+      if (!user || !user.roles.some((r) => r.role === Role.CUSTOMER)) return { found: false, mobile };
+      const weddings = (await deps.weddings(user.id)).map((w) => ({ weddingNumber: w.weddingNumber, date: w.primaryDate.toISOString(), businessName: w.businessName }));
+      return { found: true, mobile, name: user.name, hasCode: !!user.loginCodeHash, canReplace: coupleOnly(user), weddings };
+    },
+
+    // A new code for the couple. The old one stops working and they are signed out everywhere. Shown once, in this answer.
+    async replace(mobileInput: unknown): Promise<{ mobile: string; code: string }> {
+      const { mobile, user } = await login(mobileInput);
+      if (!user || !user.roles.some((r) => r.role === Role.CUSTOMER)) throw new ConflictError('No couple sign-in has this number');
+      if (!coupleOnly(user)) throw new ConflictError('This number is also a vendor or team sign-in. Only that person can change its code.');
+      const { code } = await deps.issueForUser(user.id);
+      return { mobile, code };
+    },
+  };
+}
+
+export const coupleLookupService = createCoupleLookupService({
+  db: prisma,
+  weddings: (userId) => coupleWeddingSummaries(userId),
+  issueForUser: (userId) => vendorLoginCodeService.issueForUser(userId),
+});
