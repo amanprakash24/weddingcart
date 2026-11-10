@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { CartItem, Vendor, Package } from '@/types';
+import { readStored, writeStored } from '@/lib/browserStorage';
 
 interface CartState {
   items: CartItem[];
@@ -91,13 +92,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('wc_cart');
+      const saved = readStored('wc_cart');
       if (saved) dispatch({ type: 'HYDRATE', items: JSON.parse(saved) });
     } catch {}
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('wc_cart', JSON.stringify(state.items));
+    writeStored('wc_cart', JSON.stringify(state.items)); // never throws: a browser that refuses storage just keeps no cart
   }, [state.items]);
 
   const total = state.items.reduce((sum, i) => sum + i.package.price * i.quantity, 0);
