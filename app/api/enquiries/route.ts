@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { enquiryService } from '@/services/enquiry.service';
+import { platformHandoffService } from '@/services/platformHandoff.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
@@ -69,6 +70,9 @@ async function handlePOST(req: NextRequest) {
 
     const data = enquiryCreateSchema.parse(await req.json());
     const enquiry = await enquiryService.create(data);
+    // The venue on Vivah OS gets it at once, in its own Enquiries (services/platformHandoff.service.ts). Never fails the couple's
+    // enquiry — it is already saved here.
+    await platformHandoffService.sendListingEnquiry(enquiry.id);
 
     return NextResponse.json({ success: true, data: toResponseShape(enquiry) }, { status: 201 });
   } catch (err) {

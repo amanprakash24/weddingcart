@@ -8,7 +8,7 @@ import {
 import { quoteStage } from '@/lib/venue/quotation';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { can } from '@/lib/auth/permissions';
-import { platformMatchService } from '@/services/platformMatch.service';
+import { platformMatchService, type PlatformMatchRef } from '@/services/platformMatch.service';
 import { assignable, venuePeople, type Assignable } from '@/services/venuePeople';
 
 // A venue's OWN enquiries (Phase C, docs/wedding-os/15-record-ownership.md §5). Always called inside the venue's scope
@@ -28,6 +28,9 @@ import { assignable, venuePeople, type Assignable } from '@/services/venuePeople
 const CONTACT_TYPES = ['CALL', 'WHATSAPP'] as const;
 const LOG_TYPES = { CALL: ActivityType.CALL, WHATSAPP: ActivityType.WHATSAPP, NOTE: ActivityType.NOTE } as const;
 export type LogKind = keyof typeof LOG_TYPES;
+
+// On the venue's enquiry when Shaadi Shopping brought the couple (D4, or handed over) — commission applies.
+export const VIA_SHAADI_SHOPPING_NOTE = 'This couple came to you through Shaadi Shopping — commission applies to this booking';
 
 const istToday = (now: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
 
@@ -155,7 +158,7 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
       const ref = await deps.match.find(business.vendorId, phone);
       if (!ref) return;
       await deps.db.consultation.update({ where: { id }, data: { platformMatch: ref, platformMatchedAt: deps.now() } });
-      await deps.db.activityLog.create({ data: { type: ActivityType.STATUS_CHANGED, summary: 'This couple came to you through Shaadi Shopping — commission applies to this booking', consultation: { connect: { id } } } });
+      await deps.db.activityLog.create({ data: { type: ActivityType.STATUS_CHANGED, summary: VIA_SHAADI_SHOPPING_NOTE, consultation: { connect: { id } } } });
       await deps.match.noteOnPlatformRecord(ref, business.name);
     } catch (err) {
       console.error('D4 platform match failed (the enquiry is saved):', err instanceof Error ? err.message : err);
@@ -216,19 +219,24 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
     },
 
     // The one way an enquiry enters the venue (see the top of this file). Inside the venue's scope, so every record here — the
-    // client, the enquiry, its history — is the venue's. `actorId` null = it came from outside (the couple on the enquiry page):
-    // it goes to the venue's owner. Returns the enquiry it was saved on; `repeat` = added to the client's open enquiry.
+    // client, the enquiry, its history — is the venue's. `actorId` null = it came from outside (the couple on the enquiry page,
+    // or Shaadi Shopping): it goes to the venue's owner. Returns the enquiry it was saved on; `repeat` = added to the client's open
+    // enquiry.
     //
-    // A repeat is handled by who sent it: an enquiry that ARRIVES by itself (the enquiry page; later Shaadi Shopping, calls,
+    // A repeat is handled by who sent it: an enquiry that ARRIVES by itself (the enquiry page, Shaadi Shopping; later calls,
     // WhatsApp) is added to the client's open enquiry, so a form sent twice is never two enquiries. One the TEAM types is always a
     // new enquiry — they mean it (one family's engagement and wedding can be two) — under the same client, marked "already a
     // client".
-    async intake(e: NewEnquiry, how: { sourceDetail: string | null; actorId: string | null }): Promise<{ id: string; repeat: boolean }> {
+    //
+    // `platformRef` (Shaadi Shopping handed this enquiry over — services/platformHandoff.service.ts): the enquiry is linked to
+    // Shaadi Shopping's record, so its commission applies (D4/D5), exactly as when the venue's own enquiry matches one.
+    async intake(e: NewEnquiry, how: { sourceDetail: string | null; actorId: string | null; platformRef?: PlatformMatchRef }): Promise<{ id: string; repeat: boolean }> {
       const scope = effectiveScope();
       if (scope.kind !== 'BUSINESS') throw new Error('An enquiry is always received by one business');
       const now = deps.now();
       const source = sourceLabel(e.channel, how.sourceDetail);
       const performedBy = how.actorId ? { connect: { id: how.actorId } } : undefined;
+      const commissionNote = (id: string) => ({ type: ActivityType.STATUS_CHANGED, summary: VIA_SHAADI_SHOPPING_NOTE, consultation: { connect: { id } } });
 
       // The client: one per mobile at this venue; their latest name is kept. Two enquiries from the same number at the same moment
       // can race on the unique (business, mobile) — the second simply tries once more and finds the first's.
@@ -247,11 +255,16 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
       // what they asked this time.
       const open = how.actorId
         ? null
-        : await deps.db.consultation.findFirst({ where: { clientId: client.id, pipelineStage: { notIn: ['LOST', 'WON'] } }, orderBy: { createdAt: 'desc' }, select: { id: true } });
+        : ((await deps.db.consultation.findFirst({ where: { clientId: client.id, pipelineStage: { notIn: ['LOST', 'WON'] } }, orderBy: { createdAt: 'desc' }, select: { id: true, platformMatch: true } })) as { id: string; platformMatch: string | null } | null);
       if (open) {
         await deps.db.activityLog.create({
           data: { type: ActivityType.NOTE, summary: `Enquired again — ${source.toLowerCase()}`, detail: askedFor(e), consultation: { connect: { id: open.id } }, performedBy },
         });
+        // Brought by Shaadi Shopping to an enquiry the venue already had: it is linked now, so the commission applies to it.
+        if (how.platformRef && !open.platformMatch) {
+          await deps.db.consultation.update({ where: { id: open.id }, data: { platformMatch: how.platformRef, platformMatchedAt: now } });
+          await deps.db.activityLog.create({ data: commissionNote(open.id) });
+        }
         return { id: open.id, repeat: true };
       }
 
@@ -263,12 +276,14 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
             name: e.name, phone: e.phone, eventType: e.eventType, weddingDate: e.weddingDate, days: e.days, functions: e.functions, guestCount: e.guestCount,
             totalBudget: e.budget, message: e.need, channel: e.channel, sourceDetail: how.sourceDetail, clientId: client.id,
             assignedToId: handler, assignedById: handler ? how.actorId : null, assignedAt: handler ? now : null,
+            ...(how.platformRef ? { platformMatch: how.platformRef, platformMatchedAt: now } : {}),
           },
           select: { id: true },
         });
         await tx.activityLog.create({
           data: { type: ActivityType.STATUS_CHANGED, summary: `Enquiry added — ${source.toLowerCase()}`, detail: how.actorId ? undefined : askedFor(e), consultation: { connect: { id: created.id } }, performedBy },
         });
+        if (how.platformRef) await tx.activityLog.create({ data: commissionNote(created.id) });
         if (earlier > 0) {
           await tx.activityLog.create({
             data: { type: ActivityType.NOTE, summary: `Already a client — ${earlier} earlier ${earlier === 1 ? 'enquiry' : 'enquiries'} with you`, consultation: { connect: { id: created.id } } },
@@ -276,7 +291,8 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
         }
         return created.id;
       });
-      await linkIfShaadiShoppingCouple(id, e.phone);
+      // Not handed over by Shaadi Shopping: is it still a couple Shaadi Shopping brought to this venue (D4)?
+      if (!how.platformRef) await linkIfShaadiShoppingCouple(id, e.phone);
       return { id, repeat: false };
     },
 

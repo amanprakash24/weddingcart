@@ -129,6 +129,24 @@ describe('the same number again', () => {
   });
 });
 
+describe('handed over by Shaadi Shopping (platformRef)', () => {
+  test('a new enquiry is linked to Shaadi Shopping’s record — commission applies — and the D4 search is not needed', async () => {
+    const { service, enquiries, history, match } = setup();
+    await runInScope(VENUE, () => service.intake(neha({ channel: 'SHAADI_SHOPPING' }), { sourceDetail: null, actorId: null, platformRef: 'ENQUIRY:ss-1' }));
+    expect(enquiries[0].data).toMatchObject({ channel: 'SHAADI_SHOPPING', platformMatch: 'ENQUIRY:ss-1', platformMatchedAt: NOW, assignedToId: 'u-owner' });
+    expect(history.map((h) => h.summary)).toEqual(['Enquiry added — shaadi shopping', 'This couple came to you through Shaadi Shopping — commission applies to this booking']);
+    expect(match.find).not.toHaveBeenCalled();
+  });
+
+  test('added to an open enquiry the venue had for them: that one is linked now', async () => {
+    const open: Enq = { id: 'e-old', clientId: 'c-neha', pipelineStage: 'CONTACTED', createdAt: new Date('2026-11-01'), data: {} };
+    const { service, db, history } = setup({ clients: { '9876543210': 'c-neha' }, enquiries: [open] });
+    expect(await runInScope(VENUE, () => service.intake(neha({ channel: 'SHAADI_SHOPPING' }), { sourceDetail: null, actorId: null, platformRef: 'CONSULTATION:ss-2' }))).toEqual({ id: 'e-old', repeat: true });
+    expect(db.consultation.update).toHaveBeenCalledWith({ where: { id: 'e-old' }, data: { platformMatch: 'CONSULTATION:ss-2', platformMatchedAt: NOW } });
+    expect(history.map((h) => h.summary)).toEqual(['Enquired again — shaadi shopping', 'This couple came to you through Shaadi Shopping — commission applies to this booking']);
+  });
+});
+
 describe('+ New Enquiry (the team’s form)', () => {
   test('checks the form, then takes the same way in', async () => {
     const { service, enquiries } = setup();

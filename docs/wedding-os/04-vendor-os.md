@@ -851,8 +851,14 @@ Shopping enquiry for a Vivah OS venue will go straight into the venue's own Enqu
   per place (`?src=website|google|instagram|facebook|whatsapp`) records the channel. Runs as the venue it belongs to
   (`lib/venue/enquiryPageEntry.ts`, like the proposal link); 5 forms per connection per 15 minutes; a form filled by a program
   (hidden box, or open under 3 seconds) is thanked and not saved. Not indexed.
-- **Not here** — Shaadi Shopping → venue (next PR, through the same intake, linked to Shaadi Shopping's record for commission;
-  never through the public page, which anyone can fill); call tracking and WhatsApp receiving (later phases, need providers).
+- **Shaadi Shopping → venue** (phase 4, built 11 Nov 2026; `services/platformHandoff.service.ts`) — a couple's enquiry on a
+  venue's Shaadi Shopping listing is sent to that venue's Vivah OS **automatically** (`app/api/enquiries`), and Shaadi Shopping's
+  team can **send any** enquiry (listing enquiry, /plan consultation, callback lead) from the CRM card "Send to a venue". Same
+  intake: channel `SHAADI_SHOPPING` (never pickable by the venue's team), linked to Shaadi Shopping's record (`platformMatch`) so
+  the commission applies; an open enquiry the venue already had for that mobile is linked instead of a new one. Shaadi Shopping's
+  record stays Shaadi Shopping's, with a note ("Sent automatically to … / Sent to … by …"). Only venues on Vivah OS (a business with
+  a current member) receive one; for any other nothing is sent and the team is told to call them. Never through the public page.
+- **Not here** — call tracking and WhatsApp receiving (later phases, need providers).
 
 ## Data model gaps
 

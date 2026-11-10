@@ -50,6 +50,8 @@ dbDescribe('a couple who came through Shaadi Shopping (D4, real database)', () =
       await app.prisma.task.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.consultation.deleteMany({ where: { businessId: { in: ids } } });
       await app.prisma.businessClient.deleteMany({ where: { businessId: { in: ids } } });
+      await app.prisma.activityLog.deleteMany({ where: { enquiry: { vendorId: { in: vendorIds } } } });
+      await app.prisma.enquiry.deleteMany({ where: { vendorId: { in: vendorIds } } });
       await app.prisma.vendorEnquiry.deleteMany({ where: { vendorId: { in: vendorIds } } });
       await app.prisma.consultationVendorSelection.deleteMany({ where: { vendorId: { in: vendorIds } } });
     });
@@ -90,5 +92,33 @@ dbDescribe('a couple who came through Shaadi Shopping (D4, real database)', () =
   test('a couple Shaadi Shopping lost, or a different mobile, is not linked', async () => {
     expect((await add(0, LOST_COUPLE)).viaShaadiShopping).toBe(false);
     expect((await add(0, '9811199999')).viaShaadiShopping).toBe(false);
+  });
+
+  // Vivah OS phase 4 (11 Nov 2026): Shaadi Shopping hands its couple to the venue's own Vivah OS (services/platformHandoff.service.ts).
+  test('a couple’s enquiry on venue A’s listing lands in venue A’s own Enquiries by itself — linked for commission, Shaadi Shopping keeps its record', async () => {
+    const handoff = (await import('@/services/platformHandoff.service')).platformHandoffService;
+    const listing = await app.prisma.enquiry.create({
+      data: { vendorId: vendorIds[0], vendorName: 'DBTEST Match Venue A', vendorCategory: 'Venues', name: 'DBTEST Listing Couple', phone: '9811155566', city: 'Patna', eventDate: '2099-02-22', eventType: 'Wedding', guestCount: '300', message: 'DBTEST lawn' },
+    });
+    await handoff.sendListingEnquiry(listing.id);
+    const inA = await runInScope(scopes[0], () => enquiries.list());
+    const got = inA.find((e) => e.phone === '9811155566');
+    expect(got).toMatchObject({ name: 'DBTEST Listing Couple', channel: 'Shaadi Shopping', viaShaadiShopping: true, guestCount: 300, weddingDate: '2099-02-22' });
+    const stored = await runAsSystem('test check', () => app.prisma.consultation.findUniqueOrThrow({ where: { id: got!.id }, select: { businessId: true, platformMatch: true, channel: true } }));
+    expect(stored).toEqual({ businessId: scopes[0].businessId, platformMatch: `ENQUIRY:${listing.id}`, channel: 'SHAADI_SHOPPING' });
+    // Venue B sees nothing; Shaadi Shopping's own record is still there, with a note.
+    expect((await runInScope(scopes[1], () => enquiries.list())).some((e) => e.phone === '9811155566')).toBe(false);
+    expect(await app.prisma.enquiry.findUnique({ where: { id: listing.id }, select: { id: true } })).toEqual({ id: listing.id });
+    expect((await app.prisma.activityLog.findFirst({ where: { enquiryId: listing.id } }))?.summary).toBe('Sent automatically to DBTEST Match Venue A’s Vivah OS; commission applies when they book');
+  });
+
+  test('the team sends Shaadi Shopping’s couple to venue B, which already had them open → added there, and now linked for commission', async () => {
+    const handoff = (await import('@/services/platformHandoff.service')).platformHandoffService;
+    // Venue B typed this couple itself earlier (the "different venue" test above) — not linked then.
+    expect(await handoff.send({ sourceType: 'CONSULTATION', sourceId: platformConsultationId, vendorId: vendorIds[1], actorId: null })).toEqual({ status: 'ADDED_TO_OPEN', venueName: 'DBTEST Match Venue B' });
+    const inB = (await runInScope(scopes[1], () => enquiries.list())).filter((e) => e.phone === COUPLE);
+    expect(inB).toHaveLength(1);
+    expect(inB[0].viaShaadiShopping).toBe(true);
+    expect((await handoff.venues()).map((v) => v.vendorId)).toEqual(expect.arrayContaining(vendorIds));
   });
 });
