@@ -18,6 +18,8 @@ export const OWNED_MODELS = [
   'Wedding',
   'Invoice',
   'Payment',
+  // A venue's client (11 Nov 2026): one per mobile per business — its enquiries hang from it.
+  'BusinessClient',
 ] as const;
 
 export type OwnedModel = (typeof OWNED_MODELS)[number];
@@ -43,7 +45,8 @@ const link = (relation: string, model: OwnedModel | ChildModel, fk = `${relation
 // lib/ownership/guard.test.ts. Reading a child follows these links to its business; writing any record checks each linked id.
 export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
   Lead: [],
-  Consultation: [],
+  Consultation: [link('client', 'BusinessClient')],
+  BusinessClient: [],
   Enquiry: [link('consultation', 'Consultation')],
   Quotation: [link('lead', 'Lead'), link('enquiry', 'Enquiry'), link('consultation', 'Consultation'), link('advanceInvoice', 'Invoice')],
   Booking: [link('enquiry', 'Enquiry'), link('consultation', 'Consultation'), link('quotation', 'Quotation')],
@@ -87,7 +90,8 @@ export const SELF_LINKS: Partial<Record<OwnedModel | ChildModel, ParentLink[]>> 
 export const OWNED_RELATIONS: Partial<Record<OwnedModel | ChildModel, string[]>> = {
   Lead: ['quotations', 'wedding'],
   Enquiry: ['quotations', 'wedding', 'bookings', 'consultation'],
-  Consultation: ['quotations', 'wedding', 'bookings', 'enquiries'],
+  Consultation: ['quotations', 'wedding', 'bookings', 'enquiries', 'client'],
+  BusinessClient: ['consultations'],
   Quotation: ['supersedes', 'supersededBy', 'lead', 'enquiry', 'consultation', 'advanceInvoice', 'invoices', 'booking', 'agreement'],
   Booking: ['enquiry', 'consultation', 'invoices', 'wedding', 'agreement', 'quotation'],
   CommercialAgreement: ['quotation', 'booking'],

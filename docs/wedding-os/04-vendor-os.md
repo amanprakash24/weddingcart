@@ -828,6 +828,32 @@ no `tasks` permission refused, the person's own list only, not in another busine
 **Not built yet** — work on the weddings Shaadi Shopping booked the vendor on; telling the owner when a note is written (they
 see it when they open the wedding).
 
+## 26. Every enquiry, typed once — the venue's enquiry page and its clients — built 11 Nov 2026
+
+Vivah OS phase 1 of the connected plan (Shaadi Shopping × Vivah OS review, 10 Nov 2026). Decisions taken with it: a Shaadi
+Shopping enquiry for a Vivah OS venue will go straight into the venue's own Enquiries (next PR, replacing `15-record-ownership.md`
+§4.4's availability-request route); every event type, not only weddings.
+
+- **One way in** — `venueEnquiryService.intake` (`services/venueEnquiry.service.ts`) is the only way an enquiry enters a venue:
+  the team's "+ New Enquiry" and the couple's form on the enquiry page both use it, and Shaadi Shopping, calls and WhatsApp will
+  too. It runs inside the venue's scope, so everything it writes is the venue's.
+- **The venue's client** (`BusinessClient`, owned like enquiries) — one per mobile per business; the same mobile at two venues is
+  two private clients. Every enquiry hangs from it (`Consultation.clientId`). The migration links the venues' existing enquiries.
+- **Repeats** — an enquiry that arrives by itself (the page) while the client has an open enquiry is added to that enquiry's
+  history ("Enquired again — …"), never a second stranger. One the team types is always a new enquiry (one family can have an
+  engagement and a wedding), marked "Already a client".
+- **Fuller enquiry** — what they celebrate (wedding, engagement, birthday, anniversary, corporate, other), date, days, a wedding's
+  functions (`Consultation.functions`), guests, budget, need, and where it came from (`channel` + `sourceDetail`).
+- **An owner on every enquiry** — the person who typed it, or the venue's owner for one from outside (`assignedToId`). "Handled
+  by" on the enquiry hands it on; same rule as follow-ups (owner or `tasks` permission; only people who may work enquiries).
+- **The enquiry page** — `/enquire/<slug>` (`Business.enquirySlug`, made from the name the first time the team opens
+  "Your enquiry page" on Enquiries). The venue's name, logo and city, "Powered by Vivah OS", no Shaadi Shopping chrome. One link
+  per place (`?src=website|google|instagram|facebook|whatsapp`) records the channel. Runs as the venue it belongs to
+  (`lib/venue/enquiryPageEntry.ts`, like the proposal link); 5 forms per connection per 15 minutes; a form filled by a program
+  (hidden box, or open under 3 seconds) is thanked and not saved. Not indexed.
+- **Not here** — Shaadi Shopping → venue (next PR, through the same intake, linked to Shaadi Shopping's record for commission;
+  never through the public page, which anyone can fill); call tracking and WhatsApp receiving (later phases, need providers).
+
 ## Data model gaps
 
 | Concept | First named in | Detail here |

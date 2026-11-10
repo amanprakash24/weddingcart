@@ -5,7 +5,8 @@ import { venueEnquiryService } from '@/services/venueEnquiry.service';
 import { venueScoped } from '@/lib/ownership/venueEntry';
 
 // GET  /api/vendor-os/enquiries — the venue's own enquiries ("Your Enquiries"), what needs doing first at the top.
-// POST /api/vendor-os/enquiries — "+ New Enquiry": { name, phone, weddingDate?, guestCount?, need?, channel }.
+// POST /api/vendor-os/enquiries — "+ New Enquiry": { name, phone, eventType?, weddingDate?, days?, functions?, guestCount?, budget?,
+//      need?, channel }. Answers { id, repeat } — repeat = the number already had an open enquiry here, and this one was added to it.
 // Venue-scoped (lib/ownership/venueEntry.ts): only the logged-in venue's own records, created in its business.
 async function handleGET() {
   try {

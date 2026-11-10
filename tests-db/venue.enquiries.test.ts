@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { runAsSystem, runInScope, type Scope } from '@/lib/ownership/scope';
 import { dbDescribe, loadApp, type App } from './helpers/app';
 import { createFixtures, type Fixtures } from './helpers/fixtures';
+import { validateNewEnquiry } from '@/lib/venue/enquiry';
 
 // Phase C, first slice: a venue's OWN enquiries, on a real database, through the real services and two real vendor logins.
 // Venue A adds, calls, follows up and closes its enquiry; venue B and Shaadi Shopping never see it; A never sees theirs.
@@ -51,6 +52,7 @@ dbDescribe('a venue’s own enquiries (real database)', () => {
       await app.prisma.task.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.activityLog.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.consultation.deleteMany({ where: { businessId: { in: ids } } });
+      await app.prisma.businessClient.deleteMany({ where: { businessId: { in: ids } } });
     });
     await app.prisma.businessMember.deleteMany({ where: { userId: { in: users } } });
     await app.prisma.business.deleteMany({ where: { id: { in: ids } } });
@@ -113,5 +115,36 @@ dbDescribe('a venue’s own enquiries (real database)', () => {
     expect(closed.next.kind).toBe('CLOSED');
     expect(await runAsSystem('test check', () => app.prisma.task.count({ where: { consultationId: enquiryId, status: 'PENDING' } }))).toBe(0);
     expect((await inA(() => enquiries.list())).find((e) => e.id === enquiryId)?.next.kind).toBe('CLOSED');
+  });
+
+  // Vivah OS phase 1 (11 Nov 2026): one client per mobile per venue — private to the venue, like its enquiries.
+  test('the same mobile at two venues: two separate clients, each private to its venue', async () => {
+    const mobile = '9876501234';
+    const a = (await inA(() => enquiries.create({ name: 'Neha Sharma', phone: mobile, eventType: 'wedding', functions: ['HALDI', 'SANGEET'], days: 2, budget: '8,00,000', channel: 'GOOGLE' }, users[0]))) as { id: string; repeat: boolean };
+    const b = (await inB(() => enquiries.create({ name: 'Neha S', phone: mobile, eventType: 'birthday', channel: 'WALK_IN' }, users[1]))) as { id: string; repeat: boolean };
+    expect([a.repeat, b.repeat]).toEqual([false, false]);
+    const rows = await runAsSystem('test check', () => app.prisma.consultation.findMany({ where: { id: { in: [a.id, b.id] } }, select: { id: true, clientId: true, functions: true, days: true, totalBudget: true, assignedToId: true, client: { select: { businessId: true, phone: true } } } }));
+    const ra = rows.find((r) => r.id === a.id)!;
+    const rb = rows.find((r) => r.id === b.id)!;
+    expect(ra).toMatchObject({ functions: ['HALDI', 'SANGEET'], days: 2, totalBudget: 800000, assignedToId: users[0], client: { businessId: scopeA.businessId, phone: mobile } });
+    expect(rb.client).toEqual({ businessId: scopeB.businessId, phone: mobile });
+    expect(ra.clientId).not.toBe(rb.clientId);
+    // Each venue sees only its own client; neither can reach the other's.
+    expect(await inA(() => app.prisma.businessClient.findMany({ where: { phone: mobile }, select: { id: true } }))).toEqual([{ id: ra.clientId! }]);
+    expect(await inB(() => app.prisma.businessClient.findUnique({ where: { id: ra.clientId! } }))).toBeNull();
+  });
+
+  test('the same mobile again while it is open: from the enquiry page it is added to that enquiry; typed by the team it is a new one', async () => {
+    const checked = validateNewEnquiry({ name: 'Neha Sharma', phone: '98765 01234', guestCount: '450', channel: 'INSTAGRAM' }, later(0));
+    if (!checked.ok) throw new Error('test enquiry should be valid');
+    const fromPage = await inA(() => enquiries.intake(checked.value, { sourceDetail: 'Enquiry page', actorId: null }));
+    expect(fromPage.repeat).toBe(true);
+    expect((await inA(() => enquiries.get(fromPage.id))).history[0]).toMatchObject({ summary: 'Enquired again — instagram · enquiry page', detail: expect.stringContaining('450 guests') });
+
+    const typed = (await inA(() => enquiries.create({ name: 'Neha Sharma', phone: '98765 01234', eventType: 'engagement', channel: 'PHONE' }, users[0]))) as { id: string; repeat: boolean };
+    expect(typed.repeat).toBe(false);
+    expect(typed.id).not.toBe(fromPage.id);
+    expect((await inA(() => enquiries.get(typed.id))).earlierEnquiries).toBe(1);
+    expect(await runAsSystem('test check', () => app.prisma.businessClient.count({ where: { businessId: scopeA.businessId, phone: '9876501234' } }))).toBe(1);
   });
 });

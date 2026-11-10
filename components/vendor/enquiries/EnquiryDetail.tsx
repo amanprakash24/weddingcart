@@ -64,7 +64,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
   if (!e) return error ? <p role="alert" className="text-sm text-[var(--color-danger-text)]">{error}</p> : <CardSkeleton lines={4} />;
 
   const first = e.name.split(' ')[0];
-  const wa = whatsappTo(e.phone, `Namaste ${first}, thank you for your enquiry about your wedding.`);
+  const wa = whatsappTo(e.phone, `Namaste ${first}, thank you for your enquiry about your ${e.eventLabel.toLowerCase()}.`);
   const next = e.next;
   const openFollowUps = e.followUps.filter((f) => !f.done);
   const closed = next.kind === 'CLOSED';
@@ -88,10 +88,36 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
       <div>
         <h1 className="font-playfair text-2xl font-bold text-[var(--color-text-primary)]">{e.name}</h1>
         <p className="text-sm text-[var(--color-text-secondary)]">
-          {[dateWords(e.weddingDate), e.guestCount ? `${e.guestCount.toLocaleString('en-IN')} guests` : null, e.channel].filter(Boolean).join(' · ')}
+          {[e.eventLabel, dateWords(e.weddingDate), e.days > 1 ? `${e.days} days` : null, e.guestCount ? `${e.guestCount.toLocaleString('en-IN')} guests` : null].filter(Boolean).join(' · ')}
         </p>
+        {e.functions.length > 0 && <p className="text-sm text-[var(--color-text-secondary)]">Functions: {e.functions.join(', ')}</p>}
+        {e.budget && <p className="text-sm text-[var(--color-text-secondary)]">Budget: ₹{e.budget.toLocaleString('en-IN')}</p>}
+        <p className="text-xs text-[var(--color-text-muted)]">From: {e.channel}</p>
         {e.need && <p className="mt-2 whitespace-pre-line text-sm text-[var(--color-text-primary)]">{e.need}</p>}
       </div>
+      {e.earlierEnquiries > 0 && (
+        <p className="rounded-lg bg-[var(--color-info-bg)] p-3 text-sm text-[var(--color-info-text)]">
+          Already a client — {e.earlierEnquiries} earlier {e.earlierEnquiries === 1 ? 'enquiry' : 'enquiries'} with you from this number.
+        </p>
+      )}
+      {!closed && (e.canAssign ? (
+        <label className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+          <span>Handled by</span>
+          <select
+            value={e.handledBy?.id ?? ''}
+            disabled={busy}
+            onChange={(ev) => send('', { handledBy: ev.target.value }, 'PATCH')}
+            className="min-h-11 min-w-0 max-w-64 flex-1 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] px-2 text-sm text-[var(--color-text-primary)] disabled:opacity-60"
+          >
+            {/* Someone who has left, or may no longer work enquiries, stays named until it is handed to someone else. */}
+            {e.handledBy && !e.team.some((p) => p.id === e.handledBy?.id) && <option value={e.handledBy.id}>{e.handledBy.name}</option>}
+            <option value="">No one in particular</option>
+            {e.team.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </label>
+      ) : (
+        e.handledBy && <p className="text-sm text-[var(--color-text-secondary)]">Handled by {e.handledBy.name}</p>
+      ))}
       {e.viaShaadiShopping && (
         <p className="rounded-lg bg-[var(--color-info-bg)] p-3 text-sm text-[var(--color-info-text)]">
           This couple came to you through Shaadi Shopping, so Shaadi Shopping’s commission applies when they book. You can work the enquiry here as usual.

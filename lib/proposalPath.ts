@@ -15,6 +15,7 @@ export function isCouplePromptPath(pathname: string | null | undefined): boolean
 }
 
 // Also My Wedding (/my-wedding, 28 Oct 2026) and its sign-in page (/customer/login) — the couple's side of Vivah OS has its own shell too.
+// And a venue's own enquiry page (/enquire/<slug>, 11 Nov 2026): the venue's brand, powered by Vivah OS — no Shaadi Shopping chrome or popup.
 export function isVendorOsPath(pathname: string | null | undefined): boolean {
-  return pathname === '/vendor' || !!pathname?.startsWith('/vendor/') || pathname === '/workspace' || pathname === '/my-wedding' || !!pathname?.startsWith('/my-wedding/') || pathname === '/customer/login';
+  return pathname === '/vendor' || !!pathname?.startsWith('/vendor/') || pathname === '/workspace' || pathname === '/my-wedding' || !!pathname?.startsWith('/my-wedding/') || pathname === '/customer/login' || !!pathname?.startsWith('/enquire/');
 }

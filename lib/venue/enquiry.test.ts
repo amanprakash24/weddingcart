@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { ACTION_ORDER, CHANNELS, nextAction, validateNewEnquiry, whatsappTo, type FollowUp, historyFor } from './enquiry';
+import { ACTION_ORDER, CHANNELS, ENQUIRY_PAGE_PLACES, EVENT_KINDS, eventLabel, looksAutomated, nextAction, pageChannel, sourceLabel, validateNewEnquiry, whatsappTo, type FollowUp, historyFor } from './enquiry';
 
 // A venue's own enquiries (Phase C). Pure.
 const TODAY = '2026-10-04';
@@ -8,12 +8,33 @@ const NOW = new Date('2026-10-04T06:00:00Z'); // 11:30 in India
 
 describe('+ New Enquiry', () => {
   test('only name, mobile and where they came from are needed', () => {
+    // Nothing else sent (an older form): a one-day wedding, nothing more known.
     expect(validateNewEnquiry({ name: '  Rahul   Kumar ', phone: '+91 98765 43210', channel: 'PHONE' }, TODAY)).toEqual({
-      ok: true, value: { name: 'Rahul Kumar', phone: '9876543210', weddingDate: '', guestCount: 0, need: null, channel: 'PHONE' },
+      ok: true, value: { name: 'Rahul Kumar', phone: '9876543210', eventType: 'wedding', weddingDate: '', days: 1, functions: [], guestCount: 0, budget: null, need: null, channel: 'PHONE' },
     });
     expect(validateNewEnquiry({ name: 'Rahul', phone: '09876543210', weddingDate: '2026-11-18', guestCount: '350', need: ' Lawn + veg catering ', channel: 'WALK_IN' }, TODAY)).toEqual({
-      ok: true, value: { name: 'Rahul', phone: '9876543210', weddingDate: '2026-11-18', guestCount: 350, need: 'Lawn + veg catering', channel: 'WALK_IN' },
+      ok: true, value: { name: 'Rahul', phone: '9876543210', eventType: 'wedding', weddingDate: '2026-11-18', days: 1, functions: [], guestCount: 350, budget: null, need: 'Lawn + veg catering', channel: 'WALK_IN' },
     });
+  });
+
+  test('the fuller enquiry: what they celebrate, days, a wedding’s functions (in order, once), and the budget', () => {
+    const r = validateNewEnquiry({ name: 'Neha', phone: '9876543210', eventType: 'wedding', weddingDate: '2027-02-22', days: '2', functions: ['WEDDING', 'HALDI', 'SANGEET', 'MEHNDI', 'HALDI'], guestCount: 400, budget: '₹ 8,00,000', channel: 'GOOGLE' }, TODAY);
+    expect(r).toEqual({ ok: true, value: expect.objectContaining({ eventType: 'wedding', days: 2, functions: ['HALDI', 'MEHNDI', 'SANGEET', 'WEDDING'], budget: 800000 }) });
+  });
+
+  test('any event, not only weddings — functions belong to a wedding only', () => {
+    const r = validateNewEnquiry({ name: 'Ankit', phone: '9876543210', eventType: 'birthday', functions: ['HALDI'], budget: 50000, channel: 'WEBSITE' }, TODAY);
+    expect(r).toEqual({ ok: true, value: expect.objectContaining({ eventType: 'birthday', functions: [], budget: 50000 }) });
+    for (const kind of EVENT_KINDS) expect(validateNewEnquiry({ name: 'Ankit', phone: '9876543210', eventType: kind.id, channel: 'OTHER' }, TODAY).ok).toBe(true);
+  });
+
+  test('a wrong event, day count, function or budget is reported on its own field', () => {
+    const r = validateNewEnquiry({ name: 'Ankit', phone: '9876543210', eventType: 'funeral', days: 9, functions: ['PARTY'], budget: '5 lakh', channel: 'OTHER' }, TODAY);
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(Object.keys(r.errors).sort()).toEqual(['budget', 'days', 'eventType', 'functions']);
+    expect(validateNewEnquiry({ name: 'Ankit', phone: '9876543210', budget: 0, channel: 'OTHER' }, TODAY).ok).toBe(false);
+    expect(validateNewEnquiry({ name: 'Ankit', phone: '9876543210', days: 0, channel: 'OTHER' }, TODAY).ok).toBe(false);
   });
 
   test('each problem is reported on its own field, in plain words', () => {
@@ -27,6 +48,39 @@ describe('+ New Enquiry', () => {
 
   test('every channel is accepted', () => {
     for (const channel of CHANNELS) expect(validateNewEnquiry({ name: 'Rahul', phone: '9876543210', channel }, TODAY).ok).toBe(true);
+  });
+});
+
+describe('the venue’s enquiry page', () => {
+  test('the link records where the couple came from; an unknown or missing place is Other', () => {
+    expect(pageChannel('google')).toBe('GOOGLE');
+    expect(pageChannel(' Instagram ')).toBe('INSTAGRAM');
+    expect(pageChannel('website')).toBe('WEBSITE');
+    expect(pageChannel('whatsapp')).toBe('WHATSAPP');
+    expect(pageChannel('facebook')).toBe('FACEBOOK');
+    expect(pageChannel('tiktok')).toBe('OTHER');
+    expect(pageChannel(undefined)).toBe('OTHER');
+    for (const p of ENQUIRY_PAGE_PLACES) expect(CHANNELS).toContain(p.channel);
+  });
+
+  test('a form filled by a program (hidden box filled, or sent in under 3 seconds) is spotted; a person’s is not', () => {
+    expect(looksAutomated({ trap: '', openMs: 45000 })).toBe(false);
+    expect(looksAutomated({ openMs: '8000' })).toBe(false);
+    expect(looksAutomated({ trap: 'http://spam', openMs: 45000 })).toBe(true);
+    expect(looksAutomated({ trap: '', openMs: 900 })).toBe(true);
+    expect(looksAutomated({ trap: '' })).toBe(true); // no timing at all = not our form
+  });
+
+  test('the list says where an enquiry came from', () => {
+    expect(sourceLabel('GOOGLE', 'Enquiry page')).toBe('Google · Enquiry page');
+    expect(sourceLabel('PHONE', null)).toBe('Phone call');
+    expect(sourceLabel(null, null)).toBe('Shaadi Shopping');
+  });
+
+  test('every event has a name; an unknown one reads as a wedding (the records before 11 Nov 2026)', () => {
+    expect(eventLabel('birthday')).toBe('Birthday');
+    expect(eventLabel('Wedding')).toBe('Wedding');
+    expect(eventLabel(null)).toBe('Wedding');
   });
 });
 

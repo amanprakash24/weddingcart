@@ -45,6 +45,7 @@ dbDescribe('record ownership — child records follow their parent (real databas
       await app.prisma.task.deleteMany({ where: { consultationId: venueConsultationId } });
       await app.prisma.activityLog.deleteMany({ where: { consultationId: venueConsultationId } });
       await app.prisma.consultation.deleteMany({ where: { businessId: venueBusinessId } });
+      await app.prisma.businessClient.deleteMany({ where: { businessId: venueBusinessId } });
       await app.prisma.guest.deleteMany({ where: { id: platformGuestId } });
     });
     if (venueBusinessId) await app.prisma.business.deleteMany({ where: { id: venueBusinessId } });

@@ -64,6 +64,7 @@ dbDescribe('per-business numbers, rules and proposal links (real database)', () 
       await app.prisma.activityLog.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.task.deleteMany({ where: { consultation: { businessId: { in: ids } } } });
       await app.prisma.consultation.deleteMany({ where: { businessId: { in: ids } } });
+      await app.prisma.businessClient.deleteMany({ where: { businessId: { in: ids } } });
     });
     await app.prisma.business.deleteMany({ where: { id: { in: ids } } });
     if (fx) await fx.purge();

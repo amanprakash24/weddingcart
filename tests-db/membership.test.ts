@@ -46,6 +46,7 @@ dbDescribe('people, memberships and workspaces (real database)', () => {
       await app.prisma.activityLog.deleteMany({ where: { consultation: { businessId: { in: businessIds } } } });
       await app.prisma.task.deleteMany({ where: { consultation: { businessId: { in: businessIds } } } });
       await app.prisma.consultation.deleteMany({ where: { businessId: { in: businessIds } } });
+      await app.prisma.businessClient.deleteMany({ where: { businessId: { in: businessIds } } });
     });
     await app.prisma.businessMember.deleteMany({ where: { businessId: { in: businessIds } } });
     await app.prisma.business.deleteMany({ where: { id: { in: businessIds } } });

@@ -1,7 +1,10 @@
 import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
-import { ACTION_ORDER, CHANNEL_LABEL, historyFor, nextAction, validateNewEnquiry, type Channel, type FollowUp, type NextAction } from '@/lib/venue/enquiry';
+import {
+  ACTION_ORDER, eventLabel, functionLabel, historyFor, nextAction, sourceLabel, validateNewEnquiry,
+  type FollowUp, type NewEnquiry, type NextAction,
+} from '@/lib/venue/enquiry';
 import { quoteStage } from '@/lib/venue/quotation';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { can } from '@/lib/auth/permissions';
@@ -16,27 +19,54 @@ import { assignable, venuePeople, type Assignable } from '@/services/venuePeople
 // Giving out follow-ups (13 Oct 2026): a follow-up can be given to someone in the business, by the owner or a member with the
 // `tasks` permission — and only to a person who may work enquiries themselves, because following up means calling the couple and
 // they must be able to open the enquiry (services/venuePeople.ts). The person sees it in "Your work" (services/venueMyWork.service.ts).
+//
+// Every enquiry, typed once (11 Nov 2026, Vivah OS phase 1): `intake` is the ONE way an enquiry enters a venue — the team's
+// "+ New Enquiry" and the couple's own form on the venue's enquiry page (services/enquiryPage.service.ts) both use it. It finds the
+// venue's client by mobile (BusinessClient), so a second enquiry from the same number is added to their open enquiry instead of a
+// new stranger; records where it came from; and gives the enquiry to someone — the person who typed it, or the venue's owner.
 
 const CONTACT_TYPES = ['CALL', 'WHATSAPP'] as const;
 const LOG_TYPES = { CALL: ActivityType.CALL, WHATSAPP: ActivityType.WHATSAPP, NOTE: ActivityType.NOTE } as const;
 export type LogKind = keyof typeof LOG_TYPES;
 
 const istToday = (now: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(now);
+
+// What they asked for, in one readable block — written to the history when the enquiry came from outside, or was added to an open
+// one, so the team sees exactly what was sent.
+export function askedFor(e: NewEnquiry): string {
+  const date = e.weddingDate ? new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(`${e.weddingDate}T12:00:00+05:30`)) : 'date not decided';
+  const line = [
+    eventLabel(e.eventType),
+    date,
+    e.days > 1 ? `${e.days} days` : null,
+    e.functions.length ? e.functions.map(functionLabel).join(', ') : null,
+    e.guestCount > 0 ? `${e.guestCount.toLocaleString('en-IN')} guests` : null,
+    e.budget ? `budget ₹${e.budget.toLocaleString('en-IN')}` : null,
+  ].filter(Boolean).join(' · ');
+  return e.need ? `${line}\n${e.need}` : line;
+}
 const istNoon = (day: string) => new Date(`${day}T12:00:00+05:30`);
 
 export interface VenueEnquiryListItem {
   id: string;
   name: string;
   phone: string;
+  event: string | null; // what they are celebrating, when it is not a wedding ("Birthday") — a wedding needs no label
   weddingDate: string | null;
   guestCount: number | null;
-  channel: string;
+  channel: string; // where it came from, in words ("Google · Enquiry page")
   viaShaadiShopping: boolean; // D4: Shaadi Shopping brought this couple to this venue — commission applies
   next: NextAction;
   createdAt: string;
 }
 
 export interface VenueEnquiryDetail extends VenueEnquiryListItem {
+  eventLabel: string; // "Wedding", "Birthday" …
+  days: number;
+  functions: string[]; // a wedding's functions, in words
+  budget: number | null; // whole rupees, when they said
+  handledBy: { id: string; name: string } | null; // the person this enquiry is with
+  earlierEnquiries: number; // other enquiries from the same client at this venue ("already a client")
   need: string | null;
   followUps: FollowUp[];
   history: { id: string; type: string; summary: string; detail: string | null; at: string }[];
@@ -49,9 +79,10 @@ export interface VenueEnquiryDetail extends VenueEnquiryListItem {
 
 export interface VenueEnquiryDeps {
   db: Pick<typeof prisma, '$transaction'> & {
-    consultation: Pick<typeof prisma.consultation, 'findMany' | 'findUnique' | 'create' | 'update'>;
+    consultation: Pick<typeof prisma.consultation, 'findMany' | 'findUnique' | 'findFirst' | 'count' | 'create' | 'update'>;
+    businessClient: Pick<typeof prisma.businessClient, 'upsert'>;
     task: Pick<typeof prisma.task, 'create' | 'updateMany'>;
-    businessMember: Pick<typeof prisma.businessMember, 'findMany'>;
+    businessMember: Pick<typeof prisma.businessMember, 'findMany' | 'findFirst'>;
     activityLog: Pick<typeof prisma.activityLog, 'create'>;
     business: Pick<typeof prisma.business, 'findUnique'>;
     paymentSubmission: Pick<typeof prisma.paymentSubmission, 'count'>;
@@ -71,6 +102,7 @@ const include = {
 
 type Row = {
   id: string; name: string; phone: string; weddingDate: string; guestCount: number; channel: string | null; message: string | null; pipelineStage: string; createdAt: Date; platformMatch: string | null;
+  eventType?: string; days?: number; functions?: string[]; totalBudget?: number | null; sourceDetail?: string | null; assignedToId?: string | null; clientId?: string | null;
   tasks: { id: string; title: string; dueAt: Date | null; status: string; assignedToId?: string | null }[];
   activities: { id: string; type: string; summary: string; detail: string | null; createdAt: Date }[];
   quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null; booking?: { status: string } | null; _count?: { paymentSubmissions: number } }[];
@@ -82,18 +114,26 @@ function view(r: Row, now: Date, seesMoney: boolean): VenueEnquiryDetail {
   const q = r.quotations?.[0];
   // A sent quotation past its date is expired, whether or not the lazy expiry has marked it yet.
   const quote = q ? (q.status === 'SENT' && q.validUntil && q.validUntil < now ? 'ENDED' : quoteStage({ status: q.status, changesRequested: q.changesRequestedAt !== null })) : null;
+  const kind = eventLabel(r.eventType);
   return {
     id: r.id,
     name: r.name,
     phone: r.phone,
+    event: kind === 'Wedding' ? null : kind,
     weddingDate: r.weddingDate || null,
     guestCount: r.guestCount > 0 ? r.guestCount : null,
-    channel: CHANNEL_LABEL[r.channel as Channel] ?? 'Shaadi Shopping',
+    channel: sourceLabel(r.channel, r.sourceDetail),
     viaShaadiShopping: r.platformMatch !== null,
     // "Won" with a confirmed booking is the booked customer (the wedding was created — the stage moves to Won with it), never
     // "not going ahead": only a lost enquiry, or one won some other way with no booking here, is closed.
     next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || (r.pipelineStage === 'WON' && q?.booking?.status !== 'CONFIRMED'), followUps, quote, booked: q?.booking?.status === 'CONFIRMED', paymentToCheck: seesMoney && (q?._count?.paymentSubmissions ?? 0) > 0 }, now),
     createdAt: r.createdAt.toISOString(),
+    eventLabel: kind,
+    days: r.days && r.days > 0 ? r.days : 1,
+    functions: (r.functions ?? []).map(functionLabel),
+    budget: r.totalBudget && r.totalBudget > 0 ? r.totalBudget : null,
+    handledBy: null,
+    earlierEnquiries: 0,
     need: r.message,
     followUps,
     history: r.activities.map((a) => ({ id: a.id, type: a.type, summary: a.summary, detail: a.detail, at: a.createdAt.toISOString() })),
@@ -138,7 +178,7 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
       return rows
         .map((r) => view(r, now, seesMoney))
         .sort((a, b) => ACTION_ORDER.indexOf(a.next.kind) - ACTION_ORDER.indexOf(b.next.kind))
-        .map(({ need: _need, followUps: _f, history: _h, canAssign: _c, team: _t, businessName: _b, ...item }) => item);
+        .map(({ need: _need, followUps: _f, history: _h, canAssign: _c, team: _t, businessName: _b, eventLabel: _k, days: _d, functions: _fn, budget: _bu, handledBy: _hb, earlierEnquiries: _ee, ...item }) => item);
     },
 
     // The mark on "Enquiries" in the menu: how many "I have paid" claims from this business's own couples wait to be checked.
@@ -155,34 +195,106 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
       const row = await load(id);
       const detail = view(row, deps.now(), seesMoney);
       const people = venuePeople(deps.db);
-      const given = await people.names(row.tasks.map((t) => t.assignedToId));
+      const given = await people.names([...row.tasks.map((t) => t.assignedToId), row.assignedToId]);
       const followUps = detail.followUps.map((f) => {
         const to = row.tasks.find((t) => t.id === f.id)?.assignedToId;
         return { ...f, assignee: to ? (given.get(to) ?? { id: to, name: 'Someone no longer in the team' }) : null };
       });
+      const handledBy = row.assignedToId ? (given.get(row.assignedToId) ?? { id: row.assignedToId, name: 'Someone no longer in the team' }) : null;
+      // "Already a client": their other enquiries at this venue (this business's only — the guard counts nothing else).
+      const earlierEnquiries = row.clientId ? await deps.db.consultation.count({ where: { clientId: row.clientId, id: { not: row.id } } }) : 0;
       const canAssign = detail.next.kind !== 'CLOSED' && can(effectiveScope(), 'tasks');
       const team = canAssign ? (await people.members()).filter((p) => p.permissions.includes('enquiries')) : [];
-      return { ...detail, followUps, history: historyFor(detail.history, seesMoney), canAssign, team: team.map(assignable), businessName: team[0]?.businessName ?? '' };
+      return { ...detail, followUps, handledBy, earlierEnquiries, history: historyFor(detail.history, seesMoney), canAssign, team: team.map(assignable), businessName: team[0]?.businessName ?? '' };
     },
 
-    // "+ New Enquiry" — the record is created in the venue's business by the guard.
-    async create(input: Record<string, unknown>, actorId: string | null): Promise<{ id: string } | { errors: Record<string, string> }> {
-      const now = deps.now();
-      const checked = validateNewEnquiry(input, istToday(now));
+    // "+ New Enquiry" — typed in by the venue's team; it is theirs to handle.
+    async create(input: Record<string, unknown>, actorId: string | null): Promise<{ id: string; repeat: boolean } | { errors: Record<string, string> }> {
+      const checked = validateNewEnquiry(input, istToday(deps.now()));
       if (!checked.ok) return { errors: checked.errors };
-      const e = checked.value;
+      return this.intake(checked.value, { sourceDetail: null, actorId });
+    },
+
+    // The one way an enquiry enters the venue (see the top of this file). Inside the venue's scope, so every record here — the
+    // client, the enquiry, its history — is the venue's. `actorId` null = it came from outside (the couple on the enquiry page):
+    // it goes to the venue's owner. Returns the enquiry it was saved on; `repeat` = added to the client's open enquiry.
+    //
+    // A repeat is handled by who sent it: an enquiry that ARRIVES by itself (the enquiry page; later Shaadi Shopping, calls,
+    // WhatsApp) is added to the client's open enquiry, so a form sent twice is never two enquiries. One the TEAM types is always a
+    // new enquiry — they mean it (one family's engagement and wedding can be two) — under the same client, marked "already a
+    // client".
+    async intake(e: NewEnquiry, how: { sourceDetail: string | null; actorId: string | null }): Promise<{ id: string; repeat: boolean }> {
+      const scope = effectiveScope();
+      if (scope.kind !== 'BUSINESS') throw new Error('An enquiry is always received by one business');
+      const now = deps.now();
+      const source = sourceLabel(e.channel, how.sourceDetail);
+      const performedBy = how.actorId ? { connect: { id: how.actorId } } : undefined;
+
+      // The client: one per mobile at this venue; their latest name is kept. Two enquiries from the same number at the same moment
+      // can race on the unique (business, mobile) — the second simply tries once more and finds the first's.
+      const saveClient = () => deps.db.businessClient.upsert({
+        where: { businessId_phone: { businessId: scope.businessId, phone: e.phone } },
+        create: { phone: e.phone, name: e.name },
+        update: { name: e.name },
+        select: { id: true },
+      });
+      const client = await saveClient().catch((err: unknown) => {
+        if ((err as { code?: string })?.code === 'P2002') return saveClient();
+        throw err;
+      });
+
+      // Arrived by itself while the venue is still talking to them about an earlier enquiry? Add it to that one — the team sees
+      // what they asked this time.
+      const open = how.actorId
+        ? null
+        : await deps.db.consultation.findFirst({ where: { clientId: client.id, pipelineStage: { notIn: ['LOST', 'WON'] } }, orderBy: { createdAt: 'desc' }, select: { id: true } });
+      if (open) {
+        await deps.db.activityLog.create({
+          data: { type: ActivityType.NOTE, summary: `Enquired again — ${source.toLowerCase()}`, detail: askedFor(e), consultation: { connect: { id: open.id } }, performedBy },
+        });
+        return { id: open.id, repeat: true };
+      }
+
+      const earlier = await deps.db.consultation.count({ where: { clientId: client.id } });
+      const handler = how.actorId ?? (await deps.db.businessMember.findFirst({ where: { businessId: scope.businessId, role: 'OWNER', removedAt: null }, orderBy: { createdAt: 'asc' }, select: { userId: true } }))?.userId ?? null;
       const id = await deps.db.$transaction(async (tx) => {
         const created = await tx.consultation.create({
-          data: { name: e.name, phone: e.phone, weddingDate: e.weddingDate, days: 1, guestCount: e.guestCount, message: e.need, channel: e.channel },
+          data: {
+            name: e.name, phone: e.phone, eventType: e.eventType, weddingDate: e.weddingDate, days: e.days, functions: e.functions, guestCount: e.guestCount,
+            totalBudget: e.budget, message: e.need, channel: e.channel, sourceDetail: how.sourceDetail, clientId: client.id,
+            assignedToId: handler, assignedById: handler ? how.actorId : null, assignedAt: handler ? now : null,
+          },
           select: { id: true },
         });
         await tx.activityLog.create({
-          data: { type: ActivityType.STATUS_CHANGED, summary: `Enquiry added — ${CHANNEL_LABEL[e.channel].toLowerCase()}`, consultation: { connect: { id: created.id } }, performedBy: actorId ? { connect: { id: actorId } } : undefined },
+          data: { type: ActivityType.STATUS_CHANGED, summary: `Enquiry added — ${source.toLowerCase()}`, detail: how.actorId ? undefined : askedFor(e), consultation: { connect: { id: created.id } }, performedBy },
         });
+        if (earlier > 0) {
+          await tx.activityLog.create({
+            data: { type: ActivityType.NOTE, summary: `Already a client — ${earlier} earlier ${earlier === 1 ? 'enquiry' : 'enquiries'} with you`, consultation: { connect: { id: created.id } } },
+          });
+        }
         return created.id;
       });
       await linkIfShaadiShoppingCouple(id, e.phone);
-      return { id };
+      return { id, repeat: false };
+    },
+
+    // Hand the enquiry to someone in the business who may work enquiries (or to nobody in particular). Same rule as giving out a
+    // follow-up: the owner, or a member with the `tasks` permission (services/venuePeople.ts).
+    async handOver(id: string, to: unknown, actorId: string | null): Promise<VenueEnquiryDetail> {
+      const row = await load(id);
+      const who = await venuePeople(deps.db).assignee(to, 'enquiries');
+      if (!who.ok) throw new ValidationError(who.error);
+      if (who.userId === (row.assignedToId ?? null)) return this.get(id);
+      const name = who.userId ? (await venuePeople(deps.db).names([who.userId])).get(who.userId)?.name ?? 'someone' : null;
+      await deps.db.$transaction(async (tx) => {
+        await tx.consultation.update({ where: { id }, data: { assignedToId: who.userId, assignedById: actorId, assignedAt: deps.now() } });
+        await tx.activityLog.create({
+          data: { type: ActivityType.ASSIGNED, summary: name ? `Handed to ${name}` : 'Not with anyone in particular now', consultation: { connect: { id } }, performedBy: actorId ? { connect: { id: actorId } } : undefined },
+        });
+      });
+      return this.get(id);
     },
 
     // "I called them" / "I sent a WhatsApp" / a note — this is what moves "Call Rahul" on to the next step.
