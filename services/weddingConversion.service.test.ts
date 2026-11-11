@@ -176,11 +176,18 @@ function makePrismaMock({
 // Money v1: the 25% confirmation rule (gate + attaching the agreement's invoices) lives in services/agreement.service.ts and is covered
 // against a real database (tests-db/money.v1.test.ts). Here it is stubbed out so these tests keep characterising the conversion itself —
 // including the historical advance-invoice-at-conversion behaviour that a booking made before the rule still gets.
+// Bun keeps a mock.module() for the rest of the run, so later test files importing this module get this stub too:
+// it must list EVERY export, or they fail with "Export named … not found" (CI, PR #224, when file order shifted).
 function stubAgreementRule() {
   mock.module('@/services/agreement.service', () => ({
     assertAgreementSatisfiedInTx: async () => undefined,
     assertQuotationMayConfirm: async () => undefined,
     attachAgreementToWedding: async () => false,
+    assertBookingMayConfirm: async () => undefined,
+    ensureAgreementInTx: async () => undefined,
+    loadAgreementMoney: async () => { throw new Error('agreement.service is stubbed in weddingConversion.service.test.ts'); },
+    startHoldIfNeeded: async () => undefined,
+    recordAgreementPayment: async () => { throw new Error('agreement.service is stubbed in weddingConversion.service.test.ts'); },
   }));
 }
 
