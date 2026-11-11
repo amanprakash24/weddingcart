@@ -22,7 +22,7 @@ export default function LeadTable({ items, loading, onDeleted }: { items: LeadIn
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+    <div className="relative bg-white rounded-2xl border border-gray-100 overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-100 text-left text-xs text-gray-500 uppercase tracking-wide">

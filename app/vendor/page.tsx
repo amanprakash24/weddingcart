@@ -1,20 +1,18 @@
-import VenuePortalClient from '@/components/VenuePortalClient';
 import { redirect } from 'next/navigation';
 import { sharedPage } from '@/lib/auth/workingVendor';
-import { venuePortalService } from '@/services/venuePortal.service';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'Vendor Portal',
+  title: 'Vendor OS',
   robots: { index: false, follow: false },
 };
 
-// The older portal, kept for the business's owner: everyone else is sent to where their workspace opens.
+// /vendor opens where this person's workspace opens (Today for an owner). The older "Vendor Portal" page that used to live here
+// was retired on 11 Nov 2026 (launch walkthrough): it showed different counts from Today and said payments were "not
+// available". Its one action — moving a booking's setup status — is on the Services screen.
 async function VendorHomePage() {
   const who = await sharedPage(null);
-  if (who.role !== 'OWNER') redirect(who.home);
-  const dashboard = await venuePortalService.getDashboard(who.vendorId, { seesMoney: true });
-  return <VenuePortalClient dashboard={dashboard} />;
+  redirect(who.home);
 }
 
 // Record ownership: this page works as Shaadi Shopping (lib/ownership/entry.ts).

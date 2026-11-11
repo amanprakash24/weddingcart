@@ -74,6 +74,8 @@ describe('the venue’s enquiry page', () => {
   test('the list says where an enquiry came from', () => {
     expect(sourceLabel('GOOGLE', 'Enquiry page')).toBe('Google · Enquiry page');
     expect(sourceLabel('PHONE', null)).toBe('Phone call');
+    expect(sourceLabel('OTHER', 'Enquiry page')).toBe('Enquiry page');
+    expect(sourceLabel('OTHER', null)).toBe('Other');
     expect(sourceLabel(null, null)).toBe('Shaadi Shopping');
   });
 

@@ -256,7 +256,8 @@ export default function ProfileScreen() {
           <p className={eyebrow}><span className="h-px w-8 bg-[#C5A46D]" /> Logo</p>
           <div className="flex flex-wrap items-center gap-5">
             <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E8DCC8] bg-[#FFFCF7]">
-              {p.logoUrl ? <Image src={p.logoUrl} alt={`${p.name} logo`} width={224} height={224} className="h-full w-full object-contain p-2" /> : <ImagePlus className="h-7 w-7 text-[#C5A46D]" aria-hidden />}
+              {/* unoptimized: an address outside next.config's image hosts must not take the whole page down (11 Nov 2026) */}
+              {p.logoUrl ? <Image src={p.logoUrl} alt={`${p.name} logo`} width={224} height={224} unoptimized className="h-full w-full object-contain p-2" /> : <ImagePlus className="h-7 w-7 text-[#C5A46D]" aria-hidden />}
             </div>
             <div className="min-w-[200px] flex-1 space-y-3">
               <p className="text-sm leading-relaxed text-[#4A3F38]">Shown at the top of your quotations and invoices. A square image works best. JPEG, PNG or WebP.</p>
@@ -286,7 +287,7 @@ export default function ProfileScreen() {
             {p.photos.map((photo) => (
               <li key={photo.id} className="group relative overflow-hidden rounded-2xl border border-[#E8DCC8] bg-[#FFFCF7]">
                 <div className="relative aspect-[4/3]">
-                  <Image src={photo.url} alt="" fill sizes="(min-width: 640px) 220px, 45vw" className="object-cover" />
+                  <Image src={photo.url} alt="" fill sizes="(min-width: 640px) 220px, 45vw" unoptimized className="object-cover" />
                 </div>
                 <div className="flex items-center justify-between gap-1 px-2.5 py-2">
                   {STATUS_WORDS[photo.status] ? <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${STATUS_TONE[photo.status]}`}>{STATUS_WORDS[photo.status]}</span> : <span />}

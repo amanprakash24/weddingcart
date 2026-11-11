@@ -72,13 +72,13 @@ export function canTransitionVendorBooking(from: VendorBookingStatus, to: Vendor
 
 // venueStatus is a separate field from VendorBooking.status above — a
 // vendor-portal-only physical-setup checklist (services/venuePortal.service
-// .ts, components/VenuePortalClient.tsx) with no other reader or writer
+// .ts; moved forward on the Services screen) with no other reader or writer
 // anywhere in the codebase (no payout gating, no coordinator/admin/customer
 // visibility). Unlike VENDOR_BOOKING_STATUS_TRANSITIONS above, there's no
 // per-action UI (no distinct Confirm/Decline/Mark Completed-style buttons)
 // and no design doc to verify specific transitions against — the only
 // concrete product evidence is the dropdown's own fixed, consistently-used
-// ordering (VenuePortalClient.tsx's `statuses` array), which encodes a
+// ordering (the retired VenuePortalClient.tsx `statuses` array), which encodes a
 // linear physical-setup progression. So this matrix enforces exactly that
 // ordering — one step forward at a time, no skipping, no backward moves —
 // and nothing more speculative (e.g. gating on VendorBooking.status, or

@@ -10,8 +10,8 @@ import { whenWords } from '@/lib/wedding/controlRoom';
 export interface VendorTodayView {
   nextAction: { title: string; detail?: string; tone: 'calm' | 'attention' };
   attentionItems: { id: string; title: string; meta: string }[];
-  todaysServices: { id: string; wedding: string; function: string; time: string; location: string; status: 'confirmed' | 'pending' }[];
-  upcomingWeddings: { id: string; wedding: string; date: string; function: string }[];
+  todaysServices: { id: string; wedding: string; function: string; time: string; location: string; status: 'confirmed' | 'pending'; href?: string }[];
+  upcomingWeddings: { id: string; wedding: string; date: string; function: string; daysToGo?: number; href?: string }[];
   pendingResponses: { id: string; wedding: string; function: string; requirement: string; price: string | null }[]; // price null: this member may not see money
   recentActivity: { id: string; text: string; when: string }[];
 }
@@ -77,7 +77,7 @@ export function buildVendorTodayView(bookings: VendorBookingRow[], isVenue = fal
     .filter((b) => (eventDays.get(b.id) as number) > 0 && b.bookingStatus === 'CONFIRMED')
     .sort((a, b) => (eventDays.get(a.id) as number) - (eventDays.get(b.id) as number))
     .slice(0, 6)
-    .map((b) => ({ id: b.id, wedding: b.event.name, date: dateLabel(b.event.date), function: b.event.function }));
+    .map((b) => ({ id: b.id, wedding: b.event.name, date: dateLabel(b.event.date), function: b.event.function, daysToGo: eventDays.get(b.id) as number }));
 
   const pendingResponses = awaitingResponse.map((b) => ({
     id: b.id,

@@ -129,7 +129,7 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
                 If you are getting married, message us and we will link your wedding.
               </p>
               {notCouple === 'vendor' && (
-                <Link href="/vendor" className="flex h-[54px] items-center justify-center rounded-[14px] bg-[#7A1238] text-base font-semibold text-white hover:bg-[#5A0D29]">Open Vendor OS</Link>
+                <Link href="/workspace" className="flex h-[54px] items-center justify-center rounded-[14px] bg-[#7A1238] text-base font-semibold text-white hover:bg-[#5A0D29]">Open Vendor OS</Link>
               )}
               <a href={HELP} target="_blank" rel="noopener noreferrer" className="flex h-[54px] items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[#D9C9B2] bg-white text-base font-semibold text-[#7A1238] hover:bg-[#FBF6EE]">
                 <MessageCircle className="h-[18px] w-[18px]" aria-hidden /> WhatsApp us
