@@ -2,6 +2,10 @@
 
 import { useEffect } from 'react';
 import { reportBrowserError } from '@/lib/siteErrors/browser';
+import { guardBrowserDom } from '@/lib/domGuard';
+
+// Runs when this file loads, before React builds the page, so a translated page cannot crash it (lib/domGuard.ts).
+guardBrowserDom();
 
 // Errors in a visitor's browser that nothing else caught (a script error, an unhandled promise) go to /admin/errors.
 // Errors caught by an error screen are reported there (components/ErrorScreen.tsx, app/global-error.tsx).
