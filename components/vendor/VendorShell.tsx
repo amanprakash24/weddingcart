@@ -177,10 +177,18 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   const businessName = ws?.name ?? vendorName;
 
   return (
-    <div className={`os-theme ${osFontClasses} min-h-screen md:flex`}>
+    <div className={`os-theme ${osFontClasses} relative isolate min-h-screen md:flex`}>
+      {/* Liquid glass backdrop (11 Nov 2026): soft colour the glass above it bends, fixed so it stays put while the page scrolls. */}
+      <div aria-hidden className="os-backdrop pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <span className="os-orb -left-24 -top-24 h-[28rem] w-[28rem] bg-[#A78BFA] opacity-55" />
+        <span className="os-orb -right-20 top-1/4 h-[24rem] w-[24rem] bg-[#F9A8D4] opacity-45" />
+        <span className="os-orb bottom-[-8rem] left-1/3 h-[26rem] w-[26rem] bg-[#7DD3FC] opacity-40" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- decorative brand mark in the backdrop */}
+        <img src="/images/vivah-os/mark-large.png" alt="" className="absolute bottom-[-6rem] right-[-4rem] h-[34rem] w-auto opacity-[0.07]" />
+      </div>
       {/* Computer and tablet (11 Nov 2026, the founder's spec): the dark sidebar — every screen this person may use, then the
           business and the account. Replaces the top bar, which had to hide half the screens in a menu. */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 overflow-y-auto bg-[var(--color-bg-inverse)] px-3 py-5 md:flex">
+      <aside className="os-glass-dark sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 overflow-y-auto bg-[var(--color-bg-inverse)] px-3 py-5 md:flex">
         <Link href={ws?.home ?? '/vendor/today'} className="flex items-center gap-3 rounded-xl px-2 py-1">
           <VivahOsMark size={38} tone="light" />
           <span className="flex flex-col leading-tight">
@@ -213,7 +221,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 flex-1">
 
       {/* Mobile top strip — identity + account only, no inline nav (that's the bottom bar) */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--color-border-subtle)] bg-white/95 px-4 backdrop-blur md:hidden">
+      <header className="os-glass-bar sticky top-0 z-30 flex h-14 items-center justify-between !rounded-none !border-x-0 !border-t-0 px-4 md:hidden">
         <span className="min-w-0 truncate text-sm font-bold text-[var(--color-text-primary)]">{active?.label ?? productName}{ws?.several ? ` · ${ws.name}` : ''}</span>
         <button type="button" onClick={logout} aria-label="Log out" className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-surface-muted)]">
           <LogOut className="h-5 w-5" />
@@ -221,10 +229,11 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       </header>
 
       <LoginCodeReminder />
-      <div className="pb-20 md:pb-0">{children}</div>
+      <div className="pb-28 md:pb-0">{children}</div>
 
       {/* Mobile bottom navigation */}
-      <nav aria-label="Vendor" className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-border-subtle)] bg-white/95 backdrop-blur md:hidden">
+      {/* A floating glass pill, clear of the phone's own bottom edge (liquid glass, 11 Nov 2026). */}
+      <nav aria-label="Vendor" className="os-glass-bar fixed inset-x-3 z-30 rounded-[28px] px-1 md:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}>
         <div className="grid" style={{ gridTemplateColumns: `repeat(${phoneBar.length + 1}, minmax(0, 1fr))` }}>
           {phoneBar.map((item) => navLink(item, true))}
           <button
@@ -245,8 +254,8 @@ export default function VendorShell({ children }: { children: ReactNode }) {
 
       {moreOpen && (
         <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="More">
-          <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/60" onClick={() => setMoreOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-3 pb-6">
+          <button type="button" aria-label="Close menu" className="absolute inset-0 bg-slate-900/35 backdrop-blur-[2px]" onClick={() => setMoreOpen(false)} />
+          <div className="os-glass-bar absolute inset-x-0 bottom-0 !rounded-b-none rounded-t-[28px] p-3 pb-6">
             <div className="mb-2 flex items-center justify-between px-3">
               <span className="text-sm font-bold text-[var(--color-text-primary)]">More</span>
               <button type="button" onClick={() => setMoreOpen(false)} aria-label="Close" className="rounded-lg p-1 text-[var(--color-text-muted)]">

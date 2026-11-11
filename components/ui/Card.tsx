@@ -4,11 +4,12 @@ import { ArrowRight } from 'lucide-react';
 export type CardVariant = 'default' | 'clickable' | 'selected' | 'highlighted' | 'attention';
 
 const VARIANT_CLASSES: Record<CardVariant, string> = {
-  default: 'border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)]',
-  clickable: 'border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] hover:border-[var(--color-border-default)] hover:shadow-md transition-shadow',
+  // os-glass: liquid glass inside Venue OS / Vendor OS / Client OS (app/globals.css .os-theme); a plain white card everywhere else.
+  default: 'os-glass border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)]',
+  clickable: 'os-glass border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] hover:border-[var(--color-border-default)] hover:shadow-md transition-shadow',
   selected: 'border-2 border-[var(--primary)] bg-[var(--color-primary-subtle-bg)]',
   // Gold stays a restrained accent (a left bar), never a fill — same rule as everywhere else in the system.
-  highlighted: 'border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] border-l-4 border-l-[var(--gold)]',
+  highlighted: 'os-glass border-[var(--color-border-subtle)] bg-[var(--color-bg-surface)] border-l-4 border-l-[var(--gold)]',
   attention: 'border-[var(--color-warning-default)]/40 bg-[var(--color-warning-bg)]',
 };
 

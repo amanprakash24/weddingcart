@@ -122,7 +122,7 @@ function Panel({ title, action, children, delay = 0 }: { title: string; action?:
       initial={still ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
-      className="flex min-w-0 flex-col gap-3 rounded-3xl border border-[var(--color-border-subtle)] bg-white p-5 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.45)]"
+      className="os-glass flex min-w-0 flex-col gap-3 rounded-3xl border bg-white p-5"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-[17px] font-semibold text-[var(--color-text-primary)]">{title}</h2>
@@ -138,7 +138,7 @@ function Panel({ title, action, children, delay = 0 }: { title: string; action?:
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-2xl bg-[var(--color-bg-surface-muted)] px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">{children}</p>;
+  return <p className="rounded-2xl bg-white/55 px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">{children}</p>;
 }
 
 function GlassStat({ icon, label, value, note, delay }: { icon: ReactNode; label: string; value: string; note?: string; delay: number }) {
@@ -193,7 +193,7 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
     <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 md:pt-6">
       {/* Hero: the Vivah OS mandap mark, large and soft, behind frosted glass on navy (the founder, 11 Nov 2026: the same for every
           business — a business's own photo could be anything, even another brand's logo). */}
-      <section aria-label="Today at a glance" className="relative isolate overflow-hidden rounded-[28px] bg-[var(--color-bg-inverse)] p-5 sm:p-7">
+      <section aria-label="Today at a glance" className="os-glass-dark relative isolate overflow-hidden rounded-[28px] border border-white/15 bg-[var(--color-bg-inverse)] p-5 sm:p-7">
         {/* eslint-disable-next-line @next/next/no-img-element -- decorative brand mark behind the glass */}
         <img src="/images/vivah-os/mark-large.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 top-4 -z-20 h-[58%] w-auto max-w-none opacity-50 sm:-right-4 sm:-top-24 sm:h-[175%] sm:opacity-60" />
         <div aria-hidden className="absolute -left-24 bottom-[-40%] -z-20 h-80 w-80 rounded-full bg-[var(--primary)] opacity-35 blur-3xl" />
@@ -233,7 +233,7 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
               <ul className="flex flex-col gap-2">
                 {needs.slice(0, 6).map((n) => (
                   <li key={n.id}>
-                    <Link href={n.href} className="flex min-h-14 items-center gap-3 rounded-2xl bg-[var(--color-bg-surface-muted)] px-4 py-3 hover:bg-[var(--color-primary-subtle-bg)]">
+                    <Link href={n.href} className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/70 bg-white/55 px-4 py-3 transition-colors hover:bg-white/85">
                       <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[n.tone]}`} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-[var(--color-text-primary)]">{n.title}</span>
@@ -269,7 +269,7 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
               {upcomingWeddings.map((w) => {
                 const [day, mon] = w.date.split(' ');
                 return (
-                  <li key={w.id} className="border-b border-[var(--color-border-subtle)] last:border-0">
+                  <li key={w.id} className="border-b border-white/70 last:border-0">
                     <Link href={w.href ?? '/vendor/weddings'} className="flex min-h-16 items-center gap-4 py-2.5">
                       <span className="flex w-14 shrink-0 flex-col items-center rounded-2xl bg-[var(--color-primary-subtle-bg)] py-1.5">
                         <span className="text-[11px] font-semibold uppercase text-[var(--color-primary-text)]">{mon ?? ''}</span>
@@ -306,7 +306,7 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
                           <span className="truncate font-semibold text-[var(--color-text-primary)]">{d.customerName}</span>
                           <span className="shrink-0 tabular-nums text-[var(--color-text-secondary)]">{rupees(d.outstanding)} left</span>
                         </span>
-                        <span className="h-2 overflow-hidden rounded-full bg-[var(--color-border-subtle)]" role="progressbar" aria-label={`${d.customerName}: ${pct}% received`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                        <span className="h-2 overflow-hidden rounded-full bg-white/70" role="progressbar" aria-label={`${d.customerName}: ${pct}% received`} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
                           <span className="block h-full rounded-full bg-[var(--primary)]" style={{ width: `${pct}%` }} />
                         </span>
                         <span className="text-xs text-[var(--color-text-muted)]">
@@ -331,7 +331,7 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
             ) : (
               <ul className="flex flex-col">
                 {recent.map((e) => (
-                  <li key={e.id} className="border-b border-[var(--color-border-subtle)] last:border-0">
+                  <li key={e.id} className="border-b border-white/70 last:border-0">
                     <Link href={`/vendor/enquiries/${e.id}`} className="flex min-h-14 items-center gap-3 py-2.5">
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-subtle-bg)] text-sm font-semibold text-[var(--color-primary-text)]">
                         {e.name.trim().slice(0, 1).toUpperCase() || <Inbox className="h-4 w-4" aria-hidden />}
@@ -342,7 +342,7 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
                           {[e.event ?? 'Wedding', e.weddingDate ? shortDate(e.weddingDate) : null, e.channel].filter(Boolean).join(' · ')}
                         </span>
                       </span>
-                      <span className="hidden max-w-[40%] shrink-0 truncate rounded-full bg-[var(--color-bg-surface-muted)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] sm:block">{e.next.label}</span>
+                      <span className="hidden max-w-[40%] shrink-0 truncate rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] sm:block">{e.next.label}</span>
                     </Link>
                   </li>
                 ))}
