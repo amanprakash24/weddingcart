@@ -9,6 +9,7 @@ import { canSeeScreen, screenOf, type WorkspaceView } from '@/lib/auth/workspace
 import { PHONE_BAR, PHONE_MORE, PRIMARY, TO_CHECK_CHANGED } from './vendorNav';
 import { VivahOsMark } from '@/components/vivah-os/VivahOsLogo';
 import { osFontClasses } from '@/app/fonts/osFonts';
+import OsBackdrop from '@/components/os/OsBackdrop';
 import LoginCodeReminder from './LoginCodeReminder';
 import { PRODUCT_NAME, type Product } from '@/lib/productName';
 
@@ -178,14 +179,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={`os-theme ${osFontClasses} relative isolate min-h-screen md:flex`}>
-      {/* Liquid glass backdrop (11 Nov 2026): soft colour the glass above it bends, fixed so it stays put while the page scrolls. */}
-      <div aria-hidden className="os-backdrop pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <span className="os-orb -left-24 -top-24 h-[28rem] w-[28rem] bg-[#A78BFA] opacity-55" />
-        <span className="os-orb -right-20 top-1/4 h-[24rem] w-[24rem] bg-[#F9A8D4] opacity-45" />
-        <span className="os-orb bottom-[-8rem] left-1/3 h-[26rem] w-[26rem] bg-[#7DD3FC] opacity-40" />
-        {/* eslint-disable-next-line @next/next/no-img-element -- decorative brand mark in the backdrop */}
-        <img src="/images/vivah-os/mark-large.png" alt="" className="absolute bottom-[-6rem] right-[-4rem] h-[34rem] w-auto opacity-[0.07]" />
-      </div>
+      <OsBackdrop />
       {/* Computer and tablet (11 Nov 2026, the founder's spec): the dark sidebar — every screen this person may use, then the
           business and the account. Replaces the top bar, which had to hide half the screens in a menu. */}
       <aside className="os-glass-dark sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 overflow-y-auto bg-[var(--color-bg-inverse)] px-3 py-5 md:flex">
