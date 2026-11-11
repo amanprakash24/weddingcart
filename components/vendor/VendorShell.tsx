@@ -7,7 +7,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { ArrowLeftRight, LogOut, MoreHorizontal, Store, X } from 'lucide-react';
 import { canSeeScreen, screenOf, type WorkspaceView } from '@/lib/auth/workspaceView';
 import { PHONE_BAR, PHONE_MORE, PRIMARY, TO_CHECK_CHANGED } from './vendorNav';
-import { VivahOsMark } from '@/components/vivah-os/VivahOsLogo';
+import VivahOsLogo, { VivahOsMark } from '@/components/vivah-os/VivahOsLogo';
 import { osFontClasses } from '@/app/fonts/osFonts';
 import OsBackdrop from '@/components/os/OsBackdrop';
 import LoginCodeReminder from './LoginCodeReminder';
@@ -36,7 +36,8 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   // nothing rather than everything. null after loading = the older single-owner case could not be read: the full menu, as before.
   const [ws, setWs] = useState<(WorkspaceView & { name: string; home: string; several: boolean; product?: Product }) | null | undefined>(undefined);
   // Venue OS for a venue, Vendor OS for every other wedding business (lib/productName.ts). Until the server has said: Vendor OS.
-  const productName = PRODUCT_NAME[ws?.product === 'VENUE' ? 'VENUE' : 'VENDOR'];
+  const product: Product = ws?.product === 'VENUE' ? 'VENUE' : 'VENDOR';
+  const productName = PRODUCT_NAME[product];
   // "I have paid" claims from the business's own couples that wait to be checked — a mark on Enquiries, on every screen.
   const [toCheck, setToCheck] = useState(0);
   const onProfile = pathname.startsWith('/vendor/profile');
@@ -112,6 +113,11 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   const phoneBar = shown(PHONE_BAR);
   const phoneMore = shown(PHONE_MORE);
   const active = primary.find((item) => item.isActive(pathname));
+  // The browser tab names the product: "Enquiries · Venue OS" (the pages' own titles cannot know whether this is a venue).
+  const tabTitle = ws === undefined || isLogin ? null : `${active?.label ?? (pathname.startsWith('/vendor/profile') ? 'Business profile' : 'Today')} · ${productName}`;
+  useEffect(() => {
+    if (tabTitle) document.title = tabTitle;
+  }, [tabTitle]);
   const inMore = phoneMore.some((item) => item.isActive(pathname));
 
   const logout = () => signOut({ callbackUrl: '/vendor/login' });
@@ -125,7 +131,8 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   if (gate === 'setup') {
     return (
       <div className={`os-theme ${osFontClasses} min-h-screen`}>
-        <div className="flex h-12 items-center justify-end gap-5 bg-[var(--color-bg-inverse)] px-5">
+        <div className="flex h-14 items-center justify-end gap-5 bg-[var(--color-bg-inverse)] px-5">
+          <span className="mr-auto"><VivahOsLogo size={30} tone="light" byline={false} product={product} /></span>
           {ws?.several && (
             <a href="/workspace" className="flex h-12 items-center gap-1.5 text-xs font-medium text-[#E9D9C3]/80 hover:text-white">
               <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Switch business
@@ -183,12 +190,9 @@ export default function VendorShell({ children }: { children: ReactNode }) {
       {/* Computer and tablet (11 Nov 2026, the founder's spec): the dark sidebar — every screen this person may use, then the
           business and the account. Replaces the top bar, which had to hide half the screens in a menu. */}
       <aside className="os-glass-dark sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-6 overflow-y-auto bg-[var(--color-bg-inverse)] px-3 py-5 md:flex">
-        <Link href={ws?.home ?? '/vendor/today'} className="flex items-center gap-3 rounded-xl px-2 py-1">
-          <VivahOsMark size={38} tone="light" />
-          <span className="flex flex-col leading-tight">
-            <span className="os-display text-base font-semibold text-white">{productName}</span>
-            <span className="text-[11px] text-[#94A3B8]">by Shaadi Shopping</span>
-          </span>
+        {/* The product's own logo (11 Nov 2026): the mandap with VENUE OS or VENDOR OS, by Shaadi Shopping. */}
+        <Link href={ws?.home ?? '/vendor/today'} aria-label={`${productName} — Today`} className="rounded-xl px-2 py-1">
+          <VivahOsLogo size={36} tone="light" product={product} />
         </Link>
 
         <nav aria-label="Vendor" className="flex flex-col gap-1">
@@ -216,7 +220,14 @@ export default function VendorShell({ children }: { children: ReactNode }) {
 
       {/* Mobile top strip — identity + account only, no inline nav (that's the bottom bar) */}
       <header className="os-glass-bar sticky top-0 z-30 flex h-14 items-center justify-between !rounded-none !border-x-0 !border-t-0 px-4 md:hidden">
-        <span className="min-w-0 truncate text-sm font-bold text-[var(--color-text-primary)]">{active?.label ?? productName}{ws?.several ? ` · ${ws.name}` : ''}</span>
+        {/* The product's mark and name, then the screen — so a phone always says which app this is. */}
+        <span className="flex min-w-0 items-center gap-2.5">
+          <VivahOsMark size={30} />
+          <span className="flex min-w-0 flex-col leading-tight">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary-text)]">{productName}</span>
+            <span className="truncate text-sm font-bold text-[var(--color-text-primary)]">{active?.label ?? 'Today'}{ws?.several ? ` · ${ws.name}` : ''}</span>
+          </span>
+        </span>
         <button type="button" onClick={logout} aria-label="Log out" className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-surface-muted)]">
           <LogOut className="h-5 w-5" />
         </button>

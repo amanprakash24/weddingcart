@@ -64,7 +64,7 @@ function Approvals({ approvals, onDecision }: { approvals: ClientPortalEvent['ap
           </label>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" disabled={saving === a.id} onClick={() => decide(a.id, 'APPROVED')} className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white disabled:opacity-50">Approve</button>
-            <button type="button" disabled={saving === a.id || !notes[a.id]?.trim()} onClick={() => decide(a.id, 'CHANGES_REQUESTED')} className="min-h-11 rounded-xl border border-[var(--color-border-default)] bg-white/70 px-4 text-sm font-semibold text-[var(--color-text-primary)] disabled:opacity-40">Ask for changes</button>
+            <button type="button" disabled={saving === a.id || !notes[a.id]?.trim()} onClick={() => decide(a.id, 'CHANGES_REQUESTED')} className="os-glass-btn min-h-11 rounded-xl border border-[var(--color-border-default)] bg-white/70 px-4 text-sm font-semibold text-[var(--color-text-primary)] disabled:opacity-40">Ask for changes</button>
           </div>
         </li>
       ))}

@@ -18,6 +18,7 @@ import { withOwnWeddings } from '@/lib/vendor/ownWeddingsToday';
 import type { VenueWeddingListItem } from '@/services/venueWedding.service';
 import type { VenueEnquiryListItem } from '@/services/venueEnquiry.service';
 import type { VenueCollections } from '@/lib/venue/collections';
+import { PRODUCT_NAME, productOfBusiness } from '@/lib/productName';
 
 export interface VendorIdentity {
   businessName: string;
@@ -199,7 +200,10 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
         <div aria-hidden className="absolute -left-24 bottom-[-40%] -z-20 h-80 w-80 rounded-full bg-[var(--primary)] opacity-35 blur-3xl" />
         <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgba(15,23,42,0.85)_0%,rgba(15,23,42,0.55)_55%,rgba(15,23,42,0.35)_100%)]" />
         <div className="flex flex-col gap-1">
-          <p className="text-sm text-white/80" suppressHydrationWarning>{now.date}</p>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/80" suppressHydrationWarning>
+            <span className="rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#DDD6FE]">{PRODUCT_NAME[productOfBusiness('VENDOR', vendor.category)]}</span>
+            {now.date}
+          </p>
           <h1 className="text-[26px] font-semibold leading-tight text-white sm:text-[32px]" suppressHydrationWarning>
             {now.hello}, {vendor.businessName}
           </h1>

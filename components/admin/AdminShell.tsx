@@ -1,5 +1,8 @@
 'use client';
 
+import VivahOsLogo from '@/components/vivah-os/VivahOsLogo';
+import OsBackdrop from '@/components/os/OsBackdrop';
+import { osFontClasses } from '@/app/fonts/osFonts';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -90,13 +93,13 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         onClick={() => navigated(item)}
         aria-current={active ? 'page' : undefined}
         className={`flex items-center gap-3 rounded-lg px-3 ${opts.compact ? 'py-2 text-[13px]' : 'py-3 text-sm'} font-medium transition-colors ${
-          active ? 'bg-amber-500/20 text-amber-300' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+          active ? 'bg-[var(--primary)] text-white shadow-[0_8px_20px_-10px_rgba(123,63,242,0.9)]' : 'text-[#CBD5E1] hover:bg-white/[0.06] hover:text-white'
         }`}
       >
         <Icon className={opts.compact ? 'h-4 w-4 flex-shrink-0' : 'h-5 w-5 flex-shrink-0'} />
         <span>{item.label}</span>
         {item.key === 'applications' && newApplications > 0 && (
-          <span aria-label={`${newApplications} new`} className="ml-auto rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold leading-none text-gray-900">
+          <span aria-label={`${newApplications} new`} className="ml-auto rounded-full bg-[var(--color-accent-pink)] px-2 py-0.5 text-[11px] font-bold leading-none text-[#111827]">
             {newApplications}
           </span>
         )}
@@ -110,7 +113,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <Avatar name={me?.name ?? null} photoUrl={me?.photoUrl ?? null} size={36} />
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold text-white">{me?.name ?? 'Add your name'}</span>
-        <span className="block truncate text-[11px] text-gray-400">{me?.designation ?? roleLabel}</span>
+        <span className="block truncate text-[11px] text-[#94A3B8]">{me?.designation ?? roleLabel}</span>
       </span>
     </Link>
   );
@@ -118,22 +121,23 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const moreLinks = (compact: boolean) => (
     <>
       {moreItems.map((item) => link(item, { compact }))}
-      <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-gray-500">Old screens · being retired</p>
+      <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-[#94A3B8]">Old screens · being retired</p>
       {OLD_SCREENS.map((item) => link(item, { compact }))}
     </>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 md:flex">
+    <div className={`os-theme ${osFontClasses} relative isolate min-h-screen md:flex`}>
+      {/* Vivah OS in the approved liquid glass look (11 Nov 2026), the same as Venue OS, Vendor OS and Client OS. */}
+      <OsBackdrop />
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-56 flex-shrink-0 flex-col overflow-y-auto bg-gray-950 md:flex">
-        <div className="border-b border-gray-800 p-4">
-          <Link href="/admin/dashboard" className="block">
-            <span className="block text-sm font-bold text-white">Vivah OS</span>
-            <span className="block text-[11px] text-gray-500">by ShaadiShopping</span>
+      <aside className="os-glass-dark sticky top-0 hidden h-screen w-60 flex-shrink-0 flex-col overflow-y-auto bg-[var(--color-bg-inverse)] md:flex">
+        <div className="border-b border-white/10 px-3 py-4">
+          <Link href="/admin/dashboard" aria-label="Vivah OS — Command Center" className="block rounded-xl px-1">
+            <VivahOsLogo size={34} tone="light" product="VIVAH" />
           </Link>
         </div>
-        {role && <div className="border-b border-gray-800 p-2">{profileLink(pathname.startsWith('/admin/profile') ? 'bg-amber-500/20' : 'hover:bg-gray-800')}</div>}
+        {role && <div className="border-b border-white/10 p-2">{profileLink(pathname.startsWith('/admin/profile') ? 'bg-[var(--primary)]/30' : 'hover:bg-white/[0.06]')}</div>}
         <nav aria-label="Admin" className="flex-1 space-y-1 px-2 py-3">
           {PRIMARY.map((item) => link(item))}
 
@@ -142,29 +146,29 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => setMoreOpen((open) => !open)}
               aria-expanded={moreOpen || inMore}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#CBD5E1] transition-colors hover:bg-white/[0.06] hover:text-white"
             >
               <MoreHorizontal className="h-5 w-5 flex-shrink-0" />
               <span>More</span>
               {/* "Vendor applications" lives inside More: closed, its count would be out of sight, so More carries it too. */}
               {newApplications > 0 && !(moreOpen || inMore) && (
-                <span aria-label={`${newApplications} new vendor ${newApplications === 1 ? 'application' : 'applications'}`} className="rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold leading-none text-gray-900">
+                <span aria-label={`${newApplications} new vendor ${newApplications === 1 ? 'application' : 'applications'}`} className="rounded-full bg-[var(--color-accent-pink)] px-2 py-0.5 text-[11px] font-bold leading-none text-[#111827]">
                   {newApplications}
                 </span>
               )}
               <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${moreOpen || inMore ? 'rotate-180' : ''}`} />
             </button>
-            {(moreOpen || inMore) && <div className="mt-1 space-y-0.5 border-l border-gray-800 pl-2">{moreLinks(true)}</div>}
+            {(moreOpen || inMore) && <div className="mt-1 space-y-0.5 border-l border-white/10 pl-2">{moreLinks(true)}</div>}
           </div>
         </nav>
-        <div className="border-t border-gray-800 p-2">
-          <Link href="/" className="flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] text-gray-500 hover:bg-gray-800 hover:text-white">
+        <div className="border-t border-white/10 p-2">
+          <Link href="/" className="flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] text-[#94A3B8] hover:bg-white/[0.06] hover:text-white">
             View website
           </Link>
           <button
             type="button"
             onClick={logout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] text-rose-400 hover:bg-gray-800 hover:text-rose-300"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] text-[#FDA4AF] hover:bg-white/[0.06]"
           >
             <LogOut className="h-4 w-4" /> Log out
           </button>
@@ -172,10 +176,10 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Page content (leave room for the phone bottom bar) */}
-      <div className="min-w-0 flex-1 pb-20 md:pb-0">{children}</div>
+      <div className="min-w-0 flex-1 pb-28 md:pb-0">{children}</div>
 
       {/* Phone: bottom bar + More sheet */}
-      <nav aria-label="Admin" className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-800 bg-gray-950 md:hidden">
+      <nav aria-label="Admin" className="os-glass-bar fixed inset-x-3 z-40 rounded-[28px] px-1 md:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}>
         <div className="grid grid-cols-5">
           {PHONE_BAR.map((item) => {
             const active = item.isActive(ctx);
@@ -186,7 +190,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                 href={item.href}
                 onClick={() => navigated(item)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium ${active ? 'text-amber-300' : 'text-gray-400'}`}
+                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[11px] font-medium ${active ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-secondary)]'}`}
               >
                 <Icon className="h-5 w-5" />
                 <span className="max-w-full truncate">{item.key === 'leads' ? 'Leads' : item.label}</span>
@@ -197,12 +201,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             type="button"
             onClick={() => setSheetOpen(true)}
             aria-haspopup="dialog"
-            className={`flex flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium ${inMore || ctx.tab === 'invoices' ? 'text-amber-300' : 'text-gray-400'}`}
+            className={`flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[11px] font-medium ${inMore || ctx.tab === 'invoices' ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text-secondary)]'}`}
           >
             <span className="relative">
               <MoreHorizontal className="h-5 w-5" />
               {newApplications > 0 && (
-                <span aria-label={`${newApplications} new vendor ${newApplications === 1 ? 'application' : 'applications'}`} className="absolute -right-3 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-bold leading-none text-gray-900">
+                <span aria-label={`${newApplications} new vendor ${newApplications === 1 ? 'application' : 'applications'}`} className="absolute -right-3 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-accent-pink)] px-1 text-[10px] font-bold leading-none text-[#111827]">
                   {newApplications > 9 ? '9+' : newApplications}
                 </span>
               )}
@@ -214,22 +218,22 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
       {sheetOpen && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="More">
-          <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/60" onClick={() => setSheetOpen(false)} />
-          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-gray-950 p-3 pb-6">
+          <button type="button" aria-label="Close menu" className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => setSheetOpen(false)} />
+          <div className="os-glass-dark absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-[28px] bg-[var(--color-bg-inverse)] p-3 pb-6">
             <div className="mb-2 flex items-center justify-between px-3">
               <span className="text-sm font-bold text-white">More</span>
-              <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close" className="rounded-lg p-1 text-gray-400 hover:text-white">
+              <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close" className="rounded-lg p-1 text-[#CBD5E1] hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {role && <div className="mb-2 border-b border-gray-800 pb-2">{profileLink('hover:bg-gray-800')}</div>}
+            {role && <div className="mb-2 border-b border-white/10 pb-2">{profileLink('hover:bg-white/[0.06]')}</div>}
             <div className="space-y-0.5">
               {PRIMARY.filter((item) => item.key === 'invoices').map((item) => link(item))}
               {moreLinks(false)}
               <button
                 type="button"
                 onClick={logout}
-                className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-400 hover:bg-gray-800"
+                className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#FDA4AF] hover:bg-white/[0.06]"
               >
                 <LogOut className="h-5 w-5" /> Log out
               </button>
