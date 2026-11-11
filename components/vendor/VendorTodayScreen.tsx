@@ -1,13 +1,12 @@
 'use client';
 
 // Venue OS / Vendor OS → Today: the Command Center (the founder's spec and glass reference, 11 Nov 2026).
-// A hero with the business's own photo behind frosted-glass totals, then what needs doing, the weddings ahead, the money still to
+// A hero with the Vivah OS mark behind frosted-glass totals, then what needs doing, the weddings ahead, the money still to
 // come in and the newest enquiries. Every number comes from the business's real records:
 //   - props: Shaadi Shopping's bookings for this vendor (lib/vendor/todayView.ts, built on the server)
 //   - /api/vendor-os/weddings     the business's own weddings (merged in by lib/vendor/ownWeddingsToday.ts)
 //   - /api/vendor-os/enquiries    each enquiry and its next step (lib/venue/enquiry.ts)
 //   - /api/vendor-os/collections  money still to collect and received this month (lib/venue/collections.ts)
-//   - /api/vendor-os/profile      the business's photo for the hero
 // A part this person may not see (the server answers 403) is simply left out — an employee never sees the money.
 import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -168,7 +167,6 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
   const own = useApi<VenueWeddingListItem[]>('/api/vendor-os/weddings');
   const enquiries = useApi<VenueEnquiryListItem[]>('/api/vendor-os/enquiries');
   const money = useApi<VenueCollections>('/api/vendor-os/collections');
-  const profile = useApi<{ photos: { url: string }[]; logoUrl: string | null }>('/api/vendor-os/profile');
   const { todaysServices, upcomingWeddings, upcomingCount } = withOwnWeddings(props, own ?? null);
   // India time on the server and in the browser alike, so both say the same; suppressHydrationWarning covers a minute ticking over.
   const now = greetingNow();
@@ -185,7 +183,6 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
       .map((a) => ({ id: a.id, title: a.title, detail: a.meta, href: '/vendor/services', tone: 'danger' as const })),
   ];
   const recent = [...(enquiries ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
-  const photo = profile?.photos?.[0]?.url ?? null;
   const seesMoney = money !== null;
   // A total only for what this person may see: an employee without weddings or enquiries gets no misleading zero.
   const seesWeddings = own !== null || props.upcomingWeddings.length > 0 || props.todaysServices.length > 0;
@@ -194,13 +191,13 @@ export default function VendorTodayScreen(props: VendorTodayScreenProps) {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 pb-10 pt-4 sm:px-6 md:pt-6">
-      {/* Hero: the business's own photo behind frosted glass (a deep navy ground when it has none yet). */}
+      {/* Hero: the Vivah OS mandap mark, large and soft, behind frosted glass on navy (the founder, 11 Nov 2026: the same for every
+          business — a business's own photo could be anything, even another brand's logo). */}
       <section aria-label="Today at a glance" className="relative isolate overflow-hidden rounded-[28px] bg-[var(--color-bg-inverse)] p-5 sm:p-7">
-        {photo && (
-          // eslint-disable-next-line @next/next/no-img-element -- the business's own uploaded photo, decorative behind the glass
-          <img src={photo} alt="" aria-hidden className="absolute inset-0 -z-20 h-full w-full object-cover" />
-        )}
-        <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(15,23,42,0.55)_0%,rgba(15,23,42,0.82)_100%)]" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- decorative brand mark behind the glass */}
+        <img src="/images/vivah-os/mark-large.png" alt="" aria-hidden className="pointer-events-none absolute -right-6 top-4 -z-20 h-[58%] w-auto max-w-none opacity-50 sm:-right-4 sm:-top-24 sm:h-[175%] sm:opacity-60" />
+        <div aria-hidden className="absolute -left-24 bottom-[-40%] -z-20 h-80 w-80 rounded-full bg-[var(--primary)] opacity-35 blur-3xl" />
+        <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgba(15,23,42,0.85)_0%,rgba(15,23,42,0.55)_55%,rgba(15,23,42,0.35)_100%)]" />
         <div className="flex flex-col gap-1">
           <p className="text-sm text-white/80" suppressHydrationWarning>{now.date}</p>
           <h1 className="text-[26px] font-semibold leading-tight text-white sm:text-[32px]" suppressHydrationWarning>
