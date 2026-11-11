@@ -50,7 +50,7 @@ export default function LoginCodeCard() {
         setError(b.fieldErrors ? null : (b.error ?? 'Something went wrong. Your code was not changed — please try again.'));
       }
     } catch {
-      setError('Could not reach Vivah OS. Your code was not changed — please check your connection.');
+      setError('Could not connect. Your code was not changed — please check your connection.');
     }
     setBusy(false);
   }

@@ -50,7 +50,7 @@ function useSave(id: string, onSaved: (w: VenueWeddingDetail) => void) {
       setErrors(b.fieldErrors ?? {});
       setError(b.fieldErrors ? 'Please check the highlighted boxes.' : (b.error ?? 'Something went wrong. It was not saved — please try again.'));
     } catch {
-      setError('Could not reach Vivah OS. It was not saved — please check your connection.');
+      setError('Could not connect. It was not saved — please check your connection.');
     }
     setBusy(false);
     return false;

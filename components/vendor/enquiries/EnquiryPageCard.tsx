@@ -23,7 +23,7 @@ export default function EnquiryPageCard() {
         if (b.success) setUrl(`${window.location.origin}${b.data.path}`);
         else setError(b.error ?? 'Your enquiry page could not be loaded.');
       })
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };

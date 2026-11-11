@@ -28,11 +28,11 @@ export async function GET() {
       {
         success: true,
         data: {
-          workspaces: workspaces.map((w) => ({ businessId: w.businessId, name: w.name, kind: w.kind, role: w.role, jobTitle: w.jobTitle, home: workspaceHome(w.kind, viewOf(w)) })),
+          workspaces: workspaces.map((w) => ({ businessId: w.businessId, name: w.name, kind: w.kind, product: w.product, role: w.role, jobTitle: w.jobTitle, home: workspaceHome(w.kind, viewOf(w)) })),
           current: workspaces.some((w) => w.businessId === chosen) ? chosen : null,
           // For the Vendor OS menu: the person's OWN permissions in the business they are working in. Showing or hiding a link
           // is all this is used for — every route checks again on the server.
-          working: working ? { businessId: working.businessId, name: working.name, role: working.role, ...viewOf(working), home: workspaceHome('VENDOR', viewOf(working)) } : null,
+          working: working ? { businessId: working.businessId, name: working.name, product: working.product, role: working.role, ...viewOf(working), home: workspaceHome('VENDOR', viewOf(working)) } : null,
         },
       },
       noStore

@@ -35,7 +35,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
     fetch(`/api/vendor-os/enquiries/${id}`)
       .then((r) => r.json())
       .then((b) => live && (b.success ? setE(b.data) : setError(b.error ?? 'This enquiry could not be loaded.')))
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };
@@ -56,7 +56,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         setDate('');
       } else setError(b.error ?? 'Something went wrong. It was not saved — please try again.');
     } catch {
-      setError('Could not reach Vivah OS. It was not saved — please check your connection.');
+      setError('Could not connect. It was not saved — please check your connection.');
     }
     setBusy(false);
   }

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 import { KeyRound, Phone } from 'lucide-react';
 import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
-import VivahOsLogo from '@/components/vivah-os/VivahOsLogo';
+import { VivahOsMark } from '@/components/vivah-os/VivahOsLogo';
 
 // Sign-in for every person (vendor owners since 6 Oct 2026; founder, managers and employees since 7 Oct): their own mobile number
 // + their own 6-digit login code. Afterwards they go to "Choose Workspace", which opens by itself when they belong to one business. One step, no message is sent. Every kind of "no" gets the same sentence — a wrong code, an unknown number, a number
@@ -33,7 +33,7 @@ export default function VendorCodeLoginClient({ redirectPath = '/workspace', tea
       setCode('');
       setError('That mobile number and code do not match. Please check both and try again. After 5 wrong tries, sign-in is paused for 15 minutes.');
     } catch {
-      setError('Could not reach Vivah OS — please check your connection and try again.');
+      setError('Could not connect — please check your connection and try again.');
     }
     setBusy(false);
   }
@@ -50,16 +50,17 @@ export default function VendorCodeLoginClient({ redirectPath = '/workspace', tea
           {team ? (
             <Image src="/logo.png" alt="Shaadi Shopping" width={240} height={150} priority className="h-20 w-auto object-contain lg:h-24" />
           ) : (
-            // Vendors sign in to Vivah OS (28 Oct 2026): its logo, not Shaadi Shopping's. The full logo with the tagline on a computer.
+            // Venues and vendors share this page (11 Nov 2026: Venue OS and Vendor OS), so it shows the mark and both names — which one
+            // a business is in shows once it has signed in (lib/productName.ts).
             <>
-              <div className="lg:hidden"><VivahOsLogo size={44} tone="light" /></div>
-              <Image src="/images/vivah-os/logo-on-dark.png" alt="Vivah OS — the operating system for celebrations" width={800} height={711} priority className="hidden h-auto w-[200px] lg:block" />
+              <div className="lg:hidden"><VivahOsMark size={48} tone="light" title="Venue OS and Vendor OS by Shaadi Shopping" /></div>
+              <div className="hidden lg:block"><VivahOsMark size={110} tone="light" title="Venue OS and Vendor OS by Shaadi Shopping" /></div>
             </>
           )}
         </div>
         <div className="relative mt-8 lg:mt-0">
           <p className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#E8C98A]">
-            <span className="h-px w-8 bg-[#E8C98A]/70" /> {team ? 'Vivah OS' : 'Vendor OS'}
+            <span className="h-px w-8 bg-[#E8C98A]/70" /> {team ? 'Vivah OS' : 'Venue OS · Vendor OS'}
           </p>
           <h1 className="mt-3 max-w-md font-playfair text-[1.6rem] leading-snug text-[#FFF7EA] sm:text-[1.9rem] lg:text-[2.25rem]">
             {team ? (

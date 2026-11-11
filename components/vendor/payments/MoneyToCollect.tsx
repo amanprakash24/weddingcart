@@ -76,7 +76,7 @@ export default function MoneyToCollect({ compact = false }: { compact?: boolean 
         else if (status === 401 || status === 403 || status === 404 || status === 409) setHidden(true); // not this person's to see
         else setError(body.error ?? 'Your payments could not be loaded. Please try again.');
       })
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };

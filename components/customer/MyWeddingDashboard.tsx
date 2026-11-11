@@ -99,7 +99,7 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
   const header = (
     <header className="border-b border-[#EADFCC] bg-white">
       <div className="mx-auto flex max-w-[1360px] flex-wrap items-center gap-3 px-4 py-2.5 sm:px-6">
-        <VivahOsLogo size={38} />
+        <VivahOsLogo size={38} product="CLIENT" />
         <span className="hidden border-l border-[#EADFCC] pl-4 text-xs font-bold uppercase tracking-[0.14em] text-[#8A6A2F] sm:inline">My Wedding</span>
         <span className="flex-1" />
         {event && (
@@ -296,7 +296,7 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
               <section className="rounded-[22px] bg-[#221714] p-5 text-[#FBF6EE] sm:p-6">
                 <h2 id="c-expert" className="text-xs font-bold tracking-[0.16em] text-[#E9C98E]">{event.business.isShaadiShopping ? 'YOUR WEDDING EXPERT' : 'YOUR VENUE'}</h2>
                 <p className="mt-3 font-cormorant text-[1.7rem] font-semibold leading-tight">{expert}</p>
-                <p className="text-sm text-[#CDBCA8]">{event.business.isShaadiShopping ? 'Shaadi Shopping, Patna · Mon–Sat, 10am–7pm' : 'Runs your wedding on Vivah OS'}</p>
+                <p className="text-sm text-[#CDBCA8]">{event.business.isShaadiShopping ? 'Shaadi Shopping, Patna · Mon–Sat, 10am–7pm' : 'Your venue for this wedding'}</p>
                 <div className="mt-4 flex gap-2">
                   <a href={`tel:${call}`} className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[#E9C98E] font-bold text-[#221714]">Call</a>
                   <a href={whatsappTo(call, `Hi, this is about our wedding ${event.weddingNumber}.`)} target="_blank" rel="noopener noreferrer" className="flex min-h-11 flex-1 items-center justify-center rounded-xl border border-[#5A433B] font-bold">WhatsApp</a>

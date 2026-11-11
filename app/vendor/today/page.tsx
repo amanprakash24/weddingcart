@@ -6,7 +6,7 @@ import VendorTodayScreen from '@/components/vendor/VendorTodayScreen';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'Today | Vendor OS',
+  title: 'Today | Shaadi Shopping',
   robots: { index: false, follow: false },
 };
 

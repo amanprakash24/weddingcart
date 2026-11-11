@@ -2,7 +2,7 @@ import BusinessSettingsForm from '@/components/vendor/settings/BusinessSettingsF
 import LoginCodeCard from '@/components/vendor/settings/LoginCodeCard';
 
 // "Settings" in Vendor OS (Phase C). The form loads and saves through the venue-scoped API; this page reads no data itself.
-export const metadata = { title: 'Settings | Vivah OS', robots: { index: false, follow: false } };
+export const metadata = { title: 'Settings | Shaadi Shopping', robots: { index: false, follow: false } };
 
 export default function VendorSettingsPage() {
   return (

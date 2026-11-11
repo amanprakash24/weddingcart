@@ -9,7 +9,7 @@ import { MEMBER, venueScoped } from '@/lib/ownership/venueEntry';
 // POST /api/vendor-os/login-code — the vendor changes their own code: { current, next, confirm }.
 // About the logged-in vendor's own login only: the user comes from the session, never from the request.
 const noStore = { headers: { 'Cache-Control': 'no-store' } };
-const loggedOut = () => NextResponse.json({ success: false, error: 'Please log in to your Vivah OS account' }, { status: 401 });
+const loggedOut = () => NextResponse.json({ success: false, error: 'Please sign in again' }, { status: 401 });
 
 async function handleGET() {
   const session = await requireRole([Role.VENDOR]);

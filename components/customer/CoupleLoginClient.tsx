@@ -97,10 +97,8 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
         <Image src="/images/homepage-poster.jpg" alt="" fill priority sizes="(min-width: 1024px) 46vw, 100vw" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#2E0A16]/55 to-[#2E0A16]/95" />
         <div className="relative flex flex-col justify-between px-5 pb-12 pt-6 sm:px-8 lg:h-full lg:p-14">
-          <div className="lg:hidden"><VivahOsLogo size={40} tone="light" /></div>
-          <div className="hidden lg:block">
-            <Image src="/images/vivah-os/logo-on-dark.png" alt="Vivah OS — the operating system for celebrations" width={800} height={711} className="h-auto w-[300px]" priority />
-          </div>
+          <div className="lg:hidden"><VivahOsLogo size={40} tone="light" product="CLIENT" /></div>
+          <div className="hidden lg:block"><VivahOsLogo size={64} tone="light" product="CLIENT" /></div>
           <div className="mt-8 lg:mt-0">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-[#E9C98E]">MY WEDDING</p>
             <h2 className="mt-2 font-cormorant text-[2.2rem] font-semibold leading-[1.05] lg:text-[3.4rem]">Your wedding,<br />all in one place.</h2>
@@ -124,7 +122,7 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
               <h1 className="font-cormorant text-[2.1rem] font-semibold leading-[1.1] lg:text-[2.75rem]">No wedding on this number</h1>
               <p className="text-[15px] leading-relaxed text-[#6B5A4E]">
                 {notCouple === 'vendor'
-                  ? <>+91 {spaced(phone)} is set up for a business on Vivah OS, not for a wedding. If you meant to open your business, use Vendor OS.</>
+                  ? <>+91 {spaced(phone)} is set up for a business (Venue OS or Vendor OS), not for a wedding. If you meant to open your business, open it here.</>
                   : <>+91 {spaced(phone)} is not set up for My Wedding.</>}{' '}
                 If you are getting married, message us and we will link your wedding.
               </p>

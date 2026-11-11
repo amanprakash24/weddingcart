@@ -43,7 +43,7 @@ export default function YourEnquiries() {
         if (body.success) setItems(body.data);
         else setError(body.error ?? 'Your enquiries could not be loaded. Please try again.');
       })
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };
@@ -73,7 +73,7 @@ export default function YourEnquiries() {
       {items && items.length === 0 && (
         <CardEmptyState
           title="No enquiries yet"
-          description="When someone calls, walks in or messages you, add them here — or share your enquiry page above and couples add themselves. Vivah OS will tell you what to do next."
+          description="When someone calls, walks in or messages you, add them here — or share your enquiry page above and couples add themselves. We will tell you what to do next."
           icon={<Phone className="h-6 w-6" aria-hidden />}
         />
       )}
