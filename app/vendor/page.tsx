@@ -3,7 +3,7 @@ import { sharedPage } from '@/lib/auth/workingVendor';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'Vendor OS',
+  title: 'Shaadi Shopping',
   robots: { index: false, follow: false },
 };
 

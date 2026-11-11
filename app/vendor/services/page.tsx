@@ -6,7 +6,7 @@ import VendorServicesScreen from '@/components/vendor/VendorServicesScreen';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'Services | Vendor OS',
+  title: 'Services | Shaadi Shopping',
   robots: { index: false, follow: false },
 };
 

@@ -8,6 +8,7 @@ import { ArrowLeftRight, LogOut, MoreHorizontal, Store, User, X } from 'lucide-r
 import { canSeeScreen, screenOf, type WorkspaceView } from '@/lib/auth/workspaceView';
 import { DESKTOP_BAR, DESKTOP_MORE, PHONE_BAR, PHONE_MORE, PRIMARY, TO_CHECK_CHANGED } from './vendorNav';
 import LoginCodeReminder from './LoginCodeReminder';
+import { PRODUCT_NAME, type Product } from '@/lib/productName';
 
 // Operational shell for Vendor OS — the "Venue Owner" experience reuses this unchanged (a category-filtered
 // view within it, not a separate role/shell, per docs/wedding-os/11-vivah-os-ux-architecture.md §3). Mirrors
@@ -30,7 +31,9 @@ export default function VendorShell({ children }: { children: ReactNode }) {
   const [gate, setGate] = useState<'checking' | 'setup' | 'open'>('checking');
   // The business this person is working in, and what they may see of it (7 Oct 2026). Until the server has said, the menu shows
   // nothing rather than everything. null after loading = the older single-owner case could not be read: the full menu, as before.
-  const [ws, setWs] = useState<(WorkspaceView & { name: string; home: string; several: boolean }) | null | undefined>(undefined);
+  const [ws, setWs] = useState<(WorkspaceView & { name: string; home: string; several: boolean; product?: Product }) | null | undefined>(undefined);
+  // Venue OS for a venue, Vendor OS for every other wedding business (lib/productName.ts). Until the server has said: Vendor OS.
+  const productName = PRODUCT_NAME[ws?.product === 'VENUE' ? 'VENUE' : 'VENDOR'];
   // "I have paid" claims from the business's own couples that wait to be checked — a mark on Enquiries, on every screen.
   const [toCheck, setToCheck] = useState(0);
   const onProfile = pathname.startsWith('/vendor/profile');
@@ -179,7 +182,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
             the logo's byline and the business's name give way first, and the nav itself can shrink. */}
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 lg:gap-6 lg:px-6">
           <Link href={ws?.home ?? '/vendor/today'} className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-            <span className="text-sm font-bold text-[var(--color-text-primary)]">Vendor OS</span>
+            <span className="text-sm font-bold text-[var(--color-text-primary)]">{productName}</span>
             <span className="hidden text-[11px] text-[var(--color-text-muted)] lg:inline">by ShaadiShopping</span>
           </Link>
 
@@ -244,7 +247,7 @@ export default function VendorShell({ children }: { children: ReactNode }) {
 
       {/* Mobile top strip — identity + account only, no inline nav (that's the bottom bar) */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--color-border-subtle)] bg-white/95 px-4 backdrop-blur md:hidden">
-        <span className="min-w-0 truncate text-sm font-bold text-[var(--color-text-primary)]">{active?.label ?? 'Vendor OS'}{ws?.several ? ` · ${ws.name}` : ''}</span>
+        <span className="min-w-0 truncate text-sm font-bold text-[var(--color-text-primary)]">{active?.label ?? productName}{ws?.several ? ` · ${ws.name}` : ''}</span>
         <button type="button" onClick={logout} aria-label="Log out" className="rounded-lg p-2 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-surface-muted)]">
           <LogOut className="h-5 w-5" />
         </button>

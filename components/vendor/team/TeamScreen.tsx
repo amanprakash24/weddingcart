@@ -68,7 +68,7 @@ function Added({ result, businessName, onDone }: { result: AddResult; businessNa
           </a>
         </>
       )}
-      {result.kind === 'EXISTING_LOGIN' && <p className="text-sm text-[var(--color-text-secondary)]">This number already signs in to Vivah OS. They use their own code and will see {businessName} when they sign in.</p>}
+      {result.kind === 'EXISTING_LOGIN' && <p className="text-sm text-[var(--color-text-secondary)]">This number already has a login with us. They use their own code and will see {businessName} when they sign in.</p>}
       {result.kind === 'NEEDS_CODE' && (
         <p className="text-sm text-[var(--color-text-secondary)]">This number already has a Shaadi Shopping account, but no login code. Ask Shaadi Shopping to give them one — then they will see {businessName} when they sign in.</p>
       )}
