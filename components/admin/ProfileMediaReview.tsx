@@ -11,8 +11,8 @@ type Pending = {
   videos: { businessId: string; url: string; isLink: boolean; businessName: string }[];
 };
 
-const approveBtn = 'inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50';
-const rejectBtn = 'inline-flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-50';
+const approveBtn = 'inline-flex items-center justify-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50';
+const rejectBtn = 'inline-flex items-center justify-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 disabled:opacity-50';
 
 export default function ProfileMediaReview() {
   const [pending, setPending] = useState<Pending | null>(null);
@@ -71,7 +71,8 @@ export default function ProfileMediaReview() {
                   {/* eslint-disable-next-line @next/next/no-img-element -- a review thumbnail of an address we stored ourselves; no layout to optimise */}
                   <img src={photo.url} alt={`Photo uploaded by ${businessName}`} loading="lazy" className="aspect-[4/3] w-full object-cover" />
                 </a>
-                <div className="flex gap-2 p-2">
+                {/* Stacked: two buttons side by side did not fit a phone-width card (Reject was cut off, 11 Nov 2026). */}
+                <div className="flex flex-col gap-1.5 p-2">
                   <button type="button" disabled={busy !== null} onClick={() => decide(`photos/${photo.id}`, photo.id, true)} className={approveBtn}>
                     <Check className="h-3 w-3" aria-hidden /> Approve
                   </button>

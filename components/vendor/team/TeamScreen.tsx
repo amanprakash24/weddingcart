@@ -14,7 +14,8 @@ import { loginMessage, ROLE_HELP, TEAM_LIMITS, type AddResult, type TeamErrors, 
 // ONCE, with a ready WhatsApp message the owner sends from their own phone. Loaded and saved through /api/vendor-os/team.
 
 type Form = { name: string; mobile: string; role: MemberRole; jobTitle: string; seesMoney: boolean };
-const BLANK: Form = { name: '', mobile: '', role: 'MANAGER', jobTitle: '', seesMoney: false };
+// A new person starts as Employee (11 Nov 2026): more access has to be chosen on purpose, never given by not noticing the default.
+const BLANK: Form = { name: '', mobile: '', role: 'EMPLOYEE', jobTitle: '', seesMoney: false };
 
 function RolePicker({ roles, value, onChange }: { roles: readonly MemberRole[]; value: MemberRole; onChange: (r: MemberRole) => void }) {
   return (

@@ -2,8 +2,8 @@
 
 // Vendor OS -> Today. First screen built on the Vivah OS component system (components/ui/*) for a role
 // other than admin -- the point of this screen is to prove the system holds up outside the Wedding Control
-// Room, not to ship Vendor OS. Presentational only: every prop has a concrete shape so real data can be
-// wired in later without a rewrite, but this file itself does no fetching, no auth, no writes.
+// Room, not to ship Vendor OS. Its one fetch: the business's own weddings (/api/vendor-os/weddings), merged into the counts
+// and lists by lib/vendor/ownWeddingsToday.ts — without them a venue's own bookings never showed here. No auth, no writes.
 import { Card, CardEmptyState, NextActionCard } from '@/components/ui/Card';
 import { Row } from '@/components/ui/Row';
 import StatusPill, { type PillStatus } from '@/components/ui/StatusPill';
@@ -11,6 +11,9 @@ import Link from 'next/link';
 import MoneyToCollect from '@/components/vendor/payments/MoneyToCollect';
 import GettingStarted from '@/components/vendor/GettingStarted';
 import YourWork from '@/components/vendor/YourWork';
+import { useEffect, useState } from 'react';
+import { withOwnWeddings } from '@/lib/vendor/ownWeddingsToday';
+import type { VenueWeddingListItem } from '@/services/venueWedding.service';
 
 export interface VendorIdentity {
   businessName: string;
@@ -24,6 +27,7 @@ export interface TodayServiceItem {
   time: string;
   location: string;
   status: 'confirmed' | 'pending';
+  href?: string;
 }
 
 export interface UpcomingWeddingItem {
@@ -31,6 +35,8 @@ export interface UpcomingWeddingItem {
   wedding: string;
   date: string;
   function: string;
+  daysToGo?: number;
+  href?: string;
 }
 
 export interface PendingResponseItem {
@@ -59,9 +65,27 @@ export interface VendorTodayScreenProps {
 
 const SERVICE_STATUS_PILL: Record<TodayServiceItem['status'], PillStatus> = { confirmed: 'confirmed', pending: 'info' };
 
-export default function VendorTodayScreen({
-  vendor, nextAction, attentionItems, todaysServices, upcomingWeddings, pendingResponses, recentActivity,
-}: VendorTodayScreenProps) {
+// The business's own weddings, loaded like the Weddings page (venue-scoped). Not allowed to see them (403/404) or not loaded
+// yet: Today shows what it already had.
+function useOwnWeddings(): VenueWeddingListItem[] | null {
+  const [items, setItems] = useState<VenueWeddingListItem[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch('/api/vendor-os/weddings')
+      .then((r) => r.json().catch(() => ({})))
+      .then((body) => { if (live && body.success) setItems(body.data); })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+  return items;
+}
+
+export default function VendorTodayScreen(props: VendorTodayScreenProps) {
+  const own = useOwnWeddings();
+  const { vendor, attentionItems, pendingResponses, recentActivity } = props;
+  const { nextAction, todaysServices, upcomingWeddings, upcomingCount } = withOwnWeddings(props, own);
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-3 sm:p-6">
       {/* Header / vendor identity */}
@@ -92,7 +116,7 @@ export default function VendorTodayScreen({
           <p className="text-[11px] text-[var(--color-text-muted)]">Awaiting your response</p>
         </Card>
         <Card className="!p-3 text-center">
-          <p className="text-2xl font-semibold tabular-nums text-[var(--color-text-primary)]">{upcomingWeddings.length}</p>
+          <p className="text-2xl font-semibold tabular-nums text-[var(--color-text-primary)]">{upcomingCount}</p>
           <p className="text-[11px] text-[var(--color-text-muted)]">Upcoming weddings</p>
         </Card>
       </div>
@@ -122,14 +146,17 @@ export default function VendorTodayScreen({
           <CardEmptyState title="Nothing scheduled today" description="Services assigned to you for today will show up here." />
         ) : (
           <Card>
-            {todaysServices.map((s) => (
-              <Row
-                key={s.id}
-                title={`${s.wedding} — ${s.function}`}
-                meta={`${s.time} · ${s.location}`}
-                right={<StatusPill status={SERVICE_STATUS_PILL[s.status]}>{s.status === 'confirmed' ? 'Confirmed' : 'Awaiting confirmation'}</StatusPill>}
-              />
-            ))}
+            {todaysServices.map((s) => {
+              const row = (
+                <Row
+                  key={s.id}
+                  title={`${s.wedding} — ${s.function}`}
+                  meta={[s.time, s.location].filter(Boolean).join(' · ') || 'Your own wedding'}
+                  right={<StatusPill status={SERVICE_STATUS_PILL[s.status]}>{s.status === 'confirmed' ? 'Confirmed' : 'Awaiting confirmation'}</StatusPill>}
+                />
+              );
+              return s.href ? <Link key={s.id} href={s.href} className="block">{row}</Link> : row;
+            })}
           </Card>
         )}
       </section>
@@ -142,7 +169,7 @@ export default function VendorTodayScreen({
         ) : (
           <Card>
             {upcomingWeddings.map((w) => (
-              <Link key={w.id} href="/vendor/weddings" className="block">
+              <Link key={w.id} href={w.href ?? '/vendor/weddings'} className="block">
                 <Row title={w.wedding} meta={`${w.date} · ${w.function}`} right={<span className="text-xs font-semibold underline underline-offset-2">Open</span>} />
               </Link>
             ))}

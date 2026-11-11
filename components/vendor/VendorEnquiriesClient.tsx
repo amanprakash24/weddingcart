@@ -86,7 +86,7 @@ export default function VendorEnquiriesClient({ initial, embedded = false }: { i
             )}
             <p className="mt-1 text-sm text-slate-600">Shaadi Shopping is asking whether you can take these weddings. Answer when you can.</p>
           </div>
-          {!embedded && <Link href="/vendor" className="text-sm font-medium text-slate-600 underline underline-offset-4">Back to portal</Link>}
+          {!embedded && <Link href="/vendor/today" className="text-sm font-medium text-slate-600 underline underline-offset-4">Back to Today</Link>}
         </header>
 
         {active.length === 0 ? (

@@ -396,6 +396,9 @@ export default function AdminClient() {
   const [appFilter, setAppFilter] = useState<'all' | 'new' | 'approved' | 'rejected'>('all');
   // Login codes just issued by approving a registration, by application id — each is readable only until this page is left.
   const [freshCodes, setFreshCodes] = useState<Record<string, string>>({});
+  // The application whose status is being saved (approving also makes the listing and the login code, which can take a moment):
+  // its buttons say "Saving…" and cannot be pressed twice.
+  const [statusSaving, setStatusSaving] = useState<string | null>(null);
   // Registrations just approved whose mobile number already had a sign-in of its own — no code was issued; theirs is unchanged.
   const [existingLogins, setExistingLogins] = useState<Set<string>>(new Set());
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
@@ -2719,17 +2722,22 @@ Create a separate standalone invoice anyway?`)) return;
                     <div className="flex flex-col gap-1.5 flex-shrink-0">
                       {(['new', 'approved', 'rejected'] as const).map((s) => (
                         <button key={s}
-                          disabled={a.status === s}
+                          disabled={a.status === s || statusSaving?.startsWith(`${a._id}:`)}
                           onClick={async () => {
-                            const res = await fetch(`/api/vendor-applications/${a._id}`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ status: s }),
-                            });
-                            const body = await res.json().catch(() => ({}));
-                            if (body.loginCode) setFreshCodes((cur) => ({ ...cur, [a._id]: body.loginCode }));
-                            if (body.existingLogin) setExistingLogins((cur) => new Set(cur).add(a._id));
-                            fetchAll();
+                            setStatusSaving(`${a._id}:${s}`);
+                            try {
+                              const res = await fetch(`/api/vendor-applications/${a._id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: s }),
+                              });
+                              const body = await res.json().catch(() => ({}));
+                              if (body.loginCode) setFreshCodes((cur) => ({ ...cur, [a._id]: body.loginCode }));
+                              if (body.existingLogin) setExistingLogins((cur) => new Set(cur).add(a._id));
+                              await fetchAll();
+                            } finally {
+                              setStatusSaving(null);
+                            }
                           }}
                           className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-all capitalize disabled:opacity-60 disabled:cursor-default ${
                             a.status === s
@@ -2741,7 +2749,7 @@ Create a separate standalone invoice anyway?`)) return;
                               : 'border-gray-200 text-gray-500 hover:border-indigo-300'
                           }`}
                         >
-                          {s === 'approved' && a.status !== 'approved' ? '✓ Approve & List' : s === 'rejected' ? '✗ Reject' : s}
+                          {statusSaving === `${a._id}:${s}` ? 'Saving…' : s === 'approved' && a.status !== 'approved' ? '✓ Approve & List' : s === 'rejected' ? '✗ Reject' : s}
                         </button>
                       ))}
                       <button

@@ -154,6 +154,9 @@ export function looksAutomated(input: { trap?: unknown; openMs?: unknown }): boo
 
 // "Google · Enquiry page" — where an enquiry came from, as the venue's list shows it.
 export function sourceLabel(channel: string | null | undefined, sourceDetail: string | null | undefined): string {
+  // 'Other' adds nothing next to a detail: an enquiry page visitor who did not say where they found it reads 'Enquiry page', not
+  // 'Other · Enquiry page' (launch walkthrough, 11 Nov 2026).
+  if (channel === 'OTHER' && sourceDetail) return sourceDetail;
   const base = CHANNEL_LABEL[channel as IntakeChannel] ?? 'Shaadi Shopping';
   return sourceDetail ? `${base} · ${sourceDetail}` : base;
 }
