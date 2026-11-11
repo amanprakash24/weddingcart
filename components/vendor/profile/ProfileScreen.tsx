@@ -80,7 +80,7 @@ export default function ProfileScreen() {
           setForm({ name: b.data.name ?? '', gstin: b.data.gstin ?? '' });
         } else setLoadError(b.error ?? 'Your profile could not be loaded. Please try again.');
       })
-      .catch(() => live && setLoadError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setLoadError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };
@@ -100,7 +100,7 @@ export default function ProfileScreen() {
       setErrors(b.fieldErrors ?? {});
       if (!b.fieldErrors) setNotice({ where, text: b.error ?? 'Something went wrong. Please try again.', bad: true });
     } catch {
-      setNotice({ where, text: 'Could not reach Vivah OS — please check your connection and try again.', bad: true });
+      setNotice({ where, text: 'Could not connect — please check your connection and try again.', bad: true });
     }
     return false;
   }
@@ -209,7 +209,7 @@ export default function ProfileScreen() {
       {/* Header */}
       <div className="bg-[#1E0510] px-5 pb-10 pt-9 sm:pb-12 sm:pt-12">
         <div className="mx-auto max-w-3xl">
-          <p className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#E8C98A]"><span className="h-px w-8 bg-[#E8C98A]/70" /> {complete ? 'Your business' : 'Welcome to Vivah OS'}</p>
+          <p className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#E8C98A]"><span className="h-px w-8 bg-[#E8C98A]/70" /> {complete ? 'Your business' : 'Welcome'}</p>
           <h1 className="mt-3 font-playfair text-3xl leading-tight text-[#FFF7EA] sm:text-4xl">{complete ? 'Your business profile' : 'First, set up your business profile'}</h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#E9D9C3]/80">
             {complete

@@ -40,7 +40,7 @@ export default function BusinessSettingsForm() {
           setForm(toForm(body.data));
         } else setError(body.error ?? 'Your settings could not be loaded. Please try again.');
       })
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };
@@ -71,7 +71,7 @@ export default function BusinessSettingsForm() {
         setError(body.fieldErrors ? null : (body.error ?? 'Something went wrong. Your settings were not saved — please try again.'));
       }
     } catch {
-      setError('Could not reach Vivah OS. Your settings were not saved — please check your connection and try again.');
+      setError('Could not connect. Your settings were not saved — please check your connection and try again.');
     }
     setBusy(false);
   }

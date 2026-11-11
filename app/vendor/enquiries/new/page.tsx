@@ -1,7 +1,7 @@
 import NewEnquiryForm from '@/components/vendor/enquiries/NewEnquiryForm';
 
 // "+ New Enquiry" in Vendor OS (Phase C). The form saves through the venue-scoped API; this page reads no data itself.
-export const metadata = { title: 'New enquiry | Vivah OS', robots: { index: false, follow: false } };
+export const metadata = { title: 'New enquiry | Shaadi Shopping', robots: { index: false, follow: false } };
 
 export default function NewEnquiryPage() {
   return (

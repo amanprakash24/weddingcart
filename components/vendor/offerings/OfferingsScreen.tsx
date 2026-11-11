@@ -64,7 +64,7 @@ export default function OfferingsScreen() {
     fetch('/api/vendor-os/offerings')
       .then((r) => r.json())
       .then((b) => live && (b.success ? setCatalog(b.data) : setError(b.error ?? 'Your list could not be loaded. Please try again.')))
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };
@@ -86,7 +86,7 @@ export default function OfferingsScreen() {
       setErrors(b.fieldErrors ?? {});
       setError(b.fieldErrors ? null : (b.error ?? 'Something went wrong. It was not saved — please try again.'));
     } catch {
-      setError('Could not reach Vivah OS. It was not saved — please check your connection.');
+      setError('Could not connect. It was not saved — please check your connection.');
     }
     setBusy(false);
     return false;

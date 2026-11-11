@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { getSession, signIn } from 'next-auth/react';
 import { MessageCircle, ShieldCheck } from 'lucide-react';
 import VivahOsLogo from '@/components/vivah-os/VivahOsLogo';
+import OsBackdrop from '@/components/os/OsBackdrop';
+import { osFontClasses } from '@/app/fonts/osFonts';
 import CoupleResetCode from '@/components/customer/CoupleResetCode';
 import { shaadiWhatsAppLink } from '@/lib/shaadiContact';
 
@@ -91,62 +93,61 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F0E6] text-[#221714] lg:flex">
+    <div className={`os-theme ${osFontClasses} relative isolate min-h-screen lg:flex`}>
+      <OsBackdrop />
       {/* Photo side: the top of the page on a phone, the left half on a computer. */}
-      <div className="relative overflow-hidden bg-[#2E0A16] text-white lg:sticky lg:top-0 lg:h-screen lg:w-[46%] lg:shrink-0">
+      <div className="relative overflow-hidden bg-[#0F172A] text-white lg:sticky lg:top-0 lg:h-screen lg:w-[46%] lg:shrink-0">
         <Image src="/images/homepage-poster.jpg" alt="" fill priority sizes="(min-width: 1024px) 46vw, 100vw" className="object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#2E0A16]/55 to-[#2E0A16]/95" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0F172A]/55 via-[#1E1B4B]/80 to-[#0F172A]/95" />
         <div className="relative flex flex-col justify-between px-5 pb-12 pt-6 sm:px-8 lg:h-full lg:p-14">
-          <div className="lg:hidden"><VivahOsLogo size={40} tone="light" /></div>
-          <div className="hidden lg:block">
-            <Image src="/images/vivah-os/logo-on-dark.png" alt="Vivah OS — the operating system for celebrations" width={800} height={711} className="h-auto w-[300px]" priority />
-          </div>
+          <div className="lg:hidden"><VivahOsLogo size={40} tone="light" product="CLIENT" /></div>
+          <div className="hidden lg:block"><VivahOsLogo size={64} tone="light" product="CLIENT" /></div>
           <div className="mt-8 lg:mt-0">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-[#E9C98E]">MY WEDDING</p>
-            <h2 className="mt-2 font-cormorant text-[2.2rem] font-semibold leading-[1.05] lg:text-[3.4rem]">Your wedding,<br />all in one place.</h2>
-            <ul className="mt-6 hidden space-y-3 text-[15px] text-[#F3E8DA] lg:block">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-[#C4B5FD]">MY WEDDING</p>
+            <h2 className="mt-2 text-[2rem] font-semibold leading-[1.1] lg:text-[3rem]">Your wedding,<br />all in one place.</h2>
+            <ul className="mt-6 hidden space-y-3 text-[15px] text-white/85 lg:block">
               {POINTS.map((p) => (
-                <li key={p} className="flex items-center gap-3"><span className="h-2 w-2 rounded-full bg-[#C9A05A]" aria-hidden />{p}</li>
+                <li key={p} className="flex items-center gap-3"><span className="h-2 w-2 rounded-full bg-[#C4B5FD]" aria-hidden />{p}</li>
               ))}
             </ul>
           </div>
-          <p className="hidden text-[13px] text-[#D9CBB8] lg:block">One wedding, one Wedding ID.</p>
+          <p className="hidden text-[13px] text-white/70 lg:block">One wedding, one Wedding ID.</p>
         </div>
       </div>
 
       {/* Form side */}
-      <main className="relative -mt-6 flex flex-1 justify-center rounded-t-3xl bg-[#F7F0E6] px-5 pb-8 pt-7 sm:px-8 lg:mt-0 lg:items-center lg:rounded-none lg:py-12">
-        <div className="flex w-full max-w-[420px] flex-col gap-6">
+      <main className="relative -mt-6 flex flex-1 justify-center rounded-t-3xl px-4 pb-8 pt-5 sm:px-8 lg:mt-0 lg:items-center lg:rounded-none lg:py-12">
+        <div className="os-glass flex w-full max-w-[440px] flex-col gap-6 rounded-[28px] border bg-white p-6 sm:p-8">
           {resetting ? (
             <CoupleResetCode initialPhone={phone} redirectPath={redirectPath} helpLink={HELP} onBack={() => { setResetting(false); setDigits(EMPTY); setError(''); }} />
           ) : notCouple ? (
             <div className="flex flex-col gap-4">
               <h1 className="font-cormorant text-[2.1rem] font-semibold leading-[1.1] lg:text-[2.75rem]">No wedding on this number</h1>
-              <p className="text-[15px] leading-relaxed text-[#6B5A4E]">
+              <p className="text-[15px] leading-relaxed text-[var(--color-text-muted)]">
                 {notCouple === 'vendor'
-                  ? <>+91 {spaced(phone)} is set up for a business on Vivah OS, not for a wedding. If you meant to open your business, use Vendor OS.</>
+                  ? <>+91 {spaced(phone)} is set up for a business (Venue OS or Vendor OS), not for a wedding. If you meant to open your business, open it here.</>
                   : <>+91 {spaced(phone)} is not set up for My Wedding.</>}{' '}
                 If you are getting married, message us and we will link your wedding.
               </p>
               {notCouple === 'vendor' && (
-                <Link href="/workspace" className="flex h-[54px] items-center justify-center rounded-[14px] bg-[#7A1238] text-base font-semibold text-white hover:bg-[#5A0D29]">Open Vendor OS</Link>
+                <Link href="/workspace" className="flex h-[54px] items-center justify-center rounded-[14px] bg-[var(--primary)] text-base font-semibold text-white hover:bg-[var(--color-primary-hover)]">Open Vendor OS</Link>
               )}
-              <a href={HELP} target="_blank" rel="noopener noreferrer" className="flex h-[54px] items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[#D9C9B2] bg-white text-base font-semibold text-[#7A1238] hover:bg-[#FBF6EE]">
+              <a href={HELP} target="_blank" rel="noopener noreferrer" className="flex h-[54px] items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[var(--color-border-default)] bg-white text-base font-semibold text-[var(--color-primary-text)] hover:bg-white/70">
                 <MessageCircle className="h-[18px] w-[18px]" aria-hidden /> WhatsApp us
               </a>
-              <button type="button" onClick={startAgain} className="min-h-11 text-sm font-semibold text-[#7A1238] underline-offset-2 hover:underline">Use a different number</button>
+              <button type="button" onClick={startAgain} className="min-h-11 text-sm font-semibold text-[var(--color-primary-text)] underline-offset-2 hover:underline">Use a different number</button>
             </div>
           ) : (
             <>
               <div>
                 <h1 className="font-cormorant text-[2rem] font-semibold leading-[1.1] lg:text-[2.75rem]">Sign in to your wedding</h1>
-                <p className="mt-2 text-[15px] leading-relaxed text-[#6B5A4E]">Use your mobile number and the 6-digit login code your venue or Shaadi Shopping gave you.</p>
+                <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-text-muted)]">Use your mobile number and the 6-digit login code your venue or Shaadi Shopping gave you.</p>
               </div>
 
-              <form onSubmit={onSubmit} className="flex flex-col gap-3.5 lg:rounded-[20px] lg:border lg:border-[#EADFCF] lg:bg-white lg:p-7">
+              <form onSubmit={onSubmit} className="flex flex-col gap-3.5 lg:rounded-[20px] lg:border lg:border-[var(--color-border-default)] lg:bg-white lg:p-7">
                 <label htmlFor="couple-mobile" className="text-[13px] font-semibold">Mobile number</label>
-                <div className="flex h-14 items-center overflow-hidden rounded-[14px] border-[1.5px] border-[#D9C9B2] bg-white focus-within:border-[#7A1238]">
-                  <span className="flex h-full items-center border-r border-[#EADFCF] bg-[#F7F0E6] px-4 text-base font-semibold text-[#6B5A4E]">+91</span>
+                <div className="flex h-14 items-center overflow-hidden rounded-[14px] border-[1.5px] border-[var(--color-border-default)] bg-white focus-within:border-[var(--primary)]">
+                  <span className="flex h-full items-center border-r border-[var(--color-border-default)] bg-white/70 px-4 text-base font-semibold text-[var(--color-text-muted)]">+91</span>
                   <input
                     id="couple-mobile"
                     type="tel"
@@ -156,7 +157,7 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').replace(/^(91|0)(?=\d{10})/, '').slice(0, 10))}
                     placeholder="98765 43210"
                     required
-                    className="h-full min-w-0 flex-1 bg-transparent px-4 text-lg tracking-[0.04em] outline-none placeholder:text-[#B8A898]"
+                    className="h-full min-w-0 flex-1 bg-transparent px-4 text-lg tracking-[0.04em] outline-none placeholder:text-[var(--color-text-muted)]"
                   />
                 </div>
 
@@ -177,37 +178,37 @@ export default function CoupleLoginClient({ redirectPath = '/my-wedding' }: { re
                         onKeyDown={(e) => onKey(i, e)}
                         onPaste={(e) => onPaste(i, e)}
                         onFocus={(e) => e.target.select()}
-                        className="h-[56px] min-w-0 rounded-xl border-[1.5px] border-[#D9C9B2] bg-white text-center text-2xl font-semibold outline-none focus:border-2 focus:border-[#7A1238]"
+                        className="h-[56px] min-w-0 rounded-xl border-[1.5px] border-[var(--color-border-default)] bg-white text-center text-2xl font-semibold outline-none focus:border-2 focus:border-[var(--primary)]"
                       />
                     ))}
                   </div>
-                  <button type="button" onClick={() => { setResetting(true); setError(''); }} className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[#7A1238] underline-offset-2 hover:underline">
+                  <button type="button" onClick={() => { setResetting(true); setError(''); }} className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-[var(--color-primary-text)] underline-offset-2 hover:underline">
                     Forgot your code?
                   </button>
                 </fieldset>
 
                 {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>}
-                <button type="submit" disabled={loading || phone.length !== 10 || code.length !== 6} className="mt-1 h-[54px] rounded-[14px] bg-[#7A1238] text-base font-semibold text-white transition hover:bg-[#5A0D29] disabled:opacity-55">
+                <button type="submit" disabled={loading || phone.length !== 10 || code.length !== 6} className="mt-1 h-[54px] rounded-[14px] bg-[var(--primary)] text-base font-semibold text-white transition hover:bg-[var(--color-primary-hover)] disabled:opacity-55">
                   {loading ? 'Opening…' : 'Open my wedding'}
                 </button>
               </form>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#EFE4D3] px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/70 bg-[var(--color-primary-subtle-bg)] px-5 py-4">
                 <div>
                   <p className="text-sm font-semibold">No code, or wedding not showing?</p>
-                  <p className="text-[13px] text-[#6B5A4E]">Ask your venue, or message us.</p>
+                  <p className="text-[13px] text-[var(--color-text-muted)]">Ask your venue, or message us.</p>
                 </div>
-                <a href={HELP} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[#7A1238] hover:bg-[#FBF6EE]">
+                <a href={HELP} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[var(--color-primary-text)] hover:bg-white/70">
                   <MessageCircle className="h-[18px] w-[18px]" aria-hidden /> WhatsApp us
                 </a>
               </div>
 
-              <div className="flex items-start gap-3 rounded-2xl border border-[#EADFCF] p-4">
-                <ShieldCheck className="mt-px h-5 w-5 shrink-0 text-[#7A1238]" aria-hidden />
-                <p className="text-[13px] leading-relaxed text-[#4A3B32]">Keep your code to yourself. After you sign in, you can choose your own code in My Wedding.</p>
+              <div className="flex items-start gap-3 rounded-2xl border border-[var(--color-border-default)] p-4">
+                <ShieldCheck className="mt-px h-5 w-5 shrink-0 text-[var(--color-primary-text)]" aria-hidden />
+                <p className="text-[13px] leading-relaxed text-[var(--color-text-secondary)]">Keep your code to yourself. After you sign in, you can choose your own code in My Wedding.</p>
               </div>
 
-              <p className="text-[13px] text-[#6B5A4E]">Run a venue or vendor business? <Link href="/vendor/login" className="inline-flex min-h-11 items-center font-semibold text-[#7A1238] underline-offset-2 hover:underline">Vendor sign in</Link></p>
+              <p className="text-[13px] text-[var(--color-text-muted)]">Run a venue or vendor business? <Link href="/vendor/login" className="inline-flex min-h-11 items-center font-semibold text-[var(--color-primary-text)] underline-offset-2 hover:underline">Vendor sign in</Link></p>
             </>
           )}
         </div>

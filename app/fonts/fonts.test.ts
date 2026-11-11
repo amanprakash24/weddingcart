@@ -66,3 +66,17 @@ describe('Playfair is always referenced through its CSS variable', () => {
     expect(css).toMatch(/\.font-playfair\s*\{\s*font-family:\s*var\(--font-playfair/);
   });
 });
+
+// Venue OS, Vendor OS and Client OS type (11 Nov 2026): Poppins + Inter, self-hosted the same way (app/fonts/osFonts.ts).
+describe('the apps’ own fonts', () => {
+  const os = readFileSync(join(APP, 'fonts', 'osFonts.ts'), 'utf8');
+  test('loaded from files in the repo, never from Google', () => {
+    expect(os).not.toMatch(/next\/font\/google/);
+    const files = [...os.matchAll(/path:\s*'\.\/([^']+\.woff2)'/g)].map((m) => m[1]);
+    expect(files.sort()).toEqual(['Inter-latin-variable.woff2', 'Poppins-500-latin.woff2', 'Poppins-600-latin.woff2', 'Poppins-700-latin.woff2']);
+    for (const f of files) expect(readFileSync(join(APP, 'fonts', f)).subarray(0, 4).toString('latin1')).toBe('wOF2');
+  });
+  test('each ships with its licence', () => {
+    for (const name of ['Inter', 'Poppins']) expect(readFileSync(join(APP, 'fonts', `OFL-${name}.txt`), 'utf8')).toContain('SIL OPEN FONT LICENSE Version 1.1');
+  });
+});
