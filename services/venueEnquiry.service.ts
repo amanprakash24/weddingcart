@@ -1,4 +1,5 @@
 import { ActivityType } from '@/generated/prisma/enums';
+import { HOLD_ENDING_MS } from '@/lib/venue/slots';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import {
@@ -100,6 +101,8 @@ const include = {
   tasks: { where: { context: 'SALES_FOLLOWUP' as const, status: { not: 'CANCELLED' as const } }, select: { id: true, title: true, dueAt: true, status: true, assignedToId: true }, orderBy: { dueAt: 'asc' as const } },
   activities: { select: { id: true, type: true, summary: true, detail: true, createdAt: true }, orderBy: { createdAt: 'desc' as const }, take: 50 },
   // The current quotation (never one replaced by a revision) — it decides the next step (lib/venue/quotation.ts).
+  // Holds on this enquiry's halls (lib/venue/slots.ts): one that ends within a day becomes the next step.
+  venueSlots: { where: { holdUntil: { not: null } }, select: { holdUntil: true, space: { select: { name: true } } }, orderBy: { holdUntil: 'asc' as const } },
   quotations: { where: { status: { not: 'SUPERSEDED' as const } }, select: { status: true, validUntil: true, changesRequestedAt: true, booking: { select: { status: true } }, _count: { select: { paymentSubmissions: { where: { status: 'PENDING' as const } } } } }, orderBy: { createdAt: 'desc' as const }, take: 1 },
 };
 
@@ -108,6 +111,7 @@ type Row = {
   eventType?: string; days?: number; functions?: string[]; totalBudget?: number | null; sourceDetail?: string | null; assignedToId?: string | null; clientId?: string | null;
   tasks: { id: string; title: string; dueAt: Date | null; status: string; assignedToId?: string | null }[];
   activities: { id: string; type: string; summary: string; detail: string | null; createdAt: Date }[];
+  venueSlots?: { holdUntil: Date | null; space: { name: string } }[];
   quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null; booking?: { status: string } | null; _count?: { paymentSubmissions: number } }[];
 };
 
@@ -118,6 +122,8 @@ function view(r: Row, now: Date, seesMoney: boolean): VenueEnquiryDetail {
   // A sent quotation past its date is expired, whether or not the lazy expiry has marked it yet.
   const quote = q ? (q.status === 'SENT' && q.validUntil && q.validUntil < now ? 'ENDED' : quoteStage({ status: q.status, changesRequested: q.changesRequestedAt !== null })) : null;
   const kind = eventLabel(r.eventType);
+  const ending = r.venueSlots?.find((s) => s.holdUntil && s.holdUntil > now && s.holdUntil.getTime() - now.getTime() <= HOLD_ENDING_MS);
+  const holdEnds = ending?.holdUntil ? { at: ending.holdUntil.toISOString(), hall: ending.space.name } : null;
   return {
     id: r.id,
     name: r.name,
@@ -129,7 +135,7 @@ function view(r: Row, now: Date, seesMoney: boolean): VenueEnquiryDetail {
     viaShaadiShopping: r.platformMatch !== null,
     // "Won" with a confirmed booking is the booked customer (the wedding was created — the stage moves to Won with it), never
     // "not going ahead": only a lost enquiry, or one won some other way with no booking here, is closed.
-    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || (r.pipelineStage === 'WON' && q?.booking?.status !== 'CONFIRMED'), followUps, quote, booked: q?.booking?.status === 'CONFIRMED', paymentToCheck: seesMoney && (q?._count?.paymentSubmissions ?? 0) > 0 }, now),
+    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || (r.pipelineStage === 'WON' && q?.booking?.status !== 'CONFIRMED'), followUps, quote, booked: q?.booking?.status === 'CONFIRMED', paymentToCheck: seesMoney && (q?._count?.paymentSubmissions ?? 0) > 0, holdEnds }, now),
     createdAt: r.createdAt.toISOString(),
     eventLabel: kind,
     days: r.days && r.days > 0 ? r.days : 1,

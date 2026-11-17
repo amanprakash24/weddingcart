@@ -9,7 +9,7 @@ const { createVenueSpaceService } = await import('./venueSpace.service');
 // booked shift is refused. A fake database keeps rows in memory and applies the `where` fields this service uses.
 
 type SpaceRow = { id: string; businessId: string; name: string; capacity: number | null; active: boolean; sortOrder: number; createdAt: Date };
-type SlotRow = { id: string; businessId: string; spaceId: string; date: Date; shift: string; consultationId: string | null; note: string | null; createdAt: Date };
+type SlotRow = { id: string; businessId: string; spaceId: string; date: Date; shift: string; consultationId: string | null; note: string | null; holdUntil?: Date | null; heldById?: string | null; createdAt: Date };
 type Enquiry = { id: string; businessId: string; name: string; pipelineStage: string; bookings: { status: string; wedding: null }[] };
 
 const BIZ = 'venue-1';
@@ -26,6 +26,7 @@ function fake() {
     { id: 'e1', businessId: BIZ, name: 'Riya & Aman', pipelineStage: 'QUOTATION_SENT', bookings: [] },
     { id: 'e2', businessId: BIZ, name: 'Neha & Raj', pipelineStage: 'WON', bookings: [{ status: 'CONFIRMED', wedding: null }] },
     { id: 'lost', businessId: BIZ, name: 'Gone', pipelineStage: 'LOST', bookings: [] },
+    { id: 'e3', businessId: BIZ, name: 'Pooja & Dev', pipelineStage: 'NEW', bookings: [] },
   ];
   let n = 0;
   const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -45,7 +46,7 @@ function fake() {
   };
   const withEnquiry = (s: SlotRow) => {
     const e = enquiries.find((x) => x.id === s.consultationId) ?? null;
-    return { id: s.id, spaceId: s.spaceId, date: s.date, shift: s.shift, note: s.note, consultation: e ? { id: e.id, name: e.name, pipelineStage: e.pipelineStage, bookings: e.bookings } : null };
+    return { id: s.id, spaceId: s.spaceId, date: s.date, shift: s.shift, note: s.note, holdUntil: s.holdUntil ?? null, consultation: e ? { id: e.id, name: e.name, pipelineStage: e.pipelineStage, bookings: e.bookings } : null };
   };
   const matchSpace = (s: SpaceRow, w: Record<string, unknown>): boolean =>
     s.businessId === w.businessId &&
@@ -77,6 +78,12 @@ function fake() {
     venueSlot: {
       findMany: async ({ where }: { where: Record<string, unknown> }) => slots.filter((s) => matchSlot(s, where)).map(withEnquiry),
       count: async ({ where }: { where: Record<string, unknown> }) => slots.filter((s) => matchSlot(s, where)).length,
+      findFirst: async ({ where }: { where: Record<string, unknown> }) => { const s = slots.find((x) => matchSlot(x, where)); return s ? withEnquiry(s) : null; },
+      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Partial<SlotRow> }) => {
+        const hit = slots.filter((s) => matchSlot(s, where));
+        hit.forEach((s) => Object.assign(s, data));
+        return { count: hit.length };
+      },
       create: async ({ data }: { data: Omit<SlotRow, 'id' | 'createdAt' | 'note' | 'consultationId'> & { note?: string | null; consultationId?: string | null } }) => {
         const row: SlotRow = { note: null, consultationId: null, ...data, id: `sl${++n}`, createdAt: new Date() } as SlotRow;
         slots.push(row);
@@ -150,6 +157,42 @@ describe('venueSpaceService', () => {
     expect((await runInScope(staff, () => service.forEnquiry('e1'))).canReserve).toBe(false);
     const owner = await run(() => service.calendar({ gte: new Date('2026-11-01T00:00:00Z'), lt: new Date('2027-11-01T00:00:00Z') }));
     expect([owner.canManage, owner.canBlock, owner.truncated]).toEqual([true, true, false]);
+  });
+
+  it('holds a quoted hall: it takes the hall, can be extended, refuses others, and ends by itself', async () => {
+    const { service, slots } = fake();
+    const r = await run(() => service.reserve('e1', { spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT' }, 'u'));
+    if ('errors' in r) throw new Error('unexpected');
+    const held = await run(() => service.hold('e1', r.slots[0].id, { days: 3 }, 'u'));
+    expect([held.slots[0].state, held.slots[0].holdUntil]).toEqual(['HELD', '2026-11-20T18:29:59.999Z']);
+    // nobody can block over the hold
+    await expect(run(() => service.block({ spaceId: 'hall', date: '2026-12-12', shift: 'FULL_DAY' }, null))).rejects.toThrow('Royal Hall is not free');
+    // another couple can still be quoted (a warning) but cannot hold it
+    const other = await run(() => service.reserve('e3', { spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT' }, 'u'));
+    if ('errors' in other) throw new Error('unexpected');
+    expect(other.slots[0].clashes.map((c) => c.state)).toEqual(['HELD']);
+    await expect(run(() => service.hold('e3', other.slots[0].id, { days: 1 }, 'u'))).rejects.toThrow('Royal Hall is not free');
+    // extend: a new end
+    const ext = await run(() => service.hold('e1', r.slots[0].id, { days: 7 }, 'u'));
+    expect(ext.slots[0].holdUntil).toBe('2026-11-24T18:29:59.999Z');
+    // the time passes: quoted again, the end remembered
+    slots[0].holdUntil = new Date('2026-11-17T05:00:00Z');
+    const after = await run(() => service.forEnquiry('e1'));
+    expect([after.slots[0].state, after.slots[0].holdUntil]).toEqual(['QUOTED', '2026-11-17T05:00:00.000Z']);
+  });
+
+  it('release ends a hold now; odd lengths, booked halls and other enquiries are refused', async () => {
+    const { service } = fake();
+    const r = await run(() => service.reserve('e1', { spaceId: 'hall', date: '2026-12-12', shift: 'DAY' }, 'u'));
+    if ('errors' in r) throw new Error('unexpected');
+    await expect(run(() => service.hold('e1', r.slots[0].id, { days: 4 }, 'u'))).rejects.toThrow('Choose how long');
+    await run(() => service.hold('e1', r.slots[0].id, {}, 'u'));
+    const freed = await run(() => service.releaseHold('e1', r.slots[0].id));
+    expect([freed.slots[0].state, freed.slots[0].holdUntil]).toEqual(['QUOTED', null]);
+    await expect(run(() => service.hold('e2', r.slots[0].id, { days: 1 }, 'u'))).rejects.toThrow();
+    const b = await run(() => service.reserve('e2', { spaceId: 'hall', date: '2026-12-13', shift: 'DAY' }, 'u'));
+    if ('errors' in b) throw new Error('unexpected');
+    await expect(run(() => service.hold('e2', b.slots[0].id, { days: 1 }, 'u'))).rejects.toThrow('already taken by the booking');
   });
 
   it('cannot reserve another business’s hall', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { clashes, clashWords, dayFill, halfOf, shiftsOverlap, slotOf, slotState, validateSlot, validateSpace, type Slot, type Space } from './slots';
+import { clashes, clashWords, dayFill, halfOf, holdEnd, shiftsOverlap, slotLabel, slotOf, slotState, validateSlot, validateSpace, type Slot, type Space } from './slots';
 
 const enquiry = (stage: string, bookings: { status: string; wedding?: { id: string; weddingNumber: string } | null }[] = []) => ({
   id: 'e1',
@@ -8,7 +8,7 @@ const enquiry = (stage: string, bookings: { status: string; wedding?: { id: stri
   bookings: bookings.map((b) => ({ status: b.status, wedding: b.wedding ?? null })),
 });
 
-const slot = (over: Partial<Slot>): Slot => ({ id: 's', spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT', state: 'BOOKED', name: 'X', note: null, enquiryId: 'e', wedding: null, ...over });
+const slot = (over: Partial<Slot>): Slot => ({ id: 's', spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT', state: 'BOOKED', name: 'X', note: null, enquiryId: 'e', wedding: null, holdUntil: null, ...over });
 
 describe('shiftsOverlap', () => {
   it('day and night are separate; full day takes both', () => {
@@ -38,10 +38,41 @@ describe('slotState', () => {
 describe('slotOf', () => {
   it('reads the date as stored and names the wedding', () => {
     const s = slotOf({ id: 'a', spaceId: 'hall', date: new Date('2026-12-12T00:00:00.000Z'), shift: 'NIGHT', note: 'ignored', consultation: enquiry('WON', [{ status: 'CONFIRMED', wedding: { id: 'w', weddingNumber: 'WED-1' } }]) });
-    expect(s).toEqual({ id: 'a', spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT', state: 'BOOKED', name: 'Riya & Aman', note: null, enquiryId: 'e1', wedding: { id: 'w', number: 'WED-1' } });
+    expect(s).toEqual({ id: 'a', spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT', state: 'BOOKED', name: 'Riya & Aman', note: null, enquiryId: 'e1', wedding: { id: 'w', number: 'WED-1' }, holdUntil: null });
   });
   it('a block keeps its note', () => {
     expect(slotOf({ id: 'b', spaceId: 'hall', date: new Date('2026-12-12T00:00:00.000Z'), shift: 'DAY', note: 'Repairs', consultation: null })?.note).toBe('Repairs');
+  });
+});
+
+describe('holds', () => {
+  const now = new Date('2026-11-17T06:00:00Z'); // 11:30 in India
+  it('a hold takes the hall until it ends, then reads as quoted', () => {
+    expect(slotState(enquiry('QUOTATION_SENT'), new Date('2026-11-20T18:29:59Z'), now)).toBe('HELD');
+    expect(slotState(enquiry('QUOTATION_SENT'), new Date('2026-11-17T05:59:59Z'), now)).toBe('QUOTED');
+  });
+  it('accepted, booked and closed win over a hold', () => {
+    const until = new Date('2026-11-20T00:00:00Z');
+    expect(slotState(enquiry('ACCEPTED'), until, now)).toBe('ACCEPTED');
+    expect(slotState(enquiry('WON', [{ status: 'CONFIRMED' }]), until, now)).toBe('BOOKED');
+    expect(slotState(enquiry('LOST'), until, now)).toBeNull();
+  });
+  it('a hold of n days ends at the end of that day in India, never after the slot date', () => {
+    expect(holdEnd(now, 3, '2027-02-14').toISOString()).toBe('2026-11-20T18:29:59.999Z');
+    expect(holdEnd(new Date('2026-11-17T20:00:00Z'), 1, '2027-02-14').toISOString()).toBe('2026-11-19T18:29:59.999Z'); // already the 18th in India
+    expect(holdEnd(now, 14, '2026-11-19').toISOString()).toBe('2026-11-19T18:29:59.999Z');
+  });
+  it('a held slot says until when; an ended hold is still remembered on the slot', () => {
+    const row = { id: 'h', spaceId: 'hall', date: new Date('2026-12-12T00:00:00.000Z'), shift: 'NIGHT', note: null, consultation: enquiry('QUOTATION_SENT') };
+    const held = slotOf({ ...row, holdUntil: new Date('2026-11-20T18:29:59.999Z') }, now)!;
+    expect(held.state).toBe('HELD');
+    expect(slotLabel(held)).toBe('Held until Fri, 20 Nov');
+    const ended = slotOf({ ...row, holdUntil: new Date('2026-11-16T18:29:59.999Z') }, now)!;
+    expect([ended.state, ended.holdUntil]).toEqual(['QUOTED', '2026-11-16T18:29:59.999Z']);
+  });
+  it('a hold fills a day like a booking', () => {
+    const spaces: Space[] = [{ id: 'hall', name: 'Hall', capacity: null, active: true }];
+    expect(dayFill(spaces, [slot({ state: 'HELD', shift: 'FULL_DAY' })])).toBe('FULL');
   });
 });
 

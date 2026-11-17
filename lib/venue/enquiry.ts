@@ -175,6 +175,7 @@ export interface FollowUp {
 
 export type NextAction =
   | { kind: 'PAYMENT_TO_CHECK'; label: string } // the couple said "I have paid" on their link — look in the bank, then say so
+  | { kind: 'HOLD_ENDING'; label: string } // a hall held for them ends within a day — call them before it frees itself
   | { kind: 'CALL'; label: string } // nobody has spoken to them yet
   | { kind: 'FOLLOW_UP_OVERDUE'; label: string; followUpId: string }
   | { kind: 'FOLLOW_UP_TODAY'; label: string; followUpId: string }
@@ -195,12 +196,17 @@ const firstName = (name: string) => name.split(' ')[0];
 // One primary action per enquiry (audit brief §13): the earliest open follow-up decides; with none, call them if nobody has yet,
 // otherwise plan the next step. A quotation changes it: the couple's answer (yes / changes) comes before everything; a draft waits
 // to be sent and a sent one waits for the couple — but a follow-up that is due is still shown first.
-export function nextAction(e: { name: string; contacted: boolean; closed: boolean; followUps: FollowUp[]; quote?: QuoteStage | null; booked?: boolean; paymentToCheck?: boolean }, now: Date = new Date()): NextAction {
+// holdEnds: the hold on one of their halls that ends soonest, when it ends within a day (lib/venue/slots.ts) — they are called first.
+export function nextAction(e: { name: string; contacted: boolean; closed: boolean; followUps: FollowUp[]; quote?: QuoteStage | null; booked?: boolean; paymentToCheck?: boolean; holdEnds?: { at: string; hall: string } | null }, now: Date = new Date()): NextAction {
   const who = firstName(e.name);
   if (e.closed) return { kind: 'CLOSED', label: 'Closed' };
   if (e.quote === 'ACCEPTED' && e.paymentToCheck) return { kind: 'PAYMENT_TO_CHECK', label: `${who} says they have paid — check and confirm it` };
   if (e.quote === 'ACCEPTED' && e.booked) return { kind: 'BOOKED', label: `Booking confirmed for ${who}` };
   if (e.quote === 'ACCEPTED') return { kind: 'QUOTE_ACCEPTED', label: `${who} accepted your quotation` };
+  if (e.holdEnds) {
+    const when = istDay(new Date(e.holdEnds.at)) === istDay(now) ? 'today' : 'tomorrow';
+    return { kind: 'HOLD_ENDING', label: `${e.holdEnds.hall} is held for ${who} until ${when} — call them before it frees itself` };
+  }
   if (e.quote === 'CHANGES') return { kind: 'QUOTE_CHANGES', label: `${who} asked for changes to the quotation` };
   const open = e.followUps.filter((f) => !f.done).sort((a, b) => (a.dueAt ?? '9999').localeCompare(b.dueAt ?? '9999'));
   const next = open[0];
@@ -218,7 +224,7 @@ export function nextAction(e: { name: string; contacted: boolean; closed: boolea
 }
 
 // "Today's Work" order: the couple's answer first, then what is late, then today, then the rest.
-export const ACTION_ORDER: NextAction['kind'][] = ['PAYMENT_TO_CHECK', 'QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY', 'QUOTE_DRAFT', 'SCHEDULE', 'QUOTE_WAITING', 'FOLLOW_UP_LATER', 'BOOKED', 'CLOSED'];
+export const ACTION_ORDER: NextAction['kind'][] = ['PAYMENT_TO_CHECK', 'QUOTE_ACCEPTED', 'HOLD_ENDING', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY', 'QUOTE_DRAFT', 'SCHEDULE', 'QUOTE_WAITING', 'FOLLOW_UP_LATER', 'BOOKED', 'CLOSED'];
 
 // Opens a chat with the venue's OWN customer, from the venue's own tool. (Public marketplace pages are different: there every
 // contact link must be Shaadi Shopping's number, never a venue's.)

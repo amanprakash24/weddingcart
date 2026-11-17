@@ -9,6 +9,9 @@ import { istDay } from '@/lib/venue/calendar';
 import {
   clashes,
   clashWords,
+  DEFAULT_HOLD_DAYS,
+  HOLD_DAYS,
+  holdEnd,
   SHIFT_LABEL,
   slotOf,
   SPACE_LIMITS,
@@ -57,7 +60,7 @@ export type ReserveResult = EnquirySlots | { errors: SlotErrors };
 export interface VenueSpaceDeps {
   db: {
     venueSpace: Pick<typeof prisma.venueSpace, 'findMany' | 'findFirst' | 'count' | 'create' | 'updateMany' | 'deleteMany'>;
-    venueSlot: Pick<typeof prisma.venueSlot, 'findMany' | 'count' | 'create' | 'deleteMany'>;
+    venueSlot: Pick<typeof prisma.venueSlot, 'findMany' | 'findFirst' | 'count' | 'create' | 'updateMany' | 'deleteMany'>;
     consultation: Pick<typeof prisma.consultation, 'findUnique'>;
     business: Pick<typeof prisma.business, 'findUnique'>;
   };
@@ -68,7 +71,7 @@ const defaultDeps = (): VenueSpaceDeps => ({ db: prisma, now: () => new Date() }
 
 const SPACE_SELECT = { id: true, name: true, capacity: true, active: true } as const;
 const ENQUIRY_SELECT = { id: true, name: true, pipelineStage: true, bookings: { select: { status: true, wedding: { select: { id: true, weddingNumber: true } } } } } as const;
-const SLOT_SELECT = { id: true, spaceId: true, date: true, shift: true, note: true, consultation: { select: ENQUIRY_SELECT } } as const;
+const SLOT_SELECT = { id: true, spaceId: true, date: true, shift: true, note: true, holdUntil: true, consultation: { select: ENQUIRY_SELECT } } as const;
 export const MAX_SLOTS_PER_ENQUIRY = 12;
 export const MAX_CALENDAR_SLOTS = 3000;
 const dayDate = (day: string) => new Date(`${day}T00:00:00.000Z`);
@@ -92,7 +95,8 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
 
   async function slotsWhere(id: string, where: Prisma.VenueSlotWhereInput, take: number): Promise<{ slots: Slot[]; truncated: boolean }> {
     const rows = await deps.db.venueSlot.findMany({ where: { ...where, businessId: id }, select: SLOT_SELECT, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }], take: take + 1 });
-    return { slots: rows.slice(0, take).map((r) => slotOf(r)).filter((s): s is Slot => s !== null), truncated: rows.length > take };
+    const now = deps.now();
+    return { slots: rows.slice(0, take).map((r) => slotOf(r, now)).filter((s): s is Slot => s !== null), truncated: rows.length > take };
   }
 
   async function enquiry(id: string): Promise<SlotEnquiry> {
@@ -120,7 +124,8 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
       deps.db.venueSlot.findMany({ where: { businessId: id, consultationId: e.id }, select: SLOT_SELECT, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] }),
     ]);
     // This enquiry's own slots always show here — as quoted when the enquiry is closed (they no longer take the hall anywhere else).
-    const own = rows.map((r) => slotOf(r) ?? slotOf({ ...r, consultation: { ...e, pipelineStage: 'NEW', bookings: [] } })!);
+    const now = deps.now();
+    const own = rows.map((r) => slotOf(r, now) ?? slotOf({ ...r, holdUntil: null, consultation: { ...e, pipelineStage: 'NEW', bookings: [] } }, now)!);
     const pairs = own.map((s) => ({ spaceId: s.spaceId, date: dayDate(s.date) }));
     // clashes() leaves out this enquiry's own slots. Not a SQL `NOT consultationId = …`: that would also drop the hand blocks (no enquiry).
     const around = pairs.length ? (await slotsWhere(id, { OR: pairs }, MAX_SLOTS_PER_ENQUIRY * 50)).slots : [];
@@ -221,6 +226,39 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
       return slotsOf(id, e);
     },
 
+    // Hold this enquiry's hall for the couple for `days` (to the end of that day in India), or extend a hold. While held it takes the
+    // hall: nobody can block, hold or book it over the hold. Refused when the hall is already booked, accepted, held or blocked for
+    // that shift by anyone else, and for a slot whose date has passed. The hold ends by itself (lib/venue/slots.ts).
+    async hold(enquiryId: string, slotId: string, input: { days?: unknown }, actorId: string | null): Promise<EnquirySlots> {
+      const id = businessId();
+      const e = await enquiry(enquiryId);
+      if (e.pipelineStage === 'LOST') throw new ConflictError('This enquiry is closed');
+      const days = Number(input.days ?? DEFAULT_HOLD_DAYS);
+      if (!(HOLD_DAYS as readonly number[]).includes(days)) throw new ValidationError(`Choose how long to hold it: ${HOLD_DAYS.join(', ')} days`);
+      const row = await deps.db.venueSlot.findFirst({ where: { id: slotId, businessId: id, consultationId: e.id }, select: SLOT_SELECT });
+      if (!row) throw new NotFoundError('Hall and shift', slotId);
+      const now = deps.now();
+      const slot = slotOf(row, now);
+      if (!slot || (slot.state !== 'QUOTED' && slot.state !== 'HELD')) throw new ConflictError('Only a hall that is quoted or held can be held — this one is already taken by the booking');
+      if (slot.date < istDay(now)) throw new ConflictError('This date has passed');
+      const space = await deps.db.venueSpace.findFirst({ where: { id: slot.spaceId, businessId: id }, select: SPACE_SELECT });
+      if (!space?.active) throw new ConflictError('This hall is no longer in use');
+      const around = (await slotsWhere(id, { spaceId: slot.spaceId, date: dayDate(slot.date) }, 500)).slots;
+      const taken = clashes(slot, around).filter((c) => TAKES_HALL.includes(c.state));
+      if (taken.length) throw new ConflictError(`${space.name} is not free for ${SHIFT_LABEL[slot.shift].toLowerCase()} on that date: ${clashWords(taken[0])}`);
+      await deps.db.venueSlot.updateMany({ where: { id: slotId, businessId: id, consultationId: e.id }, data: { holdUntil: holdEnd(now, days, slot.date), heldById: actorId } });
+      return slotsOf(id, e);
+    },
+
+    // End a hold now — the hall goes back to quoted for this couple.
+    async releaseHold(enquiryId: string, slotId: string): Promise<EnquirySlots> {
+      const id = businessId();
+      const e = await enquiry(enquiryId);
+      const { count } = await deps.db.venueSlot.updateMany({ where: { id: slotId, businessId: id, consultationId: e.id }, data: { holdUntil: null, heldById: null } });
+      if (count === 0) throw new NotFoundError('Hall and shift', slotId);
+      return slotsOf(id, e);
+    },
+
     async release(enquiryId: string, slotId: string): Promise<EnquirySlots> {
       const id = businessId();
       const e = await enquiry(enquiryId);
@@ -257,7 +295,7 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
       const taken = clashes({ id: '', spaceId: v.spaceId, date: v.date, shift: v.shift, enquiryId: null }, around).filter((c) => TAKES_HALL.includes(c.state));
       if (taken.length) throw new ConflictError(`${space.name} is not free for ${SHIFT_LABEL[v.shift].toLowerCase()} on that date: ${clashWords(taken[0])}`);
       const row = await deps.db.venueSlot.create({ data: { businessId: id, spaceId: v.spaceId, date: dayDate(v.date), shift: v.shift, note: v.note, consultationId: null, createdById: actorId }, select: SLOT_SELECT });
-      return slotOf(row)!;
+      return slotOf(row, deps.now())!;
     },
 
     async unblock(slotId: string): Promise<{ removed: true }> {
