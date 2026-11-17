@@ -113,7 +113,7 @@ export default function AvailabilityCalendar() {
     );
   }
 
-  const manager = halls.usesHalls ? <HallsManager spaces={halls.spaces} onChange={() => setVersion((v) => v + 1)} /> : null;
+  const manager = halls.usesHalls ? <HallsManager spaces={halls.spaces} canManage={halls.canManage} onChange={() => setVersion((v) => v + 1)} /> : null;
   const month = data.months[monthIndex];
   const go = (step: number) => {
     setMonthIndex((i) => Math.min(data.months.length - 1, Math.max(0, i + step)));

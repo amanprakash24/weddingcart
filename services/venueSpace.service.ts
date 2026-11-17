@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
+import { can } from '@/lib/auth/permissions';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { isVenueCategory } from '@/lib/quotation/terms';
 import { istDay } from '@/lib/venue/calendar';
@@ -38,11 +39,13 @@ export interface EnquirySlots {
 
 export interface HallCalendar {
   usesHalls: boolean;
+  canManage: boolean; // may add, rename or remove halls (the settings permission) — the screen hides those buttons otherwise
   spaces: Space[]; // every hall, active first — a hall taken out of use still names its old slots
   slots: Slot[];
 }
 
-export type SpacesResult = { usesHalls: boolean; spaces: Space[] } | { errors: SpaceErrors };
+export type HallList = { usesHalls: boolean; canManage: boolean; spaces: Space[] };
+export type SpacesResult = HallList | { errors: SpaceErrors };
 export type ReserveResult = EnquirySlots | { errors: SlotErrors };
 
 export interface VenueSpaceDeps {
@@ -132,10 +135,10 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
   return {
     // ---------- halls and lawns ----------
 
-    async list(): Promise<{ usesHalls: boolean; spaces: Space[] }> {
+    async list(): Promise<HallList> {
       const id = businessId();
       const list = await spaces(id);
-      return { usesHalls: await usesHalls(id, list.length), spaces: list };
+      return { usesHalls: await usesHalls(id, list.length), canManage: can(effectiveScope(), 'settings'), spaces: list };
     },
 
     async add(input: Record<string, unknown>): Promise<SpacesResult> {
@@ -169,7 +172,7 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
     },
 
     // A hall with slots is kept (taken out of use, so its bookings still read right); one without any is deleted.
-    async remove(spaceId: string): Promise<{ usesHalls: boolean; spaces: Space[] }> {
+    async remove(spaceId: string): Promise<HallList> {
       const id = businessId();
       const used = await deps.db.venueSlot.count({ where: { businessId: id, spaceId } });
       const { count } = used > 0
@@ -213,7 +216,7 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
     async calendar(range: { gte: Date; lt: Date }): Promise<HallCalendar> {
       const id = businessId();
       const list = await spaces(id);
-      return { usesHalls: await usesHalls(id, list.length), spaces: list, slots: list.length ? await slotsWhere(id, { date: range }) : [] };
+      return { usesHalls: await usesHalls(id, list.length), canManage: can(effectiveScope(), 'settings'), spaces: list, slots: list.length ? await slotsWhere(id, { date: range }) : [] };
     },
 
     // Block a hall's shift by hand (repairs, the owner's own function …). Refused over a shift that is already booked, accepted or

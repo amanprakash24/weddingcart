@@ -9,10 +9,10 @@ import type { Space, SpaceErrors } from '@/lib/venue/slots';
 // ever reserved is never deleted — it is taken out of use, so the bookings in it still read right. Changing the list needs the
 // "Business profile and settings" permission; the server refuses anyone else, and this card then says so.
 
-type Answer = { usesHalls: boolean; spaces: Space[] };
+type Answer = { usesHalls: boolean; canManage: boolean; spaces: Space[] };
 
-export default function HallsManager({ spaces, onChange }: { spaces: Space[]; onChange: (a: Answer) => void }) {
-  const [editing, setEditing] = useState<string | 'new' | null>(spaces.length === 0 ? 'new' : null);
+export default function HallsManager({ spaces, canManage, onChange }: { spaces: Space[]; canManage: boolean; onChange: (a: Answer) => void }) {
+  const [editing, setEditing] = useState<string | 'new' | null>(spaces.length === 0 && canManage ? 'new' : null);
   const [name, setName] = useState('');
   const [capacity, setCapacity] = useState('');
   const [errors, setErrors] = useState<SpaceErrors>({});
@@ -74,7 +74,7 @@ export default function HallsManager({ spaces, onChange }: { spaces: Space[]; on
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Your halls and lawns</h2>
           <p className="text-xs text-[var(--color-text-muted)]">Each one has a day and a night shift on the calendar.</p>
         </div>
-        {editing === null && (
+        {editing === null && canManage && (
           <button type="button" onClick={() => start(null)} className="min-h-11 shrink-0 rounded-lg px-3 text-sm font-semibold text-[var(--primary)]">
             + Add
           </button>
@@ -94,6 +94,7 @@ export default function HallsManager({ spaces, onChange }: { spaces: Space[]; on
                   <p className={`truncate text-sm font-semibold ${s.active ? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-muted)] line-through'}`}>{s.name}</p>
                   <p className="text-xs text-[var(--color-text-muted)]">{[s.capacity ? `${s.capacity.toLocaleString('en-IN')} guests` : null, s.active ? null : 'Not in use'].filter(Boolean).join(' · ') || ' '}</p>
                 </div>
+                {canManage && (
                 <div className="flex shrink-0 items-center">
                   <button type="button" disabled={busy} onClick={() => start(s)} className="min-h-11 rounded-lg px-3 text-sm font-medium text-[var(--primary)]">
                     Edit
@@ -108,12 +109,14 @@ export default function HallsManager({ spaces, onChange }: { spaces: Space[]; on
                     </button>
                   )}
                 </div>
+                )}
               </li>
             ),
           )}
         </ul>
       )}
 
+      {spaces.length === 0 && !canManage && <p className="text-sm text-[var(--color-text-secondary)]">No halls added yet. The owner can add them here.</p>}
       {editing === 'new' && form(null)}
       {error && <p role="alert" className="text-sm text-[var(--color-danger-text)]">{error}</p>}
     </Card>

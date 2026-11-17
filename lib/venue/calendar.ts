@@ -28,7 +28,7 @@ export interface VenueCalendar {
 // The calendar screen's answer: the bookings by day, and the venue's halls with each hall's slots in the same months
 // (lib/venue/slots.ts). usesHalls false = a business without halls (a photographer, a DJ …): the screen shows days only.
 export interface VenueCalendarView extends VenueCalendar {
-  halls: { usesHalls: boolean; spaces: Space[]; slots: Slot[] };
+  halls: { usesHalls: boolean; canManage: boolean; spaces: Space[]; slots: Slot[] };
 }
 
 export const CALENDAR_MONTHS = 12;
