@@ -2,6 +2,7 @@
 // Pure: no database. The proposal is NOT a separate model; everything here is derived from the quotation.
 import { createHash, randomBytes } from 'node:crypto';
 import type { CoupleBooking } from '@/lib/quotation/coupleBooking';
+import type { ProposalHall } from './proposalHalls';
 import type { QuotationStatus } from '@/generated/prisma/enums';
 import { ValidationError } from '@/lib/errors';
 import type { BookingSource } from '@/lib/quotation/booking';
@@ -204,6 +205,9 @@ export interface CustomerProposal {
   // A business's OWN quotation, once its booking is made: where the booking stands, the money, and the wedding it became
   // (lib/quotation/coupleBooking.ts). null on Shaadi Shopping's links (they have `payments`) and before the booking exists.
   yourBooking: CoupleBooking | null;
+  // "Your hall" (17 Nov 2026): the hall, date and shift a venue's own quotation reserves, and where it stands (lib/quotation/
+  // proposalHalls.ts). Empty on Shaadi Shopping's links and when no hall was chosen. Never names another couple.
+  halls: ProposalHall[];
 }
 
 export function toAddable(offerings: Offering[]): CustomerProposal['addable'] {
@@ -324,5 +328,6 @@ export function toCustomerProposal(
     brand: { name: 'Shaadi Shopping', phone: null, isPlatform: true }, // proposal.service sets the owning business's
     addable: [], // proposal.service fills it for a venue's own open proposal
     yourBooking: null, // proposal.service fills it for a business's own accepted proposal, once the booking is made
+    halls: [], // proposal.service fills it for a venue's own proposal whose enquiry has a hall chosen
   };
 }

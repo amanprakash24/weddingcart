@@ -20,6 +20,8 @@ import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import PaymentsPanel from '@/components/proposal/PaymentsPanel';
 import ReviewsPanel from '@/components/proposal/ReviewsPanel';
 import YourBookingPanel from '@/components/proposal/YourBookingPanel';
+import YourHallPanel from '@/components/proposal/YourHallPanel';
+import { hallLine, hallStatusWords, heldElsewhere } from '@/lib/quotation/proposalHalls';
 import { coupleBookingWords } from '@/lib/quotation/coupleBooking';
 
 // The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–17). One link, two separate experiences
@@ -591,6 +593,11 @@ export default function ProposalClient({
               Venue · <span className="font-semibold text-white">{p.venueName}</span>
             </p>
           )}
+          {p.halls.map((h, i) => (
+            <p key={i} className="mt-1 text-sm text-white/85">
+              Hall · <span className="font-semibold text-white">{hallLine(h)}</span>
+            </p>
+          ))}
           <p className="mt-6 text-xs text-white/55">
             Proposal {p.number} · Version {p.version}
             {validUntil && <> · Valid until {validUntil}</>}
@@ -640,6 +647,8 @@ export default function ProposalClient({
             {p.yourBooking ? coupleBookingWords(p.yourBooking, contact.name).line : nextStep(p)}
           </div>
         )}
+
+        {(tab === 'proposal' || tab === 'quotation') && <YourHallPanel halls={p.halls} venue={contact.name} />}
 
         {tab === 'proposal' ? (
           <div role="tabpanel" aria-label="Your proposal" className="space-y-10">
@@ -733,7 +742,7 @@ export default function ProposalClient({
                 {contact.name} — Quotation {p.number}
               </p>
               <p className="text-sm">
-                {[p.couple.name, ...facts, p.venueName ? `Venue: ${p.venueName}` : null]
+                {[p.couple.name, ...facts, p.venueName ? `Venue: ${p.venueName}` : null, ...p.halls.map((h) => `Hall: ${hallLine(h)}`)]
                   .filter(Boolean)
                   .join(' · ')}
               </p>
@@ -795,6 +804,11 @@ export default function ProposalClient({
             {p.state === 'OPEN' && (
               <section className="space-y-4 rounded-[24px] border border-[#C5A46D]/40 bg-white p-6 sm:p-8 print:hidden">
                 <Eyebrow>Accept</Eyebrow>
+                {heldElsewhere(p.halls) && (
+                  <p role="status" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-relaxed text-rose-900">
+                    {hallStatusWords(heldElsewhere(p.halls)!, contact.name)}
+                  </p>
+                )}
                 <label className="flex items-start gap-3 rounded-xl border border-[#F0E6D6] bg-[#FFFAF5] p-4 text-sm text-[#2A1F1B]">
                   <input
                     type="checkbox"
