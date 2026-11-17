@@ -1,0 +1,155 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
+import StatusPill from '@/components/ui/StatusPill';
+import { clashWords, SHIFT_LABEL, SHIFTS, SLOT_STATE_LABEL, type SlotErrors, type SlotState } from '@/lib/venue/slots';
+import type { EnquirySlots } from '@/services/venueSpace.service';
+
+// "Hall and shift" on one of the venue's own enquiries (lib/venue/slots.ts): which hall this couple wants, on which date, for the
+// day, the night or the full day. Another couple or a block on the same hall and shift is a WARNING here, never a block — two
+// couples can be quoted for one hall. Shown only to a business that works with halls (a venue, or anyone who added a hall).
+
+export const SLOT_PILL: Record<SlotState, 'confirmed' | 'dateHeld' | 'neutral' | 'info'> = { BOOKED: 'confirmed', ACCEPTED: 'dateHeld', BLOCKED: 'neutral', QUOTED: 'info' };
+const dayWords = (day: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00.000Z`));
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+const SHIFT_OPTIONS = SHIFTS.map((s) => ({ value: s, label: SHIFT_LABEL[s] }));
+
+export default function EnquiryHalls({ enquiryId, weddingDate, closed }: { enquiryId: string; weddingDate: string | null; closed: boolean }) {
+  const [view, setView] = useState<EnquirySlots | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [spaceId, setSpaceId] = useState('');
+  const [date, setDate] = useState('');
+  const [shift, setShift] = useState('NIGHT');
+  const [errors, setErrors] = useState<SlotErrors>({});
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null); // a booked or accepted slot asks once more before it goes
+
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/vendor-os/enquiries/${enquiryId}/slots`)
+      .then((r) => r.json())
+      .then((b) => live && setView(b.success ? b.data : null))
+      .catch(() => live && setView(null));
+    return () => {
+      live = false;
+    };
+  }, [enquiryId]);
+
+  if (!view?.usesHalls) return null;
+
+  function open() {
+    setAdding(true);
+    setErrors({});
+    setError(null);
+    setSpaceId(view?.spaces[0]?.id ?? '');
+    setDate(weddingDate && /^\d{4}-\d{2}-\d{2}$/.test(weddingDate) && weddingDate >= today() ? weddingDate : '');
+  }
+
+  async function call(path: string, method: 'POST' | 'DELETE', body?: unknown) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setErrors({});
+    try {
+      const res = await fetch(`/api/vendor-os/enquiries/${enquiryId}/slots${path}`, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+      const b = await res.json().catch(() => ({}));
+      if (res.ok && b.success) {
+        setView(b.data);
+        setAdding(false);
+      } else if (b.fieldErrors) setErrors(b.fieldErrors);
+      else setError(b.error ?? 'It was not saved — please try again.');
+    } catch {
+      setError('Could not reach Vivah OS. It was not saved — please check your connection.');
+    }
+    setBusy(false);
+  }
+
+  const spaceName = (id: string) => view.spaces.find((s) => s.id === id)?.name ?? 'A hall no longer in use';
+
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Hall and shift</h2>
+        {!closed && view.spaces.length > 0 && !adding && (
+          <button type="button" onClick={open} className="min-h-11 rounded-lg px-3 text-sm font-semibold text-[var(--primary)]">
+            + Add
+          </button>
+        )}
+      </div>
+
+      {view.spaces.length === 0 ? (
+        <p className="text-sm text-[var(--color-text-secondary)]">
+          Add your halls and lawns first, then choose which one this couple wants.{' '}
+          <Link href="/vendor/availability#halls" className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2">
+            Add halls
+          </Link>
+        </p>
+      ) : view.slots.length === 0 && !adding ? (
+        <p className="text-sm text-[var(--color-text-secondary)]">{closed ? 'No hall was chosen.' : 'No hall chosen yet. Add the hall, date and shift this couple wants — your calendar shows it once they accept.'}</p>
+      ) : (
+        <ul className="space-y-2">
+          {view.slots.map((s) => (
+            <li key={s.id} className="rounded-lg border border-[var(--color-border-subtle)] p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">{spaceName(s.spaceId)} · {SHIFT_LABEL[s.shift]}</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{dayWords(s.date)}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <StatusPill status={SLOT_PILL[s.state]}>{SLOT_STATE_LABEL[s.state]}</StatusPill>
+                  {!closed && (
+                    <button type="button" disabled={busy} onClick={() => (s.state === 'QUOTED' || removing === s.id ? call(`/${s.id}`, 'DELETE') : setRemoving(s.id))} aria-label={`Remove ${spaceName(s.spaceId)}, ${SHIFT_LABEL[s.shift]}, ${dayWords(s.date)}`} className="flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)]">
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {removing === s.id && (
+                <p role="status" className="mt-2 text-xs text-[var(--color-danger-text)]">
+                  This couple has already said yes. Tap the bin again to free this hall — the booking itself stays.
+                </p>
+              )}
+              {s.clashes.length > 0 && (
+                <div role="status" className="mt-2 space-y-1 rounded-lg bg-[var(--color-warning-bg)] p-2 text-xs text-[var(--color-warning-text)]">
+                  <p className="font-semibold">Also on this hall then:</p>
+                  <ul>
+                    {s.clashes.map((c) => {
+                      const href = c.wedding ? `/vendor/weddings/${c.wedding.id}` : c.enquiryId ? `/vendor/enquiries/${c.enquiryId}` : null;
+                      return <li key={c.id}>{href ? <Link href={href} className="inline-flex min-h-8 items-center underline underline-offset-2">{clashWords(c)}</Link> : clashWords(c)}</li>;
+                    })}
+                  </ul>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {adding && (
+        <div className="space-y-3 rounded-lg border border-[var(--color-border-default)] p-3">
+          <Select label="Hall or lawn" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} options={view.spaces.map((s) => ({ value: s.id, label: s.capacity ? `${s.name} (${s.capacity.toLocaleString('en-IN')} guests)` : s.name }))} error={errors.spaceId} className="min-h-12 text-base" />
+          <div className="grid grid-cols-2 gap-2">
+            <Input label="Date" type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} error={errors.date} className="min-h-12 text-base" />
+            <Select label="Shift" value={shift} onChange={(e) => setShift(e.target.value)} options={SHIFT_OPTIONS} error={errors.shift} className="min-h-12 text-base" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setAdding(false)} className="min-h-12 rounded-xl border border-[var(--color-border-default)] px-4 text-base font-semibold text-[var(--color-text-primary)]">
+              Cancel
+            </button>
+            <button type="button" disabled={busy || !spaceId || !date} onClick={() => call('', 'POST', { spaceId, date, shift })} className="min-h-12 rounded-xl bg-[var(--primary)] px-4 text-base font-semibold text-[var(--color-on-primary)] disabled:opacity-50">
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && <p role="alert" className="text-sm text-[var(--color-danger-text)]">{error}</p>}
+    </Card>
+  );
+}

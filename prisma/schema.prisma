@@ -755,6 +755,7 @@ model Consultation {
   // Duplicate-Wedding guard (production-integrity fix) — see Enquiry's
   // identical addition for the reasoning. Not unique for the same reason.
   bookings         Booking[]
+  venueSlots       VenueSlot[] // the halls and shifts this enquiry reserves (Venue OS calendar)
   // Consultation -> Enquiry bridge — inverse side of Enquiry.consultationId
   // above. One Consultation can produce multiple Enquiries.
   enquiries        Enquiry[]
@@ -2444,6 +2445,8 @@ model Business {
   consultations         Consultation[]
   clients               BusinessClient[]
   offerings             BusinessOffering[]
+  spaces                VenueSpace[]
+  slots                 VenueSlot[]
   quotations            Quotation[]
   bookings              Booking[]
   commercialAgreements  CommercialAgreement[]
@@ -2539,4 +2542,52 @@ model BusinessMember {
   @@unique([businessId, userId])
   @@index([userId])
   @@map("business_members")
+}
+
+// Halls and shifts (17 Nov 2026, founder: before launch). A venue's own halls and lawns, and the hall + date + shift each of its
+// enquiries reserves, or that it blocks by hand. Not owned tables (like BusinessOffering): every read and write names the business
+// of the current scope itself (services/venueSpace.service.ts). lib/venue/slots.ts has the rules: FULL_DAY takes both DAY and NIGHT.
+enum VenueShift {
+  DAY
+  NIGHT
+  FULL_DAY
+}
+
+model VenueSpace {
+  id         String      @id @default(uuid())
+  businessId String
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String // "Royal Hall", "Garden Lawn"
+  capacity   Int? // guests, optional, shown beside the name
+  sortOrder  Int         @default(0)
+  active     Boolean     @default(true) // false = kept (its slots still show) but not offered for new ones
+  slots      VenueSlot[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("venue_spaces")
+}
+
+// One hall on one date for one shift. consultationId set = reserved by that enquiry: booked once its booking is confirmed,
+// "accepted" while the booking waits, only "quoted" before that. consultationId null = blocked by hand (note says why).
+model VenueSlot {
+  id             String        @id @default(uuid())
+  businessId     String
+  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  spaceId        String
+  space          VenueSpace    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  date           DateTime      @db.Date
+  shift          VenueShift
+  consultationId String?
+  consultation   Consultation? @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  note           String?
+  createdById    String?
+  createdAt      DateTime      @default(now())
+
+  @@index([businessId, date])
+  @@index([spaceId, date])
+  @@index([consultationId])
+  @@map("venue_slots")
 }
