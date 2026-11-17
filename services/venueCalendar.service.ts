@@ -18,13 +18,17 @@ export function createVenueCalendarService(deps: VenueCalendarDeps = defaultDeps
   return {
     async get(): Promise<VenueCalendarView> {
       const now = deps.now();
-      const rows = await deps.db.booking.findMany({
-        where: { weddingDate: calendarWindow(now).range, status: { not: 'CLOSED' } },
-        select: { name: true, status: true, weddingDate: true, consultationId: true, wedding: { select: { id: true, weddingNumber: true } } },
-        orderBy: [{ weddingDate: 'asc' }, { createdAt: 'asc' }],
-        take: CALENDAR_MAX_BOOKINGS,
-      });
-      const halls = await deps.halls.calendar(calendarWindow(now).range);
+      const { range } = calendarWindow(now);
+      // The bookings and the halls do not depend on each other — loaded together.
+      const [rows, halls] = await Promise.all([
+        deps.db.booking.findMany({
+          where: { weddingDate: range, status: { not: 'CLOSED' } },
+          select: { name: true, status: true, weddingDate: true, consultationId: true, wedding: { select: { id: true, weddingNumber: true } } },
+          orderBy: [{ weddingDate: 'asc' }, { createdAt: 'asc' }],
+          take: CALENDAR_MAX_BOOKINGS,
+        }),
+        deps.halls.calendar(range),
+      ]);
       return { ...buildCalendar(rows, now), halls };
     },
   };

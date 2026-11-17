@@ -159,7 +159,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         </div>
       )}
 
-      <EnquiryHalls enquiryId={id} weddingDate={e.weddingDate} closed={closed} />
+      <EnquiryHalls enquiryId={id} weddingDate={e.weddingDate} closed={closed} version={version} />
 
       <div id="quotation" className="scroll-mt-4">
         <EnquiryQuotation enquiryId={id} closed={closed} onChanged={() => setVersion((v) => v + 1)} />

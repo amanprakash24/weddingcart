@@ -53,15 +53,24 @@ export interface SlotEnquiry {
   bookings: { status: string; wedding: { id: string; weddingNumber: string } | null }[];
 }
 
-// What a reserved slot counts as. null = not shown at all (the enquiry was closed as not going ahead, or its booking closed).
+// What a reserved slot counts as. null = not shown at all: the enquiry was closed as not going ahead, or every booking it had was
+// closed. A confirmed booking still holds the hall (money was taken); anything less does not outlive a closed enquiry.
 export function slotState(enquiry: SlotEnquiry | null): SlotState | null {
   if (!enquiry) return 'BLOCKED';
   const open = enquiry.bookings.filter((b) => b.status !== 'CLOSED');
   if (open.some((b) => b.status === 'CONFIRMED')) return 'BOOKED';
-  if (open.length > 0 || enquiry.pipelineStage === 'ACCEPTED' || enquiry.pipelineStage === 'WON') return 'ACCEPTED';
   if (enquiry.pipelineStage === 'LOST') return null;
-  if (enquiry.bookings.length > 0) return null; // every booking it had was closed
+  if (enquiry.bookings.length > 0 && open.length === 0) return null; // every booking it had was closed
+  if (open.length > 0 || enquiry.pipelineStage === 'ACCEPTED' || enquiry.pipelineStage === 'WON') return 'ACCEPTED';
   return 'QUOTED';
+}
+
+// The pill each state shows (components/ui/StatusPill.tsx).
+export const SLOT_PILL: Record<SlotState, 'confirmed' | 'dateHeld' | 'neutral' | 'info'> = { BOOKED: 'confirmed', ACCEPTED: 'dateHeld', BLOCKED: 'neutral', QUOTED: 'info' };
+
+// Where a slot or a booking opens: its wedding once there is one, else its enquiry; a hand block opens nothing.
+export function recordHref(r: { wedding: { id: string } | null; enquiryId: string | null }): string | null {
+  return r.wedding ? `/vendor/weddings/${r.wedding.id}` : r.enquiryId ? `/vendor/enquiries/${r.enquiryId}` : null;
 }
 
 type Row = { id: string; spaceId: string; date: Date; shift: string; note: string | null; consultation: SlotEnquiry | null };

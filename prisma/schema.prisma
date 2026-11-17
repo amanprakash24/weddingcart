@@ -2566,7 +2566,6 @@ model VenueSpace {
   updatedAt  DateTime    @updatedAt
 
   @@unique([businessId, name])
-  @@index([businessId])
   @@map("venue_spaces")
 }
 
@@ -2586,8 +2585,10 @@ model VenueSlot {
   createdById    String?
   createdAt      DateTime      @default(now())
 
+  // One enquiry holds a hall + date + shift once (a double tap saves one row). Hand blocks (no enquiry) are not covered: Postgres
+  // treats NULLs as distinct; the screen disables the button while saving.
+  @@unique([spaceId, date, shift, consultationId])
   @@index([businessId, date])
-  @@index([spaceId, date])
   @@index([consultationId])
   @@map("venue_slots")
 }

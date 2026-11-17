@@ -6,8 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardEmptyState, CardSkeleton } from '@/components/ui/Card';
 import StatusPill from '@/components/ui/StatusPill';
 import { dayMark, dayWords, monthGrid, monthWords, type CalendarBooking, type VenueCalendarView } from '@/lib/venue/calendar';
-import { dayFill, SHIFT_LABEL, SLOT_STATE_LABEL, type Slot } from '@/lib/venue/slots';
-import { SLOT_PILL } from '@/components/vendor/enquiries/EnquiryHalls';
+import { dayFill, recordHref, SHIFT_LABEL, SLOT_PILL, SLOT_STATE_LABEL, type Slot } from '@/lib/venue/slots';
 import HallsManager from './HallsManager';
 import HallDay from './HallDay';
 
@@ -21,7 +20,7 @@ import HallDay from './HallDay';
 const WEEK = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function BookingLine({ b }: { b: CalendarBooking }) {
-  const href = b.wedding ? `/vendor/weddings/${b.wedding.id}` : b.enquiryId ? `/vendor/enquiries/${b.enquiryId}` : null;
+  const href = recordHref(b);
   const body = (
     <div className="flex min-h-14 items-center justify-between gap-3 py-2">
       <div className="min-w-0">
@@ -38,7 +37,7 @@ function BookingLine({ b }: { b: CalendarBooking }) {
 }
 
 function SlotLine({ s, hall }: { s: Slot; hall: string }) {
-  const href = s.wedding ? `/vendor/weddings/${s.wedding.id}` : s.enquiryId ? `/vendor/enquiries/${s.enquiryId}` : null;
+  const href = recordHref(s);
   const body = (
     <div className="flex min-h-14 items-center justify-between gap-3 py-2">
       <div className="min-w-0">
@@ -84,14 +83,15 @@ export default function AvailabilityCalendar() {
   }, [data]);
 
   const halls = data?.halls;
-  const hallMode = !!halls?.usesHalls && halls.spaces.some((s) => s.active);
+  // Hall mode once the business has any hall — in use or not, so slots in a hall taken out of use never disappear.
+  const hallMode = !!halls?.usesHalls && halls.spaces.length > 0;
   const hallName = (id: string) => halls?.spaces.find((s) => s.id === id)?.name ?? 'Hall';
 
   const header = (
     <header>
       <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Availability</h1>
       <p className="text-sm text-[var(--color-text-muted)]">
-        {hallMode ? 'Each hall’s day and night. Tap a date to see who has each hall, or to block a shift.' : 'The dates you have already booked — from your own quotations that couples accepted.'}
+        {hallMode ? `Each hall’s day and night. Tap a date to see who has each hall${halls?.canBlock ? ', or to block a shift' : ''}.` : 'The dates you have already booked — from your own quotations that couples accepted.'}
       </p>
     </header>
   );
@@ -212,7 +212,7 @@ export default function AvailabilityCalendar() {
       <section aria-label={pickedHere ? dayWords(pickedHere) : `Booked in ${monthWords(month)}`}>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)]">{pickedHere ? dayWords(pickedHere) : `In ${monthWords(month)}`}</h2>
         {hallMode && pickedHere ? (
-          <HallDay day={pickedHere} past={pickedHere < data.today} spaces={halls.spaces} slots={slotsByDay.get(pickedHere) ?? []} bookings={byDay.get(pickedHere) ?? []} onChanged={() => setVersion((v) => v + 1)} />
+          <HallDay day={pickedHere} past={pickedHere < data.today} canBlock={halls.canBlock} spaces={halls.spaces} slots={slotsByDay.get(pickedHere) ?? []} bookings={byDay.get(pickedHere) ?? []} onChanged={() => setVersion((v) => v + 1)} />
         ) : (pickedHere ? [pickedHere] : monthDays).every((d) => !(byDay.get(d)?.length || (hallMode && slotsByDay.get(d)?.length))) ? (
           <Card>
             <p className="text-sm text-[var(--color-text-secondary)]">
@@ -255,6 +255,7 @@ export default function AvailabilityCalendar() {
 
       {hallMode && manager}
 
+      {halls.truncated && <p className="text-xs text-[var(--color-text-muted)]">You have more hall bookings in these months than this screen shows at once — the latest ones are left out.</p>}
       {data.truncated && <p className="text-xs text-[var(--color-text-muted)]">Showing your first {data.days.reduce((n, d) => n + d.bookings.length, 0)} bookings — later ones are not shown here yet.</p>}
       <p className="text-xs text-[var(--color-text-muted)]">
         {hallMode

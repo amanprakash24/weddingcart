@@ -119,6 +119,39 @@ describe('venueSpaceService', () => {
     expect('errors' in (await run(() => service.add({ name: 'Their Hall' })))).toBe(false);
   });
 
+  it('a rename keeps the guest count and whether the hall is in use', async () => {
+    const { service, spaces } = fake();
+    await run(() => service.update('hall', { active: false }));
+    expect(spaces[0]).toMatchObject({ name: 'Royal Hall', capacity: 500, active: false });
+    await run(() => service.update('hall', { name: 'Grand Hall' }));
+    expect(spaces[0]).toMatchObject({ name: 'Grand Hall', capacity: 500, active: false });
+    await run(() => service.update('hall', { capacity: '' }));
+    expect(spaces[0].capacity).toBeNull();
+  });
+
+  it('an enquiry still sees its hall after the hall is taken out of use, and cannot choose it again', async () => {
+    const { service } = fake();
+    await run(() => service.reserve('e2', { spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT' }, null));
+    await run(() => service.remove('hall'));
+    const res = await run(() => service.forEnquiry('e2'));
+    expect(res.usesHalls).toBe(true);
+    expect(res.slots.map((s) => s.state)).toEqual(['BOOKED']);
+    expect(res.spaces.find((s) => s.id === 'hall')?.active).toBe(false);
+    await expect(run(() => service.reserve('e1', { spaceId: 'hall', date: '2026-12-13', shift: 'DAY' }, null))).rejects.toThrow('Choose one of your halls or lawns');
+    const cal = await run(() => service.calendar({ gte: new Date('2026-11-01T00:00:00Z'), lt: new Date('2027-11-01T00:00:00Z') }));
+    expect(cal.slots).toHaveLength(1);
+  });
+
+  it('says what the person may do', async () => {
+    const { service } = fake();
+    const staff = { kind: 'BUSINESS' as const, businessId: BIZ, role: 'MANAGER' as const, permissions: ['enquiries' as const] };
+    const cal = await runInScope(staff, () => service.calendar({ gte: new Date('2026-11-01T00:00:00Z'), lt: new Date('2027-11-01T00:00:00Z') }));
+    expect([cal.canManage, cal.canBlock]).toEqual([false, false]);
+    expect((await runInScope(staff, () => service.forEnquiry('e1'))).canReserve).toBe(false);
+    const owner = await run(() => service.calendar({ gte: new Date('2026-11-01T00:00:00Z'), lt: new Date('2027-11-01T00:00:00Z') }));
+    expect([owner.canManage, owner.canBlock, owner.truncated]).toEqual([true, true, false]);
+  });
+
   it('cannot reserve another business’s hall', async () => {
     const { service } = fake();
     await expect(run(() => service.reserve('e1', { spaceId: 'other-hall', date: '2026-12-12', shift: 'NIGHT' }, null))).rejects.toThrow('Choose one of your halls or lawns');

@@ -27,6 +27,12 @@ describe('slotState', () => {
   it('an open enquiry is only quoted', () => expect(slotState(enquiry('QUOTATION_SENT'))).toBe('QUOTED'));
   it('a lost enquiry frees the hall', () => expect(slotState(enquiry('LOST'))).toBeNull());
   it('a closed booking frees the hall', () => expect(slotState(enquiry('NEGOTIATION', [{ status: 'CLOSED' }]))).toBeNull());
+  it('a closed enquiry frees the hall even with a booking still waiting', () => expect(slotState(enquiry('LOST', [{ status: 'NEW' }]))).toBeNull());
+  it('accepted or booked stage with every booking closed frees the hall', () => {
+    expect(slotState(enquiry('ACCEPTED', [{ status: 'CLOSED' }]))).toBeNull();
+    expect(slotState(enquiry('WON', [{ status: 'CLOSED' }]))).toBeNull();
+  });
+  it('a confirmed booking holds the hall even if the enquiry was closed', () => expect(slotState(enquiry('LOST', [{ status: 'CONFIRMED' }]))).toBe('BOOKED'));
 });
 
 describe('slotOf', () => {

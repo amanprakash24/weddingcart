@@ -7,19 +7,20 @@ import { Card } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import StatusPill from '@/components/ui/StatusPill';
-import { clashWords, SHIFT_LABEL, SHIFTS, SLOT_STATE_LABEL, type SlotErrors, type SlotState } from '@/lib/venue/slots';
+import { clashWords, recordHref, SHIFT_LABEL, SHIFTS, SLOT_PILL, SLOT_STATE_LABEL, type SlotErrors } from '@/lib/venue/slots';
+import { istDay } from '@/lib/venue/calendar';
 import type { EnquirySlots } from '@/services/venueSpace.service';
 
 // "Hall and shift" on one of the venue's own enquiries (lib/venue/slots.ts): which hall this couple wants, on which date, for the
 // day, the night or the full day. Another couple or a block on the same hall and shift is a WARNING here, never a block — two
 // couples can be quoted for one hall. Shown only to a business that works with halls (a venue, or anyone who added a hall).
 
-export const SLOT_PILL: Record<SlotState, 'confirmed' | 'dateHeld' | 'neutral' | 'info'> = { BOOKED: 'confirmed', ACCEPTED: 'dateHeld', BLOCKED: 'neutral', QUOTED: 'info' };
 const dayWords = (day: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00.000Z`));
-const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+const today = () => istDay(new Date());
 const SHIFT_OPTIONS = SHIFTS.map((s) => ({ value: s, label: SHIFT_LABEL[s] }));
 
-export default function EnquiryHalls({ enquiryId, weddingDate, closed }: { enquiryId: string; weddingDate: string | null; closed: boolean }) {
+// `version` is bumped by the enquiry page when its quotation changes (sent, accepted, paid): the states here follow it.
+export default function EnquiryHalls({ enquiryId, weddingDate, closed, version = 0 }: { enquiryId: string; weddingDate: string | null; closed: boolean; version?: number }) {
   const [view, setView] = useState<EnquirySlots | null>(null);
   const [adding, setAdding] = useState(false);
   const [spaceId, setSpaceId] = useState('');
@@ -39,7 +40,7 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed }: { enqui
     return () => {
       live = false;
     };
-  }, [enquiryId]);
+  }, [enquiryId, version]);
 
   if (!view?.usesHalls) return null;
 
@@ -47,7 +48,7 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed }: { enqui
     setAdding(true);
     setErrors({});
     setError(null);
-    setSpaceId(view?.spaces[0]?.id ?? '');
+    setSpaceId(view?.spaces.find((s) => s.active)?.id ?? '');
     setDate(weddingDate && /^\d{4}-\d{2}-\d{2}$/.test(weddingDate) && weddingDate >= today() ? weddingDate : '');
   }
 
@@ -70,20 +71,22 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed }: { enqui
     setBusy(false);
   }
 
-  const spaceName = (id: string) => view.spaces.find((s) => s.id === id)?.name ?? 'A hall no longer in use';
+  const spaceName = (id: string) => view.spaces.find((s) => s.id === id)?.name ?? 'A removed hall';
+  const choices = view.spaces.filter((s) => s.active);
+  const editable = !closed && view.canReserve;
 
   return (
     <Card className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Hall and shift</h2>
-        {!closed && view.spaces.length > 0 && !adding && (
+        {editable && choices.length > 0 && !adding && (
           <button type="button" onClick={open} className="min-h-11 rounded-lg px-3 text-sm font-semibold text-[var(--primary)]">
             + Add
           </button>
         )}
       </div>
 
-      {view.spaces.length === 0 ? (
+      {choices.length === 0 && view.slots.length === 0 ? (
         <p className="text-sm text-[var(--color-text-secondary)]">
           Add your halls and lawns first, then choose which one this couple wants.{' '}
           <Link href="/vendor/availability#halls" className="inline-flex min-h-8 items-center font-semibold underline underline-offset-2">
@@ -103,7 +106,7 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed }: { enqui
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <StatusPill status={SLOT_PILL[s.state]}>{SLOT_STATE_LABEL[s.state]}</StatusPill>
-                  {!closed && (
+                  {editable && (
                     <button type="button" disabled={busy} onClick={() => (s.state === 'QUOTED' || removing === s.id ? call(`/${s.id}`, 'DELETE') : setRemoving(s.id))} aria-label={`Remove ${spaceName(s.spaceId)}, ${SHIFT_LABEL[s.shift]}, ${dayWords(s.date)}`} className="flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)]">
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </button>
@@ -120,7 +123,7 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed }: { enqui
                   <p className="font-semibold">Also on this hall then:</p>
                   <ul>
                     {s.clashes.map((c) => {
-                      const href = c.wedding ? `/vendor/weddings/${c.wedding.id}` : c.enquiryId ? `/vendor/enquiries/${c.enquiryId}` : null;
+                      const href = recordHref(c);
                       return <li key={c.id}>{href ? <Link href={href} className="inline-flex min-h-8 items-center underline underline-offset-2">{clashWords(c)}</Link> : clashWords(c)}</li>;
                     })}
                   </ul>
@@ -133,7 +136,7 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed }: { enqui
 
       {adding && (
         <div className="space-y-3 rounded-lg border border-[var(--color-border-default)] p-3">
-          <Select label="Hall or lawn" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} options={view.spaces.map((s) => ({ value: s.id, label: s.capacity ? `${s.name} (${s.capacity.toLocaleString('en-IN')} guests)` : s.name }))} error={errors.spaceId} className="min-h-12 text-base" />
+          <Select label="Hall or lawn" value={spaceId} onChange={(e) => setSpaceId(e.target.value)} options={choices.map((s) => ({ value: s.id, label: s.capacity ? `${s.name} (${s.capacity.toLocaleString('en-IN')} guests)` : s.name }))} error={errors.spaceId} className="min-h-12 text-base" />
           <div className="grid grid-cols-2 gap-2">
             <Input label="Date" type="date" min={today()} value={date} onChange={(e) => setDate(e.target.value)} error={errors.date} className="min-h-12 text-base" />
             <Select label="Shift" value={shift} onChange={(e) => setShift(e.target.value)} options={SHIFT_OPTIONS} error={errors.shift} className="min-h-12 text-base" />

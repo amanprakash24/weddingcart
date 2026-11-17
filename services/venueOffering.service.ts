@@ -2,8 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
 import { isDiet, menuOf } from '@/lib/venue/menu';
 import { ConflictError, NotFoundError } from '@/lib/errors';
-import { effectiveScope } from '@/lib/ownership/scope';
-import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
+import { ownBusinessId } from '@/lib/ownership/business';
 import { kindsForCategory, OFFERING_KIND_LABELS, OFFERING_LIMITS, validateOffering, type Catalog, type ListingPackage, type Offering, type OfferingErrors } from '@/lib/venue/offering';
 
 // "What we offer" — a business's ONE price list, by kind (lib/venue/offering.ts). Always called inside the business's scope
@@ -39,11 +38,7 @@ export const OFFERING_ORDER = [{ kind: 'asc' }, { createdAt: 'asc' }] as const;
 
 export function createVenueOfferingService(deps: VenueOfferingDeps = defaultDeps()) {
   // The business this work runs as. Shaadi Shopping has no price list here.
-  function businessId(): string {
-    const scope = effectiveScope();
-    if (scope.kind !== 'BUSINESS' || scope.businessId === PLATFORM_BUSINESS_ID) throw new NotFoundError('Business', 'current');
-    return scope.businessId;
-  }
+  const businessId = ownBusinessId;
 
   async function list(): Promise<Offering[]> {
     const rows = await deps.db.businessOffering.findMany({ where: { businessId: businessId() }, select: OFFERING_SELECT, orderBy: [...OFFERING_ORDER] });

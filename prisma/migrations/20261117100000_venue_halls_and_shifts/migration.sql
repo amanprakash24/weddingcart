@@ -32,19 +32,16 @@ CREATE TABLE "venue_slots" (
 );
 
 -- CreateIndex
-CREATE INDEX "venue_spaces_businessId_idx" ON "venue_spaces"("businessId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "venue_spaces_businessId_name_key" ON "venue_spaces"("businessId", "name");
 
 -- CreateIndex
 CREATE INDEX "venue_slots_businessId_date_idx" ON "venue_slots"("businessId", "date");
 
 -- CreateIndex
-CREATE INDEX "venue_slots_spaceId_date_idx" ON "venue_slots"("spaceId", "date");
+CREATE INDEX "venue_slots_consultationId_idx" ON "venue_slots"("consultationId");
 
 -- CreateIndex
-CREATE INDEX "venue_slots_consultationId_idx" ON "venue_slots"("consultationId");
+CREATE UNIQUE INDEX "venue_slots_spaceId_date_shift_consultationId_key" ON "venue_slots"("spaceId", "date", "shift", "consultationId");
 
 -- AddForeignKey
 ALTER TABLE "venue_spaces" ADD CONSTRAINT "venue_spaces_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "businesses"("id") ON DELETE CASCADE ON UPDATE CASCADE;

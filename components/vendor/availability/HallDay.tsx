@@ -4,9 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import StatusPill from '@/components/ui/StatusPill';
-import { halfOf, SHIFT_LABEL, SLOT_STATE_LABEL, type Slot, type Space } from '@/lib/venue/slots';
+import { halfOf, recordHref, SHIFT_LABEL, SLOT_PILL, SLOT_STATE_LABEL, type Slot, type Space } from '@/lib/venue/slots';
 import type { CalendarBooking } from '@/lib/venue/calendar';
-import { SLOT_PILL } from '@/components/vendor/enquiries/EnquiryHalls';
 
 // One day on the calendar, hall by hall: each hall's day and night — who has it (booked, accepted, or blocked by hand), which
 // couples were only quoted for it, or free. A free shift can be blocked by hand (with a reason); a hand block can be freed. A
@@ -14,11 +13,7 @@ import { SLOT_PILL } from '@/components/vendor/enquiries/EnquiryHalls';
 
 const HALVES = ['DAY', 'NIGHT'] as const;
 
-function slotHref(s: Slot) {
-  return s.wedding ? `/vendor/weddings/${s.wedding.id}` : s.enquiryId ? `/vendor/enquiries/${s.enquiryId}` : null;
-}
-
-export default function HallDay({ day, past, spaces, slots, bookings, onChanged }: { day: string; past: boolean; spaces: Space[]; slots: Slot[]; bookings: CalendarBooking[]; onChanged: () => void }) {
+export default function HallDay({ day, past, canBlock, spaces, slots, bookings, onChanged }: { day: string; past: boolean; canBlock: boolean; spaces: Space[]; slots: Slot[]; bookings: CalendarBooking[]; onChanged: () => void }) {
   const [blocking, setBlocking] = useState<string | null>(null); // `${spaceId}:${half}` being blocked
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -60,7 +55,7 @@ export default function HallDay({ day, past, spaces, slots, bookings, onChanged 
             {HALVES.map((half) => {
               const { taken, quoted } = halfOf(hall.id, half, slots);
               const key = `${hall.id}:${half}`;
-              const href = taken ? slotHref(taken) : null;
+              const href = taken ? recordHref(taken) : null;
               return (
                 <li key={half} className="border-b border-[var(--color-border-subtle)] py-2 last:border-b-0">
                   <div className="flex min-h-11 items-center justify-between gap-2">
@@ -83,12 +78,12 @@ export default function HallDay({ day, past, spaces, slots, bookings, onChanged 
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       {taken && <StatusPill status={SLOT_PILL[taken.state]}>{SLOT_STATE_LABEL[taken.state]}</StatusPill>}
-                      {taken?.state === 'BLOCKED' && !past && (
+                      {taken?.state === 'BLOCKED' && !past && canBlock && (
                         <button type="button" disabled={busy} onClick={() => call(`/api/vendor-os/calendar/blocks/${taken.id}`, 'DELETE')} className="min-h-11 rounded-lg px-3 text-sm font-medium text-[var(--primary)]">
                           Free it
                         </button>
                       )}
-                      {!taken && !past && hall.active && blocking !== key && (
+                      {!taken && !past && hall.active && canBlock && blocking !== key && (
                         <button type="button" onClick={() => { setBlocking(key); setNote(''); setError(null); }} className="min-h-11 rounded-lg px-3 text-sm font-medium text-[var(--color-text-secondary)]">
                           Block
                         </button>
@@ -134,7 +129,7 @@ export default function HallDay({ day, past, spaces, slots, bookings, onChanged 
           <p className="pt-1 text-sm font-semibold text-[var(--color-text-primary)]">Booked, hall not chosen yet</p>
           <ul>
             {noHall.map((b, i) => {
-              const href = b.wedding ? `/vendor/weddings/${b.wedding.id}` : b.enquiryId ? `/vendor/enquiries/${b.enquiryId}` : null;
+              const href = recordHref(b);
               return (
                 <li key={i} className="flex min-h-11 items-center justify-between gap-2 border-b border-[var(--color-border-subtle)] py-1 last:border-b-0">
                   {href ? <Link href={href} className="truncate text-sm font-semibold underline-offset-2 hover:underline">{b.name}</Link> : <span className="truncate text-sm">{b.name}</span>}
