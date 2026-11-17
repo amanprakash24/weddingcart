@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/Card';
 import StatusPill from '@/components/ui/StatusPill';
-import { halfOf, recordHref, SHIFT_LABEL, SLOT_PILL, SLOT_STATE_LABEL, type Slot, type Space } from '@/lib/venue/slots';
+import { halfOf, recordHref, SHIFT_LABEL, SLOT_PILL, slotLabel, type Slot, type Space } from '@/lib/venue/slots';
 import type { CalendarBooking } from '@/lib/venue/calendar';
 
 // One day on the calendar, hall by hall: each hall's day and night — who has it (booked, accepted, or blocked by hand), which
@@ -77,7 +77,7 @@ export default function HallDay({ day, past, canBlock, spaces, slots, bookings, 
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      {taken && <StatusPill status={SLOT_PILL[taken.state]}>{SLOT_STATE_LABEL[taken.state]}</StatusPill>}
+                      {taken && <StatusPill status={SLOT_PILL[taken.state]}>{slotLabel(taken)}</StatusPill>}
                       {taken?.state === 'BLOCKED' && !past && canBlock && (
                         <button type="button" disabled={busy} onClick={() => call(`/api/vendor-os/calendar/blocks/${taken.id}`, 'DELETE')} className="min-h-11 rounded-lg px-3 text-sm font-medium text-[var(--primary)]">
                           Free it

@@ -126,7 +126,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
       )}
 
       {/* The one next step */}
-      <Card variant={next.kind === 'FOLLOW_UP_OVERDUE' || next.kind === 'PAYMENT_TO_CHECK' ? 'attention' : 'highlighted'} className="space-y-3">
+      <Card variant={next.kind === 'FOLLOW_UP_OVERDUE' || next.kind === 'PAYMENT_TO_CHECK' || next.kind === 'HOLD_ENDING' ? 'attention' : 'highlighted'} className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Next</p>
         <p className="font-playfair text-xl font-bold text-[var(--color-text-primary)]">{next.label}</p>
         {next.kind === 'CALL' && (
@@ -144,6 +144,9 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         {next.kind === 'SCHEDULE' && (
           <button type="button" onClick={() => setPanel('followup')} className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)]`}>Schedule a follow-up</button>
         )}
+        {next.kind === 'HOLD_ENDING' && (
+          <a href="#halls" className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)]`}>See the hall</a>
+        )}
         {(next.kind === 'PAYMENT_TO_CHECK' || next.kind === 'BOOKED' || next.kind === 'QUOTE_ACCEPTED' || next.kind === 'QUOTE_CHANGES' || next.kind === 'QUOTE_DRAFT' || next.kind === 'QUOTE_WAITING') && (
           <a href="#quotation" className={`${big} w-full ${next.kind === 'QUOTE_WAITING' || next.kind === 'BOOKED' ? 'border border-[var(--color-border-default)] text-[var(--color-text-primary)]' : 'bg-[var(--primary)] text-[var(--color-on-primary)]'}`}>{next.kind === 'PAYMENT_TO_CHECK' ? 'Check the payment' : next.kind === 'BOOKED' || next.kind === 'QUOTE_ACCEPTED' ? 'See the booking and payments' : 'See the quotation'}</a>
         )}
@@ -159,7 +162,9 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
         </div>
       )}
 
-      <EnquiryHalls enquiryId={id} weddingDate={e.weddingDate} closed={closed} version={version} />
+      <div id="halls" className="scroll-mt-4">
+        <EnquiryHalls enquiryId={id} weddingDate={e.weddingDate} closed={closed} version={version} />
+      </div>
 
       <div id="quotation" className="scroll-mt-4">
         <EnquiryQuotation enquiryId={id} closed={closed} onChanged={() => setVersion((v) => v + 1)} />

@@ -2582,6 +2582,10 @@ model VenueSlot {
   consultationId String?
   consultation   Consultation? @relation(fields: [consultationId], references: [id], onDelete: Cascade)
   note           String?
+  // A temporary hold (17 Nov 2026): while holdUntil is in the future this enquiry's slot TAKES the hall, before anything is accepted.
+  // It ends by itself — nothing has to run: once the time passes the slot reads as quoted again (lib/venue/slots.ts).
+  holdUntil      DateTime?
+  heldById       String?
   createdById    String?
   createdAt      DateTime      @default(now())
 

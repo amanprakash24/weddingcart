@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { claimHallsForAcceptance } from './hallHold.service';
 import type { Prisma } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
 import { ConflictError, DuplicateError, NotFoundError, ValidationError } from '@/lib/errors';
@@ -457,6 +458,8 @@ export const quotationService = {
       const now = new Date();
       const blocked = evaluateAcceptable({ status: q.status, validUntil: q.validUntil }, now);
       if (blocked) throw blocked;
+      // A hall held for another couple stops this acceptance; this couple's own hold is taken over (services/hallHold.service.ts).
+      if (sourceType === 'CONSULTATION') await claimHallsForAcceptance(tx, sourceId, now);
 
       const note = input.note?.trim() || null;
       const updated = await quotationRepository.update(
@@ -517,6 +520,8 @@ export const quotationService = {
         wedding: sourceType === 'LEAD' ? null : await findWeddingForSource(sourceType, sourceId, tx),
       });
       if (blocked) throw blocked;
+      // Checked again when the booking is made: a hall held for another couple is never booked over.
+      if (sourceType === 'CONSULTATION') await claimHallsForAcceptance(tx, sourceId, new Date());
 
       const vendorIds = [...new Set(q.items.map((i) => i.vendorId).filter((v): v is string => !!v))];
       const vendorRows = vendorIds.length

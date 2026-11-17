@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardEmptyState, CardSkeleton } from '@/components/ui/Card';
 import StatusPill from '@/components/ui/StatusPill';
 import { dayMark, dayWords, monthGrid, monthWords, type CalendarBooking, type VenueCalendarView } from '@/lib/venue/calendar';
-import { dayFill, recordHref, SHIFT_LABEL, SLOT_PILL, SLOT_STATE_LABEL, type Slot } from '@/lib/venue/slots';
+import { dayFill, recordHref, SHIFT_LABEL, SLOT_PILL, slotLabel, type Slot } from '@/lib/venue/slots';
 import HallsManager from './HallsManager';
 import HallDay from './HallDay';
 
@@ -45,7 +45,7 @@ function SlotLine({ s, hall }: { s: Slot; hall: string }) {
         <p className="text-xs text-[var(--color-text-muted)]">{hall} · {SHIFT_LABEL[s.shift]}</p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-        <StatusPill status={SLOT_PILL[s.state]}>{SLOT_STATE_LABEL[s.state]}</StatusPill>
+        <StatusPill status={SLOT_PILL[s.state]}>{slotLabel(s)}</StatusPill>
         {href && <ChevronRight aria-hidden className="h-5 w-5 text-[var(--color-text-muted)]" />}
       </div>
     </div>
@@ -259,7 +259,7 @@ export default function AvailabilityCalendar() {
       {data.truncated && <p className="text-xs text-[var(--color-text-muted)]">Showing your first {data.days.reduce((n, d) => n + d.bookings.length, 0)} bookings — later ones are not shown here yet.</p>}
       <p className="text-xs text-[var(--color-text-muted)]">
         {hallMode
-          ? 'A couple’s hall and shift is chosen on their enquiry, and fills the calendar once they accept. A quote alone never takes a hall.'
+          ? 'A couple’s hall and shift is chosen on their enquiry. It takes the hall once they accept, or while you hold it for them. A quote alone never takes a hall.'
           : 'Only bookings made from your own quotations show here. A date is never blocked — you can still quote for a booked day.'}
       </p>
     </div>
