@@ -6,11 +6,15 @@
 //   BOOKED   the enquiry's booking is confirmed (the amount to confirm was received)
 //   ACCEPTED the couple accepted; the booking waits for its confirming payment
 //   HELD     reserved on the enquiry and held for the couple until a set time (17 Nov 2026) — it takes the hall until then, and
-//            ends by itself: once the time passes it reads as QUOTED again. Nothing has to run for that to happen.
+//            ends by itself: once the time passes it reads as QUOTED again. Nothing has to run for that to happen. A hold stops
+//            other holds and blocks; it does not stop another couple accepting a quotation (founder, 17 Nov: option A) — both
+//            enquiries then show the clash and the venue decides.
 //   QUOTED   reserved on the enquiry, nothing accepted or held — shown, but it does not take the hall
 //   BLOCKED  the venue blocked it by hand (no enquiry)
 // A clash is a WARNING on an enquiry, never a block: two couples can be quoted for one hall. Blocking or holding is refused over a
 // hall that is already booked, accepted, held or blocked for that shift.
+
+import { istDay } from './calendar';
 
 export const SHIFTS = ['DAY', 'NIGHT', 'FULL_DAY'] as const;
 export type Shift = (typeof SHIFTS)[number];
@@ -25,12 +29,11 @@ export const TAKES_HALL: readonly SlotState[] = ['BOOKED', 'ACCEPTED', 'HELD', '
 // How long a hold can be (days, counted to the end of that day in India). The venue picks; 3 is offered first.
 export const HOLD_DAYS = [1, 2, 3, 5, 7, 10, 14] as const;
 export const DEFAULT_HOLD_DAYS = 3;
-const istDayOf = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(d);
 const plusDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00.000Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 // When a hold of `days` made now ends: the end of that day in India — never later than the end of the slot's own date.
 export function holdEnd(now: Date, days: number, slotDate: string): Date {
-  const end = new Date(`${plusDays(istDayOf(now), days)}T23:59:59.999+05:30`);
+  const end = new Date(`${plusDays(istDay(now), days)}T23:59:59.999+05:30`);
   const last = new Date(`${slotDate}T23:59:59.999+05:30`);
   return end < last ? end : last;
 }

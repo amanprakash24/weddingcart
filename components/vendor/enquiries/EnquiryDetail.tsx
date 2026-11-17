@@ -145,7 +145,7 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
           <button type="button" onClick={() => setPanel('followup')} className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)]`}>Schedule a follow-up</button>
         )}
         {next.kind === 'HOLD_ENDING' && (
-          <a href="#halls" className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)]`}>See the hall and change the hold</a>
+          <a href="#halls" className={`${big} w-full bg-[var(--primary)] text-[var(--color-on-primary)]`}>See the hall</a>
         )}
         {(next.kind === 'PAYMENT_TO_CHECK' || next.kind === 'BOOKED' || next.kind === 'QUOTE_ACCEPTED' || next.kind === 'QUOTE_CHANGES' || next.kind === 'QUOTE_DRAFT' || next.kind === 'QUOTE_WAITING') && (
           <a href="#quotation" className={`${big} w-full ${next.kind === 'QUOTE_WAITING' || next.kind === 'BOOKED' ? 'border border-[var(--color-border-default)] text-[var(--color-text-primary)]' : 'bg-[var(--primary)] text-[var(--color-on-primary)]'}`}>{next.kind === 'PAYMENT_TO_CHECK' ? 'Check the payment' : next.kind === 'BOOKED' || next.kind === 'QUOTE_ACCEPTED' ? 'See the booking and payments' : 'See the quotation'}</a>

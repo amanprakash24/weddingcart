@@ -125,12 +125,12 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed, version =
                 </p>
               )}
               {s.state === 'QUOTED' && s.holdUntil && <p className="mt-1 text-xs text-[var(--color-text-muted)]">The hold ended on {holdWords(s.holdUntil)} — the hall is free for others again.</p>}
-              {editable && (s.state === 'QUOTED' || s.state === 'HELD') && s.date >= today() && !s.clashes.some((c) => TAKES_HALL.includes(c.state)) &&
+              {editable && (s.state === 'QUOTED' || s.state === 'HELD') && s.date >= today() &&
                 (holding === s.id ? (
                   <div className="mt-2 space-y-2 rounded-lg border border-[var(--color-border-default)] p-3">
                     <Select label={s.state === 'HELD' ? 'Hold it, from today, for' : 'Hold the hall, from today, for'} value={String(holdDays)} onChange={(e) => setHoldDays(Number(e.target.value))} options={HOLD_DAYS.map((d) => ({ value: String(d), label: d === 1 ? '1 day' : `${d} days` }))} className="min-h-12 text-base" />
                     <p className="text-xs text-[var(--color-text-secondary)]">
-                      Held until {holdWords(holdEnd(new Date(), holdDays, s.date).toISOString())}. Nobody else can book or block this hall until then. The hold ends by itself.
+                      Held until {holdWords(holdEnd(new Date(), holdDays, s.date).toISOString())}. Until then nobody else can hold or block this hall; if another couple accepts a quotation for it, both enquiries show a warning. The hold ends by itself.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <button type="button" onClick={() => setHolding(null)} className="min-h-11 rounded-xl border border-[var(--color-border-default)] text-sm font-semibold text-[var(--color-text-primary)]">
@@ -143,9 +143,12 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed, version =
                   </div>
                 ) : (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <button type="button" onClick={() => { setHolding(s.id); setHoldDays(DEFAULT_HOLD_DAYS); setError(null); }} className="min-h-11 rounded-lg border border-[var(--color-border-default)] px-3 text-sm font-semibold text-[var(--color-text-primary)]">
-                      {s.state === 'HELD' ? 'Change the hold' : 'Hold for the couple'}
-                    </button>
+                    {/* Hold or change only while no one else takes the hall; a hold can always be released. */}
+                    {!s.clashes.some((c) => TAKES_HALL.includes(c.state)) && (
+                      <button type="button" onClick={() => { setHolding(s.id); setHoldDays(DEFAULT_HOLD_DAYS); setError(null); }} className="min-h-11 rounded-lg border border-[var(--color-border-default)] px-3 text-sm font-semibold text-[var(--color-text-primary)]">
+                        {s.state === 'HELD' ? 'Change the hold' : 'Hold for the couple'}
+                      </button>
+                    )}
                     {s.state === 'HELD' && (
                       <button type="button" disabled={busy} onClick={() => call(`/${s.id}/hold`, 'DELETE')} className="min-h-11 rounded-lg px-3 text-sm font-medium text-[var(--color-text-secondary)]">
                         Release the hold

@@ -22,11 +22,13 @@ function fake() {
     { id: 'other-hall', businessId: 'venue-2', name: 'Their Hall', capacity: null, active: true, sortOrder: 0, createdAt: new Date(1) },
   ];
   const slots: SlotRow[] = [];
+  const locks: string[] = [];
   const enquiries: Enquiry[] = [
     { id: 'e1', businessId: BIZ, name: 'Riya & Aman', pipelineStage: 'QUOTATION_SENT', bookings: [] },
     { id: 'e2', businessId: BIZ, name: 'Neha & Raj', pipelineStage: 'WON', bookings: [{ status: 'CONFIRMED', wedding: null }] },
     { id: 'lost', businessId: BIZ, name: 'Gone', pipelineStage: 'LOST', bookings: [] },
     { id: 'e3', businessId: BIZ, name: 'Pooja & Dev', pipelineStage: 'NEW', bookings: [] },
+    { id: 'e4', businessId: BIZ, name: 'Closed Booking', pipelineStage: 'NEGOTIATION', bookings: [{ status: 'CLOSED', wedding: null }] },
   ];
   let n = 0;
   const day = (d: Date) => d.toISOString().slice(0, 10);
@@ -99,8 +101,15 @@ function fake() {
     consultation: { findUnique: async ({ where }: { where: { id: string } }) => enquiries.find((e) => e.id === where.id && e.businessId === BIZ) ?? null },
     business: { findUnique: async () => ({ vendor: { category: { name: 'Banquet Halls' } } }) },
   };
-  const service = createVenueSpaceService({ db: db as unknown as VenueSpaceDeps['db'], now: () => new Date('2026-11-17T06:00:00Z') });
-  return { service, spaces, slots };
+  const service = createVenueSpaceService({
+    db: db as unknown as VenueSpaceDeps['db'],
+    now: () => new Date('2026-11-17T06:00:00Z'),
+    lockHall: (key, fn) => {
+      locks.push(key);
+      return fn(db as unknown as VenueSpaceDeps['db']);
+    },
+  });
+  return { service, spaces, slots, locks };
 }
 
 describe('venueSpaceService', () => {
@@ -181,6 +190,21 @@ describe('venueSpaceService', () => {
     expect([after.slots[0].state, after.slots[0].holdUntil]).toEqual(['QUOTED', '2026-11-17T05:00:00.000Z']);
   });
 
+  it('holds and blocks check and save under the hall’s lock', async () => {
+    const { service, locks } = fake();
+    const r = await run(() => service.reserve('e1', { spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT' }, 'u'));
+    if ('errors' in r) throw new Error('unexpected');
+    await run(() => service.hold('e1', r.slots[0].id, { days: 1 }, 'u'));
+    await run(() => service.block({ spaceId: 'hall', date: '2026-12-13', shift: 'DAY' }, null));
+    expect(locks).toEqual(['hall:hall:2026-12-12', 'hall:hall:2026-12-13']);
+  });
+
+  it('a closed booking says so when someone tries to hold its hall', async () => {
+    const { service, slots } = fake();
+    slots.push({ id: 'old', businessId: BIZ, spaceId: 'hall', date: new Date('2026-12-20T00:00:00.000Z'), shift: 'DAY', consultationId: 'e4', note: null, createdAt: new Date() });
+    await expect(run(() => service.hold('e4', 'old', { days: 1 }, 'u'))).rejects.toThrow('booking was closed');
+  });
+
   it('release ends a hold now; odd lengths, booked halls and other enquiries are refused', async () => {
     const { service } = fake();
     const r = await run(() => service.reserve('e1', { spaceId: 'hall', date: '2026-12-12', shift: 'DAY' }, 'u'));
@@ -192,7 +216,7 @@ describe('venueSpaceService', () => {
     await expect(run(() => service.hold('e2', r.slots[0].id, { days: 1 }, 'u'))).rejects.toThrow();
     const b = await run(() => service.reserve('e2', { spaceId: 'hall', date: '2026-12-13', shift: 'DAY' }, 'u'));
     if ('errors' in b) throw new Error('unexpected');
-    await expect(run(() => service.hold('e2', b.slots[0].id, { days: 1 }, 'u'))).rejects.toThrow('already taken by the booking');
+    await expect(run(() => service.hold('e2', b.slots[0].id, { days: 1 }, 'u'))).rejects.toThrow('The couple has already accepted');
   });
 
   it('cannot reserve another business’s hall', async () => {
