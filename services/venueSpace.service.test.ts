@@ -199,6 +199,23 @@ describe('venueSpaceService', () => {
     expect(locks).toEqual(['hall:hall:2026-12-12', 'hall:hall:2026-12-13']);
   });
 
+  it('releasing a hold takes the same hall lock, and works whoever else was quoted', async () => {
+    const { service, locks } = fake();
+    const a = await run(() => service.reserve('e1', { spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT' }, 'u'));
+    if ('errors' in a) throw new Error('unexpected');
+    await run(() => service.reserve('e3', { spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT' }, 'u'));
+    await run(() => service.hold('e1', a.slots[0].id, { days: 3 }, 'u'));
+    locks.length = 0;
+    const freed = await run(() => service.releaseHold('e1', a.slots[0].id));
+    expect(locks).toEqual(['hall:hall:2026-12-12']);
+    expect([freed.slots[0].state, freed.slots[0].holdUntil]).toEqual(['QUOTED', null]);
+    // another enquiry's slot, or one that does not exist, is not found — and takes no lock
+    locks.length = 0;
+    await expect(run(() => service.releaseHold('e3', a.slots[0].id))).rejects.toThrow();
+    await expect(run(() => service.releaseHold('e1', 'nope'))).rejects.toThrow();
+    expect(locks).toEqual([]);
+  });
+
   it('a closed booking says so when someone tries to hold its hall', async () => {
     const { service, slots } = fake();
     slots.push({ id: 'old', businessId: BIZ, spaceId: 'hall', date: new Date('2026-12-20T00:00:00.000Z'), shift: 'DAY', consultationId: 'e4', note: null, createdAt: new Date() });

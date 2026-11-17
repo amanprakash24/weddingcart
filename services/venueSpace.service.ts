@@ -273,12 +273,20 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
       return slotsOf(id, e);
     },
 
-    // End a hold now — the hall goes back to quoted for this couple.
+    // End a hold now — the hall goes back to quoted for this couple. Always allowed for the venue's own enquiry, whoever else was
+    // quoted for the hall. The slot is read and checked first (this business, this enquiry), then the hold is cleared under the same
+    // hall/date lock that hold, block, acceptance and booking take: an acceptance by another couple that arrives at the same moment
+    // runs wholly before (and is refused — the hold still stands) or wholly after (and may go ahead — the hold is gone), never in
+    // between.
     async releaseHold(enquiryId: string, slotId: string): Promise<EnquirySlots> {
       const id = businessId();
       const e = await enquiry(enquiryId);
-      const { count } = await deps.db.venueSlot.updateMany({ where: { id: slotId, businessId: id, consultationId: e.id }, data: { holdUntil: null, heldById: null } });
-      if (count === 0) throw new NotFoundError('Hall and shift', slotId);
+      const row = await deps.db.venueSlot.findFirst({ where: { id: slotId, businessId: id, consultationId: e.id }, select: { spaceId: true, date: true } });
+      if (!row) throw new NotFoundError('Hall and shift', slotId);
+      await deps.lockHall(hallKey(row.spaceId, row.date.toISOString().slice(0, 10)), async (db) => {
+        const { count } = await db.venueSlot.updateMany({ where: { id: slotId, businessId: id, consultationId: e.id }, data: { holdUntil: null, heldById: null } });
+        if (count === 0) throw new NotFoundError('Hall and shift', slotId); // removed in the meantime
+      });
       return slotsOf(id, e);
     },
 

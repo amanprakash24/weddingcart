@@ -156,6 +156,35 @@ dbDescribe('hall holds stop other couples accepting (real database)', () => {
     }
   });
 
+  test('7. a release and another couple’s acceptance that arrive together: never inconsistent', async () => {
+    let accepted = 0;
+    let refused = 0;
+    for (let i = 0; i < 4; i++) {
+      const date = later(70 + i);
+      const a = await couple(date, 'NIGHT');
+      const b = await couple(date, 'NIGHT');
+      await inV(() => spaces.hold(a.enquiryId, a.slotId, { days: 3 }, user));
+      const [released, acceptance] = await Promise.all([outcome(inV(() => spaces.releaseHold(a.enquiryId, a.slotId))), outcome(acceptOnLink(b.token))]);
+      // The venue's release always succeeds, and the hold is gone afterwards.
+      expect(released).toBeNull();
+      expect((await slotRow(a.slotId)).holdUntil).toBeNull();
+      const bStage = (await inV(() => quotes.get(b.enquiryId))).quotation?.stage;
+      if (acceptance === null) {
+        // B went after the release: B is accepted, A's slot is only quoted — the hall is not double-taken by a hold.
+        accepted += 1;
+        expect(bStage).toBe('ACCEPTED');
+        expect((await inV(() => spaces.forEnquiry(a.enquiryId))).slots[0].state).toBe('QUOTED');
+      } else {
+        // B went before the release: refused while the hold stood, nothing half-done, and B can accept now that it is released.
+        refused += 1;
+        expect(acceptance.message).toContain('temporarily held for another booking');
+        expect(bStage).toBe('SENT');
+        expect(await outcome(acceptOnLink(b.token))).toBeNull();
+      }
+    }
+    expect(accepted + refused).toBe(4);
+  });
+
   test('6. the venue can always release a hold, even when another couple was quoted for the same hall', async () => {
     const date = later(60);
     const a = await couple(date, 'NIGHT');
