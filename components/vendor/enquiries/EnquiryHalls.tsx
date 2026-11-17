@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import StatusPill from '@/components/ui/StatusPill';
-import { clashWords, DEFAULT_HOLD_DAYS, HOLD_DAYS, holdEnd, holdWords, recordHref, SHIFT_LABEL, SHIFTS, SLOT_PILL, slotLabel, TAKES_HALL, type SlotErrors } from '@/lib/venue/slots';
+import { clashWords, DEFAULT_HOLD_DAYS, HOLD_DAYS, holdEnd, holdTimeWords, holdWords, recordHref, SHIFT_LABEL, SHIFTS, SLOT_PILL, slotLabel, TAKES_HALL, type SlotErrors } from '@/lib/venue/slots';
 import { istDay } from '@/lib/venue/calendar';
 import type { EnquirySlots } from '@/services/venueSpace.service';
 
@@ -124,13 +124,22 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed, version =
                   {s.state === 'HELD' ? 'This hall is held for the couple. Tap the bin again to remove it.' : 'This couple has already said yes. Tap the bin again to free this hall — the booking itself stays.'}
                 </p>
               )}
+              {(() => {
+                // Option B: while another couple holds this hall and shift, this couple's quotation cannot be accepted (the server refuses it).
+                const heldByOther = s.state === 'QUOTED' ? s.clashes.find((c) => c.state === 'HELD' && c.holdUntil) : undefined;
+                return heldByOther?.holdUntil ? (
+                  <p role="status" className="mt-2 rounded-lg bg-[var(--color-danger-bg)] p-2 text-xs text-[var(--color-danger-text)]">
+                    This hall is held for another couple until {holdTimeWords(heldByOther.holdUntil)}. Until then this couple cannot accept the quotation for it — release that hold first, or wait for it to end.
+                  </p>
+                ) : null;
+              })()}
               {s.state === 'QUOTED' && s.holdUntil && <p className="mt-1 text-xs text-[var(--color-text-muted)]">The hold ended on {holdWords(s.holdUntil)} — the hall is free for others again.</p>}
               {editable && (s.state === 'QUOTED' || s.state === 'HELD') && s.date >= today() &&
                 (holding === s.id ? (
                   <div className="mt-2 space-y-2 rounded-lg border border-[var(--color-border-default)] p-3">
                     <Select label={s.state === 'HELD' ? 'Hold it, from today, for' : 'Hold the hall, from today, for'} value={String(holdDays)} onChange={(e) => setHoldDays(Number(e.target.value))} options={HOLD_DAYS.map((d) => ({ value: String(d), label: d === 1 ? '1 day' : `${d} days` }))} className="min-h-12 text-base" />
                     <p className="text-xs text-[var(--color-text-secondary)]">
-                      Held until {holdWords(holdEnd(new Date(), holdDays, s.date).toISOString())}. Until then nobody else can hold or block this hall; if another couple accepts a quotation for it, both enquiries show a warning. The hold ends by itself.
+                      Held until {holdWords(holdEnd(new Date(), holdDays, s.date).toISOString())}. Until then nobody else can hold or block this hall, and no other couple can accept a quotation for it. The hold ends by itself.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <button type="button" onClick={() => setHolding(null)} className="min-h-11 rounded-xl border border-[var(--color-border-default)] text-sm font-semibold text-[var(--color-text-primary)]">

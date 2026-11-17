@@ -6,6 +6,7 @@ import { ownBusinessId } from '@/lib/ownership/business';
 import { can } from '@/lib/auth/permissions';
 import { isVenueCategory } from '@/lib/quotation/terms';
 import { istDay } from '@/lib/venue/calendar';
+import { hallLockKey } from './hallHold.service';
 import {
   clashes,
   clashWords,
@@ -81,7 +82,7 @@ const defaultDeps = (): VenueSpaceDeps => ({
       return fn(tx);
     }),
 });
-const hallKey = (spaceId: string, date: string) => `hall:${spaceId}:${date}`;
+const hallKey = hallLockKey; // the same key the acceptance check locks (services/hallHold.service.ts)
 
 const SPACE_SELECT = { id: true, name: true, capacity: true, active: true } as const;
 const ENQUIRY_SELECT = { id: true, name: true, pipelineStage: true, bookings: { select: { status: true, wedding: { select: { id: true, weddingNumber: true } } } } } as const;
@@ -241,8 +242,8 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
     },
 
     // Hold this enquiry's hall for the couple for `days` (to the end of that day in India), or extend a hold. While held it takes the
-    // hall: nobody can block or hold it over the hold — another couple can still accept a quotation for it (both enquiries then show
-    // the clash; founder, option A). Refused when the hall is already booked, accepted, held or blocked for that shift by anyone else,
+    // hall: nobody can block or hold it over the hold, and no other couple can accept a quotation for it (founder, option B —
+    // services/hallHold.service.ts). Refused when the hall is already booked, accepted, held or blocked for that shift by anyone else,
     // and for a slot whose date has passed. The check and the save run under the hall's lock. The hold ends by itself.
     async hold(enquiryId: string, slotId: string, input: { days?: unknown }, actorId: string | null): Promise<EnquirySlots> {
       const id = businessId();

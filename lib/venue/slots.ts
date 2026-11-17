@@ -7,8 +7,8 @@
 //   ACCEPTED the couple accepted; the booking waits for its confirming payment
 //   HELD     reserved on the enquiry and held for the couple until a set time (17 Nov 2026) — it takes the hall until then, and
 //            ends by itself: once the time passes it reads as QUOTED again. Nothing has to run for that to happen. A hold stops
-//            other holds and blocks; it does not stop another couple accepting a quotation (founder, 17 Nov: option A) — both
-//            enquiries then show the clash and the venue decides.
+//            other holds, blocks AND another couple accepting a quotation for the same hall, date and shift (founder, 17 Nov:
+//            option B — enforced in the acceptance transaction, services/hallHold.service.ts).
 //   QUOTED   reserved on the enquiry, nothing accepted or held — shown, but it does not take the hall
 //   BLOCKED  the venue blocked it by hand (no enquiry)
 // A clash is a WARNING on an enquiry, never a block: two couples can be quoted for one hall. Blocking or holding is refused over a
@@ -40,6 +40,9 @@ export function holdEnd(now: Date, days: number, slotDate: string): Date {
 
 // "Fri, 20 Nov" — the day a hold ends, in India.
 export const holdWords = (iso: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
+
+// 'Thu, 19 Nov, 11:59 pm' — when a hold ends, with the time, in India (shown to a couple whose acceptance it stops).
+export const holdTimeWords = (iso: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).format(new Date(iso));
 
 // A hold that ends within this long is "ending" — the enquiry's next step says so.
 export const HOLD_ENDING_MS = 24 * 3600 * 1000;
