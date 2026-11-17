@@ -452,7 +452,7 @@ describe('Add an event — what the couple sees', () => {
 });
 
 describe('your hall, on a venue’s own link', () => {
-  const held = { hall: 'Royal Banquet', date: '2027-02-14', shift: 'NIGHT' as const, status: 'HELD' as const, heldUntil: '2026-11-19T18:29:59.999Z', heldElsewhereUntil: null };
+  const held = { hall: 'Royal Banquet', date: '2027-02-14', shift: 'NIGHT' as const, status: 'HELD' as const, heldUntil: '2026-11-19T18:29:59.999Z', blockedBy: null };
   test('a venue’s own proposal shows the halls of its enquiry', async () => {
     row.businessId = 'venue-1';
     hallRows = [held];

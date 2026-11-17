@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import StatusPill from '@/components/ui/StatusPill';
-import { clashWords, DEFAULT_HOLD_DAYS, HOLD_DAYS, holdEnd, holdTimeWords, holdWords, recordHref, SHIFT_LABEL, SHIFTS, SLOT_PILL, slotLabel, TAKES_HALL, type SlotErrors } from '@/lib/venue/slots';
+import { blockingClash, clashWords, DEFAULT_HOLD_DAYS, HOLD_DAYS, holdEnd, holdTimeWords, holdWords, recordHref, SHIFT_LABEL, SHIFTS, SLOT_PILL, slotDayWords, slotLabel, TAKES_HALL, type SlotErrors } from '@/lib/venue/slots';
 import { istDay } from '@/lib/venue/calendar';
 import type { EnquirySlots } from '@/services/venueSpace.service';
 
@@ -15,7 +15,7 @@ import type { EnquirySlots } from '@/services/venueSpace.service';
 // day, the night or the full day. Another couple or a block on the same hall and shift is a WARNING here, never a block — two
 // couples can be quoted for one hall. Shown only to a business that works with halls (a venue, or anyone who added a hall).
 
-const dayWords = (day: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00.000Z`));
+const dayWords = slotDayWords;
 const today = () => istDay(new Date());
 const SHIFT_OPTIONS = SHIFTS.map((s) => ({ value: s, label: SHIFT_LABEL[s] }));
 
@@ -125,13 +125,19 @@ export default function EnquiryHalls({ enquiryId, weddingDate, closed, version =
                 </p>
               )}
               {(() => {
-                // Option B: while another couple holds this hall and shift, this couple's quotation cannot be accepted (the server refuses it).
-                const heldByOther = s.state === 'QUOTED' ? s.clashes.find((c) => c.state === 'HELD' && c.holdUntil) : undefined;
-                return heldByOther?.holdUntil ? (
+                // The acceptance rule (lib/venue/slots.ts blockingClash): while this hall and shift is taken by someone else — booked,
+                // accepted, held or blocked — this couple's quotation cannot be accepted (the server refuses it).
+                const taken = s.state === 'QUOTED' ? blockingClash(s, s.clashes) : undefined;
+                if (!taken) return null;
+                return (
                   <p role="status" className="mt-2 rounded-lg bg-[var(--color-danger-bg)] p-2 text-xs text-[var(--color-danger-text)]">
-                    This hall is held for another couple until {holdTimeWords(heldByOther.holdUntil)}. Until then this couple cannot accept the quotation for it — release that hold first, or wait for it to end.
+                    {taken.state === 'HELD' && taken.holdUntil
+                      ? `This hall is held for another couple until ${holdTimeWords(taken.holdUntil)}. Until then this couple cannot accept the quotation for it — release that hold first, or wait for it to end.`
+                      : taken.state === 'BLOCKED'
+                        ? 'You have blocked this hall for this shift. This couple cannot accept the quotation for it until you free it on the calendar.'
+                        : 'Another couple has already accepted or booked this hall for this shift. This couple cannot accept the quotation for it — choose another hall or date.'}
                   </p>
-                ) : null;
+                );
               })()}
               {s.state === 'QUOTED' && s.holdUntil && <p className="mt-1 text-xs text-[var(--color-text-muted)]">The hold ended on {holdWords(s.holdUntil)} — the hall is free for others again.</p>}
               {editable && (s.state === 'QUOTED' || s.state === 'HELD') && s.date >= today() &&

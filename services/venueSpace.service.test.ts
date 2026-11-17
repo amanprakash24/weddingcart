@@ -48,7 +48,7 @@ function fake() {
   };
   const withEnquiry = (s: SlotRow) => {
     const e = enquiries.find((x) => x.id === s.consultationId) ?? null;
-    return { id: s.id, spaceId: s.spaceId, date: s.date, shift: s.shift, note: s.note, holdUntil: s.holdUntil ?? null, consultation: e ? { id: e.id, name: e.name, pipelineStage: e.pipelineStage, bookings: e.bookings } : null };
+    return { id: s.id, spaceId: s.spaceId, date: s.date, shift: s.shift, note: s.note, holdUntil: s.holdUntil ?? null, space: { name: spaces.find((x) => x.id === s.spaceId)?.name ?? '' }, consultation: e ? { id: e.id, name: e.name, pipelineStage: e.pipelineStage, bookings: e.bookings } : null };
   };
   const matchSpace = (s: SpaceRow, w: Record<string, unknown>): boolean =>
     s.businessId === w.businessId &&
@@ -234,6 +234,17 @@ describe('venueSpaceService', () => {
     const b = await run(() => service.reserve('e2', { spaceId: 'hall', date: '2026-12-13', shift: 'DAY' }, 'u'));
     if ('errors' in b) throw new Error('unexpected');
     await expect(run(() => service.hold('e2', b.slots[0].id, { days: 1 }, 'u'))).rejects.toThrow('The couple has already accepted');
+  });
+
+  it('forProposal: the couple’s halls, each with what takes it from them — and nothing for a closed enquiry or none chosen', async () => {
+    const { service } = fake();
+    await run(() => service.reserve('e2', { spaceId: 'hall', date: '2026-12-12', shift: 'FULL_DAY' }, 'u')); // e2 is booked
+    await run(() => service.reserve('e1', { spaceId: 'hall', date: '2026-12-12', shift: 'NIGHT' }, 'u'));
+    const rows = await run(() => service.forProposal('e1'));
+    expect(rows.map((r) => [r.hall, r.slot.state, r.blocker?.state, r.blocker?.enquiryId])).toEqual([['Royal Hall', 'QUOTED', 'BOOKED', 'e2']]);
+    const own = await run(() => service.forProposal('e2'));
+    expect(own.map((r) => [r.slot.state, r.blocker])).toEqual([['BOOKED', undefined]]);
+    expect(await run(() => service.forProposal('e3'))).toEqual([]);
   });
 
   it('cannot reserve another business’s hall', async () => {
