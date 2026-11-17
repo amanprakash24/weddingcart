@@ -11,6 +11,7 @@ import { followUpGivenMessage } from '@/lib/venue/myWork';
 import Select from '@/components/ui/Select';
 import type { VenueEnquiryDetail } from '@/services/venueEnquiry.service';
 import EnquiryQuotation from './EnquiryQuotation';
+import EnquiryHalls from './EnquiryHalls';
 
 // One of the venue's own enquiries (Phase C). The top card answers "what should I do next?" with ONE primary action (audit brief
 // §13); calling, WhatsApp, a follow-up date and a note are always one tap away below it.
@@ -157,6 +158,8 @@ export default function EnquiryDetail({ id, justAdded }: { id: string; justAdded
           <button type="button" onClick={() => setPanel(panel === 'note' ? 'none' : 'note')} className={`${big} border border-[var(--color-border-default)] text-[var(--color-text-primary)]`}>Add note</button>
         </div>
       )}
+
+      <EnquiryHalls enquiryId={id} weddingDate={e.weddingDate} closed={closed} version={version} />
 
       <div id="quotation" className="scroll-mt-4">
         <EnquiryQuotation enquiryId={id} closed={closed} onChanged={() => setVersion((v) => v + 1)} />

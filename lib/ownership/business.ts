@@ -2,12 +2,21 @@ import { prisma } from '@/lib/prisma';
 import { COMMERCIAL_RULES, type CommercialRules } from '@/lib/commercial/rules';
 import { PLATFORM_BUSINESS_ID } from './owned';
 import { effectiveScope } from './scope';
+import { NotFoundError } from '@/lib/errors';
 
 // The business the current work runs as — for what differs per business (docs/wedding-os/15-record-ownership.md §4.6):
 //   • document numbers: Shaadi Shopping keeps QTN- / INV- / WED-; a venue's carry its short code (SWA-QTN-202610-0001) — D6
 //   • the confirmation rule its customers book under — the platform's 25% / 7 days unless the venue set its own (approved 4 Oct)
 //   • its brand and number on the couple's proposal link — D8
 // Business is not an owned table, so these reads need no scope of their own.
+
+// The business a vendor's own screen runs as, for tables that are not owned (a price list, halls): every read and write names it.
+// Shaadi Shopping has none of these here, and work with no business scope finds nothing.
+export function ownBusinessId(): string {
+  const scope = effectiveScope();
+  if (scope.kind !== 'BUSINESS' || scope.businessId === PLATFORM_BUSINESS_ID) throw new NotFoundError('Business', 'current');
+  return scope.businessId;
+}
 
 export interface BusinessInfo {
   id: string;

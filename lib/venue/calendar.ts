@@ -7,6 +7,7 @@
 // weddings this business is booked on.
 
 import type { SameDateBooking } from './sameDate';
+import type { Slot, Space } from './slots';
 
 export type CalendarBooking = SameDateBooking;
 
@@ -22,6 +23,12 @@ export interface VenueCalendar {
   months: string[]; // YYYY-MM, this month first
   days: CalendarDay[]; // only the days with a booking, in order
   truncated: boolean; // more bookings than one answer carries — the latest ones are left out
+}
+
+// The calendar screen's answer: the bookings by day, and the venue's halls with each hall's slots in the same months
+// (lib/venue/slots.ts). usesHalls false = a business without halls (a photographer, a DJ …): the screen shows days only.
+export interface VenueCalendarView extends VenueCalendar {
+  halls: { usesHalls: boolean; canManage: boolean; canBlock: boolean; spaces: Space[]; slots: Slot[]; truncated: boolean };
 }
 
 export const CALENDAR_MONTHS = 12;
