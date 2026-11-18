@@ -185,6 +185,45 @@ dbDescribe('hall holds stop other couples accepting (real database)', () => {
     expect(accepted + refused).toBe(4);
   });
 
+  test('8. decision A: a hall another couple has accepted, or the venue has blocked, cannot be accepted either', async () => {
+    const date = later(80);
+    const a = await couple(date, 'NIGHT');
+    const b = await couple(date, 'NIGHT');
+    await acceptOnLink(a.token);
+    const refused = await outcome(acceptOnLink(b.token));
+    expect(refused?.message).toContain('DBTEST Royal Hall is not available for the night of');
+    expect(refused?.message).not.toContain('Hold Couple');
+    expect((await inV(() => quotes.get(b.enquiryId))).quotation?.stage).toBe('SENT');
+
+    const date2 = later(81);
+    await inV(() => spaces.block({ spaceId: hall, date: date2, shift: 'DAY', note: 'Owner function' }, user));
+    const c = await couple(date2, 'FULL_DAY');
+    expect((await outcome(acceptOnLink(c.token)))?.message).toContain('is not available for the full day of');
+  });
+
+  test('9. two couples accepting the same hall and night at the same moment: exactly one wins', async () => {
+    for (let i = 0; i < 3; i++) {
+      const date = later(90 + i);
+      const a = await couple(date, 'NIGHT');
+      const b = await couple(date, 'NIGHT');
+      const results = await Promise.all([outcome(acceptOnLink(a.token)), outcome(acceptOnLink(b.token))]);
+      expect(results.filter((r) => r === null)).toHaveLength(1);
+      expect(results.find((r) => r !== null)?.message).toContain('is not available for the night of');
+    }
+  });
+
+  test('10. the couple’s own link shows the hall and why they cannot accept — never who', async () => {
+    const date = later(95);
+    const a = await couple(date, 'NIGHT');
+    const b = await couple(date, 'NIGHT');
+    await inV(() => spaces.hold(a.enquiryId, a.slotId, { days: 3 }, user));
+    const viewB = await runInScope(await scopeForProposalToken(b.token), () => proposalService.view(b.token, { trackView: false }));
+    expect(viewB?.halls).toEqual([{ hall: 'DBTEST Royal Hall', date, shift: 'NIGHT', status: 'CHOSEN', heldUntil: null, blockedBy: { heldUntil: expect.any(String) } }]);
+    expect(JSON.stringify(viewB?.halls)).not.toContain('Hold Couple');
+    const viewA = await runInScope(await scopeForProposalToken(a.token), () => proposalService.view(a.token, { trackView: false }));
+    expect(viewA?.halls[0]).toMatchObject({ status: 'HELD', blockedBy: null });
+  });
+
   test('6. the venue can always release a hold, even when another couple was quoted for the same hall', async () => {
     const date = later(60);
     const a = await couple(date, 'NIGHT');

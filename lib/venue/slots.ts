@@ -42,6 +42,9 @@ export function holdEnd(now: Date, days: number, slotDate: string): Date {
 export const holdWords = (iso: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
 
 // 'Thu, 19 Nov, 11:59 pm' — when a hold ends, with the time, in India (shown to a couple whose acceptance it stops).
+// "Fri, 5 Feb, 2027" — a slot's date (stored as the start of its day in UTC).
+export const slotDayWords = (day: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00.000Z`));
+
 export const holdTimeWords = (iso: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).format(new Date(iso));
 
 // A hold that ends within this long is "ending" — the enquiry's next step says so.
@@ -129,6 +132,23 @@ export function slotOf(row: Row, now: Date = new Date()): Slot | null {
 // The other slots that clash with this one: the same hall, the same date, an overlapping shift, and not the same enquiry. Booked
 // first, then accepted, blocked, quoted.
 const ORDER: Record<SlotState, number> = { BOOKED: 0, ACCEPTED: 1, HELD: 2, BLOCKED: 3, QUOTED: 4 };
+// THE acceptance rule (founder, 17 Nov 2026 — option B, extended by A): a couple's quotation that reserves a hall + date + shift cannot
+// be accepted while that hall and an overlapping shift is TAKEN by anyone else — booked, accepted, held (until the hold ends) or
+// blocked by hand. Returns what stops it (the strongest first), or undefined. The server (services/hallHold.service.ts) refuses on
+// it inside the acceptance transaction; the couple's page (lib/quotation/proposalHalls.ts) says so before they press Accept — both
+// from this one function, so they never disagree.
+export function blockingClash(slot: Pick<Slot, 'id' | 'spaceId' | 'date' | 'shift' | 'enquiryId'>, others: readonly Slot[]): Slot | undefined {
+  return clashes(slot, others).find((c) => TAKES_HALL.includes(c.state));
+}
+
+// The one sentence a couple reads when their hall is taken — on their link before Accept, and as the server's refusal. Never says who.
+export function hallUnavailableWords(h: { hall: string; shift: Shift; date: string; heldUntil: string | null }): string {
+  const when = h.shift === 'FULL_DAY' ? `the full day of ${slotDayWords(h.date)}` : `the ${SHIFT_LABEL[h.shift].toLowerCase()} of ${slotDayWords(h.date)}`;
+  return h.heldUntil
+    ? `${h.hall} is temporarily held for another booking for ${when}, until ${holdTimeWords(h.heldUntil)}. You can accept once that hold ends or the venue releases it — please contact the venue.`
+    : `${h.hall} is not available for ${when}. Please contact the venue.`;
+}
+
 export function clashes(slot: Pick<Slot, 'id' | 'spaceId' | 'date' | 'shift' | 'enquiryId'>, others: readonly Slot[]): Slot[] {
   return others
     .filter((o) => o.id !== slot.id && o.spaceId === slot.spaceId && o.date === slot.date && shiftsOverlap(o.shift, slot.shift))

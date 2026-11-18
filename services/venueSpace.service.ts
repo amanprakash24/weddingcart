@@ -8,6 +8,7 @@ import { isVenueCategory } from '@/lib/quotation/terms';
 import { istDay } from '@/lib/venue/calendar';
 import { hallLockKey } from './hallHold.service';
 import {
+  blockingClash,
   clashes,
   clashWords,
   DEFAULT_HOLD_DAYS,
@@ -52,6 +53,14 @@ export interface HallCalendar {
   spaces: Space[]; // every hall, active first
   slots: Slot[];
   truncated: boolean; // more slots in these months than one answer carries — the latest are left out, and the screen says so
+}
+
+// One of an enquiry's halls as its couple's proposal needs it (lib/quotation/proposalHalls.ts): the hall's name, the slot, and what
+// takes the hall from them, if anything (lib/venue/slots.ts blockingClash — the rule the acceptance enforces).
+export interface ProposalSlot {
+  hall: string;
+  slot: Slot;
+  blocker: Slot | undefined;
 }
 
 export type HallList = { usesHalls: boolean; canManage: boolean; spaces: Space[] };
@@ -213,6 +222,20 @@ export function createVenueSpaceService(deps: VenueSpaceDeps = defaultDeps()) {
     },
 
     // ---------- an enquiry's halls and shifts ----------
+
+    // The couple's proposal: only what it shows, read lean (a public page). No hall chosen → one query, nothing else. A closed
+    // enquiry → nothing (its halls no longer count, and nothing should be promised).
+    async forProposal(enquiryId: string): Promise<ProposalSlot[]> {
+      const id = businessId();
+      const rows = await deps.db.venueSlot.findMany({ where: { businessId: id, consultationId: enquiryId }, select: { ...SLOT_SELECT, space: { select: { name: true } } }, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] });
+      if (rows.length === 0 || rows[0].consultation?.pipelineStage === 'LOST') return [];
+      const now = deps.now();
+      const around = (await slotsWhere(id, { OR: rows.map((r) => ({ spaceId: r.spaceId, date: r.date })) }, MAX_SLOTS_PER_ENQUIRY * 50)).slots;
+      return rows.flatMap((r) => {
+        const slot = slotOf(r, now);
+        return slot ? [{ hall: r.space.name, slot, blocker: blockingClash(slot, around) }] : [];
+      });
+    },
 
     async forEnquiry(enquiryId: string): Promise<EnquirySlots> {
       const id = businessId();
