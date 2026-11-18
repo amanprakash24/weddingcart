@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // /admin on its own, and the retired admin screens, are answered here — before any page renders. Redirecting from inside the
+      // admin page (it streams inside the admin layout's Suspense) reached visitors' browsers as React error #419 (18 Nov 2026).
+      // app/admin/page.tsx keeps the same redirects as a fallback.
+      { source: '/admin', missing: [{ type: 'query', key: 'tab' }], destination: '/admin/dashboard', permanent: false },
+      ...['enquiries', 'consultations', 'leads'].map((tab) => ({ source: '/admin', has: [{ type: 'query' as const, key: 'tab', value: tab }], destination: '/admin/crm', permanent: false })),
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'shaadishopping.com' }],

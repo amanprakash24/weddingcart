@@ -111,7 +111,7 @@ export default function AdminCategoryDetailClient({ categoryId }: { categoryId: 
   const handleDelete = async () => {
     if (!confirm('Delete this category? This cannot be undone.')) return;
     await fetch(`/api/categories/${categoryId}`, { method: 'DELETE' });
-    window.location.href = '/admin';
+    window.location.href = '/admin/dashboard';
   };
 
   if (loading) return (
@@ -123,7 +123,7 @@ export default function AdminCategoryDetailClient({ categoryId }: { categoryId: 
   if (notFound) return (
     <div className="pt-20 min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
       <p className="text-gray-500 text-lg">Category not found.</p>
-      <Link href="/admin" className="text-amber-600 hover:underline flex items-center gap-1"><ArrowLeft className="w-4 h-4" /> Back to Admin</Link>
+      <Link href="/admin/dashboard" className="text-amber-600 hover:underline flex items-center gap-1"><ArrowLeft className="w-4 h-4" /> Back to Admin</Link>
     </div>
   );
 
@@ -133,7 +133,7 @@ export default function AdminCategoryDetailClient({ categoryId }: { categoryId: 
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <Link href="/admin" className="flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm transition-colors">
+          <Link href="/admin/dashboard" className="flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Admin
           </Link>
           <div className="flex items-center gap-2">
