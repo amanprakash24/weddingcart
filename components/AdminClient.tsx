@@ -1495,7 +1495,7 @@ Create a separate standalone invoice anyway?`)) return;
                           return !q || v.name?.toLowerCase().includes(q) || v.category?.toLowerCase().includes(q) || v.city?.toLowerCase().includes(q) || v.ownerName?.toLowerCase().includes(q);
                         })
                         .map((v) => (
-                        <tr key={v._id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={v.id ?? v._id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3">
                             <p className="text-sm font-semibold text-gray-900">{v.name}</p>
                             {v.isFeatured && <span className="text-[10px] text-emerald-600 font-bold">★ Featured</span>}
@@ -1624,7 +1624,7 @@ Create a separate standalone invoice anyway?`)) return;
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {regularCategories.map((c) => (
-                        <tr key={c._id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={c.id ?? c._id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3 text-sm font-semibold text-gray-900">{c.name}</td>
                           <td className="px-4 py-3"><span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-mono">{c.id}</span></td>
                           <td className="px-4 py-3 text-sm text-gray-500 max-w-xs line-clamp-1">{c.description}</td>
@@ -1730,7 +1730,7 @@ Create a separate standalone invoice anyway?`)) return;
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {specialCategories.map((c) => (
-                          <tr key={c._id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={c.id ?? c._id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3 text-sm font-semibold text-gray-900">{c.name}</td>
                             <td className="px-4 py-3"><span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-mono">{c.id}</span></td>
                             <td className="px-4 py-3 text-sm text-gray-500 max-w-xs line-clamp-1">{c.description}</td>
@@ -1970,7 +1970,7 @@ Create a separate standalone invoice anyway?`)) return;
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {specialVendors.map((v) => (
-                          <tr key={v._id} className="hover:bg-gray-50 transition-colors">
+                          <tr key={v.id ?? v._id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-3">
                               <p className="text-sm font-semibold text-gray-900">{v.name}</p>
                               {v.isFeatured && <span className="text-[10px] text-emerald-600 font-bold">★ Featured</span>}

@@ -27,4 +27,6 @@ export async function chosenWorkspace(): Promise<string | null> {
 
 // Where a workspace opens: the Command Center for Shaadi Shopping's own team; for a vendor business, the first screen this
 // person can use there (lib/auth/workspaceView.ts).
-export const workspaceHome = (kind: 'PLATFORM' | 'VENDOR', view: WorkspaceView) => (kind === 'PLATFORM' ? '/admin' : vendorHome(view));
+// Shaadi Shopping's team lands on the dashboard itself, not on bare /admin: /admin only redirects, and a redirect while the admin
+// layout is streaming showed up as React error #419 in visitors' browsers (18 Nov 2026).
+export const workspaceHome = (kind: 'PLATFORM' | 'VENDOR', view: WorkspaceView) => (kind === 'PLATFORM' ? '/admin/dashboard' : vendorHome(view));
