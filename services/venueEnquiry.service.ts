@@ -1,4 +1,5 @@
 import { ActivityType } from '@/generated/prisma/enums';
+import { HOLD_ENDING_MS } from '@/lib/venue/slots';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import {
@@ -96,18 +97,29 @@ export interface VenueEnquiryDeps {
 
 const defaultDeps = (): VenueEnquiryDeps => ({ db: prisma, match: platformMatchService, now: () => new Date() });
 
-const include = {
+const baseInclude = {
   tasks: { where: { context: 'SALES_FOLLOWUP' as const, status: { not: 'CANCELLED' as const } }, select: { id: true, title: true, dueAt: true, status: true, assignedToId: true }, orderBy: { dueAt: 'asc' as const } },
   activities: { select: { id: true, type: true, summary: true, detail: true, createdAt: true }, orderBy: { createdAt: 'desc' as const }, take: 50 },
   // The current quotation (never one replaced by a revision) — it decides the next step (lib/venue/quotation.ts).
   quotations: { where: { status: { not: 'SUPERSEDED' as const } }, select: { status: true, validUntil: true, changesRequestedAt: true, booking: { select: { status: true } }, _count: { select: { paymentSubmissions: { where: { status: 'PENDING' as const } } } } }, orderBy: { createdAt: 'desc' as const }, take: 1 },
 };
 
+// What every enquiry read loads. Built per call: only a hold still running counts (lib/venue/slots.ts) — the soonest one, at most
+// one row per enquiry, never the long-ended ones — and whether any booking of this enquiry is still open (then the hall is the
+// booking's, not a hold's).
+const includeAt = (now: Date) => ({
+  ...baseInclude,
+  venueSlots: { where: { holdUntil: { gt: now } }, select: { holdUntil: true, space: { select: { name: true } } }, orderBy: { holdUntil: 'asc' as const }, take: 1 },
+  bookings: { where: { status: { not: 'CLOSED' as const } }, select: { id: true }, take: 1 },
+});
+
 type Row = {
   id: string; name: string; phone: string; weddingDate: string; guestCount: number; channel: string | null; message: string | null; pipelineStage: string; createdAt: Date; platformMatch: string | null;
   eventType?: string; days?: number; functions?: string[]; totalBudget?: number | null; sourceDetail?: string | null; assignedToId?: string | null; clientId?: string | null;
   tasks: { id: string; title: string; dueAt: Date | null; status: string; assignedToId?: string | null }[];
   activities: { id: string; type: string; summary: string; detail: string | null; createdAt: Date }[];
+  venueSlots?: { holdUntil: Date | null; space: { name: string } }[];
+  bookings?: { id: string }[];
   quotations?: { status: string; validUntil: Date | null; changesRequestedAt: Date | null; booking?: { status: string } | null; _count?: { paymentSubmissions: number } }[];
 };
 
@@ -118,6 +130,10 @@ function view(r: Row, now: Date, seesMoney: boolean): VenueEnquiryDetail {
   // A sent quotation past its date is expired, whether or not the lazy expiry has marked it yet.
   const quote = q ? (q.status === 'SENT' && q.validUntil && q.validUntil < now ? 'ENDED' : quoteStage({ status: q.status, changesRequested: q.changesRequestedAt !== null })) : null;
   const kind = eventLabel(r.eventType);
+  // A hold only counts while the hall is really held: not once the couple accepted or booked, and not on a closed enquiry.
+  const holdCounts = !['ACCEPTED', 'WON', 'LOST'].includes(r.pipelineStage) && !(r.bookings?.length ?? 0);
+  const ending = holdCounts ? r.venueSlots?.find((s) => s.holdUntil && s.holdUntil > now && s.holdUntil.getTime() - now.getTime() <= HOLD_ENDING_MS) : undefined;
+  const holdEnds = ending?.holdUntil ? { at: ending.holdUntil.toISOString(), hall: ending.space.name } : null;
   return {
     id: r.id,
     name: r.name,
@@ -129,7 +145,7 @@ function view(r: Row, now: Date, seesMoney: boolean): VenueEnquiryDetail {
     viaShaadiShopping: r.platformMatch !== null,
     // "Won" with a confirmed booking is the booked customer (the wedding was created — the stage moves to Won with it), never
     // "not going ahead": only a lost enquiry, or one won some other way with no booking here, is closed.
-    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || (r.pipelineStage === 'WON' && q?.booking?.status !== 'CONFIRMED'), followUps, quote, booked: q?.booking?.status === 'CONFIRMED', paymentToCheck: seesMoney && (q?._count?.paymentSubmissions ?? 0) > 0 }, now),
+    next: nextAction({ name: r.name, contacted, closed: r.pipelineStage === 'LOST' || (r.pipelineStage === 'WON' && q?.booking?.status !== 'CONFIRMED'), followUps, quote, booked: q?.booking?.status === 'CONFIRMED', paymentToCheck: seesMoney && (q?._count?.paymentSubmissions ?? 0) > 0, holdEnds }, now),
     createdAt: r.createdAt.toISOString(),
     eventLabel: kind,
     days: r.days && r.days > 0 ? r.days : 1,
@@ -166,7 +182,7 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
   }
 
   async function load(id: string): Promise<Row> {
-    const row = (await deps.db.consultation.findUnique({ where: { id }, include })) as Row | null;
+    const row = (await deps.db.consultation.findUnique({ where: { id }, include: includeAt(deps.now()) })) as Row | null;
     if (!row) throw new NotFoundError('Enquiry', id);
     return row;
   }
@@ -177,7 +193,7 @@ export function createVenueEnquiryService(deps: VenueEnquiryDeps = defaultDeps()
       const now = deps.now();
       // "Says they have paid" is a money matter: only a member who may see money is told (the others cannot act on it).
       const seesMoney = can(effectiveScope(), 'view_financials');
-      const rows = (await deps.db.consultation.findMany({ include, orderBy: { createdAt: 'desc' }, take: 300 })) as Row[];
+      const rows = (await deps.db.consultation.findMany({ include: includeAt(now), orderBy: { createdAt: 'desc' }, take: 300 })) as Row[];
       return rows
         .map((r) => view(r, now, seesMoney))
         .sort((a, b) => ACTION_ORDER.indexOf(a.next.kind) - ACTION_ORDER.indexOf(b.next.kind))

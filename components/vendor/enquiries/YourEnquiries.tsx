@@ -14,6 +14,7 @@ import EnquiryPageCard from './EnquiryPageCard';
 
 const TONE: Record<NextAction['kind'], PillStatus> = {
   PAYMENT_TO_CHECK: 'overdue',
+  HOLD_ENDING: 'overdue',
   FOLLOW_UP_OVERDUE: 'overdue',
   CALL: 'dateHeld',
   FOLLOW_UP_TODAY: 'dateHeld',
@@ -83,7 +84,7 @@ export default function YourEnquiries() {
           {open.map((e) => (
             <li key={e.id}>
               <Link href={`/vendor/enquiries/${e.id}`} className="block">
-                <Card variant={e.next.kind === 'FOLLOW_UP_OVERDUE' || e.next.kind === 'PAYMENT_TO_CHECK' ? 'attention' : 'clickable'} className="space-y-1.5">
+                <Card variant={e.next.kind === 'FOLLOW_UP_OVERDUE' || e.next.kind === 'PAYMENT_TO_CHECK' || e.next.kind === 'HOLD_ENDING' ? 'attention' : 'clickable'} className="space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-base font-semibold text-[var(--color-text-primary)]">{e.name}</p>
                     <span className="text-xs text-[var(--color-text-muted)]">{e.viaShaadiShopping ? 'Via Shaadi Shopping' : e.channel}</span>

@@ -222,7 +222,7 @@ export default function AdminVendorListClient() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          <Link href="/admin" className="hover:text-amber-600 transition-colors">← Back to Admin Dashboard</Link>
+          <Link href="/admin/dashboard" className="hover:text-amber-600 transition-colors">← Back to Admin Dashboard</Link>
         </p>
       </div>
     </div>

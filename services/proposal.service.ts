@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { toProposalHalls, type ProposalHall } from '@/lib/quotation/proposalHalls';
+import { venueSpaceService } from '@/services/venueSpace.service';
 import { ActivityType } from '@/generated/prisma/enums';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { subjectCreateData } from '@/lib/crm/subject';
@@ -74,6 +76,9 @@ export interface ProposalDeps {
   wedding: (id: string) => Promise<CoupleBookingWedding | null>;
   // Where a business's own customers pay (its Settings). null = it has not said, and its link then shows no payment at all.
   payTo: (businessId: string) => Promise<UpiPayee | null>;
+  // "Your hall": a venue's own enquiry's halls, in the couple's words. Runs inside the business's scope (the link's), so only that
+  // business's halls are read; another couple's name is dropped by toProposalHalls.
+  halls: (enquiryId: string) => Promise<ProposalHall[]>;
 }
 
 const defaultDeps = (): ProposalDeps => ({
@@ -95,6 +100,7 @@ const defaultDeps = (): ProposalDeps => ({
       where: { id },
       select: { weddingNumber: true, status: true, primaryDate: true, events: { select: { type: true, label: true, date: true, startTime: true, venueName: true }, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] } },
     }),
+  halls: async (enquiryId) => toProposalHalls(await venueSpaceService.forProposal(enquiryId)),
   payTo: async (businessId) => {
     const b = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true, upiId: true, upiName: true } });
     return b ? upiPayeeOf(b) : null;
@@ -172,6 +178,15 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     view.brand = await deps.brand(q.businessId);
     // The GST number the couple sees is the one frozen on THIS quotation (Quotation.sellerGstin), never today's business profile.
     if (!view.brand.isPlatform) view.brand = { ...view.brand, gstin: q.sellerGstin ?? null };
+    // "Your hall": a venue's own quotation for its own enquiry — started now, read alongside what follows, awaited at the end. A
+    // failure here never hides the proposal.
+    const hallsRead: Promise<ProposalHall[]> =
+      !view.brand.isPlatform && sourceType === 'CONSULTATION'
+        ? deps.halls(sourceId).catch((err) => {
+            console.error(`proposal halls for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
+            return [];
+          })
+        : Promise.resolve([]);
     // "Add an event": a venue's own open proposal shows what that venue offers. Shaadi Shopping has no such list.
     if (!view.brand.isPlatform && view.state === 'OPEN') view.addable = toAddable(await deps.offerings(q.businessId));
     // A business's own accepted proposal, once its booking is made: where the booking stands, what was received, and the wedding
@@ -204,6 +219,7 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
         console.error(`proposal reviews for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
       }
     }
+    view.halls = await hallsRead;
     return view;
   }
 

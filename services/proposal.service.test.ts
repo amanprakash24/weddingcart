@@ -85,6 +85,9 @@ const weddingFor = mock(async (id: string) => (void id, weddingRow));
 // Where a business's own customers pay (its Settings). null = it has not said.
 let venuePayee: { vpa: string; payee: string } | null = null;
 const payToFor = mock(async (businessId: string) => (void businessId, venuePayee));
+// "Your hall" on a venue's own link (null = the lookup fails).
+let hallRows: import('@/lib/quotation/proposalHalls').ProposalHall[] | null = [];
+const hallsFor = mock(async (enquiryId: string) => { void enquiryId; if (!hallRows) throw new Error('db down'); return hallRows; });
 const proposalService = createProposalService({
   db: db as never,
   findByTokenHash: findByCustomerTokenHash as never,
@@ -102,6 +105,7 @@ const proposalService = createProposalService({
   money: moneyFor as never,
   wedding: weddingFor as never,
   payTo: payToFor as never,
+  halls: hallsFor as never,
 });
 
 beforeEach(() => {
@@ -109,6 +113,8 @@ beforeEach(() => {
   agreementMoney = { exists: false };
   weddingRow = null;
   venuePayee = null;
+  hallRows = [];
+  hallsFor.mockClear();
   payToFor.mockClear();
   moneyFor.mockClear();
   weddingFor.mockClear();
@@ -442,6 +448,29 @@ describe('Add an event — what the couple sees', () => {
     row.validUntil = PAST;
     expect((await proposalService.view(TOKEN))?.addable).toEqual([]);
     expect(offerings).not.toHaveBeenCalled();
+  });
+});
+
+describe('your hall, on a venue’s own link', () => {
+  const held = { hall: 'Royal Banquet', date: '2027-02-14', shift: 'NIGHT' as const, status: 'HELD' as const, heldUntil: '2026-11-19T18:29:59.999Z', blockedBy: null };
+  test('a venue’s own proposal shows the halls of its enquiry', async () => {
+    row.businessId = 'venue-1';
+    hallRows = [held];
+    const p = await proposalService.view(TOKEN);
+    expect(hallsFor).toHaveBeenCalledWith('c1');
+    expect(p?.halls).toEqual([held]);
+  });
+  test('Shaadi Shopping’s proposal shows none and reads none', async () => {
+    hallRows = [held];
+    expect((await proposalService.view(TOKEN))?.halls).toEqual([]);
+    expect(hallsFor).not.toHaveBeenCalled();
+  });
+  test('a failure never hides the proposal', async () => {
+    row.businessId = 'venue-1';
+    hallRows = null;
+    const p = await proposalService.view(TOKEN);
+    expect(p?.number).toBeTruthy();
+    expect(p?.halls).toEqual([]);
   });
 });
 

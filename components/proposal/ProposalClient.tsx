@@ -20,6 +20,17 @@ import { SHAADI_PHONE, SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import PaymentsPanel from '@/components/proposal/PaymentsPanel';
 import ReviewsPanel from '@/components/proposal/ReviewsPanel';
 import YourBookingPanel from '@/components/proposal/YourBookingPanel';
+import YourHallPanel from '@/components/proposal/YourHallPanel';
+import { blockedHall, hallLine, hallStatusWords, liveHalls } from '@/lib/quotation/proposalHalls';
+
+// A clock for "Your hall": a 30-second tick, so a hold that ends while the page is open is seen to end (another booking's hold →
+// Accept comes back; their own → it reads as chosen). 0 on the server: the halls as the server worked them out.
+const TICK_MS = 30_000;
+const subscribeTick = (onChange: () => void) => {
+  const t = setInterval(onChange, TICK_MS);
+  return () => clearInterval(t);
+};
+const tickNow = () => Math.floor(Date.now() / TICK_MS);
 import { coupleBookingWords } from '@/lib/quotation/coupleBooking';
 
 // The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–17). One link, two separate experiences
@@ -334,6 +345,12 @@ export default function ProposalClient({
     !!p.reviews
   );
 
+  const tick = useSyncExternalStore(subscribeTick, tickNow, () => 0);
+  const halls = tick ? liveHalls(p.halls, new Date(tick * TICK_MS)) : p.halls;
+  const canAccept = p.state === 'OPEN';
+  // The hall that stops them accepting right now — the same rule the server refuses on (lib/venue/slots.ts blockingClash).
+  const blocked = canAccept ? blockedHall(halls) : null;
+
   function open(next: ProposalTab) {
     // replaceState keeps the token URL as it is and adds no history entry; no request is made.
     window.history.replaceState(
@@ -591,6 +608,11 @@ export default function ProposalClient({
               Venue · <span className="font-semibold text-white">{p.venueName}</span>
             </p>
           )}
+          {p.halls.map((h, i) => (
+            <p key={i} className="mt-1 text-sm text-white/85">
+              Hall · <span className="font-semibold text-white">{hallLine(h)}</span>
+            </p>
+          ))}
           <p className="mt-6 text-xs text-white/55">
             Proposal {p.number} · Version {p.version}
             {validUntil && <> · Valid until {validUntil}</>}
@@ -640,6 +662,8 @@ export default function ProposalClient({
             {p.yourBooking ? coupleBookingWords(p.yourBooking, contact.name).line : nextStep(p)}
           </div>
         )}
+
+        {(tab === 'proposal' || tab === 'quotation') && <YourHallPanel halls={halls} venue={contact.name} canAccept={canAccept} />}
 
         {tab === 'proposal' ? (
           <div role="tabpanel" aria-label="Your proposal" className="space-y-10">
@@ -733,7 +757,7 @@ export default function ProposalClient({
                 {contact.name} — Quotation {p.number}
               </p>
               <p className="text-sm">
-                {[p.couple.name, ...facts, p.venueName ? `Venue: ${p.venueName}` : null]
+                {[p.couple.name, ...facts, p.venueName ? `Venue: ${p.venueName}` : null, ...p.halls.map((h) => `Hall: ${hallLine(h)}`)]
                   .filter(Boolean)
                   .join(' · ')}
               </p>
@@ -795,10 +819,16 @@ export default function ProposalClient({
             {p.state === 'OPEN' && (
               <section className="space-y-4 rounded-[24px] border border-[#C5A46D]/40 bg-white p-6 sm:p-8 print:hidden">
                 <Eyebrow>Accept</Eyebrow>
+                {blocked && (
+                  <p role="status" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm leading-relaxed text-rose-900">
+                    {hallStatusWords(blocked, contact.name, true)}
+                  </p>
+                )}
                 <label className="flex items-start gap-3 rounded-xl border border-[#F0E6D6] bg-[#FFFAF5] p-4 text-sm text-[#2A1F1B]">
                   <input
                     type="checkbox"
                     checked={agree}
+                    disabled={!!blocked}
                     onChange={(e) => setAgree(e.target.checked)}
                     className="mt-0.5 h-5 w-5 accent-[#8B1A4A]"
                   />
@@ -807,7 +837,7 @@ export default function ProposalClient({
                 <button
                   type="button"
                   onClick={accept}
-                  disabled={!agree || busy !== null}
+                  disabled={!agree || busy !== null || !!blocked}
                   className="min-h-[52px] w-full rounded-full bg-gradient-to-r from-[#8B1A4A] via-[#9E2A55] to-[#C5A46D] px-6 text-base font-semibold text-white shadow-[0_12px_32px_rgba(139,26,74,0.25)] disabled:opacity-40 disabled:shadow-none"
                 >
                   {busy === 'accept' ? 'Accepting…' : 'Accept this quotation'}

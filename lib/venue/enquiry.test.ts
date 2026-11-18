@@ -112,7 +112,7 @@ describe('what to do next — one action', () => {
   });
 
   test('the couple’s answer first, then late, then people nobody has called, then today', () => {
-    expect(ACTION_ORDER.slice(0, 6)).toEqual(['PAYMENT_TO_CHECK', 'QUOTE_ACCEPTED', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY']);
+    expect(ACTION_ORDER.slice(0, 7)).toEqual(['PAYMENT_TO_CHECK', 'QUOTE_ACCEPTED', 'HOLD_ENDING', 'QUOTE_CHANGES', 'FOLLOW_UP_OVERDUE', 'CALL', 'FOLLOW_UP_TODAY']);
     expect(ACTION_ORDER.indexOf('QUOTE_DRAFT')).toBeLessThan(ACTION_ORDER.indexOf('QUOTE_WAITING'));
     expect(ACTION_ORDER.slice(-2)).toEqual(['BOOKED', 'CLOSED']);
   });
@@ -165,5 +165,18 @@ describe('historyFor — what has been paid is not for everyone', () => {
 
   test('without it: payments and invoices are left out; the rest of the story stays', () => {
     expect(historyFor(history, false).map((h) => h.type)).toEqual(['QUOTATION_SENT', 'CALL']);
+  });
+});
+
+describe('nextAction — a hold that ends soon', () => {
+  const now = new Date('2026-11-17T06:00:00Z');
+  const base = { name: 'Riya Sharma', contacted: true, closed: false, followUps: [] as FollowUp[], quote: 'SENT' as const };
+  test('comes before changes and follow-ups, and says today or tomorrow', () => {
+    expect(nextAction({ ...base, holdEnds: { at: '2026-11-17T18:29:59.999Z', hall: 'Royal Hall' } }, now)).toEqual({ kind: 'HOLD_ENDING', label: 'Royal Hall is held for Riya until today — call them before it frees itself' });
+    expect(nextAction({ ...base, holdEnds: { at: '2026-11-18T05:00:00.000Z', hall: 'Lawn' } }, now).label).toContain('until tomorrow');
+    expect(ACTION_ORDER.indexOf('HOLD_ENDING')).toBe(2);
+  });
+  test('an accepted quotation wins over the hold', () => {
+    expect(nextAction({ ...base, quote: 'ACCEPTED', holdEnds: { at: '2026-11-17T18:29:59.999Z', hall: 'Royal Hall' } }, now).kind).toBe('QUOTE_ACCEPTED');
   });
 });
