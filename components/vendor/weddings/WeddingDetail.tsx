@@ -28,7 +28,7 @@ export default function WeddingDetail({ id }: { id: string }) {
     fetch(`/api/vendor-os/weddings/${id}`)
       .then((r) => r.json())
       .then((b) => live && (b.success ? setW(b.data) : setError(b.error ?? 'This wedding could not be loaded.')))
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };

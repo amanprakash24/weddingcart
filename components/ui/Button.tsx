@@ -2,15 +2,16 @@
 
 import { type ButtonHTMLAttributes, forwardRef } from 'react';
 
+// Inside the apps (.os-theme) primary buttons are liquid glass via app/globals.css; secondary/outline get .os-glass-btn (plain elsewhere).
 export type ButtonStyle = 'primary' | 'secondary' | 'outline' | 'danger';
 export type ButtonSize = 'medium' | 'small';
 
 const STYLE_CLASSES: Record<ButtonStyle, string> = {
   primary: 'bg-[var(--primary)] text-[var(--color-on-primary)] hover:bg-[var(--color-primary-hover)]',
   secondary:
-    'bg-[var(--color-bg-surface-muted)] text-[var(--color-text-primary)] border border-[var(--color-border-default)] hover:bg-[var(--color-border-subtle)]',
+    'os-glass-btn bg-[var(--color-bg-surface-muted)] text-[var(--color-text-primary)] border border-[var(--color-border-default)] hover:bg-[var(--color-border-subtle)]',
   outline:
-    'bg-transparent text-[var(--color-text-primary)] border border-[var(--color-border-default)] hover:bg-[var(--color-bg-surface-muted)]',
+    'os-glass-btn bg-transparent text-[var(--color-text-primary)] border border-[var(--color-border-default)] hover:bg-[var(--color-bg-surface-muted)]',
   danger: 'bg-[var(--color-danger-default)] text-[var(--color-on-primary)] hover:bg-[var(--color-danger-text)]',
 };
 

@@ -37,7 +37,7 @@ export default function YourWeddings() {
         else if (status === 403 || status === 404) setHidden(true); // not this person's work, or not a business of its own
         else setError(body.error ?? 'Your weddings could not be loaded. Please try again.');
       })
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };

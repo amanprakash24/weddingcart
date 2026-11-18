@@ -7,8 +7,8 @@ import { effectivePermissions, type MemberRole, type Permission } from '@/lib/au
 mock.module('@/lib/prisma', () => ({ prisma: {} }));
 const { createWorkingVendor, createSharedRoute } = await import('./workingVendor');
 
-type W = { businessId: string; name: string; kind: 'VENDOR'; vendorId: string | null; role: MemberRole; jobTitle: string | null; permissions: Permission[] };
-const workspace = (businessId: string, vendorId: string | null, role: MemberRole, grants: Permission[] = []): W => ({ businessId, name: `Business ${businessId}`, kind: 'VENDOR', vendorId, role, jobTitle: null, permissions: effectivePermissions({ role, grants }) });
+type W = { businessId: string; name: string; kind: 'VENDOR'; vendorId: string | null; product: 'VENDOR'; role: MemberRole; jobTitle: string | null; permissions: Permission[] };
+const workspace = (businessId: string, vendorId: string | null, role: MemberRole, grants: Permission[] = []): W => ({ businessId, name: `Business ${businessId}`, kind: 'VENDOR', vendorId, product: 'VENDOR', role, jobTitle: null, permissions: effectivePermissions({ role, grants }) });
 
 function who(opts: { userId?: string | null; chosen?: string | null; workspaces?: W[] }) {
   const all = opts.workspaces ?? [];
