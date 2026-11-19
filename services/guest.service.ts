@@ -5,12 +5,12 @@ import { GuestRsvpStatus } from '@/generated/prisma/enums';
 
 export type GuestInput = {
   name: string;
-  phone?: string;
-  email?: string;
-  category?: string;
+  phone?: string | null;
+  email?: string | null;
+  category?: string | null;
   accompanyingGuests?: number;
   rsvpStatus?: GuestRsvpStatus;
-  notes?: string;
+  notes?: string | null;
   functionResponses?: { weddingEventId: string; status: GuestRsvpStatus }[];
 };
 
@@ -42,10 +42,12 @@ function normalize(input: GuestInput) {
   };
 }
 
+// Every query here is awaited before it is returned: a query handed back un-run could start outside the caller's business scope
+// (seen 19 Nov 2026 in the real-database test: a venue's new guest was then "not found"). tests-db/guest.rsvp.test.ts.
 export const guestService = {
   async listForAdmin(weddingId: string) {
     await assertWedding(weddingId);
-    return prisma.guest.findMany({ where: { weddingId }, include: guestInclude, orderBy: { name: 'asc' } });
+    return await prisma.guest.findMany({ where: { weddingId }, include: guestInclude, orderBy: { name: 'asc' } });
   },
 
   async create(weddingId: string, input: GuestInput) {
@@ -53,7 +55,7 @@ export const guestService = {
     const responses = input.functionResponses ?? [];
     const eventIds = new Set(wedding.events.map((event) => event.id));
     if (responses.some((response) => !eventIds.has(response.weddingEventId))) throw new Error('Function does not belong to this event');
-    return prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx) => {
       const guest = await tx.guest.create({ data: { ...normalize(input), weddingId, rsvpToken: randomUUID() } });
       if (responses.length) {
         await tx.guestFunctionResponse.createMany({
@@ -61,7 +63,7 @@ export const guestService = {
           skipDuplicates: true,
         });
       }
-      return tx.guest.findUniqueOrThrow({ where: { id: guest.id }, include: guestInclude });
+      return await tx.guest.findUniqueOrThrow({ where: { id: guest.id }, include: guestInclude });
     });
   },
 
@@ -72,7 +74,7 @@ export const guestService = {
     const responses = input.functionResponses ?? [];
     const eventIds = new Set(wedding.events.map((event) => event.id));
     if (responses.some((response) => !eventIds.has(response.weddingEventId))) throw new Error('Function does not belong to this event');
-    return prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx) => {
       await tx.guest.update({ where: { id: guestId }, data: normalize(input) });
       await tx.guestFunctionResponse.deleteMany({ where: { guestId } });
       if (responses.length) {
@@ -80,7 +82,7 @@ export const guestService = {
           data: responses.map((response) => ({ guestId, weddingEventId: response.weddingEventId, status: response.status })),
         });
       }
-      return tx.guest.findUniqueOrThrow({ where: { id: guestId }, include: guestInclude });
+      return await tx.guest.findUniqueOrThrow({ where: { id: guestId }, include: guestInclude });
     });
   },
 
@@ -91,11 +93,11 @@ export const guestService = {
 
   async listForClient(weddingId: string, userId: string) {
     await assertOwnedWedding(weddingId, userId);
-    return prisma.guest.findMany({ where: { weddingId }, include: guestInclude, orderBy: { name: 'asc' } });
+    return await prisma.guest.findMany({ where: { weddingId }, include: guestInclude, orderBy: { name: 'asc' } });
   },
 
   async getPublicByToken(token: string) {
-    return prisma.guest.findUnique({
+    return await prisma.guest.findUnique({
       where: { rsvpToken: token },
       select: {
         id: true, name: true, accompanyingGuests: true, rsvpStatus: true,
@@ -116,7 +118,7 @@ export const guestService = {
     if (!guest) throw new NotFoundError('Guest', token);
     const eventIds = new Set(guest.wedding.events.map((event) => event.id));
     if (input.functionResponses.some((response) => !eventIds.has(response.weddingEventId))) throw new Error('Function does not belong to this event');
-    return prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx) => {
       await tx.guest.update({ where: { id: guest.id }, data: { rsvpStatus: input.rsvpStatus, accompanyingGuests: Math.max(0, Math.floor(input.accompanyingGuests)) } });
       await tx.guestFunctionResponse.deleteMany({ where: { guestId: guest.id } });
       if (input.functionResponses.length) {

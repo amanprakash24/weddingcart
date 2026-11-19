@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { GuestRsvpStatus } from '@/generated/prisma/enums';
 import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
-import { platformScoped } from '@/lib/ownership/entry';
+import { rsvpScoped } from '@/lib/guest/rsvpEntry';
 
 const schema = z.object({
   rsvpStatus: z.nativeEnum(GuestRsvpStatus),
@@ -24,6 +24,6 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ tok
   } catch (error) { return handleApiError(error); }
 }
 
-// Record ownership: this route works as Shaadi Shopping (lib/ownership/entry.ts).
-export const GET = platformScoped(handleGET);
-export const PATCH = platformScoped(handlePATCH);
+// Record ownership: runs as the business whose wedding this guest is on (lib/guest/rsvpEntry.ts).
+export const GET = rsvpScoped(handleGET);
+export const PATCH = rsvpScoped(handlePATCH);
