@@ -36,7 +36,7 @@ export function toLocalityVenue(vendor: LocalityVendorRow, areaLabel: string): L
     nonVegPrice: vendor.priceMax,
     rooms,
     highlights: vendor.features,
-    href: `/vendors/${vendor.slug}`,
+    href: `/venues/${vendor.slug}`, // the master venue page
     image: vendor.image,
     imageAlt: `${vendor.name}, ${areaLabel} Patna`,
   };

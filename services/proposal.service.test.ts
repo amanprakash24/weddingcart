@@ -144,7 +144,7 @@ describe('view', () => {
     expect(p?.state).toBe('OPEN');
     expect(p?.couple.name).toBe('Rahul & Priya');
     expect(p?.items[0].vendor?.name).toBe('Swayamvar Hall');
-    expect(p?.items[0].vendor?.profile?.url).toBe('/vendors/swayamvar-hall-patna');
+    expect(p?.items[0].vendor?.profile?.url).toBe('/venues/swayamvar-hall-patna');
     expect(JSON.stringify(p)).not.toContain('internal');
     expect(JSON.stringify(p)).not.toContain('9876543210');
     expect(row.customerViewedAt).toBeInstanceOf(Date);

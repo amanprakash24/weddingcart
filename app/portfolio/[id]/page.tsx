@@ -5,6 +5,7 @@ import { vendorRepository } from '@/repositories/vendor.repository';
 import { categoryRepository } from '@/repositories/category.repository';
 import { JsonLd } from '@/components/JsonLd';
 import VendorPortfolioClient from '@/components/VendorPortfolioClient';
+import { listingPath } from '@/lib/listing/href';
 
 export const revalidate = 3600;
 
@@ -70,7 +71,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // category/city listing and the JSON-LD @id below already treat as
   // authoritative, so search engines consolidate ranking signal onto one
   // URL instead of splitting it across two near-identical pages.
-  const canonicalUrl = `${BASE_URL}/vendors/${id}`;
+  const canonicalUrl = `${BASE_URL}${listingPath({ slug: id, category: vendor.category })}`;
 
   return {
     title,
@@ -96,11 +97,11 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
-    '@id': `${BASE_URL}/vendors/${id}`,
+    '@id': `${BASE_URL}${listingPath({ slug: id, category: vendor.category })}`,
     name: vendor.name,
     description: vendor.description,
     image: vendor.image,
-    url: `${BASE_URL}/vendors/${id}`,
+    url: `${BASE_URL}${listingPath({ slug: id, category: vendor.category })}`,
     address: { '@type': 'PostalAddress', addressLocality: vendor.city, addressCountry: 'IN' },
     priceRange: `₹${vendor.priceMin.toLocaleString('en-IN')} – ₹${vendor.priceMax.toLocaleString('en-IN')}`,
     ...(vendor.reviewCount > 0 && {
