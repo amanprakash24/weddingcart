@@ -23,7 +23,6 @@ import HomeFaq from '@/components/home/HomeFaq';
 import FinalCta from '@/components/home/FinalCta';
 import HomeStickyBar from '@/components/home/HomeStickyBar';
 import Gallery3D from '@/components/home/Gallery3D';
-import Devices3D from '@/components/home/Devices3D';
 import Home3D from '@/components/home/Home3D';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.shaadishopping.com';
@@ -200,8 +199,8 @@ export default async function HomePage() {
       <VenuesByArea venues={venues} />
       <HowItWorks />
       <ForBusinesses />
-      {/* Vivah OS on a 3D laptop and phone, then the four features */}
-      <Devices3D />
+      {/* The 3D laptop and phone (components/home/Devices3D.tsx) is off until its app screens are retaken without test
+          data (founder, 19 Nov 2026). To switch it back on, import it and render <Devices3D /> here. */}
       <VivahOsSection />
       <GrowthPartnerSection />
       <FounderSection />
