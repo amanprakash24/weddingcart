@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { vendorService } from '@/services/vendor.service';
 import { requireAdmin } from '@/lib/adminAuth';
+import { withoutOwnerContact } from '@/lib/vendor/publicVendor';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 
@@ -41,10 +42,13 @@ async function handleGET(_: NextRequest, { params }: { params: Promise<{ id: str
     // VendorPortfolioClient (which fetch this same route client-side, after
     // the page itself has already rendered, so a page-level check alone
     // isn't enough).
-    if (vendor.status !== 'PUBLISHED' && !(await requireAdmin())) {
+    const isAdmin = await requireAdmin();
+    if (vendor.status !== 'PUBLISHED' && !isAdmin) {
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: toResponseShape(vendor) });
+    // Owner name/phone/email only for an admin (the admin edit form); the public venue pages do not use them.
+    const shaped = toResponseShape(vendor);
+    return NextResponse.json({ success: true, data: isAdmin ? shaped : withoutOwnerContact(shaped) });
   } catch (err) {
     console.error('GET /api/vendors/[id] failed:', err);
     return NextResponse.json(

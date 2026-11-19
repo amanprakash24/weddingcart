@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { VendorStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { withoutOwnerContact } from '@/lib/vendor/publicVendor';
 
 const VALID_STATUSES: VendorStatus[] = ['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED'];
 
@@ -58,7 +59,8 @@ async function handleGET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: result.data,
+      // Owner name/phone/email only for an admin; everyone else gets the public fields.
+      data: isAdmin ? result.data : result.data.map(withoutOwnerContact),
       total: result.total,
       page,
       limit,

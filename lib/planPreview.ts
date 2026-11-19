@@ -134,6 +134,40 @@ export function venueTag(vendor: Pick<Vendor, 'isFeatured' | 'rating'>): string 
   return 'Verified';
 }
 
+// "18:30" (from <input type="time">) → "6:30 pm". Anything else is returned as it is.
+export function formatTime(time: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!m) return time.trim();
+  const h = Number(m[1]);
+  return `${h % 12 === 0 ? 12 : h % 12}:${m[2]} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+// The sentence on the plan result about the expert's call. The day and time are optional on the form, so the
+// sentence only names what the couple actually chose (19 Nov 2026: it used to read "will call on at").
+export function callLine(date: string, time: string): string {
+  const day = formatDate(date);
+  const at = time.trim() ? formatTime(time) : '';
+  if (day && at) return `Your Wedding Expert will call you on ${day} at ${at}.`;
+  if (day) return `Your Wedding Expert will call you on ${day}.`;
+  if (at) return `Your Wedding Expert will call you at ${at}.`;
+  return 'Your Wedding Expert will call you soon.';
+}
+
+// A venue's price on the plan result. Per-plate venues show their plate price ("₹1,000/plate"); others show a range in
+// lakh. A venue with no price saved shows "Price on request". (19 Nov 2026: per-plate prices were divided into lakh and
+// read "₹0.0–0.0 L".)
+export function venuePriceLabel(min: number, max: number, unit?: string | null): string {
+  if (unit === 'PER_PLATE') {
+    const plate = min > 0 ? min : max;
+    return plate > 0 ? `₹${plate.toLocaleString('en-IN')}/plate` : 'Price on request';
+  }
+  const lakh = (n: number) => `₹${(n / 100000).toFixed(1)} L`;
+  if (min > 0 && max > 0) return min === max ? lakh(min) : `₹${(min / 100000).toFixed(1)}–${(max / 100000).toFixed(1)} L`;
+  if (min > 0) return `From ${lakh(min)}`;
+  if (max > 0) return `Up to ${lakh(max)}`;
+  return 'Price on request';
+}
+
 export function emptyVenueMessage(city: string) {
   return {
     title: `No venues listed for ${city} yet`,
