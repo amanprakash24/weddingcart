@@ -156,9 +156,12 @@ export function callLine(date: string, time: string): string {
 // A venue's price on the plan result. Per-plate venues show their plate price ("₹1,000/plate"); others show a range in
 // lakh. A venue with no price saved shows "Price on request". (19 Nov 2026: per-plate prices were divided into lakh and
 // read "₹0.0–0.0 L".)
-export function venuePriceLabel(min: number, max: number, unit?: string | null): string {
+// The plate price is the venue's cheapest package when it has packages (as on the venue cards), because a venue's
+// own price range can be a package range even when its unit says per plate (Ashiyana Resort, 19 Nov 2026).
+export function venuePriceLabel(min: number, max: number, unit?: string | null, packagePrices: number[] = []): string {
   if (unit === 'PER_PLATE') {
-    const plate = min > 0 ? min : max;
+    const packages = packagePrices.filter((n) => Number.isFinite(n) && n > 0);
+    const plate = packages.length > 0 ? Math.min(...packages) : min > 0 ? min : max;
     return plate > 0 ? `₹${plate.toLocaleString('en-IN')}/plate` : 'Price on request';
   }
   const lakh = (n: number) => `₹${(n / 100000).toFixed(1)} L`;

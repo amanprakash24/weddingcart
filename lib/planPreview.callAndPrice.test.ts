@@ -30,5 +30,7 @@ describe('venuePriceLabel', () => {
     expect(venuePriceLabel(1000, 1500, 'PER_PLATE')).toBe('₹1,000/plate');
     expect(venuePriceLabel(0, 0, 'PER_PLATE')).toBe('Price on request');
     expect(venuePriceLabel(100000, 600000, 'PACKAGE')).toBe('₹1.0–6.0 L');
+    // Ashiyana Resort on the live site: unit per plate, range 2.5–4.5 lakh, packages 900 and 1,000 a plate
+    expect(venuePriceLabel(250000, 450000, 'PER_PLATE', [900, 1000])).toBe('₹900/plate');
   });
 });
