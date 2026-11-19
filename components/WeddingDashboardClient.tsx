@@ -156,7 +156,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             <div className="grid sm:grid-cols-3 gap-4">
               {venues.map((v) => {
                 const tag = venueTag(v);
-                const price = venuePriceLabel(v.priceMin, v.priceMax, v.priceUnit);
+                const price = venuePriceLabel(v.priceMin, v.priceMax, v.priceUnit, (v.packages ?? []).map((p) => p.price));
                 return (
                   <Link key={v.id} href={`/vendors/${v.slug ?? v.id}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group block">
                     <div className="relative h-28 overflow-hidden">
