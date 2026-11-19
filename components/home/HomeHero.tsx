@@ -49,16 +49,13 @@ export default function HomeHero({ services }: { services: { slug: string; name:
           </ul>
         </div>
 
-        {/* Visual: the homepage video in a tall arch, a smaller decor arch, and the expert card */}
-        <div className="relative mx-auto h-[440px] w-full max-w-[520px] sm:h-[560px] lg:h-[640px] lg:max-w-none">
-          <div aria-hidden className="absolute -right-3 -top-3 hidden h-[calc(100%-4px)] w-[calc(78%+24px)] rounded-t-[999px] rounded-b-[40px] border border-[#C9A86A] sm:block" />
-          <div className="absolute right-0 top-0 h-[calc(100%-28px)] w-[86%] overflow-hidden rounded-t-[999px] rounded-b-[30px] bg-[#1A0E0C] shadow-[0_30px_70px_rgba(34,23,20,0.18)] sm:w-[78%]">
+        {/* Visual: the homepage video in a tall arch and the expert card (the small decor arch was removed 19 Nov 2026) */}
+        <div data-hero-3d className="relative mx-auto h-[440px] w-full max-w-[520px] transition-transform duration-300 ease-out [transform-style:preserve-3d] sm:h-[560px] lg:h-[640px] lg:max-w-none">
+          <div aria-hidden className="absolute -right-3 -top-3 hidden h-[calc(100%-4px)] w-[calc(78%+24px)] rounded-t-[999px] rounded-b-[40px] border border-[#C9A86A] [transform:translateZ(-60px)] sm:block" />
+          <div className="absolute right-0 top-0 h-[calc(100%-28px)] w-[86%] overflow-hidden rounded-t-[999px] rounded-b-[30px] bg-[#1A0E0C] [transform:translateZ(0px)] shadow-[0_30px_70px_rgba(34,23,20,0.18)] sm:w-[78%]">
             <HeroVideo />
           </div>
-          <div className="absolute left-0 top-[12%] hidden h-[270px] w-[210px] overflow-hidden rounded-t-[120px] rounded-b-[20px] border-[6px] border-[#FBF6EE] shadow-[0_20px_50px_rgba(34,23,20,0.18)] sm:block lg:left-[2%]">
-            <Image src="/cat-decor-flowers.jpg" alt="A wedding mandap decorated with flowers" fill sizes="210px" className="object-cover" />
-          </div>
-          <div className="absolute bottom-0 left-0 flex w-[min(320px,92%)] items-center gap-3.5 rounded-[20px] border border-[#EADFCC] bg-white px-4 py-3.5 shadow-[0_18px_44px_rgba(34,23,20,0.16)] sm:px-5 sm:py-4">
+          <div className="absolute bottom-0 left-0 flex w-[min(320px,92%)] items-center gap-3.5 rounded-[20px] border border-[#EADFCC] bg-white px-4 py-3.5 shadow-[0_18px_44px_rgba(34,23,20,0.16)] [transform:translateZ(100px)] sm:px-5 sm:py-4">
             <Image src="/images/anisha.jpg" alt="" width={56} height={56} className="h-14 w-14 flex-shrink-0 rounded-full border-2 border-[#E9C98E] object-cover object-top" />
             <div className="min-w-0">
               <p className="text-[15px] font-bold text-[#221714]">Talk to a Wedding Expert</p>
@@ -76,7 +73,7 @@ export default function HomeHero({ services }: { services: { slug: string; name:
       <div className="relative mx-auto grid max-w-[1280px] gap-4 px-4 pb-16 sm:px-6 md:grid-cols-2 lg:gap-5 lg:px-8 lg:pb-20">
         <Link
           href="/plan"
-          className="group grid grid-cols-[1fr_auto] items-center gap-x-5 gap-y-2 rounded-[28px] border border-[#EADFCC] bg-white p-6 transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(34,23,20,0.14)] outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238] focus-visible:ring-offset-2 sm:p-8"
+          data-tilt className="group grid grid-cols-[1fr_auto] items-center gap-x-5 gap-y-2 rounded-[28px] border border-[#EADFCC] bg-white p-6 transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(34,23,20,0.14)] outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238] focus-visible:ring-offset-2 sm:p-8"
         >
           <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#8A6A2F]">I&apos;m planning a wedding</span>
           <span aria-hidden className="row-span-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#7A1238] text-white sm:h-14 sm:w-14"><ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" /></span>
@@ -85,7 +82,7 @@ export default function HomeHero({ services }: { services: { slug: string; name:
         </Link>
         <Link
           href="#for-vendors"
-          className="group grid grid-cols-[1fr_auto] items-center gap-x-5 gap-y-2 rounded-[28px] bg-gradient-to-br from-[#5A0D29] to-[#2A0614] p-6 text-[#FBF6EE] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(34,23,20,0.2)] outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238] focus-visible:ring-offset-2 sm:p-8"
+          data-tilt className="group grid grid-cols-[1fr_auto] items-center gap-x-5 gap-y-2 rounded-[28px] bg-gradient-to-br from-[#5A0D29] to-[#2A0614] p-6 text-[#FBF6EE] transition-[transform,box-shadow] duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(34,23,20,0.2)] outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238] focus-visible:ring-offset-2 sm:p-8"
         >
           <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#E9C98E]">I run a venue or wedding business</span>
           <span aria-hidden className="row-span-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#E9C98E] text-[#2A0614] sm:h-14 sm:w-14"><ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" /></span>
