@@ -326,10 +326,10 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
             )}
           </section>
 
-          {/* Guests & RSVP (the existing guest list — step 2 redesigns it) */}
+          {/* Guests & RSVP: guest management (Client OS phase 1, 20 Nov 2026) */}
           <section id="guests" aria-labelledby="c-guestlist" className="scroll-mt-4">
             <h2 id="c-guestlist" className="sr-only">Guests and RSVP</h2>
-            <GuestRsvp weddingId={event.id} events={event.functions.map((f) => ({ id: f.id, type: f.name, label: f.name }))} initialGuests={event.guests} clientMode />
+            <GuestRsvp weddingId={event.id} events={event.functions.map((f) => ({ id: f.id, type: f.name, label: f.name, date: f.date }))} initialGuests={event.guests} clientMode />
           </section>
 
           {/* Documents */}

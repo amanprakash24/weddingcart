@@ -42,7 +42,7 @@ export interface ClientPortalEvent {
   documents: { id: string; fileName: string; category: string; url: string; createdAt: string }[];
   activity: { id: string; type: string; summary: string; createdAt: string }[];
   approvals: { id: string; type: string; title: string; description: string | null; amount: number | null; deadline: string | null; functionName: string | null; status: string; clientComment: string | null }[];
-  guests: { id: string; name: string; phone: string | null; email: string | null; category: string | null; accompanyingGuests: number; rsvpStatus: string; rsvpToken: string; functionResponses: { status: string; weddingEvent: { id: string; type: string; label: string | null } }[] }[];
+  guests: { id: string; name: string; phone: string | null; email: string | null; category: string | null; accompanyingGuests: number; rsvpStatus: string; rsvpToken: string; notes: string | null; side: string | null; familyGroup: string | null; relation: string | null; isVip: boolean; pairedGuestId: string | null; functionResponses: { status: string; weddingEvent: { id: string; type: string; label: string | null } }[] }[];
   // My Wedding (28 Oct 2026): who runs this wedding (Shaadi Shopping, or a venue / vendor on Vivah OS) and how to reach them.
   business: { name: string; isShaadiShopping: boolean; phone: string | null };
   budget: number | null;
