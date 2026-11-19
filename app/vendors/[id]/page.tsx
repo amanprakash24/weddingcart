@@ -1,11 +1,18 @@
-import { Suspense } from 'react';
 import { notFound, permanentRedirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import VendorDetailClient from '@/components/VendorDetailClient';
+import VendorListingPage from '@/components/listing/VendorListingPage';
 import { reviewService } from '@/services/review.service';
 import { JsonLd } from '@/components/JsonLd';
-import { vendorRepository } from '@/repositories/vendor.repository';
+import { vendorRepository, type VendorWithRelations } from '@/repositories/vendor.repository';
 import { categoryRepository } from '@/repositories/category.repository';
+import { toLegacyVendor } from '@/lib/serializers/vendor';
+import { withoutOwnerContact } from '@/lib/vendor/publicVendor';
+import { toVendorView } from '@/lib/listing/vendorView';
+import type { Vendor } from '@/types';
+
+// Every non-venue listing (photographers, caterers, decorators, …) renders through ONE master page per category:
+// components/listing/VendorListingPage.tsx with lib/listing/categoryTemplates.ts (founder-approved, 19 Nov 2026).
+// Venues forward to /venues/<slug>. A new listing gets its page automatically.
 
 export const revalidate = 3600;
 
@@ -39,10 +46,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 interface VendorMeta {
   id: string;
   dbId: string; // the vendor row id (verified reviews are keyed on it)
+  row: VendorWithRelations; // the listing itself, for the page
   name: string;
   city: string;
   address?: string;
-  ownerPhone?: string;
   category: string;
   description: string;
   priceMin: number;
@@ -98,10 +105,10 @@ async function getVendorMeta(id: string): Promise<VendorMeta | null> {
     return {
       id: vendor.slug,
       dbId: vendor.id,
+      row: vendor,
       name: vendor.name,
       city: vendor.city,
       address: vendor.address || undefined,
-      ownerPhone: vendor.ownerPhone || undefined,
       category: category?.slug ?? '',
       description: vendor.description,
       priceMin: vendor.priceMin,
@@ -182,6 +189,16 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
   if (vendor.category === 'venue') permanentRedirect(`/venues/${vendor.id}`);
   // Roadmap 1.4: published couple reviews only. A failure here never breaks the vendor page.
   const verified = await reviewService.publicForVendor(vendor.dbId).catch(() => null);
+  const row = vendor.row;
+  const view = toVendorView({
+    slug: row.slug, name: row.name, category: vendor.category, city: row.city, address: row.address, area: row.area,
+    priceMin: row.priceMin, priceMax: row.priceMax, priceUnit: row.priceUnit, rating: row.rating, reviewCount: row.reviewCount,
+    image: row.image, images: row.images, virtualTourVideo: row.virtualTourVideo, description: row.description, features: row.features,
+    packages: row.packages.map((p) => ({ id: p.id, name: p.name, price: p.price, features: p.features, isPerPlate: p.isPerPlate })),
+    faqs: row.faqs.map((f) => ({ q: f.question, a: f.answer })),
+  });
+  // Only public fields reach the browser: no owner name, phone or email.
+  const publicVendor = withoutOwnerContact(toLegacyVendor(row, vendor.category)) as Vendor;
 
   const jsonLd = vendor
     ? {
@@ -197,7 +214,6 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
           addressLocality: vendor.city,
           addressCountry: 'IN',
         },
-        ...(vendor.ownerPhone && { telephone: vendor.ownerPhone }),
         ...(vendor.openingHours && vendor.openingHours.length > 0 && { openingHours: vendor.openingHours }),
         priceRange: `₹${vendor.priceMin.toLocaleString('en-IN')} – ₹${vendor.priceMax.toLocaleString('en-IN')}`,
         ...(vendor.reviewCount > 0 && {
@@ -224,8 +240,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
       }
     : null;
 
-  // Mirrors the FAQ accordion rendered in VendorDetailClient — keep both in
-  // sync so the visible answers match what's marked up as FAQPage schema.
+  // The same questions and answers the page shows.
   const faqJsonLd = vendor?.faqs && vendor.faqs.length > 0
     ? {
         '@context': 'https://schema.org',
@@ -243,9 +258,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
       {jsonLd && <JsonLd data={jsonLd} />}
       {breadcrumbJsonLd && <JsonLd data={breadcrumbJsonLd} />}
       {faqJsonLd && <JsonLd data={faqJsonLd} />}
-      <Suspense>
-        <VendorDetailClient id={id} verified={verified} />
-      </Suspense>
+      <VendorListingPage view={view} vendor={publicVendor} category={vendor.category} verified={verified} />
     </>
   );
 }

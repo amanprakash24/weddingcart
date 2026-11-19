@@ -11,13 +11,13 @@ const findBySlug = mock(async (slug: string) => {
   return {
     slug, status: row.status, name: 'The Grand Venue', city: 'Patna', address: '', ownerPhone: '',
     categoryId: 'cat-1', description: 'A venue.', priceMin: 1000, priceMax: 2000, rating: 4.5, reviewCount: 0,
-    image: '', faqs: [],
+    image: '', images: [], features: [], packages: [], faqs: [], area: null, priceUnit: null, virtualTourVideo: '',
   };
 });
 mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findBySlug, findMany: mock(async () => ({ data: [] })) } }));
 let categorySlug = 'venue';
 mock.module('@/repositories/category.repository', () => ({ categoryRepository: { findById: mock(async () => ({ slug: categorySlug })) } }));
-mock.module('@/components/VendorDetailClient', () => ({ default: () => null }));
+mock.module('@/components/listing/VendorListingPage', () => ({ default: () => null }));
 mock.module('@/components/JsonLd', () => ({ JsonLd: () => null }));
 // Roadmap 1.4: the page reads published couple reviews through review.service. With this empty stub that read fails — and the page
 // must still render (it falls back to no reviews).

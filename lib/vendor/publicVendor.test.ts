@@ -13,3 +13,10 @@ describe('withoutOwnerContact', () => {
     expect(v.ownerPhone).toBe('1');
   });
 });
+
+describe('withoutOwnerContact — own contact lines in features', () => {
+  test('website / instagram / phone lines are dropped, the rest kept', () => {
+    const out = withoutOwnerContact({ name: 'A', features: ['10+ years of experience', 'Website: https://amitdecoration.com/', 'Instagram: @the_instastudio', 'Drone coverage'] });
+    expect(out.features).toEqual(['10+ years of experience', 'Drone coverage']);
+  });
+});

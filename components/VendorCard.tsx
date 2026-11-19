@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { Star, MapPin, ChevronRight } from 'lucide-react';
 import { Vendor } from '@/types';
 import { listingPath } from '@/lib/listing/href';
+import { isOwnContactLine } from '@/lib/listing/ownContact';
 
 interface Props {
   vendor: Vendor;
@@ -36,6 +37,8 @@ export default function VendorCard({ vendor }: Props) {
   const startingPrice = hasPerPlate || packagePrices.length === 0 ? vendor.priceMin : Math.min(...packagePrices);
   // The rating column defaults to 4.5 for every vendor, so a star is shown only when there are real reviews.
   const showRating = (vendor.reviewCount ?? 0) > 0;
+  // The listing's own website / social / phone lines are never shown: couples contact Shaadi Shopping (contact rule).
+  const highlights = vendor.features.filter((f) => !isOwnContactLine(f));
 
   return (
     <Link href={listingPath(vendor)} className="block group vendor-card-luxury">
@@ -105,7 +108,7 @@ export default function VendorCard({ vendor }: Props) {
 
           {/* Feature pills — ivory tone, no color clash */}
           <div className="flex flex-wrap gap-1.5 mb-3 max-h-[52px] overflow-hidden">
-            {vendor.features.slice(0, 4).map((f) => (
+            {highlights.slice(0, 4).map((f) => (
               <span
                 key={f}
                 title={f}
@@ -114,12 +117,12 @@ export default function VendorCard({ vendor }: Props) {
                 {f}
               </span>
             ))}
-            {vendor.features.length > 4 && (
+            {highlights.length > 4 && (
               <span
-                title={vendor.features.slice(4).join(' · ')}
+                title={highlights.slice(4).join(' · ')}
                 className="text-[10px] bg-[#FFF8F0] text-[#C5A46D] px-2 py-0.5 rounded border border-[#C5A46D]/20 cursor-help flex-shrink-0"
               >
-                +{vendor.features.length - 4}
+                +{highlights.length - 4}
               </span>
             )}
           </div>

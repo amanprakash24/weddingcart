@@ -8,7 +8,8 @@ import s from './venue.module.css';
 // in a full-screen view and the tour video when the venue has one.
 const ANGLES = [-26, -13, 0, 13, 26];
 
-export default function VenueGallery({ name, photos, video }: { name: string; photos: string[]; video: string | null }) {
+// Used by every listing page; a category passes its own heading (e.g. "Portfolio · Their photos and films").
+export default function VenueGallery({ name, photos, video, kicker = 'Gallery', title = 'See it before you visit', id = 'venue-photos' }: { name: string; photos: string[]; video: string | null; kicker?: string; title?: string; id?: string }) {
   const [open, setOpen] = useState<'photos' | 'video' | null>(null);
   const strip = photos.slice(0, 5);
   const angles = strip.length === 5 ? ANGLES : strip.map((_, i) => (i - (strip.length - 1) / 2) * 13);
@@ -27,11 +28,11 @@ export default function VenueGallery({ name, photos, video }: { name: string; ph
   if (photos.length === 0 && !video) return null;
 
   return (
-    <section aria-labelledby="venue-photos" className={s.galleryBand}>
+    <section aria-labelledby={id} className={s.galleryBand}>
       <div className={s.wrap} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <p className={s.kicker}>Gallery</p>
-          <h2 id="venue-photos" className={s.h2}>See it before you visit</h2>
+          <p className={s.kicker}>{kicker}</p>
+          <h2 id={id} className={s.h2}>{title}</h2>
         </div>
         <div style={{ display: 'flex', gap: 20 }}>
           {video && <button type="button" className={s.linkBtn} onClick={() => setOpen('video')}>Watch the tour</button>}

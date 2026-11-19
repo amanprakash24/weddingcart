@@ -38,8 +38,8 @@ async function handleGET(_: NextRequest, { params }: { params: Promise<{ id: str
     }
     // Draft/pending-verification vendors are admin-only — this is the one
     // gate that protects them everywhere this route is read from: the admin
-    // edit form (which needs it), and the public VendorDetailClient/
-    // VendorPortfolioClient (which fetch this same route client-side, after
+    // edit form (which needs it), and the public VendorPortfolioClient
+    // (which fetches this same route client-side, after
     // the page itself has already rendered, so a page-level check alone
     // isn't enough).
     const isAdmin = await requireAdmin();

@@ -6,7 +6,8 @@ import s from './venue.module.css';
 
 // "Check your date" on the master venue page. Sends through the same enquiry flow as before (POST /api/enquiries via
 // submitEnquiry, vendor looked up by slug), and only says "sent" when the server accepted it.
-export default function VenueEnquiryCard({ slug, name, city }: { slug: string; name: string; city: string }) {
+// Used by every listing page (venues and other categories); category is the listing's category slug.
+export default function VenueEnquiryCard({ slug, name, city, category = 'venue', title, subtitle }: { slug: string; name: string; city: string; category?: string; title?: string; subtitle?: string }) {
   const [form, setForm] = useState({ name: '', phone: '', eventDate: '', guestCount: '', eventType: 'wedding' });
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState('');
@@ -22,7 +23,7 @@ export default function VenueEnquiryCard({ slug, name, city }: { slug: string; n
     const result = await submitEnquiry({
       vendorId: slug,
       vendorName: name,
-      vendorCategory: 'venue',
+      vendorCategory: category,
       name: form.name.trim(),
       phone: form.phone,
       email: '',
@@ -38,7 +39,7 @@ export default function VenueEnquiryCard({ slug, name, city }: { slug: string; n
     }
     setState('sent');
     const w = window as unknown as { gtag?: (...args: unknown[]) => void };
-    w.gtag?.('event', 'generate_lead', { event_category: 'Enquiry', vendor_name: name, vendor_category: 'venue', vendor_city: city, event_type: form.eventType });
+    w.gtag?.('event', 'generate_lead', { event_category: 'Enquiry', vendor_name: name, vendor_category: category, vendor_city: city, event_type: form.eventType });
   }
 
   if (state === 'sent') {
@@ -50,10 +51,10 @@ export default function VenueEnquiryCard({ slug, name, city }: { slug: string; n
   }
 
   return (
-    <form className={s.enq} onSubmit={send} noValidate aria-label={`Check your date at ${name}`}>
+    <form className={s.enq} onSubmit={send} noValidate aria-label={title ?? `Check your date at ${name}`}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <p className={s.serif} style={{ margin: 0, fontSize: 28, lineHeight: 1.1 }}>Check your date at {name}</p>
-        <p style={{ margin: 0, fontSize: 13, color: '#D9CBB8' }}>Your Wedding Expert confirms the date, hall and price with the venue.</p>
+        <p className={s.serif} style={{ margin: 0, fontSize: 28, lineHeight: 1.1 }}>{title ?? `Check your date at ${name}`}</p>
+        <p style={{ margin: 0, fontSize: 13, color: '#D9CBB8' }}>{subtitle ?? 'Your Wedding Expert confirms the date, hall and price with the venue.'}</p>
       </div>
       <label>Your name<input value={form.name} onChange={set('name')} autoComplete="name" required /></label>
       <label>Mobile<input type="tel" inputMode="numeric" value={form.phone} onChange={set('phone')} placeholder="10 digits" autoComplete="tel-national" required /></label>

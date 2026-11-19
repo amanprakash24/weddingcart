@@ -2,7 +2,7 @@ import { categoryRepository } from '@/repositories/category.repository';
 import type { VendorWithRelations } from '@/repositories/vendor.repository';
 import type { Vendor, CategoryType } from '@/types';
 
-// Public pages and their client components (VendorCard, VendorDetailClient,
+// Public pages and their client components (VendorCard, the listing pages,
 // VendorPortfolioClient, CityPageClient, CategoryPageClient) were all built
 // against the Mongo-era `Vendor` shape: `id` is the human-readable slug (not
 // Prisma's UUID `id`), `category` is a flat slug string (not a relation),

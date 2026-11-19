@@ -37,7 +37,8 @@ function Arch({ src, alt, className, priority }: { src?: string; alt: string; cl
 
 export default function VenuePage({ view: v, vendor, verified }: { view: VenueView; vendor: Vendor; verified: VerifiedReviews | null }) {
   const whatsapp = shaadiWhatsAppLink(`Hi, I am interested in ${v.name} for my wedding. Please help me with the date and price.`);
-  const [p1, p2, p3] = [v.photos[0], v.photos[1] ?? v.photos[0], v.photos[2] ?? v.photos[1] ?? v.photos[0]];
+  // Side arches only for real extra photos: one photo is never repeated to fill the stack.
+  const [p1, p2, p3] = v.photos;
   const pkgById = new Map(vendor.packages.map((p) => [p.id, p]));
 
   return (
@@ -73,8 +74,8 @@ export default function VenuePage({ view: v, vendor, verified }: { view: VenueVi
               </div>
             </div>
             <div className={s.stack} aria-label={`Photos of ${v.name}`} role="img">
-              <Arch src={p3} alt="" className={s.a3} />
-              <Arch src={p2} alt="" className={s.a2} />
+              {p3 && <Arch src={p3} alt="" className={s.a3} />}
+              {p2 && <Arch src={p2} alt="" className={s.a2} />}
               <Arch src={p1} alt={`${v.name}`} className={s.a1} priority />
             </div>
           </div>

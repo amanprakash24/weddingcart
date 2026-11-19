@@ -3,6 +3,8 @@
 // shown as "Ask us", never blank and never made up. Pure; no database or browser code. (Founder-approved design,
 // 19 Nov 2026: one category = one master design.)
 
+import { isOwnContactLine } from './ownContact';
+
 export const ASK_US = 'Ask us';
 
 export interface VenueListing {
@@ -140,7 +142,7 @@ export function venueStartingPrice(v: VenueListing): string {
 }
 
 export function toVenueView(v: VenueListing): VenueView {
-  const features = (v.features ?? []).map((f) => f.trim()).filter(Boolean);
+  const features = (v.features ?? []).map((f) => f.trim()).filter((f) => f && !isOwnContactLine(f));
   const hoursLine = features.map((f) => HOURS.exec(f)).find((m) => m);
   const spaces = venueSpaces(features, v.guestCapacity);
   const rooms = venueRooms(features);
@@ -168,7 +170,7 @@ export function toVenueView(v: VenueListing): VenueView {
         name: p.name.trim(),
         price: p.price > 0 ? rupees(p.price) : ASK_US,
         unit: p.price > 0 && pkgPerPlate ? '/ plate' : '',
-        points: (p.features ?? []).map((f) => f.trim()).filter((f) => f && !PRICE_LINE.test(f)),
+        points: (p.features ?? []).map((f) => f.trim()).filter((f) => f && !PRICE_LINE.test(f) && !isOwnContactLine(f)),
       };
     });
 

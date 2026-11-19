@@ -2,23 +2,26 @@
 import { describe, test, expect } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { toVenueView } from '@/lib/listing/venueView';
+import { toVendorView } from '@/lib/listing/vendorView';
 
 // Roadmap 1.4 decision (03/10/2026): couples' verified reviews are kept apart from the hand-entered online rating and never blended.
-// Checked on the vendor page source so the rule can't quietly drift.
-const src = readFileSync(join(import.meta.dir, '..', '..', 'components', 'VendorDetailClient.tsx'), 'utf8');
+// Checked on the listing pages (venues and every other category, 19 Nov 2026) so the rule can't quietly drift.
+const pages = ['VenuePage.tsx', 'VendorListingPage.tsx'].map((f) => [f, readFileSync(join(import.meta.dir, '..', '..', 'components', 'listing', f), 'utf8')] as const);
 
-describe('vendor page — online rating vs couple reviews', () => {
-  test('the hand-entered rating is labelled and only shown when it has a count (no default 4.5 with 0 reviews)', () => {
+describe.each(pages)('%s — online rating vs couple reviews', (_name, src) => {
+  test('both kinds are labelled, couple reviews shown first, the online rating only when it has a count', () => {
     expect(src).toContain('ONLINE_RATING_LABEL');
-    expect(src).not.toMatch(/\(\{vendor\.reviewCount\} reviews\)/);
-    for (const m of src.matchAll(/\{vendor\.rating\}/g)) {
-      const before = src.slice(Math.max(0, (m.index ?? 0) - 400), m.index);
-      expect(before).toContain('vendor.reviewCount > 0');
-    }
+    expect(src).toContain('VERIFIED_REVIEWS_LABEL');
+    expect(src).toMatch(/verified\?\.summary \? \([\s\S]*?\) : v\.onlineRating \?/);
   });
 
-  test('couple reviews have their own section and numbers — never added to vendor.rating / reviewCount', () => {
-    expect(src).toContain('VERIFIED_REVIEWS_LABEL');
-    expect(src).not.toMatch(/vendor\.reviewCount\s*\+|\+\s*vendor\.reviewCount|verified[^;\n]*vendor\.rating|vendor\.rating[^;\n]*verified/);
+  test('couple reviews are never added to the online rating or its count', () => {
+    expect(src).not.toMatch(/reviewCount\s*\+|\+\s*[\w.]*reviewCount|verified[^;\n]*onlineRating\.value|onlineRating\.value[^;\n]*verified/);
   });
+});
+
+test('no online rating without reviews (the 4.5 default is not a rating)', () => {
+  expect(toVenueView({ slug: 's', name: 'n', city: 'Patna', priceMin: 0, priceMax: 0, rating: 4.5, reviewCount: 0 }).onlineRating).toBeNull();
+  expect(toVendorView({ slug: 's', name: 'n', category: 'dj', city: 'Patna', priceMin: 0, priceMax: 0, rating: 4.5, reviewCount: 0 }).onlineRating).toBeNull();
 });
