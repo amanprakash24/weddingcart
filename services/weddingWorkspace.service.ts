@@ -157,6 +157,7 @@ export interface WeddingWorkspace {
   guests: {
     id: string; name: string; phone: string | null; email: string | null; category: string | null;
     accompanyingGuests: number; rsvpStatus: string; rsvpToken: string;
+    notes: string | null; side: string | null; familyGroup: string | null; relation: string | null; isVip: boolean; pairedGuestId: string | null;
     functionResponses: { status: string; weddingEvent: { id: string; type: string; label: string | null } }[];
   }[];
   // No backing entity yet — LeadInsight is hard-typed to lead/enquiry/

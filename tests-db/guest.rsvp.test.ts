@@ -117,4 +117,56 @@ dbDescribe('guest RSVP links and guest edits (real database)', () => {
     expect(saved.name).toBe('DBTEST Name Only');
     expect(saved.phone).toBeNull();
   });
+
+  // Guest management (Client OS phase 1, 19 Nov 2026).
+  test('4. invited to the reception only: the link shows only the reception, and only that answer is saved', async () => {
+    const reception = await inV(() => app.prisma.weddingEvent.create({ data: { weddingId, type: 'RECEPTION', date: new Date('2027-02-15T12:00:00Z'), city: 'Patna' } }));
+    const guest = await inV(() => guests.create(weddingId, { name: 'DBTEST Reception Only', functionResponses: [{ weddingEventId: reception.id, status: 'PENDING' }] }));
+    const linkScope = await scopeForRsvpToken(guest.rsvpToken);
+
+    const seen = await runInScope(linkScope, () => guests.getPublicByToken(guest.rsvpToken));
+    expect(seen?.wedding.events.map((e) => e.id)).toEqual([reception.id]);
+
+    // A crafted answer for the wedding too is ignored; the reception answer is saved; the invitation stays.
+    await runInScope(linkScope, () => guests.submitPublic(guest.rsvpToken, { rsvpStatus: 'ATTENDING', accompanyingGuests: 0, functionResponses: [{ weddingEventId: eventId, status: 'ATTENDING' }, { weddingEventId: reception.id, status: 'ATTENDING' }] }));
+    const rows = await inV(() => app.prisma.guestFunctionResponse.findMany({ where: { guestId: guest.id } }));
+    expect(rows.map((r) => [r.weddingEventId, r.status])).toEqual([[reception.id, 'ATTENDING']]);
+
+    // A guest with no invitation rows still sees every function (as before).
+    const everyone = await inV(() => guests.create(weddingId, { name: 'DBTEST Everything' }));
+    const all = await runInScope(linkScope, () => guests.getPublicByToken(everyone.rsvpToken));
+    expect(all?.wedding.events.map((e) => e.id).sort()).toEqual([eventId, reception.id].sort());
+  });
+
+  test('5. "comes with": both guests point at each other; re-pairing and removing keep it consistent', async () => {
+    const a = await inV(() => guests.create(weddingId, { name: 'DBTEST Pair A', side: 'BRIDE', familyGroup: 'Sharma family', relation: 'Mama', isVip: true }));
+    const b = await inV(() => guests.create(weddingId, { name: 'DBTEST Pair B', pairedGuestId: a.id }));
+    const c = await inV(() => guests.create(weddingId, { name: 'DBTEST Pair C' }));
+    const read = (id: string) => inV(() => app.prisma.guest.findUniqueOrThrow({ where: { id } }));
+
+    expect((await read(a.id)).pairedGuestId).toBe(b.id);
+    expect((await read(b.id)).pairedGuestId).toBe(a.id);
+    const saved = await read(a.id);
+    expect([saved.side, saved.familyGroup, saved.relation, saved.isVip]).toEqual(['BRIDE', 'Sharma family', 'Mama', true]);
+
+    // A now comes with C: B is released.
+    await inV(() => guests.update(weddingId, a.id, { name: 'DBTEST Pair A', pairedGuestId: c.id }));
+    expect((await read(a.id)).pairedGuestId).toBe(c.id);
+    expect((await read(c.id)).pairedGuestId).toBe(a.id);
+    expect((await read(b.id)).pairedGuestId).toBeNull();
+
+    // An editor that does not send the pairing leaves it alone.
+    await inV(() => guests.update(weddingId, a.id, { name: 'DBTEST Pair A renamed' }));
+    expect((await read(a.id)).pairedGuestId).toBe(c.id);
+
+    // Removing C clears A's link.
+    await inV(() => guests.remove(weddingId, c.id));
+    expect((await read(a.id)).pairedGuestId).toBeNull();
+
+    // A guest cannot come with themselves, or with a guest of another wedding.
+    const self = await inV(() => guests.update(weddingId, a.id, { name: 'x', pairedGuestId: a.id })).then(() => null, (e: Error) => e);
+    expect(self?.name).toBe('ValidationError');
+    const other = await inV(() => guests.update(weddingId, a.id, { name: 'x', pairedGuestId: '00000000-0000-4000-8000-000000000000' })).then(() => null, (e: Error) => e);
+    expect(other?.name).toBe('ValidationError');
+  });
 });
