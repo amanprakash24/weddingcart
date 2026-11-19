@@ -15,7 +15,7 @@ export default function BlogHighlightsSection({ posts }: { posts: BlogHighlight[
   if (posts.length === 0) return null;
 
   return (
-    <section className="bg-[#FFFAF5] py-16 sm:py-20 border-t border-[#C5A46D]/10">
+    <section data-depth className="bg-[#FFFAF5] py-16 sm:py-20 border-t border-[#C5A46D]/10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
           <div>
@@ -42,7 +42,7 @@ export default function BlogHighlightsSection({ posts }: { posts: BlogHighlight[
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group block bg-white rounded-2xl overflow-hidden border border-[#C5A46D]/12 hover:shadow-lg hover:border-[#C5A46D]/30 transition-all"
+              data-tilt className="group block bg-white rounded-2xl overflow-hidden border border-[#C5A46D]/12 hover:shadow-lg hover:border-[#C5A46D]/30 transition-all"
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 <Image

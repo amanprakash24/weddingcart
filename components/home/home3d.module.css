@@ -1,0 +1,288 @@
+/* The two scroll-driven 3D moments on the homepage: a walk through an arcade of real wedding photographs (Gallery3D)
+   and the Vivah OS laptop and phone turning to face you (Devices3D). Everything stays still for visitors who ask for
+   reduced motion. */
+
+/* ---------- gallery ---------- */
+.gallery { position: relative; height: 480vh; background: #12070A; color: #FBF6EE; }
+.gStage {
+  position: sticky; top: 0; height: 100vh; overflow: hidden; perspective: 1000px; perspective-origin: 50% 46%;
+  background: radial-gradient(120% 80% at 50% 40%, #3A0D1E 0%, #1E0B10 45%, #0B0406 100%);
+}
+.world { position: absolute; left: 50%; top: 60%; width: 0; height: 0; transform-style: preserve-3d; will-change: transform; }
+/* Arch size follows the window height, so short laptop screens get smaller arches */
+.frame { --fh: min(470px, 46vh); position: absolute; margin: 0; height: var(--fh); width: calc(var(--fh) * 0.766); left: calc(var(--fh) * -0.383); top: calc(var(--fh) * -0.5); transform-style: preserve-3d; }
+.arch {
+  position: absolute; inset: 0; overflow: hidden; border-radius: 999px 999px 18px 18px; border: 3px solid #C9A86A; background: #0B0406;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 10px rgba(201, 168, 106, 0.1);
+}
+.cap { position: absolute; left: 0; right: 0; bottom: -46px; text-align: center; font-family: var(--font-cormorant), Georgia, serif; font-size: 26px; color: #E9C98E; }
+.shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 55%, rgba(18,7,10,.85) 100%); }
+.text { position: absolute; left: 18px; right: 18px; bottom: 18px; text-align: center; font-size: 15px; line-height: 1.4; color: #FBF6EE; }
+.frame:hover .arch { border-color: #E9C98E; }
+.end { position: absolute; left: 0; right: 0; bottom: 64px; z-index: 3; display: flex; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .4s ease; }
+.end[data-on="1"], .end:focus-within { opacity: 1; pointer-events: auto; }
+.endBtn { display: inline-flex; min-height: 50px; align-items: center; border-radius: 999px; padding: 0 24px; background: #E9C98E; color: #1A0E0C; font-weight: 700; font-size: 15px; }
+.endBtn:focus-visible { outline: 2px solid #E9C98E; outline-offset: 3px; }
+.floor {
+  position: absolute; left: 50%; top: 50%; width: 1800px; height: 9000px; margin-left: -900px; transform-origin: 50% 0;
+  background: repeating-linear-gradient(90deg, rgba(201, 168, 106, 0.1) 0 2px, transparent 2px 300px), linear-gradient(180deg, rgba(122, 18, 56, 0.25), rgba(0, 0, 0, 0) 60%);
+}
+/* The heading sits on its own dark band, above the arches, so photos never run behind the words */
+.gCopy { position: absolute; left: 0; right: 0; top: 0; z-index: 2; padding: 132px 16px 56px; text-align: center; pointer-events: none;
+  background: linear-gradient(180deg, #12070A 0%, #12070A 62%, rgba(18, 7, 10, 0) 100%); }
+.gCopy h2 { margin-top: 12px; font-family: var(--font-cormorant), Georgia, serif; font-weight: 600; font-size: clamp(2.1rem, 4.6vw, 3.8rem); line-height: 1.02; text-wrap: balance; }
+.gCopy em { color: #E9C98E; }
+.kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #E9C98E; }
+.progress { position: absolute; left: 50%; bottom: 28px; z-index: 2; width: 180px; height: 2px; margin-left: -90px; background: rgba(255, 255, 255, 0.15); }
+.progress i { display: block; height: 100%; width: 0; background: #E9C98E; }
+.hint { position: absolute; left: 0; right: 0; bottom: 44px; z-index: 2; text-align: center; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(251, 246, 238, 0.6); }
+
+/* ---------- devices ---------- */
+.os { position: relative; height: 340vh; background: linear-gradient(180deg, #0B0406 0%, #160A0D 20%, #160A0D 100%); color: #FBF6EE; }
+.oStage { position: sticky; top: 0; height: 100vh; overflow: hidden; display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr); align-items: center; gap: 24px; max-width: 1440px; margin: 0 auto; padding-top: 108px; }
+.copy { position: relative; min-height: 360px; padding-left: max(24px, env(safe-area-inset-left, 0px)); }
+.step { position: absolute; left: max(24px, env(safe-area-inset-left, 0px)); right: 0; top: 0; max-width: 460px; opacity: 0; transform: translateY(18px); transition: opacity 0.45s ease, transform 0.45s ease; }
+.on { opacity: 1; transform: none; }
+.step h2 { margin-top: 14px; font-family: var(--font-cormorant), Georgia, serif; font-weight: 600; font-size: clamp(2rem, 4vw, 3.4rem); line-height: 1.03; text-wrap: balance; }
+.step h2 em { color: #E9C98E; }
+.step p { margin-top: 16px; font-size: 1.05rem; line-height: 1.65; color: #D8C3A5; }
+.dots { position: absolute; left: max(24px, env(safe-area-inset-left, 0px)); bottom: -40px; display: flex; gap: 8px; }
+.dots i { width: 26px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); transition: background 0.3s; }
+.dots i.dotOn { background: #E9C98E; }
+.cta { pointer-events: auto; display: inline-flex; margin-top: 22px; min-height: 48px; align-items: center; border-radius: 999px; padding: 0 22px; background: #E9C98E; color: #1A0E0C; font-weight: 700; font-size: 15px; }
+.cta:focus-visible { outline: 2px solid #E9C98E; outline-offset: 3px; }
+
+.scene { position: relative; height: 640px; perspective: 1600px; perspective-origin: 40% 40%; }
+@media (min-width: 860px) and (max-width: 1399px) { .scene { transform: scale(0.8); transform-origin: 0 50%; } }
+.rig { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; }
+.glow { position: absolute; left: 30%; top: 10%; width: 60%; height: 70%; border-radius: 50%; background: radial-gradient(closest-side, rgba(201, 168, 106, 0.25), rgba(201, 168, 106, 0)); filter: blur(10px); }
+.laptop { position: absolute; left: 6%; top: 60px; width: 640px; transform-style: preserve-3d; }
+.lid { position: relative; width: 640px; height: 400px; padding: 14px; border-radius: 18px 18px 6px 6px; background: #0C0C0F; box-shadow: 0 0 0 1.5px #2b2b30 inset; transform-origin: 50% 100%; transform: rotateX(-4deg); }
+.screen { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 6px; }
+.lid::after { content: ''; position: absolute; inset: 14px; border-radius: 6px; background: linear-gradient(115deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 40%); pointer-events: none; }
+.deck { position: absolute; left: -36px; top: 398px; width: 712px; height: 420px; transform-origin: 50% 0; transform: rotateX(86deg); border-radius: 6px 6px 22px 22px; background: linear-gradient(180deg, #cfcfd4, #a9a9b0); box-shadow: 0 0 0 1px #8c8c93 inset; }
+.deck::before { content: ''; position: absolute; left: 30px; right: 30px; top: 26px; height: 220px; border-radius: 8px; background: repeating-linear-gradient(90deg, #bbbbc1 0 38px, #a3a3aa 38px 41px), #b5b5bb; opacity: 0.8; }
+.deck::after { content: ''; position: absolute; left: 50%; top: 270px; width: 230px; height: 120px; margin-left: -115px; border-radius: 10px; background: #b9b9bf; box-shadow: 0 0 0 1px #9b9ba2 inset; }
+.shadow { position: absolute; left: 4%; top: 470px; width: 760px; height: 120px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0)); transform: rotateX(80deg); }
+.phone { position: absolute; right: 2%; top: 70px; width: 230px; height: 470px; transform-style: preserve-3d; }
+.face { position: absolute; inset: 0; padding: 10px; border-radius: 38px; background: #0b0b0e; box-shadow: 0 0 0 1.5px #34343a inset, 0 40px 80px rgba(0, 0, 0, 0.55); transform: translateZ(6px); }
+.scr { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 30px; background: #fffaf5; }
+.scr img { transition: opacity 0.5s ease; }
+.notch { position: absolute; left: 50%; top: 8px; z-index: 2; width: 70px; height: 20px; margin-left: -35px; border-radius: 12px; background: #0b0b0e; }
+.back { position: absolute; inset: 0; border-radius: 38px; background: linear-gradient(135deg, #3a3a42, #17171b); transform: translateZ(-6px) rotateY(180deg); }
+
+@media (max-width: 859px) {
+  .frame { --fh: min(360px, 44vh); }
+  .cap { font-size: 20px; bottom: -36px; }
+  .gCopy { padding-top: 104px; }
+  .world { top: 58%; }
+  .oStage { display: flex; flex-direction: column; justify-content: center; gap: 0; padding-top: 88px; }
+  .copy { width: 100%; min-height: 270px; padding-top: 8px; }
+  .step { right: max(16px, env(safe-area-inset-right, 0px)); left: 16px; }
+  .step h2 { font-size: 1.9rem; }
+  .step p { margin-top: 10px; font-size: 0.98rem; }
+  .dots { bottom: 0; left: 16px; }
+  .scene { flex: none; width: 900px; height: 640px; transform: scale(0.4); transform-origin: 0 0; align-self: flex-start; margin-left: 12px; margin-bottom: -384px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Still versions: the gallery becomes a grid of photographs, the devices a still view with all three stories. */
+  .gallery, .os { height: auto; }
+  .gStage { position: relative; height: auto; perspective: none; padding: 140px 16px 64px; }
+  .gCopy { position: relative; padding-top: 0; }
+  .world { position: relative; left: auto; top: auto; width: auto; height: auto; max-width: 1240px; margin: 40px auto 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 56px 20px; transform: none !important; }
+  .frame { position: relative; left: auto; top: auto; width: auto; height: 320px; --fh: 320px; transform: none !important; opacity: 1 !important; }
+  .floor, .progress, .hint { display: none; }
+  .end { position: relative; bottom: auto; margin-top: 48px; opacity: 1; pointer-events: auto; }
+  .oStage { position: relative; height: auto; min-height: 100vh; padding-block: 64px; }
+  .step { position: relative; opacity: 1; transform: none; margin-bottom: 28px; }
+  .copy { min-height: 0; }
+  .dots { display: none; }
+  .scr img { transition: none; }
+}
+
+/* ---------- venues: a turning ring of real venue cards (VenueRing) ---------- */
+.vOuter { position: relative; }
+.vStage { position: sticky; top: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding: 132px 24px 28px; }
+.ringWrap { position: relative; flex: 1; min-height: 0; perspective: 1500px; perspective-origin: 50% 50%; z-index: 1;
+  /* Hard edge: the cards can never be drawn over the heading above or the arrows below */
+  overflow: hidden; margin-top: 12px; margin-bottom: 8px; }
+.ring { position: absolute; left: 50%; top: 53%; width: 0; height: 0; margin: 0; padding: 0; list-style: none; transform-style: preserve-3d; }
+.slot { position: absolute; left: 0; top: 0; width: 330px; transform-style: preserve-3d; backface-visibility: hidden; transition: opacity 0.2s linear; }
+.slot > * { box-shadow: 0 40px 80px rgba(34, 23, 20, 0.22); border-radius: 26px; }
+.ringFloor { position: absolute; left: 50%; bottom: 0; width: 900px; height: 160px; margin-left: -450px; border-radius: 50%; background: radial-gradient(closest-side, rgba(122, 18, 56, 0.16), rgba(122, 18, 56, 0)); pointer-events: none; }
+.ringHead { position: relative; z-index: 3; }
+.ringNav { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 12px; }
+.ringBtn { display: inline-flex; width: 48px; height: 48px; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid #D9C7AA; background: #fff; color: #221714; transition: border-color 0.2s, color 0.2s; }
+.ringBtn:hover:not(:disabled) { border-color: #7A1238; color: #7A1238; }
+.ringBtn:disabled { opacity: 0.35; }
+.ringBtn:focus-visible { outline: 2px solid #7A1238; outline-offset: 2px; }
+.ringCount { min-width: 220px; text-align: center; font-size: 15px; font-weight: 700; color: #221714; }
+.ringOf { font-weight: 500; color: #6B5A4E; }
+
+@media (max-width: 859px) {
+  .vStage { padding: 100px 16px 100px; }
+  .slot { width: 215px; }
+  .slot > * { font-size: 14px; }
+  .ringWrap { margin-top: 36px; }
+  .ringCount { min-width: 0; font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vOuter { height: auto !important; }
+  .vStage { position: relative; height: auto; overflow: visible; padding: 0; }
+  .ringWrap { perspective: none; }
+  .ring { position: static; width: auto; height: auto; display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 32px; }
+  .slot { position: relative; width: auto; transform: none !important; opacity: 1 !important; }
+  .ringFloor, .ringNav { display: none; }
+}
+
+/* ---------- How it works in 3D (HowItWorks + HowDepth) ----------
+   --c and --s run from 0 to 1 as the section scrolls in; both default to 1, the end state. */
+.how { --c: 1; --s: 1; }
+.howCards { perspective: 1300px; }
+.alone { transform-origin: 100% 50%; transform: rotateY(calc(30deg - 14deg * var(--c))) translateZ(calc(-110px * var(--c))); opacity: calc(1 - 0.25 * var(--c)); will-change: transform; }
+.expert { transform-origin: 0 50%; transform: rotateY(calc(-30deg + 30deg * var(--c))) translateZ(calc(30px * var(--c))); will-change: transform; }
+.stairs {
+  transform-style: preserve-3d; transform-origin: 50% 100%;
+  transform: perspective(1400px) rotateX(calc(34deg - 18deg * var(--s))) rotateY(calc(-14deg + 8deg * var(--s)));
+}
+.stair {
+  --k: clamp(0, var(--s) * 4 - var(--i), 1);
+  position: relative; transform-style: preserve-3d; border-radius: 18px; border: 1px solid #EADFCC; background: #fff; padding: 22px;
+  box-shadow: 0 30px 50px rgba(34, 23, 20, 0.12);
+  transform: translateY(calc((1 - var(--k)) * 160px)) translateZ(calc(var(--i) * 26px));
+  opacity: calc(0.1 + 0.9 * var(--k));
+}
+/* The gold top of each slab */
+.stair::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 44px; border-radius: 18px 18px 0 0; transform-origin: 50% 0; transform: rotateX(-72deg);
+  background: linear-gradient(180deg, #F3DDA9, #C9A86A);
+}
+.stairFirst { border-color: #7A1238; box-shadow: 0 30px 50px rgba(122, 18, 56, 0.18); }
+@media (min-width: 1024px) {
+  .stair { margin-top: calc((3 - var(--i)) * 40px); }
+}
+@media (max-width: 767px) {
+  .alone { transform-origin: 50% 100%; transform: rotateX(calc(-24deg + 12deg * var(--c))) translateZ(calc(-90px * var(--c))); }
+  .expert { transform-origin: 50% 0; transform: rotateX(calc(28deg - 28deg * var(--c))) translateZ(calc(40px * var(--c))); }
+  .stairs { row-gap: 30px; transform: perspective(1100px) rotateX(calc(28deg - 18deg * var(--s))); }
+}
+
+/* ---------- For businesses in 3D (ForBusinesses + HowDepth) ----------
+   --b: the photo and the registration card turn and separate in depth; --p: the four point cards stand up one by one. */
+.biz { --b: 1; --p: 1; }
+.bizStage { perspective: 1400px; }
+.bizScene { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateY(calc(30deg - 18deg * var(--b))) rotateX(calc(16deg - 10deg * var(--b))); }
+.bizPhoto { transform: translateZ(calc(-90px * var(--b))); }
+.bizCard {
+  transform-style: preserve-3d;
+  transform: translate3d(calc((1 - var(--b)) * 160px), 0, calc(30px + 120px * var(--b)));
+  opacity: calc(0.15 + 0.85 * var(--b));
+}
+.bizStep { --k: clamp(0, var(--b) * 3 - var(--i), 1); transform: translateZ(calc(var(--k) * (16px + var(--i) * 14px))); opacity: calc(0.2 + 0.8 * var(--k)); }
+.bizPoints { perspective: 1000px; }
+.bizPoint {
+  --k: clamp(0, var(--p) * 4 - var(--i), 1);
+  transform-origin: 50% 100%;
+  transform: rotateX(calc((1 - var(--k)) * 80deg)) translateZ(calc((1 - var(--k)) * -120px));
+  opacity: calc(0.1 + 0.9 * var(--k));
+}
+@media (max-width: 767px) {
+  .bizScene { transform: rotateY(calc(22deg - 14deg * var(--b))) rotateX(calc(12deg - 8deg * var(--b))); }
+  .bizCard { transform: translate3d(calc((1 - var(--b)) * 80px), 0, calc(20px + 70px * var(--b))); }
+}
+
+/* ---------- Growth Partner in 3D (GrowthPartnerSection + HowDepth) ----------
+   --r: the four "what you can refer" cards turn in from edge-on, one after another;
+   --g: the five steps lie on a board that tilts up, and each step lifts off it in turn. */
+.gp { --r: 1; --g: 1; }
+.gpRefer { perspective: 1000px; }
+.gpCard {
+  --k: clamp(0, var(--r) * 4 - var(--i), 1);
+  transform-origin: 0 50%;
+  transform: rotateY(calc((1 - var(--k)) * 85deg));
+  opacity: calc(0.1 + 0.9 * var(--k));
+}
+.gpBoard {
+  transform-style: preserve-3d; transform-origin: 50% 100%;
+  transform: perspective(1200px) rotateX(calc(42deg - 30deg * var(--g)));
+}
+.gpSteps { transform-style: preserve-3d; }
+.gpStep {
+  --k: clamp(0, var(--g) * 5 - var(--i), 1);
+  transform: translateZ(calc(var(--k) * 46px));
+  opacity: calc(0.25 + 0.75 * var(--k));
+}
+.gpStep > span { box-shadow: 0 calc(var(--k) * 16px) calc(var(--k) * 24px) rgba(122, 18, 56, 0.22); }
+
+/* Short laptop screens: shrink the laptop and phone so the phone is not cut off at the bottom */
+@media (min-width: 860px) and (max-height: 760px) {
+  .scene { transform: scale(0.74); transform-origin: 0 45%; }
+}
+
+/* Short laptop screens: tighter spacing around the venue ring, so the cards can be bigger */
+@media (min-width: 860px) and (max-height: 720px) {
+  .vStage { padding-top: 118px; padding-bottom: 10px; }
+  .ringWrap { margin-top: 4px; margin-bottom: 0; }
+  .ringNav { padding-top: 2px; }
+  .ringBtn { width: 42px; height: 42px; }
+}
+
+/* ---------- Vivah OS in 3D (VivahOsSection + HowDepth) ----------
+   --v: the phone turns to face the visitor as the section scrolls in. The selected feature lifts forward, and the
+   phone screen flips round when the feature changes. */
+.vos { --v: 1; }
+.vosStage { perspective: 1400px; }
+.vosPhone {
+  transform-style: preserve-3d;
+  transform: rotateY(calc(-36deg + 26deg * var(--v))) rotateX(calc(18deg - 14deg * var(--v))) translateZ(calc(-140px + 140px * var(--v)));
+}
+/* The back and the edge of the phone, so it reads as a solid object when turned */
+.vosPhone::before { content: ''; position: absolute; inset: 0; border-radius: 46px; background: linear-gradient(135deg, #3A2722, #120807); transform: translateZ(-16px); }
+.vosPhone::after { content: ''; position: absolute; top: 40px; bottom: 40px; right: -8px; width: 16px; border-radius: 8px; background: linear-gradient(90deg, #2A1A16, #4A332C); transform: rotateY(90deg) translateZ(0); transform-origin: 50% 50%; }
+.vosScreen { animation: vosFlip 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); backface-visibility: hidden; }
+@keyframes vosFlip { from { transform: rotateY(-100deg); opacity: 0.2; } to { transform: rotateY(0); opacity: 1; } }
+.vosTabs { perspective: 900px; }
+.vosTab { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s, border-color 0.2s, background-color 0.2s; transform-origin: 0 50%; }
+.vosTab[aria-selected='true'] { transform: translateZ(36px) translateX(10px); box-shadow: 0 24px 40px rgba(0, 0, 0, 0.45); }
+.vosTab[aria-selected='false'] { transform: rotateY(10deg); }
+@media (prefers-reduced-motion: reduce) {
+  .vosScreen { animation: none; }
+  .vosTab { transition: none; }
+}
+
+/* ---------- Founder in 3D (FounderSection + HowDepth) ----------
+   --f: the portrait turns to face the visitor while its gold frame drops back behind it; the quote lifts up. */
+.fd { --f: 1; }
+.fdStage { perspective: 1300px; }
+.fdScene { transform-style: preserve-3d; transform: rotateY(calc(30deg - 24deg * var(--f))) rotateX(calc(12deg - 9deg * var(--f))); }
+.fdFrame { transform: translate3d(16px, 16px, calc(-80px * var(--f))); }
+.fdPhoto { transform: translateZ(calc(40px * var(--f))); box-shadow: 0 calc(20px + 30px * var(--f)) 70px rgba(34, 23, 20, 0.25); }
+.fdQuote { transform-origin: 50% 100%; transform: perspective(900px) rotateX(calc((1 - var(--f)) * 60deg)); opacity: calc(0.15 + 0.85 * var(--f)); }
+
+/* ---------- FAQ in 3D (HomeFaq + HowDepth) ----------
+   --q: the question cards fall into place one after another; the open card lifts forward and its answer unfolds;
+   the gold "?" medallion turns. */
+.faq { --q: 1; }
+.faqList { perspective: 1100px; }
+.faqItem {
+  --k: clamp(0, var(--q) * var(--n) - var(--i), 1);
+  transform-origin: 50% 0;
+  transform: rotateX(calc((1 - var(--k)) * -75deg)) translateZ(calc((1 - var(--k)) * -110px));
+  opacity: calc(0.1 + 0.9 * var(--k));
+  transition: translate 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s, border-color 0.2s;
+}
+.faqItem[open] { translate: 8px 0 28px; border-color: #C9A86A; box-shadow: 0 26px 50px rgba(34, 23, 20, 0.16); }
+.faqItem[open] > p { transform-origin: 50% 0; animation: faqOpen 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes faqOpen { from { transform: perspective(600px) rotateX(-80deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.faqMark {
+  display: flex; width: 132px; height: 132px; align-items: center; justify-content: center; border-radius: 999px;
+  background: radial-gradient(circle at 30% 28%, #F8E7BE, #C9A05A 70%); color: #4A0B22; font-size: 84px; line-height: 1;
+  box-shadow: 0 24px 50px rgba(122, 18, 56, 0.22), inset 0 -6px 0 rgba(74, 11, 34, 0.18);
+  transform: perspective(800px) rotateY(calc((1 - var(--q)) * 200deg)) rotateX(calc((1 - var(--q)) * 20deg));
+}
+@media (prefers-reduced-motion: reduce) {
+  .faqItem { transition: none; }
+  .faqItem[open] > p { animation: none; }
+}
