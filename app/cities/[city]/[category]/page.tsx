@@ -10,6 +10,7 @@ import VendorCard from '@/components/VendorCard';
 import RelatedGuides, { type RelatedGuide } from '@/components/RelatedGuides';
 import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
+import { listingPath } from '@/lib/listing/href';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 3600;
@@ -485,7 +486,7 @@ export default async function CityCategoryPage({
           item: {
             '@type': 'LocalBusiness',
             name: v.name,
-            url: `${BASE_URL}/vendors/${v.id}`,
+            url: `${BASE_URL}${listingPath(v)}`,
             image: v.image,
             address: { '@type': 'PostalAddress', addressLocality: v.city || city.name, addressCountry: 'IN' },
             ...(v.reviewCount > 0 && {

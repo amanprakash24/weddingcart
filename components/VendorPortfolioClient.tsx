@@ -12,6 +12,7 @@ import {
 import { Vendor, Package } from '@/types';
 import { getShaadiPhone } from '@/lib/shaadiPhone';
 import { checkEnquiryForm, submitEnquiry } from '@/lib/enquiry/publicEnquiry';
+import { listingPath } from '@/lib/listing/href';
 
 const CATEGORY_LABELS: Record<string, string> = {
   venue: 'Wedding Venue', makeup: 'Bridal Makeup Artist', mehndi: 'Mehndi Artist',
@@ -584,7 +585,7 @@ export default function VendorPortfolioClient({ id }: { id: string }) {
               {' '}— Patna&apos;s Wedding Planning Platform
             </span>
           </div>
-          <Link href={`/vendors/${vendor.id}`}
+          <Link href={listingPath(vendor)}
             className="text-xs text-[#C5A46D]/60 hover:text-[#C5A46D] transition-colors flex items-center gap-1">
             View on ShaadiShopping <ArrowRight className="w-3 h-3" />
           </Link>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Vendor } from '@/types';
+import { listingPath } from '@/lib/listing/href';
 import {
   CheckCircle, Calendar, Users, MapPin, Phone, Star,
   ChevronRight, Heart, Sparkles, Building2, Crown
@@ -158,7 +159,7 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
                 const tag = venueTag(v);
                 const price = venuePriceLabel(v.priceMin, v.priceMax, v.priceUnit);
                 return (
-                  <Link key={v.id} href={`/vendors/${v.slug ?? v.id}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group block">
+                  <Link key={v.id} href={listingPath(v)} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group block">
                     <div className="relative h-28 overflow-hidden">
                       {v.image ? (
                         <Image src={v.image} alt={v.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 640px) 100vw, 33vw" />

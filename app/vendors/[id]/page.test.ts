@@ -15,7 +15,8 @@ const findBySlug = mock(async (slug: string) => {
   };
 });
 mock.module('@/repositories/vendor.repository', () => ({ vendorRepository: { findBySlug, findMany: mock(async () => ({ data: [] })) } }));
-mock.module('@/repositories/category.repository', () => ({ categoryRepository: { findById: mock(async () => ({ slug: 'venue' })) } }));
+let categorySlug = 'venue';
+mock.module('@/repositories/category.repository', () => ({ categoryRepository: { findById: mock(async () => ({ slug: categorySlug })) } }));
 mock.module('@/components/VendorDetailClient', () => ({ default: () => null }));
 mock.module('@/components/JsonLd', () => ({ JsonLd: () => null }));
 // Roadmap 1.4: the page reads published couple reviews through review.service. With this empty stub that read fails — and the page
@@ -54,9 +55,22 @@ describe('/vendors/[id] — only PUBLISHED vendors are public', () => {
 describe('/vendors/[id] — couple reviews (Roadmap 1.4)', () => {
   test('a published vendor still renders when the reviews cannot be read', async () => {
     rows['published-venue'] = { status: 'PUBLISHED' };
+    categorySlug = 'photo-video'; // venues forward to /venues (below); any other category renders here
     const el = (await page.default(params('published-venue'))) as { props: { children: unknown[] } };
     expect(el).toBeTruthy();
     const json = JSON.stringify(el, (_k, v) => (typeof v === 'function' ? undefined : v));
     expect(json).toContain('"verified":null');
+  });
+});
+
+// 19 Nov 2026: venues have one master page at /venues/<slug>; an old /vendors/<venue> link forwards there permanently.
+describe('/vendors/[id] — a venue forwards to its master page', () => {
+  test('permanent redirect to /venues/<slug>', async () => {
+    rows['published-venue'] = { status: 'PUBLISHED' };
+    categorySlug = 'venue';
+    const err = await page.default(params('published-venue')).then(() => null, (e: unknown) => e as { digest?: string });
+    expect(err?.digest).toContain('NEXT_REDIRECT');
+    expect(err?.digest).toContain('/venues/published-venue');
+    expect(err?.digest).toContain('308');
   });
 });

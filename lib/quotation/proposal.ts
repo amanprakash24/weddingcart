@@ -249,7 +249,7 @@ export function toProposalVendor(v: ProposalVendorInput): ProposalVendor {
       guestCapacity: venue ? v.guestCapacity : null,
       venueType: venue ? v.venueType : null,
       rating: v.reviewCount > 0 ? { value: v.rating, reviews: v.reviewCount } : null,
-      url: `/vendors/${v.slug}`,
+      url: venue ? `/venues/${v.slug}` : `/vendors/${v.slug}`,
     },
   };
 }
