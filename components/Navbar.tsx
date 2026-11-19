@@ -95,6 +95,8 @@ const navLinks: { href: string; label: string; badge?: string; wideOnly?: boolea
   { href: '/#how-it-works', label: 'How It Works' },
   { href: '/growth-partner', label: 'Growth Partner' },
   { href: '/vivah-os', label: 'Vivah OS', badge: 'New' },
+  // Client OS entry, option A (founder, 19 Nov 2026): couples sign in to My Wedding with the code their expert gives them
+  { href: '/customer/login', label: 'My Wedding' },
   { href: '/about', label: 'About Us', wideOnly: true },
   { href: '/blog', label: 'Blog', wideOnly: true },
 ];

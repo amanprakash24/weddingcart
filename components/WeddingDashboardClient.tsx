@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import {
   PlanFormData, EVENT_LABELS, SERVICE_ICONS, SERVICE_LABELS, EST_RANGES,
-  buildChecklist, daysUntil, formatDate, cateringEstimate, venueTag, emptyVenueMessage,
+  buildChecklist, daysUntil, formatDate, cateringEstimate, venueTag, emptyVenueMessage, callLine, venuePriceLabel,
   STYLE_LABELS, BUDGET_LABELS, BUDGET_TIPS,
 } from '@/lib/planPreview';
 
@@ -106,13 +106,15 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold bg-emerald-500 text-white px-2 py-0.5 rounded-full">Confirmed</span>
-              <span className="text-xs text-gray-500">Your expert call is scheduled</span>
+              <span className="text-xs font-semibold bg-emerald-500 text-white px-2 py-0.5 rounded-full">Received</span>
+              <span className="text-xs text-gray-500">Your plan is with our team</span>
             </div>
-            <p className="text-gray-900 font-semibold text-base">
-              Your Wedding Expert will call on <span className="text-emerald-700">{formatDate(form.consultationDate)}</span> at <span className="text-emerald-700">{form.preferredTime}</span>
-            </p>
+            <p className="text-gray-900 font-semibold text-base">{callLine(form.consultationDate, form.preferredTime)}</p>
             <p className="text-gray-500 text-sm mt-1">They&apos;ll review your full plan, suggest vendors, and answer all your questions.</p>
+            {/* Client OS entry, option A (founder, 19 Nov 2026): the expert gives the couple their My Wedding login code */}
+            <p className="text-gray-600 text-sm mt-2">
+              They will also send you a login code for <Link href="/customer/login" className="font-semibold text-emerald-700 underline underline-offset-2">My Wedding</Link>, where you can follow your wedding plan online.
+            </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <a
@@ -154,9 +156,9 @@ export default function WeddingDashboardClient({ form, cartTotal }: Props) {
             <div className="grid sm:grid-cols-3 gap-4">
               {venues.map((v) => {
                 const tag = venueTag(v);
-                const price = `₹${(v.priceMin / 100000).toFixed(1)}–${(v.priceMax / 100000).toFixed(1)} L`;
+                const price = venuePriceLabel(v.priceMin, v.priceMax, v.priceUnit);
                 return (
-                  <Link key={v.id} href={`/vendors/${v.id}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group block">
+                  <Link key={v.id} href={`/vendors/${v.slug ?? v.id}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group block">
                     <div className="relative h-28 overflow-hidden">
                       {v.image ? (
                         <Image src={v.image} alt={v.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 640px) 100vw, 33vw" />
