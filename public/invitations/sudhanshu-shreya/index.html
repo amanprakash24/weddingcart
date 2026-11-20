@@ -419,7 +419,7 @@ html.anim .contacts:not(.in) .contact{transform:rotateX(-75deg) translateZ(-60px
 @media (prefers-reduced-motion: reduce){ .d3,.bg{transform:none!important} }
 
 /* gate: title floats in the open sky, no box over the artwork */
-.gate-top{position:absolute;left:0;right:0;top:calc(40% + env(safe-area-inset-top,0px));display:flex;justify-content:center;
+.gate-top{position:absolute;left:0;right:0;top:calc(43% + env(safe-area-inset-top,0px));display:flex;justify-content:center;
   padding-left:var(--gl);padding-right:var(--gr);pointer-events:none;transition:transform 1s ease, opacity .8s ease}
 #gate.rung .gate-top{transform:translateZ(200px) translateY(-40px);opacity:0}
 #gate .names-pill{background:radial-gradient(closest-side, rgba(255,250,242,.92), rgba(255,250,242,.7) 55%, rgba(255,250,242,0));
@@ -452,7 +452,7 @@ img.mono{height:auto;aspect-ratio:900/480}
 @keyframes clap{0%{transform:rotate(0)}15%{transform:rotate(-22deg)}35%{transform:rotate(18deg)}55%{transform:rotate(-10deg)}75%{transform:rotate(5deg)}100%{transform:rotate(0)}}
 #gate.rung .art{transform:none}
 #gate.rung .gate-top{transform:translateY(20px);opacity:0}
-@media (max-aspect-ratio: 3/4){ .gate-top{top:calc(33% + env(safe-area-inset-top,0px))} #gate .names-pill{padding:28px 40px} }
+@media (max-aspect-ratio: 3/4){ .gate-top{top:calc(38% + env(safe-area-inset-top,0px))} #gate .names-pill{padding:28px 40px} }
 /* ---------- music card ---------- */
 .music-sec{padding-block:90px;background:#fbeef1}
 .music-sec .bg img{opacity:.35;object-position:50% 20%}
@@ -500,6 +500,85 @@ main{container:page / inline-size;position:relative;z-index:1;background:var(--p
   #music{right:calc((100vw - min(500px, 42vw)) / 2 + 16px)}
 }
 @media (min-width: 900px) and (max-width: 1199px){ .desk-side{display:none} main{width:min(520px, 70vw)} #music{right:calc((100vw - min(520px, 70vw)) / 2 + 16px)} }
+/* ================= one theme for the whole invitation =================
+   every section shares the ivory paper; artwork is warmed to one grade and dissolves into the paper
+   at its edges, so the page reads as one continuous card instead of separate coloured slides */
+main > section{background:var(--paper)!important;color:var(--ink)}
+main > section > .bg img{filter:sepia(.18) saturate(.82) brightness(1.02)}
+main > section:not(.hero) > .bg{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%)}
+.hero > .bg{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 82%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 82%,transparent 100%)}
+/* the floral sections all use the same, gentle strength */
+.invite .bg img,.event .bg img,.countdown .bg img,.rsvp .bg img{opacity:.55!important}
+.invite .wash,.event .wash,.countdown .wash,.rsvp .wash{background:radial-gradient(70% 55% at 50% 50%, rgba(251,246,238,.92), rgba(251,246,238,.55) 70%, rgba(251,246,238,0) 100%)!important}
+/* the story art keeps its picture but in the same warm ivory family */
+.couple .bg img{filter:sepia(.32) saturate(.7) hue-rotate(-8deg) brightness(1.04)}
+.couple .wash{background:linear-gradient(180deg, rgba(251,246,238,.96) 0%, rgba(251,246,238,.82) 38%, rgba(251,246,238,0) 62%)!important}
+/* RSVP: ivory like the rest, with a plum card as the accent */
+.rsvp h2{color:var(--plum)!important}
+.rsvp .caps{color:#8a5f1f!important}
+.rsvp p{color:var(--muted)!important}
+.contact{background:linear-gradient(180deg,#7d3558,var(--plum))!important;color:#fff6ea;box-shadow:0 0 0 1px rgba(168,121,47,.6), 0 0 0 6px #fbf6ee, 0 0 0 7px rgba(168,121,47,.3), 0 20px 40px rgba(74,35,54,.2)!important}
+.contact span{color:#f3d79a!important}
+/* section headings: one style everywhere */
+main h2{color:var(--plum)}
+/* gold ornament at every section break, like pages of one printed card */
+main > section:not(.hero)::before{content:"";position:absolute;left:50%;top:22px;width:150px;height:16px;margin-left:-75px;z-index:3;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 16'%3E%3Cpath d='M0 8h58M92 8h58' stroke='%23b0813a' stroke-width='1'/%3E%3Cpath d='M75 1l7 7-7 7-7-7z' fill='%23b0813a'/%3E%3Ccircle cx='62' cy='8' r='2' fill='%23b0813a'/%3E%3Ccircle cx='88' cy='8' r='2' fill='%23b0813a'/%3E%3C/svg%3E") center/contain no-repeat}
+footer{background:var(--paper)}
+.music-credit{font-size:13px;color:var(--muted);letter-spacing:.04em;margin-top:10px}
+.music-credit:empty{display:none}
+.couple h2{font-size:clamp(32px,8.6cqi,56px)!important;text-wrap:balance}
+/* ---------- twin golden wedding bells with an ivory satin bow ---------- */
+.bell-wrap{width:min(66vw,320px)!important;margin-left:calc(min(66vw,320px) / -2)!important;top:1%!important;animation:bellIdle 4.2s ease-in-out infinite}
+.bell-wrap .bell.twin{max-height:36svh;width:100%;overflow:visible}
+.twin .tb{transform-box:view-box;transform-origin:200px 64px}
+.twin .tb.l{animation:tbIdleL 3.2s ease-in-out infinite}
+.twin .tb.r{animation:tbIdleR 3.2s ease-in-out infinite}
+@keyframes tbIdleL{0%,100%{transform:rotate(0)}50%{transform:rotate(3deg)}}
+@keyframes tbIdleR{0%,100%{transform:rotate(0)}50%{transform:rotate(-3deg)}}
+#gate.rung .bell-wrap{animation:none}
+#gate.rung .twin .tb.l{animation:tbRingL 1.7s cubic-bezier(.3,.6,.3,1)}
+#gate.rung .twin .tb.r{animation:tbRingR 1.7s cubic-bezier(.3,.6,.3,1)}
+@keyframes tbRingL{0%{transform:rotate(0)}18%{transform:rotate(-16deg)}36%{transform:rotate(5deg)}54%{transform:rotate(-9deg)}72%{transform:rotate(3deg)}100%{transform:rotate(0)}}
+@keyframes tbRingR{0%{transform:rotate(0)}18%{transform:rotate(16deg)}36%{transform:rotate(-5deg)}54%{transform:rotate(9deg)}72%{transform:rotate(-3deg)}100%{transform:rotate(0)}}
+.twin .sp{transform-box:fill-box;transform-origin:center;animation:twinkle 2.4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.6)}50%{opacity:1;transform:scale(1.15)}}
+#gate .ring{top:calc(env(safe-area-inset-top,0px) + min(24svh, 210px))!important}
+/* ================= 3D opening: two hands unite ================= */
+.g3d{position:absolute;top:0;bottom:0;left:50%;width:100%;transform:translateX(-50%);perspective:1000px;pointer-events:none;z-index:1}
+@media (min-aspect-ratio: 3/4){ .g3d{width:auto;height:100%;aspect-ratio:9/16} }
+.g3d-layer{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.g3d-layer.far{transform:translate3d(calc(var(--px,0) * -6px), calc(var(--py,0) * -4px), -60px)}
+.g3d-layer.mid{transform:translate3d(calc(var(--px,0) * -16px), calc(var(--py,0) * -10px), 40px) rotateY(calc(var(--px,0) * 4deg))}
+.g3d-glow{position:absolute;left:50%;top:27%;width:90%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(closest-side, rgba(255,236,190,.75), rgba(255,214,150,.25) 55%, rgba(255,214,150,0));transition:opacity 1.2s ease}
+.unite{position:absolute;left:0;right:0;top:17%;height:24%;transform-style:preserve-3d}
+.hand{position:absolute;top:0;width:66%;height:auto;transform-style:preserve-3d;
+  filter:drop-shadow(0 18px 16px rgba(74,35,54,.22)) blur(2.5px) saturate(.9) sepia(.08);
+  transition:transform 1.9s cubic-bezier(.2,.75,.15,1), filter 1.4s ease;animation:hfloat 3.8s ease-in-out infinite}
+.hand.l{left:-4%;transform-origin:0 50%;transform:translateX(-46%) translateZ(-160px) rotateY(32deg) rotate(-5deg)}
+.hand.r{right:-4%;transform-origin:100% 50%;transform:translateX(46%) translateZ(-160px) rotateY(-32deg) rotate(5deg);animation-delay:-1.9s}
+@keyframes hfloat{50%{translate:0 -7px}}
+#gate.united .hand{filter:drop-shadow(0 22px 20px rgba(74,35,54,.25)) blur(0) saturate(1) sepia(.08)}
+#gate.united .hand.l{transform:translateX(0) translateZ(0) rotateY(0) rotate(0)}
+#gate.united .hand.r{transform:translateX(0) translateZ(0) rotateY(0) rotate(0)}
+/* gold rings stand in until the hand artwork is added */
+.ring-uni{display:none;position:absolute;top:6%;width:27%;height:auto;overflow:visible;transform-style:preserve-3d;
+  filter:drop-shadow(0 10px 12px rgba(122,70,30,.3));transition:transform 1.9s cubic-bezier(.2,.75,.15,1);animation:hfloat 3.4s ease-in-out infinite}
+.g3d.no-hands .hand{display:none}
+.g3d.no-hands .ring-uni{display:block}
+.ring-uni.l{left:50%;transform:translateX(-190%) translateZ(-200px) rotateY(70deg)}
+.ring-uni.r{left:50%;transform:translateX(90%) translateZ(-200px) rotateY(-70deg);animation-delay:-1.7s}
+#gate.united .ring-uni.l{transform:translateX(-78%) translateZ(0) rotateY(0) rotate(-8deg)}
+#gate.united .ring-uni.r{transform:translateX(-22%) translateZ(10px) rotateY(0) rotate(8deg)}
+.spark-burst{position:absolute;left:50%;top:44%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;opacity:0;
+  background:radial-gradient(circle,#fff,#ffe6a0 40%,rgba(255,214,150,0) 70%)}
+.g3d.no-hands .spark-burst{top:52%}
+#gate.united .spark-burst{animation:sburst 1.3s 1.45s ease-out forwards}
+@keyframes sburst{0%{opacity:0;transform:scale(1)}20%{opacity:1}100%{opacity:0;transform:scale(26)}}
+#gate .ring{top:calc(env(safe-area-inset-top,0px) + 27%)!important}
+#gate.united .gate-top{opacity:1!important;transform:none!important}
 </style>
 </head>
 <body>
@@ -520,44 +599,23 @@ main{container:page / inline-size;position:relative;z-index:1;background:var(--p
 </svg>
 
 <!-- ===== Gate ===== -->
-<div id="gate" role="button" tabindex="0" aria-label="Ring the bell to open the invitation">
+<div id="gate" role="button" tabindex="0" aria-label="Tap to unite and open the invitation">
   <div class="blur" id="gateBlur"></div>
-  <img class="art" id="gateArt" src="/invitations/sudhanshu-shreya/assets/gate-bell.jpg" alt="A temple gateway with a brass bell, a peacock and a lotus pond"
-       onerror="this.onerror=null;this.src='/invitations/sudhanshu-shreya/assets/rk-garden.jpg';document.getElementById('gate').style.setProperty('--bell-y','45%')">
+  <img class="art" id="gateArt" src="/invitations/sudhanshu-shreya/assets/floral-arch.jpg" alt="An ivory card framed with roses and jasmine"
+       onerror="this.onerror=null;this.src='/invitations/sudhanshu-shreya/assets/rk-garden.jpg'">
   <!-- brass temple bell hanging from the arch: sways gently, swings and rings when tapped -->
-  <div class="bell-wrap" aria-hidden="true">
-    <svg class="bell" viewBox="0 0 160 330">
-      <defs>
-        <linearGradient id="brassB" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#6e4610"/><stop offset=".22" stop-color="#b8862e"/><stop offset=".42" stop-color="#ffe7a8"/>
-          <stop offset=".58" stop-color="#d9a64a"/><stop offset=".85" stop-color="#8a5a16"/><stop offset="1" stop-color="#5c3a0c"/>
-        </linearGradient>
-        <linearGradient id="brassD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a16"/><stop offset="1" stop-color="#4a2e08"/></linearGradient>
-        <radialGradient id="bellGlow"><stop offset="0" stop-color="#fff3c4" stop-opacity=".8"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
-      </defs>
-      <!-- chain -->
-      <g fill="none" stroke="url(#brassB)" stroke-width="4">
-        <ellipse cx="80" cy="12" rx="6" ry="10"/><ellipse cx="80" cy="30" rx="4" ry="10" stroke-width="3.4"/>
-        <ellipse cx="80" cy="48" rx="6" ry="10"/><ellipse cx="80" cy="66" rx="4" ry="10" stroke-width="3.4"/>
-        <ellipse cx="80" cy="84" rx="6" ry="10"/><ellipse cx="80" cy="102" rx="4" ry="10" stroke-width="3.4"/>
-      </g>
-      <circle cx="80" cy="200" r="78" fill="url(#bellGlow)"/>
-      <!-- crown -->
-      <path d="M68 112 h24 l-3 10 h-18z" fill="url(#brassB)"/>
-      <ellipse cx="80" cy="126" rx="20" ry="6" fill="url(#brassB)"/>
-      <!-- bell body -->
-      <path d="M80 128 C52 128 44 150 42 182 C40 214 34 236 18 252 L142 252 C126 236 120 214 118 182 C116 150 108 128 80 128Z" fill="url(#brassB)"/>
-      <path d="M50 196 H110" stroke="#5c3a0c" stroke-opacity=".55" stroke-width="2"/>
-      <path d="M48 206 H112" stroke="#ffe7a8" stroke-opacity=".7" stroke-width="1.6"/>
-      <path d="M58 150 C62 140 70 136 78 136" stroke="#fff6d8" stroke-opacity=".75" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <!-- lip -->
-      <path d="M12 252 Q80 270 148 252 L150 262 Q80 282 10 262Z" fill="url(#brassB)"/>
-      <ellipse cx="80" cy="258" rx="66" ry="7" fill="url(#brassD)" opacity=".55"/>
-      <!-- clapper -->
-      <g class="clapper"><line x1="80" y1="240" x2="80" y2="280" stroke="#5c3a0c" stroke-width="3"/><circle cx="80" cy="286" r="9" fill="url(#brassB)"/></g>
-      <!-- tassel -->
-      <path d="M80 295 v14" stroke="#b33a4c" stroke-width="2"/><path d="M74 309 h12 l-2 16 h-8z" fill="#c8455a"/>
-    </svg>
+  <!-- 3D "two hands unite" opening: art layers move at different depths; hands (or gold rings until hand art is added) meet in the middle -->
+  <div class="g3d" id="g3d" aria-hidden="true">
+    <div class="g3d-layer far"><div class="g3d-glow"></div></div>
+    <div class="g3d-layer mid">
+      <div class="unite">
+        <img class="hand l" id="handL" src="/invitations/sudhanshu-shreya/assets/hand-krishna.png" alt="">
+        <img class="hand r" id="handR" src="/invitations/sudhanshu-shreya/assets/hand-bride.png" alt="">
+        <svg class="ring-uni l" viewBox="0 0 120 120"><defs><linearGradient id="ugold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1c4"/><stop offset=".4" stop-color="#d4a04c"/><stop offset=".75" stop-color="#8a5c1a"/><stop offset="1" stop-color="#f3d79a"/></linearGradient><linearGradient id="uice" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#d6ecff"/><stop offset="1" stop-color="#8ab8e6"/></linearGradient></defs><circle cx="60" cy="66" r="40" fill="none" stroke="url(#ugold)" stroke-width="9"/></svg>
+        <svg class="ring-uni r" viewBox="0 0 120 120"><circle cx="60" cy="66" r="40" fill="none" stroke="url(#ugold)" stroke-width="9"/><polygon points="50,14 70,14 77,22 60,40 43,22" fill="url(#uice)" stroke="#fff" stroke-width="1.2"/></svg>
+        <div class="spark-burst"></div>
+      </div>
+    </div>
   </div>
   <span class="ring"></span><span class="ring"></span>
   <div class="gate-top">
@@ -573,7 +631,7 @@ main{container:page / inline-size;position:relative;z-index:1;background:var(--p
     </div>
   </div>
   <div class="hint">
-    <div class="pill"><b>Ring the bell</b><i>to begin the celebration</i></div>
+    <div class="pill"><b>Tap to unite</b><i>two hearts, one promise</i></div>
   </div>
 </div>
 <!-- ===== Garden gate: after the bell, ivory-and-gold doors open inside the floral arch ===== -->
@@ -733,6 +791,7 @@ main{container:page / inline-size;position:relative;z-index:1;background:var(--p
 
   <!-- ===== RSVP ===== -->
   <section class="rsvp" aria-label="RSVP">
+    <div class="bg"><img src="/invitations/sudhanshu-shreya/assets/floral-arch.jpg" alt=""></div>
     <div class="wash"></div>
     <div class="inner d3">
       <div class="caps rv">Join the celebration</div>
@@ -762,6 +821,7 @@ main{container:page / inline-size;position:relative;z-index:1;background:var(--p
     <img class="mono rv" src="/invitations/sudhanshu-shreya/assets/monogram-ss.png" alt="Monogram: S and S joined by a heart" style="width:150px">
     <div class="caps">With love &amp; blessings</div>
     <div class="fam" data-f="families">The Family</div>
+    <div class="music-credit" data-f="musicCredit"></div>
   </footer>
   <aside class="studio" aria-label="Invitation designed by Shaadi Shopping">
     <div class="studio-in">
@@ -812,7 +872,8 @@ const INVITE = {
   contacts: [                // RSVP: name + 10-digit mobile number
     { name: "The Family", phone: "95255 55331", whatsapp: "94728 58331" },
   ],
-  music: "/invitations/sudhanshu-shreya/assets/kailash-lofi.mp3",   // "Kailash Lofi": original Shiv-Parvati lofi instrumental composed for Shaadi Shopping
+  music: "/invitations/sudhanshu-shreya/assets/chanakya-clip.mp3",  // "Chanakya" by Rishab Rikhiram Sharma, from 0:41, used with permission (client confirmed)
+  musicCredit: "Music: “Chanakya” · Rishab Rikhiram Sharma",
   youtube: null,             // optional "Music for the occasion" YouTube card, e.g. { id: "zMkGAzAmcnA", title: "...", channel: "...", channelUrl: "..." }
   studio: {                  // shown at the very end so guests can order their own invite
     whatsapp: "",            // e.g. "98xxxxxxxx"
@@ -991,9 +1052,10 @@ function enterSite(){
 }
 function openGate(){
   if (opened) return; opened = true;
-  Audio2.bell();
+  Audio2.bell();   // one soft chime as the two hands meet
   startBackgroundMusic();
-  $("gate").classList.add("rung");
+  $("gate").classList.add("rung", "united");
+  setTimeout(() => { for (let i = 0; i < 50; i++) setTimeout(() => spawn(true), i * 20); }, 1500);   // petals as they meet
   if (reduce) {                                   // no motion: straight in
     $("gate").classList.add("gone"); enterSite();
     setTimeout(() => { $("gate").hidden = true; }, 50);
@@ -1001,17 +1063,17 @@ function openGate(){
   }
   const g = $("garden");
   // 1 · the bell gate fades into the floral arch with its closed ivory-and-gold doors
-  setTimeout(() => { g.hidden = false; void g.offsetWidth; g.classList.add("show"); $("gate").classList.add("gone"); }, 1400);
-  setTimeout(() => { $("gate").hidden = true; }, 2600);
+  setTimeout(() => { g.hidden = false; void g.offsetWidth; g.classList.add("show"); $("gate").classList.add("gone"); }, 3000);
+  setTimeout(() => { $("gate").hidden = true; }, 4200);
   // 2 · the monogram lock turns away, then both doors swing open with a shower of petals
-  setTimeout(() => g.classList.add("unlock"), 2600);
+  setTimeout(() => g.classList.add("unlock"), 4200);
   setTimeout(() => {
     g.classList.add("open");
     for (let i = 0; i < 70; i++) setTimeout(() => spawn(true), 200 + i * 22);
-  }, 3200);
+  }, 4800);
   // 3 · walk through the gate into the invitation
-  setTimeout(() => { g.classList.add("through"); enterSite(); }, 5300);
-  setTimeout(() => { g.hidden = true; }, 7500);
+  setTimeout(() => { g.classList.add("through"); enterSite(); }, 6900);
+  setTimeout(() => { g.hidden = true; }, 9100);
 }
 $("gate").addEventListener("click", openGate);
 $("gate").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openGate(); } });
@@ -1077,6 +1139,23 @@ if (!reduce) requestAnimationFrame(frame);
   const s = document.createElement("script");
   s.src = "https://www.youtube.com/iframe_api"; s.async = true;
   document.head.appendChild(s);   // where YouTube can't load (e.g. a locked-down preview), the "Play on YouTube" link stays
+})();
+
+// ---------- 3D opening: hands (or rings) + gentle parallax ----------
+(function(){
+  const g3 = $("g3d"); let missing = 0;
+  const onMiss = () => { if (++missing) g3.classList.add("no-hands"); };   // any hand picture missing → use the gold rings
+  ["handL", "handR"].forEach(id => { const im = $(id); if (im.complete && !im.naturalWidth) onMiss(); im.addEventListener("error", onMiss); });
+  if (reduce) return;
+  let tx = 0, ty = 0, last = -1e9;
+  $("gate").addEventListener("pointermove", e => { tx = e.clientX / innerWidth * 2 - 1; ty = e.clientY / innerHeight * 2 - 1; last = performance.now(); }, { passive: true });
+  (function loop(t){
+    if (!$("gate").hidden) {
+      if (t - last > 2000) { tx = Math.sin(t * .0005) * .6; ty = Math.cos(t * .0004) * .4; }
+      g3.style.setProperty("--px", tx.toFixed(3)); g3.style.setProperty("--py", ty.toFixed(3));
+      requestAnimationFrame(loop);
+    }
+  })(0);
 })();
 
 // ---------- flip-clock digits ----------
