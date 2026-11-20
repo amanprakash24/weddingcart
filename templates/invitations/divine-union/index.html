@@ -1,0 +1,1280 @@
+<title>{{GROOM}} & {{BRIDE}} Engagement Invitation</title>
+<meta name="description" content="You are warmly invited to the {{CEREMONY}} of {{GROOM}} ({{GROOM_NICK}}) & {{BRIDE}} · {{WEEKDAY}}, {{DATE_LONG}} · 5:00 PM · {{VENUE}}.">
+<meta property="og:title" content="{{GROOM}} & {{BRIDE}} Engagement Invitation">
+<meta property="og:description" content="{{CEREMONY}} · {{WEEKDAY}}, {{DATE_LONG}} · 5:00 PM · {{VENUE}}">
+<meta property="og:image" content="assets/rk-garden.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Cinzel:wght@500;600&family=Playfair+Display:ital,wght@0,500;1,400;1,500&family=Marcellus&family=Great+Vibes&family=Pinyon+Script&family=Tiro+Devanagari+Hindi&display=swap">
+<style>
+/* Layout: a scrolling wedding-site in the Framika manner. A tap-to-ring gate, then full-bleed
+   watercolour sections. Phones get stacked portrait scenes; tablets and laptops get wide art
+   or a split layout (arched art panel + content). Single deliberate "ivory paper" look. */
+:root{
+  color-scheme: light;
+  --paper:#fbf6ee;
+  --paper-2:#f4ead9;
+  --ink:#4a2336;
+  --plum:#6d2c4c;
+  --gold:#a8792f;
+  --gold-hi:#d9b46a;
+  --muted:#7b5e66;
+  --blush:#f3d6dc;
+  --f-script:"Pinyon Script","Great Vibes",cursive;
+  --f-mono:"Great Vibes","Pinyon Script",cursive;
+  --f-caps:"Marcellus","Cormorant Garamond",Georgia,serif;
+  --f-body:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --f-deva:"Tiro Devanagari Hindi","Noto Serif Devanagari","Mangal",serif;
+  --gl:max(18px, env(safe-area-inset-left, 0px));
+  --gr:max(18px, env(safe-area-inset-right, 0px));
+}
+html{scroll-behavior:smooth}
+html,body{background:var(--paper)}
+body{color:var(--ink);font-family:var(--f-body);font-size:19px;line-height:1.55;overflow-x:hidden}
+body.locked{overflow:hidden;height:100%}
+img{display:block;max-width:100%}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--plum);outline-offset:3px}
+#petals{position:fixed;inset:0;z-index:30;width:100%;height:100%;pointer-events:none}
+
+/* ---------- shared ---------- */
+.script{font-family:var(--f-script);font-weight:400;line-height:1.1;color:var(--plum)}
+.caps{font-family:var(--f-caps);text-transform:uppercase;letter-spacing:.24em;color:var(--gold)}
+.deva{font-family:var(--f-deva);color:var(--gold)}
+.rule{display:flex;align-items:center;justify-content:center;gap:12px;color:var(--gold)}
+.rule::before,.rule::after{content:"";height:1px;width:64px;background:linear-gradient(90deg,transparent,currentColor)}
+.rule::after{transform:scaleX(-1)}
+.rule i{width:7px;height:7px;transform:rotate(45deg);background:currentColor}
+.ph{font-style:italic;opacity:.75}
+
+.mono{display:block;width:min(260px,62cqi);height:auto;overflow:visible;filter:drop-shadow(0 3px 5px rgba(122,70,30,.22))}
+.mono text{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;font-size:118px;transform-box:fill-box;transform-origin:center}
+.mono .heart{fill:rgba(233,138,165,.14);stroke-width:5;stroke-linejoin:round}
+.mono.in .heart,.in .mono .heart{animation:draw 2.6s .6s cubic-bezier(.5,0,.3,1) both}
+.mono.in .ml,.in .mono .ml{animation:mL 1.6s .2s cubic-bezier(.2,.8,.2,1) both}
+.mono.in .mr,.in .mono .mr{animation:mR 1.6s .2s cubic-bezier(.2,.8,.2,1) both}
+@keyframes draw{from{stroke-dasharray:290;stroke-dashoffset:290;fill:rgba(233,138,165,0)}70%{stroke-dasharray:290;fill:rgba(233,138,165,0)}to{stroke-dasharray:290;stroke-dashoffset:0;fill:rgba(233,138,165,.14)}}
+@keyframes mL{from{opacity:0;transform:translateX(-26px)}to{opacity:1;transform:none}}
+@keyframes mR{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
+
+/* reveal on scroll */
+html.anim .rv{transition:opacity 1.1s ease var(--d,0s), transform 1.2s cubic-bezier(.2,.8,.2,1) var(--d,0s)}
+html.anim .rv:not(.in){opacity:0;transform:translateY(24px)}
+html.anim .wr{transition:clip-path 1.9s cubic-bezier(.45,.05,.3,1) var(--d,0s)}
+html.anim .wr:not(.in){clip-path:inset(-30% 102% -30% -6%)}
+.wr.in{clip-path:inset(-30% -6% -30% -6%)}
+
+section{position:relative;overflow:hidden;isolation:isolate}
+.bg{position:absolute;inset:0;z-index:-2}
+.bg img{width:100%;height:100%;object-fit:cover}
+.wash{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.inner{padding-left:var(--gl);padding-right:var(--gr)}
+
+/* ---------- gate ---------- */
+#gate{position:fixed;inset:0;z-index:60;cursor:pointer;background:#efe6d6;display:grid;place-items:center;overflow:hidden;
+  transition:opacity 1.2s ease .5s}
+#gate .blur{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(30px) brightness(.9)}
+#gate .art{position:relative;height:100%;width:100%;object-fit:cover}
+@media (min-aspect-ratio: 3/4){ #gate .art{width:auto;height:100%;aspect-ratio:9/16;object-fit:cover;box-shadow:0 0 80px rgba(0,0,0,.25)} }
+#gate .hint{position:absolute;left:0;right:0;bottom:calc(7% + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:6px;
+  text-align:center;padding-inline:var(--gl) var(--gr)}
+#gate .hint .pill{display:flex;flex-direction:column;align-items:center;gap:2px;padding:14px 30px;border-radius:999px;
+  background:rgba(255,250,242,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  box-shadow:0 0 0 1px rgba(168,121,47,.45),0 10px 30px rgba(74,35,54,.2);animation:float 3s ease-in-out infinite}
+#gate .hint b{font-family:var(--f-caps);font-weight:400;letter-spacing:.32em;text-transform:uppercase;font-size:15px;color:var(--plum)}
+#gate .hint i{font-family:var(--f-body);font-size:16px;color:var(--gold)}
+#gate .ring{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + min(27svh, 230px));width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
+  border:2px solid rgba(255,236,190,.9);opacity:0;pointer-events:none}
+#gate.rung .ring{animation:ripple 1.4s ease-out forwards}
+#gate.rung .ring:nth-of-type(2){animation-delay:.25s}
+@keyframes ripple{from{opacity:.9;transform:scale(.4)}to{opacity:0;transform:scale(3.2)}}
+@keyframes float{50%{transform:translateY(-6px)}}
+#bloom{position:fixed;inset:0;z-index:61;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 40%, #fffdf6, #fff6e0 40%, rgba(255,246,224,.0) 80%)}
+#bloom.go{animation:bloom 1.8s ease forwards}
+@keyframes bloom{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
+#gate.gone{opacity:0;pointer-events:none}
+
+/* ---------- garden gate (second ritual) ---------- */
+#garden{position:fixed;inset:0;z-index:59;display:grid;place-items:center;overflow:hidden;background:#efe6d6;
+  opacity:0;transition:opacity .9s ease}
+#garden[hidden]{display:none}
+#garden.show{opacity:1}
+#garden .gg-blur{position:absolute;inset:-40px;background:url("assets/floral-arch.jpg") center/cover;filter:blur(28px) brightness(.95)}
+.gg-scene{position:relative;height:100svh;width:min(100cqi, calc(100svh * .75));overflow:hidden;
+  box-shadow:0 0 80px rgba(74,35,54,.25);transition:transform 2.2s cubic-bezier(.55,.05,.3,1), opacity 1.4s ease}
+.gg-path{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 78%;transform:scale(1.08);
+  transition:transform 3.4s cubic-bezier(.3,.6,.2,1)}
+/* the floral arch: the art's ivory centre is cut away into an arched opening */
+.gg-arch{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' fill='%23fff' d='M0 0H100V100H0Z M15 100V36C15 23 31 14 50 14C69 14 85 23 85 36V100Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' fill='%23fff' d='M0 0H100V100H0Z M15 100V36C15 23 31 14 50 14C69 14 85 23 85 36V100Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;
+  filter:drop-shadow(0 0 14px rgba(74,35,54,.25))}
+.gg-doors{position:absolute;left:15%;right:15%;top:14%;bottom:0;perspective:1100px;transform-style:preserve-3d}
+.gg-door{position:absolute;top:0;bottom:0;width:50%;transform-style:preserve-3d;backface-visibility:hidden;
+  /* ivory pickets with gold edges; the gaps let the garden show through, like a real garden gate */
+  background:
+    repeating-linear-gradient(90deg, #fffaf0 0 12.5%, #c99a45 12.5% 14.5%, rgba(255,250,240,0) 14.5% 18.5%, #c99a45 18.5% 20.5%),
+    linear-gradient(180deg, rgba(255,250,240,0), rgba(255,250,240,0));
+  box-shadow:inset 0 0 0 3px #c99a45, inset 0 0 0 5px #fffaf0, inset 0 0 0 6px rgba(168,121,47,.6), 0 18px 40px rgba(74,35,54,.25);
+  transition:transform 2.3s cubic-bezier(.6,.04,.25,1)}
+.gg-door.l{left:0;transform-origin:left center;border-radius:100% 0 0 0 / 26% 0 0 0}
+.gg-door.r{right:0;transform-origin:right center;border-radius:0 100% 0 0 / 0 26% 0 0}
+.gg-door .rail{position:absolute;left:0;right:0;height:3.2%;background:linear-gradient(180deg,#f6dc9c,#c99a45 45%,#8a5c1a 55%,#e8c47a);
+  box-shadow:0 0 0 1.5px #c99a45, 0 2px 4px rgba(74,35,54,.15)}
+.gg-door .rail.top{top:30%}.gg-door .rail.mid{top:58%}.gg-door .rail.bot{bottom:4%}
+.gg-door .brace{position:absolute;left:4%;right:4%;top:61.5%;height:3%;background:linear-gradient(180deg,#fffaf0,#f1e2c2);
+  box-shadow:0 0 0 1.5px #c99a45;transform-origin:center}
+.gg-door .brace.a{transform:translateY(560%) rotate(33deg)}
+.gg-door .brace.b{transform:translateY(560%) rotate(-33deg)}
+.gg-door .finial{position:absolute;top:21%;width:22px;height:22px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#fff1c4,#c99a45 55%,#7a5414);box-shadow:0 2px 4px rgba(74,35,54,.3)}
+.gg-door.l .finial{right:12%}.gg-door.r .finial{left:12%}
+.gg-door .latch{position:absolute;top:44%;width:8px;height:44px;border-radius:4px;
+  background:linear-gradient(90deg,#7a5414,#e8c47a,#8a5c1a)}
+.gg-door.l .latch{right:6px}.gg-door.r .latch{left:6px}
+.gg-lock{position:absolute;left:50%;top:40%;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle,#fffaf0 58%,#f3e3c4);box-shadow:0 0 0 3px #c99a45,0 0 0 7px #fffaf0,0 0 0 8px rgba(168,121,47,.6),0 10px 24px rgba(74,35,54,.3);
+  transition:transform .8s cubic-bezier(.5,0,.3,1), opacity .8s ease;transform:translateZ(30px)}
+.gg-lock img{width:78%}
+.gg-hint{position:absolute;left:0;right:0;bottom:calc(5% + env(safe-area-inset-bottom,0px));text-align:center;
+  font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--plum)}
+.gg-hint{animation:float 3s ease-in-out infinite;width:max-content;max-width:90%;margin:0 auto;padding:10px 20px;border-radius:999px;background:rgba(255,250,242,.9);box-shadow:0 0 0 1px rgba(168,121,47,.45)}
+.gg-hint{bottom:calc(9% + env(safe-area-inset-bottom,0px))}
+#garden.unlock .gg-lock{transform:translateZ(30px) scale(.4) rotate(-40deg);opacity:0}
+#garden.open .gg-door.l{transform:rotateY(-108deg)}
+#garden.open .gg-door.r{transform:rotateY(108deg)}
+#garden.open .gg-path{transform:scale(1)}
+#garden.open .gg-hint{opacity:0;transition:opacity .6s ease}
+#garden.through .gg-scene{transform:scale(1.9);opacity:0}
+#garden.through{opacity:0;transition:opacity 1.2s ease .9s}
+@media (prefers-reduced-motion: reduce){ #garden{display:none!important} }
+
+/* ---------- hero ---------- */
+.hero{min-height:100svh;display:grid}
+.hero .bg img{animation:kb 30s ease-in-out infinite alternate}
+@keyframes kb{from{transform:scale(1.02)}to{transform:scale(1.12) translateY(-1%)}}
+.hero .bg .wide{display:none}
+.hero .wash{background:radial-gradient(70% 34% at 50% 40%, rgba(251,246,238,.8), rgba(251,246,238,.35) 60%, transparent 100%)}
+.hero .inner{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;gap:6px;padding-top:18svh}
+.hero .names{font-family:var(--f-script);font-size:clamp(54px,15cqi,112px);line-height:1.02;color:var(--plum);margin:6px 0 0}
+.hero .names .amp{display:block;font-size:.5em;color:var(--gold);line-height:1}
+.hero .sub{font-size:clamp(12px,3.2cqi,15px);letter-spacing:.32em}
+.hero .date{font-family:var(--f-caps);font-size:clamp(15px,4cqi,19px);letter-spacing:.24em;color:var(--ink)}
+.cue{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-family:var(--f-caps);letter-spacing:.32em;font-size:11px;text-transform:uppercase;color:var(--plum);
+  background:rgba(251,246,238,.75);padding:8px 16px 10px;border-radius:999px}
+.cue i{width:9px;height:9px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(4px) rotate(45deg)}}
+@container page (max-width: 899px){
+  .hero .inner{padding-top:11svh;gap:4px}
+  .hero .mono{width:min(200px,50cqi)}
+  .hero .names{font-size:clamp(46px,12.5cqi,80px)}
+  .hero .wash{background:radial-gradient(85% 32% at 50% 33%, rgba(251,246,238,.88), rgba(251,246,238,.45) 65%, transparent 100%)}
+  .event{padding-top:130px}
+}
+#gate[hidden]{display:none}
+
+
+/* ---------- invitation card ---------- */
+.invite{padding-block:90px;background:var(--paper)}
+.invite .bg img{opacity:.55;filter:saturate(.9)}
+.invite .wash{background:linear-gradient(180deg, var(--paper) 0%, rgba(251,246,238,.2) 20%, rgba(251,246,238,.2) 80%, var(--paper) 100%)}
+.invite .inner{display:grid;place-items:center;perspective:1400px}
+.card{position:relative;width:min(520px,100%);padding:clamp(70px,16cqi,96px) clamp(22px,6cqi,48px) 54px;text-align:center;
+  background:
+    radial-gradient(120% 80% at 50% 0%, #fffdf8, #fbf3e6 70%),
+    var(--paper);
+  border-radius:300px 300px 18px 18px;
+  box-shadow:0 0 0 1px rgba(168,121,47,.5), 0 0 0 9px #fbf6ee, 0 0 0 10px rgba(168,121,47,.35), 0 40px 90px rgba(74,35,54,.22);
+  transform-origin:50% 100%;transition:transform 1.6s cubic-bezier(.2,.8,.2,1), opacity 1.2s ease}
+html.anim .card:not(.in){transform:rotateY(-78deg) translateZ(-120px);opacity:0}
+.card{transform-origin:0% 50%;transition:transform 2s cubic-bezier(.2,.75,.2,1), opacity 1s ease}
+.card::before{content:"";position:absolute;inset:12px;border:1px solid rgba(168,121,47,.35);border-radius:290px 290px 12px 12px;pointer-events:none}
+.card .ganesh{width:96px;margin:0 auto 6px;filter:drop-shadow(0 4px 8px rgba(122,70,30,.18))}
+.card .deva{font-size:17px}
+.card .bless{font-style:italic;color:var(--muted);font-size:18px;max-width:30ch;margin:12px auto 0;text-wrap:balance}
+.card .name{font-family:var(--f-script);font-size:clamp(52px,14cqi,74px);line-height:1.05;color:var(--plum);margin-top:16px}
+.card .nick{font-size:12.5px}
+.card .par{font-size:16.5px;color:var(--muted)}
+.card .amp{font-family:var(--f-script);font-size:46px;color:var(--gold);line-height:1;margin:10px 0 0}
+.card .when{margin-top:22px;font-family:var(--f-caps);letter-spacing:.2em;font-size:14px;color:var(--ink)}
+.lantern{position:absolute;top:0;width:clamp(40px,9cqi,64px);transform-origin:50% 0;animation:sway 4.6s ease-in-out infinite alternate;z-index:2;pointer-events:none}
+.lantern svg{width:100%;height:auto;overflow:visible}
+.lantern.l{left:max(4%, env(safe-area-inset-left,0px))}
+.lantern.r{right:max(4%, env(safe-area-inset-right,0px));animation-delay:-2.3s}
+@keyframes sway{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+
+/* ---------- ceremony: 3D doors ---------- */
+.event{padding-block:100px;background:var(--paper-2)}
+.event .bg img{opacity:1}
+.event .wash{background:radial-gradient(60% 44% at 50% 50%, rgba(251,246,238,.95), rgba(251,246,238,.75) 60%, rgba(251,246,238,.0) 100%)}
+.event .inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.event h2{font-family:var(--f-script);font-weight:400;font-size:clamp(46px,12cqi,72px);line-height:1.05;color:var(--plum);margin:0}
+.stagebox{position:relative;width:min(440px,100%);margin-top:22px;perspective:1600px}
+.ecard{position:relative;padding:44px 26px 36px;border-radius:200px 200px 16px 16px;background:#fffaf2;
+  box-shadow:0 0 0 1px rgba(168,121,47,.5), 0 30px 70px rgba(74,35,54,.18)}
+.ecard::before{content:"";position:absolute;inset:9px;border:1px solid rgba(168,121,47,.3);border-radius:192px 192px 10px 10px;pointer-events:none}
+.ecard .rings{width:90px;height:auto;margin:0 auto 4px;overflow:visible}
+.ecard h3{font-family:var(--f-caps);font-weight:400;letter-spacing:.2em;text-transform:uppercase;font-size:19px;color:var(--plum);margin:6px 0 10px}
+.dateblock{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;max-width:330px;margin:0 auto}
+.dateblock .side{font-family:var(--f-caps);letter-spacing:.2em;text-transform:uppercase;font-size:13px;padding-block:8px;
+  border-top:1px solid rgba(168,121,47,.5);border-bottom:1px solid rgba(168,121,47,.5)}
+.dateblock .day{font-family:var(--f-caps);font-size:62px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums}
+.ecard .yr{font-size:13px;letter-spacing:.5em;margin-top:4px}
+.ecard .time{font-size:20px;margin-top:8px}
+.ecard .vl{font-family:var(--f-script);font-size:36px;color:var(--gold);line-height:1;margin-top:14px}
+.ecard .venue{font-family:var(--f-caps);font-size:22px;letter-spacing:.08em}
+.actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:20px}
+.btn{font-family:var(--f-caps);letter-spacing:.16em;text-transform:uppercase;font-size:12px;text-decoration:none;cursor:pointer;
+  padding:12px 20px;border-radius:999px;border:1px solid var(--gold);color:var(--plum);background:rgba(255,250,242,.8)}
+.btn:hover{background:var(--blush)}
+.btn.primary{background:linear-gradient(180deg,#7d3558,var(--plum));color:#fff6ea;border-color:#5a2140}
+.btn.primary:hover{background:#5a2140}
+.doors{position:absolute;inset:0;pointer-events:none;transform-style:preserve-3d}
+.door{position:absolute;top:0;bottom:0;width:50%;background:
+    linear-gradient(135deg, rgba(255,255,255,.25), rgba(0,0,0,.08)),
+    #f2e2c6;
+  box-shadow:inset 0 0 0 1px rgba(168,121,47,.6), inset 0 0 0 8px #f7ecd8, inset 0 0 0 9px rgba(168,121,47,.45);
+  backface-visibility:hidden;transition:transform 2s cubic-bezier(.6,.04,.25,1) .3s, opacity .6s ease 2s}
+.door.l{left:0;transform-origin:left center;border-radius:200px 0 0 16px / 200px 0 0 16px}
+.door.r{right:0;transform-origin:right center;border-radius:0 200px 16px 0 / 0 200px 16px 0}
+.door .knob{position:absolute;top:52%;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff1c4,var(--gold) 60%,#7a5414)}
+.door.l .knob{right:14px}.door.r .knob{left:14px}
+.door .motif{position:absolute;left:50%;top:28%;transform:translateX(-50%);font-family:var(--f-script);font-size:56px;color:var(--gold);opacity:.75}
+.stagebox.in .door.l{transform:rotateY(-110deg);opacity:0}
+.stagebox.in .door.r{transform:rotateY(110deg);opacity:0}
+html:not(.anim) .doors{display:none}
+
+/* ---------- couple ---------- */
+.couple{min-height:100svh}
+.couple .bg img{object-position:50% 70%}
+.couple .wash{background:linear-gradient(180deg, rgba(255,246,248,.9) 0%, rgba(255,246,248,.65) 40%, rgba(255,246,248,0) 62%)}
+.couple .inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding-block:80px 0}
+.couple h2{font-family:var(--f-script);font-weight:400;font-size:clamp(42px,11cqi,64px);line-height:1.08;color:var(--plum);margin:0}
+.couple p{max-width:30ch;font-size:clamp(18px,4.6cqi,21px);margin:0;color:var(--ink);text-wrap:balance}
+
+/* ---------- RSVP ---------- */
+.rsvp{padding-block:90px;background:var(--plum);color:#fff6ea}
+.rsvp .wash{background:radial-gradient(80% 60% at 50% 0%, rgba(217,180,106,.25), transparent 70%)}
+.rsvp .inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.rsvp .caps{color:var(--gold-hi)}
+.rsvp h2{font-family:var(--f-script);font-weight:400;font-size:clamp(52px,14cqi,80px);line-height:1;margin:0;color:#fff6ea}
+.rsvp p{max-width:32ch;margin:0;color:#f1dfe6}
+.contacts{display:grid;gap:12px;width:min(420px,100%);margin-top:14px}
+.contact{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-radius:14px;
+  background:rgba(255,246,234,.08);box-shadow:inset 0 0 0 1px rgba(217,180,106,.45)}
+.contact div{text-align:left;min-width:0}
+.contact b{display:block;font-family:var(--f-caps);font-weight:400;letter-spacing:.12em;font-size:15px}
+.contact span{font-variant-numeric:tabular-nums;color:var(--gold-hi);font-size:18px;letter-spacing:.06em}
+.contact .btns{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.contact .ln{display:block}
+.contact .wa-ln:empty{display:none}
+.contact .wa.call{background:transparent;color:#fff6ea;box-shadow:inset 0 0 0 1px rgba(255,246,234,.7);text-align:center}
+.contact .wa{text-align:center;font-family:var(--f-caps);font-size:11px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none;
+  padding:9px 12px;border-radius:999px;background:#fff6ea;color:var(--plum);white-space:nowrap}
+
+/* ---------- countdown ---------- */
+.countdown{padding-block:90px 110px;background:var(--paper)}
+.countdown .bg img{opacity:.9}
+.countdown .wash{background:radial-gradient(60% 50% at 50% 50%, rgba(251,246,238,.96), rgba(251,246,238,.8) 60%, rgba(251,246,238,.1) 100%)}
+.countdown .inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.countdown .lead{font-family:var(--f-caps);letter-spacing:.3em;text-transform:uppercase;font-size:13px;color:var(--gold)}
+.countdown h2{font-family:var(--f-script);font-weight:400;font-size:clamp(58px,15cqi,88px);line-height:1;color:var(--plum);margin:0}
+.cells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(8px,2.4cqi,18px);width:min(560px,100%);margin-top:26px}
+.cell{position:relative;aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:999px 999px 14px 14px;background:linear-gradient(180deg,#fffdf8,#f8eedc);
+  box-shadow:0 0 0 1px rgba(168,121,47,.6), 0 0 0 5px #fbf6ee, 0 0 0 6px rgba(168,121,47,.3), 0 14px 30px rgba(74,35,54,.12);
+  animation:hang 5s ease-in-out infinite alternate;transform-origin:50% -40px}
+.cell:nth-child(2){animation-delay:-1.2s}.cell:nth-child(3){animation-delay:-2.4s}.cell:nth-child(4){animation-delay:-3.6s}
+.cell::before{content:"";position:absolute;top:-30px;left:50%;width:1px;height:30px;background:linear-gradient(var(--gold),rgba(168,121,47,.3))}
+.cell b{font-family:var(--f-caps);font-weight:400;font-size:clamp(26px,7.5cqi,44px);color:var(--plum);line-height:1;font-variant-numeric:tabular-nums}
+.cell small{font-family:var(--f-caps);letter-spacing:.18em;text-transform:uppercase;font-size:clamp(9px,2.4cqi,11px);color:var(--muted);margin-top:6px}
+@keyframes hang{from{transform:rotate(-1.4deg)}to{transform:rotate(1.4deg)}}
+footer{padding-block:60px 90px;text-align:center;background:var(--paper);display:flex;flex-direction:column;align-items:center;gap:6px}
+footer .fam{font-size:20px}
+
+/* ---------- music button ---------- */
+#music{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:40;width:52px;height:52px;border-radius:50%;
+  border:1px solid rgba(168,121,47,.6);background:rgba(255,250,242,.9);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(74,35,54,.2)}
+#music svg{width:24px;height:24px}
+#music.on svg{animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- tablets & laptops ---------- */
+@container page (min-width: 900px){
+  body{font-size:20px}
+  .hero .bg .tall{display:none}
+  .hero .bg .wide{display:block}
+  .hero .wash{background:radial-gradient(46% 46% at 50% 40%, rgba(251,246,238,.85), rgba(251,246,238,.4) 60%, transparent 100%)}
+  .hero .inner{padding-top:14svh}
+  .couple{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;background:#fbeef1}
+  .couple .bg{position:relative;inset:auto;z-index:0;height:100svh;order:2}
+  .couple .bg img{border-radius:0}
+  .couple .wash{display:none}
+  .couple .inner{padding-block:80px;padding-left:6cqi;padding-right:4cqi}
+  .invite .bg img,.countdown .bg img,.event .bg img{object-fit:cover}
+}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+/* ---------- legibility pass: clearer display + caps faces, stronger ink ---------- */
+:root{--muted:#5a3f4b;--ink:#3b1a2b}
+.hero .names,.card .name,.event h2,.couple h2,.rsvp h2,.countdown h2,.ecard .vl,.card .amp,.hero .names .amp,.gate-names{
+  font-family:"Playfair Display",Georgia,"Times New Roman",serif;font-style:italic;font-weight:500;letter-spacing:.005em}
+.caps,.date,.ecard h3,.dateblock .side,.dateblock .day,.ecard .venue,.cell b,.cell small,.btn,.contact b,.cue,#gate .hint b,.countdown .lead,.card .when{
+  font-family:"Cinzel",Georgia,serif;font-weight:600}
+body,.card .bless,.couple p,.rsvp p{font-weight:500}
+.hero .names{font-size:clamp(44px,11cqi,96px);line-height:1.08;text-shadow:0 1px 0 rgba(255,255,255,.8),0 0 18px rgba(251,246,238,.9)}
+.hero .names .amp{font-size:.55em;margin:4px 0}
+.hero .date{font-size:clamp(15px,4cqi,20px);letter-spacing:.14em;color:var(--ink)}
+.hero .sub{font-size:clamp(12px,3.2cqi,15px);letter-spacing:.24em;color:#8a5f1f}
+.card .name{font-size:clamp(42px,11cqi,62px)}
+.card .bless{color:var(--muted);font-size:19px}
+.card .host{font-family:"Cinzel",Georgia,serif;font-weight:600;letter-spacing:.14em;color:var(--plum);font-size:15px;margin-top:14px}
+.event h2,.couple h2{font-size:clamp(38px,9.5cqi,60px)}
+.rsvp h2,.countdown h2{font-size:clamp(46px,12cqi,74px)}
+.ecard .vl{font-size:26px}
+.dateblock .day{color:#8a5f1f}
+.caps{color:#8a5f1f}
+.rsvp .caps{color:var(--gold-hi)}
+.wr{clip-path:none!important}
+html.anim .wr{transition:opacity 1.2s ease var(--d,0s), transform 1.3s cubic-bezier(.2,.8,.2,1) var(--d,0s), filter 1.2s ease var(--d,0s)}
+html.anim .wr:not(.in){opacity:0;transform:translateY(18px);filter:blur(6px)}
+#gate .names-pill{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:10px;padding:14px 26px 12px;border-radius:24px;
+  background:rgba(255,250,242,.86);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 0 0 1px rgba(168,121,47,.45)}
+#gate .names-pill .mono{width:120px}
+.gate-names{font-size:clamp(28px,7cqi,40px);color:var(--plum);line-height:1.15}
+#gate .names-pill small{font-family:"Cinzel",Georgia,serif;font-weight:600;letter-spacing:.2em;font-size:11px;color:#8a5f1f}
+.hero .names .nickline{display:block;font-family:"Cinzel",Georgia,serif;font-style:normal;font-weight:600;font-size:clamp(13px,3.4cqi,16px);letter-spacing:.24em;color:#8a5f1f;margin-top:2px}
+
+/* ================= 3D pass ================= */
+/* every section is a stage: art sits deep, content floats forward, and the whole layer tilts with scroll + pointer */
+main > section{perspective:1300px;perspective-origin:50% 40%}
+.d3{transform-style:preserve-3d;will-change:transform}
+.bg{will-change:transform}
+.bg img{transform-origin:50% 50%}
+/* depth of individual layers (the "translate" property composes with reveal transforms) */
+.hero .mono{translate:none}
+.hero .names{translate:none}
+.hero .inner{translate:0 0 40px}
+.invite .card{translate:0 0 40px}
+.card .ganesh{translate:0 0 50px}
+.card .name{translate:none}
+.event h2{translate:0 0 80px}
+.event .stagebox{translate:0 0 40px}
+.couple h2{translate:0 0 90px}
+.couple p{translate:0 0 40px}
+.rsvp h2{translate:0 0 100px}
+.countdown h2{translate:0 0 90px}
+.card,.ecard,.cell,.contact{transform-style:preserve-3d}
+/* card thickness: a paper edge visible while it swings open */
+.card{box-shadow:0 0 0 1px rgba(168,121,47,.5), 0 0 0 9px #fbf6ee, 0 0 0 10px rgba(168,121,47,.35), 6px 6px 0 -1px #eadcc3, 0 40px 90px rgba(74,35,54,.25)}
+/* RSVP rows fly in on a hinge */
+.contact{transition:transform 1.2s cubic-bezier(.2,.8,.2,1), opacity 1s ease}
+html.anim .contacts:not(.in) .contact{transform:rotateX(-75deg) translateZ(-60px);opacity:0}
+.contacts{perspective:900px}
+.contact:nth-child(2){transition-delay:.15s}
+/* flip-clock countdown */
+.cells{perspective:700px}
+.cell b{display:inline-block;transform-origin:50% 50%;backface-visibility:hidden}
+.cell b.flip{animation:flip .7s cubic-bezier(.3,.7,.3,1)}
+@keyframes flip{0%{transform:rotateX(-90deg);opacity:.2}60%{transform:rotateX(14deg)}100%{transform:none;opacity:1}}
+/* gate: walking through the arch */
+#gate{perspective:900px}
+#gate .art{transition:transform 1.6s cubic-bezier(.6,.05,.3,1), filter 1.6s ease}
+#gate.rung .art{transform:translateZ(420px);filter:brightness(1.15)}
+#gate .hint{transition:transform 1s ease, opacity .8s ease}
+#gate.rung .hint{transform:translateZ(200px) translateY(40px);opacity:0}
+
+/* ================= studio credit ================= */
+.studio{background:#2f1424;color:#f3e6d8;text-align:center;padding-block:34px calc(34px + env(safe-area-inset-bottom,0px));
+  padding-left:var(--gl);padding-right:var(--gr)}
+.studio-in{display:flex;flex-direction:column;align-items:center;gap:4px}
+.studio-k{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold-hi)}
+.studio-n{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;font-size:26px;color:#fff6ea}
+.studio-t{font-size:15px;color:#d9c3cf}
+.studio-links{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:10px}
+.studio-links a{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:11px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none;
+  padding:9px 16px;border-radius:999px;border:1px solid rgba(217,180,106,.6);color:#fff6ea}
+.studio-links a:hover{background:rgba(217,180,106,.18)}
+@media (prefers-reduced-motion: reduce){ .d3,.bg{transform:none!important} }
+
+/* gate: title floats in the open sky, no box over the artwork */
+.gate-top{position:absolute;left:0;right:0;top:calc(43% + env(safe-area-inset-top,0px));display:flex;justify-content:center;
+  padding-left:var(--gl);padding-right:var(--gr);pointer-events:none;transition:transform 1s ease, opacity .8s ease}
+#gate.rung .gate-top{transform:translateZ(200px) translateY(-40px);opacity:0}
+#gate .names-pill{background:radial-gradient(closest-side, rgba(255,250,242,.92), rgba(255,250,242,.7) 55%, rgba(255,250,242,0));
+  box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;padding:40px 54px;border-radius:50%;gap:10px;margin:0}
+#gate .names-pill .mono{width:140px}
+.gate-names{line-height:1.35;padding-bottom:2px}
+#gate .names-pill small{display:block;margin-top:2px;line-height:1.6}
+.mono.play .heart{animation:draw 2.6s .6s cubic-bezier(.5,0,.3,1) both}
+.mono.play .ml{animation:mL 1.6s .2s cubic-bezier(.2,.8,.2,1) both}
+.mono.play .mr{animation:mR 1.6s .2s cubic-bezier(.2,.8,.2,1) both}
+#gate .hint{bottom:calc(5% + env(safe-area-inset-bottom,0px))}
+#gate .hint .pill{padding:11px 26px}
+/* breathing room so stacked name lines never touch */
+.hero .names .nickline{margin:10px 0 6px}
+.hero .names .amp{margin:6px 0 4px}
+.hero .rule{margin-top:12px}
+.card .nick{display:block;margin:10px 0 4px}
+.card .amp{margin:6px 0 0}
+img.mono{height:auto;aspect-ratio:auto}
+/* the client's own monogram (स + S), in the invitation's gold */
+.hero img.mono{width:min(150px,38cqi)!important}
+#gate img.logo-gate{width:110px}
+footer img.mono{width:104px!important}
+.desk-left img.desk-logo{width:min(150px,55%)}
+.gg-lock img{width:70%}
+/* ---------- the temple bell on the opening screen ---------- */
+.bell-wrap{position:absolute;left:50%;top:0;width:min(34cqi,150px);margin-left:calc(min(34cqi,150px) / -2);
+  transform-origin:50% 0;animation:bellIdle 3.6s ease-in-out infinite;z-index:2;pointer-events:none;
+  filter:drop-shadow(0 8px 10px rgba(74,35,54,.28))}
+.bell-wrap .bell{width:100%;height:auto;display:block;max-height:34svh}
+.bell-wrap .clapper{transform-box:view-box;transform-origin:80px 240px}
+@keyframes bellIdle{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+#gate.rung .bell-wrap{animation:bellRing 1.5s cubic-bezier(.3,.6,.3,1)}
+#gate.rung .bell-wrap .clapper{animation:clap 1.5s cubic-bezier(.3,.6,.3,1)}
+@keyframes bellRing{0%{transform:rotate(0)}15%{transform:rotate(16deg)}35%{transform:rotate(-13deg)}55%{transform:rotate(8deg)}75%{transform:rotate(-4deg)}100%{transform:rotate(0)}}
+@keyframes clap{0%{transform:rotate(0)}15%{transform:rotate(-22deg)}35%{transform:rotate(18deg)}55%{transform:rotate(-10deg)}75%{transform:rotate(5deg)}100%{transform:rotate(0)}}
+#gate.rung .art{transform:none}
+#gate.rung .gate-top{transform:translateY(20px);opacity:0}
+@media (max-aspect-ratio: 3/4){ .gate-top{top:calc(38% + env(safe-area-inset-top,0px))} #gate .names-pill{padding:28px 40px} }
+/* ---------- music card ---------- */
+.music-sec{padding-block:90px;background:#fbeef1}
+.music-sec .bg img{opacity:.35;object-position:50% 20%}
+.music-sec .wash{background:linear-gradient(180deg,#fbf6ee 0%,rgba(251,238,241,.6) 30%,rgba(251,238,241,.6) 70%,#fbf6ee 100%)}
+.music-sec .inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.music-sec h2{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;font-size:clamp(36px,9cqi,56px);line-height:1.1;color:var(--plum);margin:0;translate:0 0 60px}
+.yt-card{width:min(640px,100%);margin-top:16px;padding:10px;border-radius:22px;background:#fffaf2;
+  box-shadow:0 0 0 1px rgba(168,121,47,.55),0 0 0 7px #fbf6ee,0 0 0 8px rgba(168,121,47,.3),0 30px 70px rgba(74,35,54,.2)}
+.yt-frame{position:relative;aspect-ratio:16/9;min-height:200px;border-radius:14px;overflow:hidden;background:#2f1424}
+.yt-frame iframe,#ytPlayer{position:absolute;inset:0;width:100%;height:100%;border:0}
+.yt-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  color:#fff6ea;text-decoration:none;font-family:"Cinzel",Georgia,serif;font-weight:600;letter-spacing:.18em;text-transform:uppercase;font-size:13px;
+  background:radial-gradient(circle at 50% 40%,#6d2c4c,#2f1424)}
+.yt-play{width:64px;height:64px;border-radius:50%;background:#fff6ea;position:relative;box-shadow:0 0 0 6px rgba(255,246,234,.2)}
+.yt-play::after{content:"";position:absolute;left:26px;top:20px;border-left:18px solid var(--plum);border-top:12px solid transparent;border-bottom:12px solid transparent}
+.yt-credit{font-size:15px;color:var(--muted);max-width:40ch;margin:10px 0 0}
+.yt-credit a{color:var(--plum)}
+/* ================= laptop & desktop: the invite as an elegant centred column ================= */
+main{container:page / inline-size;position:relative;z-index:1;background:var(--paper)}
+.desk{display:none}
+@media (min-width: 900px){
+  body{background:#efe3d3}
+  .desk-bg{display:block;position:fixed;inset:0;z-index:0;pointer-events:none}
+  .desk-bg::before{content:"";position:absolute;inset:-40px;background:url("assets/floral-arch.jpg") center/cover;filter:blur(18px) saturate(1.05)}
+  .desk-bg::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 80% at 50% 50%, rgba(251,246,238,.55), rgba(239,227,211,.85))}
+  main{width:min(500px, 42vw);margin-inline:auto;box-shadow:0 0 0 1px rgba(168,121,47,.35), 0 0 0 10px rgba(251,246,238,.6), 0 40px 120px rgba(74,35,54,.28)}
+  .desk-side{display:flex;position:fixed;top:0;bottom:0;z-index:2;width:calc((100vw - min(500px, 42vw)) / 2);
+    flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding-inline:28px;pointer-events:none}
+  .desk-side > *{pointer-events:auto}
+  .desk-left{left:0}
+  .desk-right{right:0}
+  .desk-left img{width:min(200px,70%)}
+  .desk-left .k{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:13px;letter-spacing:.3em;text-transform:uppercase;color:#8a5f1f}
+  .desk-left .n{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;font-size:clamp(34px,3.4vw,52px);line-height:1.12;color:var(--plum)}
+  .desk-left .n small{display:block;font-family:"Cinzel",Georgia,serif;font-style:normal;font-weight:600;font-size:13px;letter-spacing:.24em;color:#8a5f1f;margin:4px 0 6px}
+  .desk-left .d{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:15px;letter-spacing:.14em;color:var(--ink)}
+  .desk-left .v{font-family:"Cormorant Garamond",Georgia,serif;font-size:19px;color:var(--muted)}
+  .desk-left .btn{margin-top:8px}
+  .desk-right figure{margin:0;width:min(300px,78%);aspect-ratio:3/4;border-radius:999px 999px 18px 18px;overflow:hidden;
+    box-shadow:0 0 0 6px #fbf6ee, 0 0 0 7px rgba(168,121,47,.5), 0 30px 70px rgba(74,35,54,.28)}
+  .desk-right figure img{width:100%;height:100%;object-fit:cover;object-position:50% 85%}
+  .desk-right .c{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:19px;color:var(--plum);max-width:22ch;margin-top:14px}
+  .desk-right .hint{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:#8a5f1f}
+  /* the floating music button sits by the column, not the far edge */
+  #music{right:calc((100vw - min(500px, 42vw)) / 2 + 16px)}
+}
+@media (min-width: 900px) and (max-width: 1199px){ .desk-side{display:none} main{width:min(520px, 70vw)} #music{right:calc((100vw - min(520px, 70vw)) / 2 + 16px)} }
+/* ================= one theme for the whole invitation =================
+   every section shares the ivory paper; artwork is warmed to one grade and dissolves into the paper
+   at its edges, so the page reads as one continuous card instead of separate coloured slides */
+main > section{background:var(--paper)!important;color:var(--ink)}
+main > section > .bg img{filter:sepia(.18) saturate(.82) brightness(1.02)}
+main > section:not(.hero) > .bg{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%)}
+.hero > .bg{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 82%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 82%,transparent 100%)}
+/* the floral sections all use the same, gentle strength */
+.invite .bg img,.event .bg img,.countdown .bg img,.rsvp .bg img{opacity:.55!important}
+.invite .wash,.event .wash,.countdown .wash,.rsvp .wash{background:radial-gradient(70% 55% at 50% 50%, rgba(251,246,238,.92), rgba(251,246,238,.55) 70%, rgba(251,246,238,0) 100%)!important}
+/* the story art keeps its picture but in the same warm ivory family */
+.couple .bg img{filter:sepia(.32) saturate(.7) hue-rotate(-8deg) brightness(1.04)}
+.couple .wash{background:linear-gradient(180deg, rgba(251,246,238,.96) 0%, rgba(251,246,238,.82) 38%, rgba(251,246,238,0) 62%)!important}
+/* RSVP: ivory like the rest, with a plum card as the accent */
+.rsvp h2{color:var(--plum)!important}
+.rsvp .caps{color:#8a5f1f!important}
+.rsvp p{color:var(--muted)!important}
+.contact{background:linear-gradient(180deg,#7d3558,var(--plum))!important;color:#fff6ea;box-shadow:0 0 0 1px rgba(168,121,47,.6), 0 0 0 6px #fbf6ee, 0 0 0 7px rgba(168,121,47,.3), 0 20px 40px rgba(74,35,54,.2)!important}
+.contact span{color:#f3d79a!important}
+/* section headings: one style everywhere */
+main h2{color:var(--plum)}
+/* gold ornament at every section break, like pages of one printed card */
+main > section:not(.hero)::before{content:"";position:absolute;left:50%;top:22px;width:150px;height:16px;margin-left:-75px;z-index:3;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 16'%3E%3Cpath d='M0 8h58M92 8h58' stroke='%23b0813a' stroke-width='1'/%3E%3Cpath d='M75 1l7 7-7 7-7-7z' fill='%23b0813a'/%3E%3Ccircle cx='62' cy='8' r='2' fill='%23b0813a'/%3E%3Ccircle cx='88' cy='8' r='2' fill='%23b0813a'/%3E%3C/svg%3E") center/contain no-repeat}
+footer{background:var(--paper)}
+footer > .caps{font-size:clamp(11px,3.6cqi,14px);letter-spacing:.2em;white-space:nowrap}
+.music-credit{font-size:13px;color:var(--muted);letter-spacing:.04em;margin-top:10px}
+.music-credit:empty{display:none}
+.couple h2{font-size:clamp(32px,8.6cqi,56px)!important;text-wrap:balance}
+/* ---------- twin golden wedding bells with an ivory satin bow ---------- */
+.bell-wrap{width:min(66vw,320px)!important;margin-left:calc(min(66vw,320px) / -2)!important;top:1%!important;animation:bellIdle 4.2s ease-in-out infinite}
+.bell-wrap .bell.twin{max-height:36svh;width:100%;overflow:visible}
+.twin .tb{transform-box:view-box;transform-origin:200px 64px}
+.twin .tb.l{animation:tbIdleL 3.2s ease-in-out infinite}
+.twin .tb.r{animation:tbIdleR 3.2s ease-in-out infinite}
+@keyframes tbIdleL{0%,100%{transform:rotate(0)}50%{transform:rotate(3deg)}}
+@keyframes tbIdleR{0%,100%{transform:rotate(0)}50%{transform:rotate(-3deg)}}
+#gate.rung .bell-wrap{animation:none}
+#gate.rung .twin .tb.l{animation:tbRingL 1.7s cubic-bezier(.3,.6,.3,1)}
+#gate.rung .twin .tb.r{animation:tbRingR 1.7s cubic-bezier(.3,.6,.3,1)}
+@keyframes tbRingL{0%{transform:rotate(0)}18%{transform:rotate(-16deg)}36%{transform:rotate(5deg)}54%{transform:rotate(-9deg)}72%{transform:rotate(3deg)}100%{transform:rotate(0)}}
+@keyframes tbRingR{0%{transform:rotate(0)}18%{transform:rotate(16deg)}36%{transform:rotate(-5deg)}54%{transform:rotate(9deg)}72%{transform:rotate(-3deg)}100%{transform:rotate(0)}}
+.twin .sp{transform-box:fill-box;transform-origin:center;animation:twinkle 2.4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.6)}50%{opacity:1;transform:scale(1.15)}}
+#gate .ring{top:calc(env(safe-area-inset-top,0px) + min(24svh, 210px))!important}
+/* ================= 3D opening: two hands unite ================= */
+.g3d{position:absolute;top:0;bottom:0;left:50%;width:100%;transform:translateX(-50%);perspective:1000px;pointer-events:none;z-index:1}
+@media (min-aspect-ratio: 3/4){ .g3d{width:auto;height:100%;aspect-ratio:9/16} }
+.g3d-layer{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.7,.2,1)}
+.g3d-layer.far{transform:translate3d(calc(var(--px,0) * -6px), calc(var(--py,0) * -4px), -60px)}
+.g3d-layer.mid{transform:translate3d(calc(var(--px,0) * -16px), calc(var(--py,0) * -10px), 40px) rotateY(calc(var(--px,0) * 4deg))}
+.g3d-glow{position:absolute;left:50%;top:27%;width:90%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(closest-side, rgba(255,236,190,.75), rgba(255,214,150,.25) 55%, rgba(255,214,150,0));transition:opacity 1.2s ease}
+.unite{position:absolute;left:0;right:0;top:17%;height:24%;transform-style:preserve-3d}
+.hand{position:absolute;top:0;width:66%;height:auto;transform-style:preserve-3d;
+  filter:drop-shadow(0 18px 16px rgba(74,35,54,.22)) blur(2.5px) saturate(.9) sepia(.08);
+  transition:transform 1.9s cubic-bezier(.2,.75,.15,1), filter 1.4s ease;animation:hfloat 3.8s ease-in-out infinite}
+.hand.l{left:-4%;transform-origin:0 50%;transform:translateX(-46%) translateZ(-160px) rotateY(32deg) rotate(-5deg)}
+.hand.r{right:-4%;transform-origin:100% 50%;transform:translateX(46%) translateZ(-160px) rotateY(-32deg) rotate(5deg);animation-delay:-1.9s}
+@keyframes hfloat{50%{translate:0 -7px}}
+#gate.united .hand{filter:drop-shadow(0 22px 20px rgba(74,35,54,.25)) blur(0) saturate(1) sepia(.08)}
+#gate.united .hand.l{transform:translateX(0) translateZ(0) rotateY(0) rotate(0)}
+#gate.united .hand.r{transform:translateX(0) translateZ(0) rotateY(0) rotate(0)}
+/* gold rings stand in until the hand artwork is added */
+.ring-uni{display:none;position:absolute;top:6%;width:27%;height:auto;overflow:visible;transform-style:preserve-3d;
+  filter:drop-shadow(0 10px 12px rgba(122,70,30,.3));transition:transform 1.9s cubic-bezier(.2,.75,.15,1);animation:hfloat 3.4s ease-in-out infinite}
+.g3d.no-hands .hand{display:none}
+.g3d.no-hands .ring-uni{display:block}
+.ring-uni.l{left:50%;transform:translateX(-190%) translateZ(-200px) rotateY(70deg)}
+.ring-uni.r{left:50%;transform:translateX(90%) translateZ(-200px) rotateY(-70deg);animation-delay:-1.7s}
+#gate.united .ring-uni.l{transform:translateX(-78%) translateZ(0) rotateY(0) rotate(-8deg)}
+#gate.united .ring-uni.r{transform:translateX(-22%) translateZ(10px) rotateY(0) rotate(8deg)}
+.spark-burst{position:absolute;left:50%;top:44%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;opacity:0;
+  background:radial-gradient(circle,#fff,#ffe6a0 40%,rgba(255,214,150,0) 70%)}
+.g3d.no-hands .spark-burst{top:52%}
+#gate.united .spark-burst{animation:sburst 1.3s 1.45s ease-out forwards}
+@keyframes sburst{0%{opacity:0;transform:scale(1)}20%{opacity:1}100%{opacity:0;transform:scale(26)}}
+#gate .ring{top:calc(env(safe-area-inset-top,0px) + 27%)!important}
+#gate.united .gate-top{opacity:1!important;transform:none!important}
+/* RSVP card: one clear line per number */
+.contact{display:flex!important;flex-direction:column;align-items:stretch!important;gap:10px!important;text-align:left}
+.contact .who{font-family:"Cinzel",Georgia,serif;font-weight:600;letter-spacing:.14em;font-size:15px;text-transform:uppercase;color:#fff6ea}
+.contact .cline{display:flex;align-items:center;gap:10px;padding-top:10px;border-top:1px solid rgba(243,215,154,.3)}
+.contact .lab{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f3d79a;min-width:5.6em}
+.contact .num{flex:1;min-width:0;font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;color:#fff6ea!important;white-space:nowrap}
+.contact .cline .wa{flex-shrink:0;min-width:84px;padding-inline:12px;text-align:center}
+@container page (max-width: 380px){ .contact .num{font-size:17px} .contact .cline .wa{min-width:80px} }
+/* labels and the story heading scale with the invite width, so they fit on narrow phones (360px Samsung Galaxy) */
+main .caps{font-size:clamp(10.5px,3.25cqi,14px)!important;letter-spacing:.18em!important}
+main .rsvp .caps,main .countdown .lead,main footer > .caps{white-space:nowrap}
+.couple h2{font-size:clamp(27px,9cqi,56px)!important}
+.studio-t{font-size:clamp(12px,3.6cqi,15px)}
+/* ---------- opening screen: curved title over the logo + 3D gold button ---------- */
+.gate-top{top:calc(31% + env(safe-area-inset-top,0px))!important}
+#gate .hint{bottom:calc(11% + env(safe-area-inset-bottom,0px))!important}
+#gate .names-pill{padding:16px 28px 26px!important;gap:0!important;background:radial-gradient(closest-side, rgba(255,250,242,.94), rgba(255,250,242,.75) 60%, rgba(255,250,242,0))!important}
+.arc-title{width:min(330px,84cqi);height:auto;overflow:visible;display:block}
+.arc-title text{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;font-size:31px;fill:url(#arcInk);letter-spacing:.01em}
+#gate img.logo-gate{width:min(170px,42cqi)!important;margin-top:-34px}
+#gate .names-pill small{margin-top:14px!important;font-size:12px!important}
+.unite{top:11%!important;height:15%!important}
+.g3d-glow{top:18%!important;width:70%!important}
+#gate .ring{top:calc(env(safe-area-inset-top,0px) + 18%)!important}
+/* 3D gold button */
+.btn3d{all:unset;cursor:pointer;display:inline-block;border-radius:999px;padding:0 0 7px;
+  background:linear-gradient(180deg,#9a6a22,#6a430e);box-shadow:0 14px 28px rgba(74,35,54,.28);animation:btnFloat 3s ease-in-out infinite}
+.btn3d .face{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:13px 34px 12px;border-radius:999px;overflow:hidden;
+  background:linear-gradient(180deg,#fff1c4 0%,#e8c06e 38%,#c99a45 62%,#e3b25a 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.8), inset 0 -2px 4px rgba(122,79,18,.45), 0 0 0 1px #8a5c1a;
+  transition:transform .15s ease}
+.btn3d .face::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;transform:skewX(-20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);animation:shine3d 3.2s ease-in-out infinite}
+#gate .btn3d b{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:15px;letter-spacing:.24em;text-transform:uppercase;color:#4a1a30;text-shadow:0 1px 0 rgba(255,255,255,.55)}
+#gate .btn3d i{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:14.5px;color:#4a1a30}
+.btn3d:active .face,#gate.rung .btn3d .face{transform:translateY(5px)}
+@keyframes shine3d{0%,55%{left:-60%}100%{left:130%}}
+@keyframes btnFloat{50%{transform:translateY(-4px)}}
+#gate .hint .pill{display:none}
+/* ---------- fit every phone width (checked 320–768px) ---------- */
+/* ceremony date row: columns can shrink, sizes follow the card width */
+.dateblock{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:clamp(6px,2.5cqi,14px)!important;width:100%;max-width:330px;margin-inline:auto}
+.dateblock .side{font-size:clamp(10px,3.1cqi,13px)!important;letter-spacing:.12em!important;min-width:0;overflow-wrap:anywhere}
+.dateblock .day{font-size:clamp(44px,15cqi,62px)!important}
+.ecard{padding-inline:clamp(14px,5cqi,26px)!important}
+.stagebox{width:min(440px,100%)!important}
+/* RSVP: number and its button wrap under the label instead of pushing off-screen */
+.contacts{width:100%!important;max-width:420px}
+.contact{min-width:0;padding:14px clamp(12px,4cqi,18px)!important}
+.contact .cline{flex-wrap:wrap;row-gap:6px}
+.contact .cline:first-child{border-top:0;padding-top:0}
+.contact .num{min-width:0}
+@container page (max-width: 400px){
+  .contact .lab{flex-basis:100%;min-width:0}
+  .contact .num{font-size:18px}
+  .contact .cline .wa{min-width:0;padding-inline:14px}
+}
+/* never let a long word push the page sideways */
+main h1,main h2,main h3,main p,.ecard .venue,.card .name{overflow-wrap:anywhere}
+html,body{max-width:100%;overflow-x:hidden}
+.event h2,.rsvp h2,.countdown h2{font-size:clamp(30px,10cqi,60px)!important}
+/* ---------- opening title: gold caps + script, with a 3D finish ---------- */
+.arc-title{display:none!important}
+#gate img.logo-gate{margin-top:0!important;width:min(150px,38cqi)!important}
+.tl3d{margin:12px 0 0;display:flex;flex-direction:column;align-items:center;font-weight:400;transform-style:preserve-3d;
+  transform:perspective(700px) rotateX(calc(var(--py,0) * -6deg)) rotateY(calc(var(--px,0) * 8deg));transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+.tl-orn{display:flex;align-items:center;gap:12px}
+.tl-orn i{width:clamp(26px,9cqi,44px);height:2px;background:linear-gradient(90deg,transparent,#c99a45);box-shadow:0 1px 0 rgba(255,255,255,.7)}
+.tl-orn i:last-child{transform:scaleX(-1)}
+/* embossed gold capitals: gradient face + stacked depth + light sweep */
+.tl-orn b{position:relative;font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:clamp(16px,5cqi,22px);letter-spacing:.32em;padding-left:.32em;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff3c8 0%,#e8bf6a 40%,#a8792f 62%,#d9ae5c 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 1px 0 #7a4f12) drop-shadow(0 2px 0 #6a430e) drop-shadow(0 4px 4px rgba(74,35,54,.35))}
+.tl-orn b::after{content:attr(data-t);position:absolute;inset:0;padding-left:.32em;
+  background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%);background-size:250% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:tlShine 3.6s ease-in-out infinite}
+@keyframes tlShine{0%,40%{background-position:120% 0}100%{background-position:-120% 0}}
+/* raised plum script with a gold rim */
+.tl-script{position:relative;font-family:"Great Vibes","Pinyon Script",cursive;font-size:clamp(48px,15cqi,68px);line-height:1;margin-top:2px;padding:0 .12em;
+  color:#6d2c4c;text-shadow:0 1px 0 #f3d79a, 0 2px 0 #b0813a, 0 3px 0 #8a5c1a, 0 7px 10px rgba(74,35,54,.35)}
+@media (prefers-reduced-motion: reduce){ .tl-orn b::after{animation:none} .tl3d{transform:none} }
+/* softer, eye-friendly "ENGAGEMENT": muted antique gold, gentle emboss, faint slow glow */
+.tl-orn b{background:linear-gradient(180deg,#c9a265 0%,#a77d3c 55%,#8f6a33 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;
+  filter:drop-shadow(0 1px 0 rgba(255,250,240,.9)) drop-shadow(0 2px 3px rgba(74,35,54,.18))!important}
+.tl-orn b::after{background:linear-gradient(110deg,transparent 40%,rgba(255,248,230,.45) 50%,transparent 60%)!important;background-size:250% 100%!important;animation-duration:7s!important}
+.tl-orn i{background:linear-gradient(90deg,transparent,#b8935a)!important;box-shadow:none!important;height:1px!important}
+</style>
+
+<!-- shared gradients -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff1c4"/><stop offset=".35" stop-color="#d4a04c"/><stop offset=".7" stop-color="#8a5c1a"/><stop offset="1" stop-color="#f3d79a"/>
+    </linearGradient>
+    <linearGradient id="ice" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#d6ecff"/><stop offset="1" stop-color="#8ab8e6"/></linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7a5414"/><stop offset=".45" stop-color="#e8c47a"/><stop offset="1" stop-color="#8a5c1a"/></linearGradient>
+    <radialGradient id="glow"><stop offset="0" stop-color="#fff3c4"/><stop offset=".5" stop-color="#ffc85a" stop-opacity=".7"/><stop offset="1" stop-color="#ffb030" stop-opacity="0"/></radialGradient>
+    <symbol id="monogram" viewBox="0 0 300 160">
+      <path class="heart" transform="translate(122 50) scale(.56)" d="M50 86 C22 66 5 48 5 28 C5 13 16 4 29 4 C39 4 46 10 50 19 C54 10 61 4 71 4 C84 4 95 13 95 28 C95 48 78 66 50 86Z"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ===== Gate ===== -->
+<div id="gate" role="button" tabindex="0" aria-label="Open the engagement invitation">
+  <div class="blur" id="gateBlur"></div>
+  <img class="art" id="gateArt" src="assets/floral-arch.jpg" alt="An ivory card framed with roses and jasmine"
+       onerror="this.onerror=null;this.src='assets/rk-garden.jpg'">
+  <!-- brass temple bell hanging from the arch: sways gently, swings and rings when tapped -->
+  <!-- 3D "two hands unite" opening: art layers move at different depths; hands (or gold rings until hand art is added) meet in the middle -->
+  <div class="g3d" id="g3d" aria-hidden="true">
+    <div class="g3d-layer far"><div class="g3d-glow"></div></div>
+    <div class="g3d-layer mid">
+      <div class="unite">
+        <img class="hand l" id="handL" src="assets/hand-krishna.png" alt="">
+        <img class="hand r" id="handR" src="assets/hand-bride.png" alt="">
+        <svg class="ring-uni l" viewBox="0 0 120 120"><defs><linearGradient id="ugold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1c4"/><stop offset=".4" stop-color="#d4a04c"/><stop offset=".75" stop-color="#8a5c1a"/><stop offset="1" stop-color="#f3d79a"/></linearGradient><linearGradient id="uice" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#d6ecff"/><stop offset="1" stop-color="#8ab8e6"/></linearGradient></defs><circle cx="60" cy="66" r="40" fill="none" stroke="url(#ugold)" stroke-width="9"/></svg>
+        <svg class="ring-uni r" viewBox="0 0 120 120"><circle cx="60" cy="66" r="40" fill="none" stroke="url(#ugold)" stroke-width="9"/><polygon points="50,14 70,14 77,22 60,40 43,22" fill="url(#uice)" stroke="#fff" stroke-width="1.2"/></svg>
+        <div class="spark-burst"></div>
+      </div>
+    </div>
+  </div>
+  <span class="ring"></span><span class="ring"></span>
+  <div class="gate-top">
+    <div class="names-pill">
+      <img class="mono logo-gate" src="assets/logo.png" alt="{{GROOM}} and {{BRIDE}} monogram">
+      <h1 class="tl3d" aria-label="Engagement Invitation"><span class="tl-orn"><i></i><b data-t="Engagement">Engagement</b><i></i></span><span class="tl-script" data-t="Invitation">Invitation</span></h1>
+      <small>You are warmly invited</small>
+    </div>
+  </div>
+  <div class="hint">
+    <button class="btn3d" type="button" tabindex="-1"><span class="face"><b>Open Invitation</b><i>tap to unite · two hearts, one promise</i></span></button>
+  </div>
+</div>
+<!-- ===== Garden gate: after the bell, ivory-and-gold doors open inside the floral arch ===== -->
+<div id="garden" hidden aria-hidden="true">
+  <div class="gg-blur"></div>
+  <div class="gg-scene">
+    <img class="gg-path" src="assets/rk-garden.jpg" alt="">
+    <div class="gg-doors">
+      <div class="gg-door l">
+        <i class="rail top"></i><i class="rail mid"></i><i class="rail bot"></i>
+        <i class="brace a"></i><i class="brace b"></i>
+        <i class="finial"></i>
+        <i class="latch"></i>
+      </div>
+      <div class="gg-door r">
+        <i class="rail top"></i><i class="rail mid"></i><i class="rail bot"></i>
+        <i class="brace a"></i><i class="brace b"></i>
+        <i class="finial"></i>
+        <i class="latch"></i>
+      </div>
+      <div class="gg-lock"><img src="assets/logo.png" alt=""></div>
+    </div>
+    <img class="gg-arch" src="assets/floral-arch.jpg" alt="">
+    <div class="gg-hint">The gates are opening…</div>
+  </div>
+</div>
+<div id="bloom"></div>
+
+<!-- laptop / desktop only: soft art backdrop and side panels around the invite column -->
+<div class="desk desk-bg" aria-hidden="true"></div>
+<aside class="desk desk-side desk-left" aria-label="At a glance">
+  <img src="assets/logo.png" alt="" class="desk-logo">
+  <div class="k">The engagement of</div>
+  <div class="n"><span data-f="groom">{{GROOM}}</span><small>( <span data-f="groomNick">{{GROOM_NICK}}</span> )</small>&amp; <span data-f="bride">{{BRIDE}}</span></div>
+  <div class="rule"><i></i></div>
+  <div class="d"><span data-f="weekday">{{WEEKDAY}}</span> · <span data-f="dateLong">{{DATE_LONG}}</span></div>
+  <div class="v"><span data-f="time">{{TIME}}</span> · <span data-f="venue">{{VENUE}}</span></div>
+  <a class="btn primary" id="deskMap" href="{{MAP_URL}}" target="_blank" rel="noopener">Directions</a>
+</aside>
+<aside class="desk desk-side desk-right" aria-hidden="true">
+  <figure><img src="assets/rk-lanterns.jpg" alt=""></figure>
+  <p class="c">As eternal as Shiv and Parvati, as timeless as Radha and Krishna</p>
+  <div class="hint">Scroll the invitation</div>
+</aside>
+
+<main>
+  <!-- ===== Hero ===== -->
+  <section class="hero" aria-label="{{GROOM}} and {{BRIDE}}">
+    <div class="bg">
+      <img class="tall" src="assets/rk-garden.jpg" alt="Radha and Krishna in a garden beneath a carved arch">
+      <img class="wide" src="assets/hero-wide.jpg" alt="Radha and Krishna by a lotus pond in a Vrindavan garden"
+           onerror="this.onerror=null;this.src='assets/rk-garden.jpg';this.style.objectPosition='50% 30%'">
+    </div>
+    <div class="wash"></div>
+    <div class="inner d3">
+      <img class="mono rv" src="assets/logo.png" alt="{{GROOM}} and {{BRIDE}} monogram">
+      <div class="caps sub rv" style="--d:.4s">The engagement of</div>
+      <h1 class="names wr" style="--d:1.6s"><span data-f="groom">{{GROOM}}</span><span class="nickline">( <span data-f="groomNick">{{GROOM_NICK}}</span> )</span><span class="amp">&amp;</span><span data-f="bride">{{BRIDE}}</span></h1>
+      <div class="rule rv" style="--d:1.8s"><i></i></div>
+      <div class="date rv" style="--d:2s" data-f="dateLong">{{DATE_LONG}}</div>
+      <div class="caps rv" style="--d:2.2s;letter-spacing:.18em" data-f="venue">{{VENUE}}</div>
+    </div>
+    <a class="cue" href="#invite">Scroll<i></i></a>
+  </section>
+
+  <!-- ===== Music (YouTube's own visible player, as YouTube's embed rules require) ===== -->
+  <section class="music-sec" id="music-sec" aria-label="Music for the occasion">
+    <div class="bg"><img src="assets/rk-lanterns.jpg" alt=""></div>
+    <div class="wash"></div>
+    <div class="inner d3">
+      <div class="caps rv">Music for the occasion</div>
+      <h2 class="wr">Let the music begin</h2>
+      <div class="rule rv"><i></i></div>
+      <div class="yt-card rv">
+        <div class="yt-frame"><div id="ytPlayer"></div>
+          <a class="yt-fallback" id="ytFallback" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=zMkGAzAmcnA">
+            <span class="yt-play" aria-hidden="true"></span><span>Play on YouTube</span>
+          </a>
+        </div>
+      </div>
+      <p class="yt-credit rv">Plays in the background once you ring the bell. Use the music button to pause. <span id="ytTitle">Flute, tabla &amp; sitar</span> · <a id="ytChannel" href="https://www.youtube.com/@HindusthaniInstrumentals" target="_blank" rel="noopener">Hindustani Instrumentals</a> on YouTube</p>
+    </div>
+  </section>
+
+  <!-- ===== Invitation card ===== -->
+  <section class="invite" id="invite" aria-label="Invitation">
+    <div class="bg"><img src="assets/floral-arch.jpg" alt=""></div>
+    <div class="wash"></div>
+    <div class="lantern l" aria-hidden="true"><svg viewBox="0 0 60 200"><use href="#lanternShape"/></svg></div>
+    <div class="lantern r" aria-hidden="true" style="top:-30px"><svg viewBox="0 0 60 200"><use href="#lanternShape"/></svg></div>
+    <div class="inner d3">
+      <div class="card rv">
+        <img class="ganesh" src="assets/ganesh.png" alt="Lord Ganesha">
+        <div class="deva" lang="hi">॥ श्री गणेशाय नमः ॥</div>
+        <p class="bless">With the blessings of Lord Ganesha and our elders, we cordially invite you to celebrate the engagement of</p>
+        <div class="name wr" style="--d:.5s" data-f="groom">{{GROOM}}</div>
+        <div class="caps nick">( <span data-f="groomNick">{{GROOM_NICK}}</span> )</div>
+        <div class="amp">&amp;</div>
+        <div class="name wr" style="--d:1.2s;margin-top:0" data-f="bride">{{BRIDE}}</div>
+        <div class="rule" style="margin-top:20px"><i></i></div>
+        <div class="when"><span data-f="weekday">{{WEEKDAY}}</span> · <span data-f="dateLong">{{DATE_LONG}}</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Ceremony (3D doors) ===== -->
+  <section class="event" aria-label="Ceremony details">
+    <div class="bg"><img src="assets/floral-arch.jpg" alt=""></div>
+    <div class="wash"></div>
+    <div class="inner d3">
+      <div class="caps rv">Celebration</div>
+      <h2 class="wr" data-f="ceremony">{{CEREMONY}}</h2>
+      <div class="stagebox rv" id="eventBox">
+        <div class="ecard">
+          <svg class="rings" viewBox="0 0 80 50" aria-hidden="true">
+            <circle cx="30" cy="27" r="16" fill="none" stroke="url(#gold)" stroke-width="3.2"/>
+            <circle cx="50" cy="27" r="16" fill="none" stroke="url(#gold)" stroke-width="3.2"/>
+            <polygon points="46,6 54,6 57,9 50,15 43,9" fill="url(#ice)" stroke="#fff" stroke-width=".6"/>
+          </svg>
+          <h3 data-f="ceremony">{{CEREMONY}}</h3>
+          <div class="dateblock">
+            <div class="side" data-f="weekday">{{WEEKDAY}}</div>
+            <div class="day" data-f="day">05</div>
+            <div class="side" data-f="month">{{MONTH}}</div>
+          </div>
+          <div class="caps yr" data-f="year">2026</div>
+          <div class="time" data-f="time">{{TIME}}</div>
+          <div class="vl">Venue</div>
+          <div class="venue" data-f="venue">{{VENUE}}</div>
+          <div class="actions">
+            <a class="btn primary" id="mapBtn" href="{{MAP_URL}}" target="_blank" rel="noopener">Directions</a>
+            <a class="btn" id="calBtn" href="https://calendar.google.com/" target="_blank" rel="noopener">Save the date</a>
+          </div>
+        </div>
+        <div class="doors" aria-hidden="true">
+          <div class="door l"><span class="motif">S</span><span class="knob"></span></div>
+          <div class="door r"><span class="motif">S</span><span class="knob"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Couple ===== -->
+  <section class="couple" aria-label="Our story">
+    <div class="bg"><img src="assets/rk-lanterns.jpg" alt="Young Radha and Krishna seated among flowers under lanterns"></div>
+    <div class="wash"></div>
+    <div class="inner d3">
+      <div class="deva rv" lang="hi" style="font-size:17px">॥ ॐ नमः शिवाय · राधे कृष्ण ॥</div>
+      <div class="caps rv">Two hearts</div>
+      <h2 class="wr">One beautiful promise</h2>
+      <div class="rule rv"><i></i></div>
+      <p class="rv" style="--d:.3s">As eternal as Shiv and Parvati, as timeless as Radha and Krishna, <span data-f="groom">{{GROOM}}</span> (<span data-f="groomNick">{{GROOM_NICK}}</span>) and <span data-f="bride">{{BRIDE}}</span> begin a new chapter of love and togetherness, with the blessings of the family.</p>
+      <p class="rv" style="--d:.6s;font-style:italic;color:var(--muted)">Join us as we celebrate the beginning of their forever.</p>
+    </div>
+  </section>
+
+  <!-- ===== RSVP ===== -->
+  <section class="rsvp" aria-label="RSVP">
+    <div class="bg"><img src="assets/floral-arch.jpg" alt=""></div>
+    <div class="wash"></div>
+    <div class="inner d3">
+      <div class="caps rv">Join the celebration</div>
+      <h2 class="wr">RSVP</h2>
+      <p class="rv">Kindly confirm your presence.</p>
+      <div class="contacts rv" id="contacts"></div>
+    </div>
+  </section>
+
+  <!-- ===== Countdown ===== -->
+  <section class="countdown" aria-label="Countdown">
+    <div class="bg"><img src="assets/floral-arch.jpg" alt=""></div>
+    <div class="wash"></div>
+    <div class="inner d3">
+      <div class="lead rv">Counting down to</div>
+      <h2 class="wr">Forever</h2>
+      <div class="cells rv" aria-label="Time left until the ceremony">
+        <div class="cell"><b id="cd-d">--</b><small>Days</small></div>
+        <div class="cell"><b id="cd-h">--</b><small>Hours</small></div>
+        <div class="cell"><b id="cd-m">--</b><small>Minutes</small></div>
+        <div class="cell"><b id="cd-s">--</b><small>Seconds</small></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="inner">
+    <img class="mono rv" src="assets/logo.png" alt="{{GROOM}} and {{BRIDE}} monogram" style="width:150px">
+    <div class="caps">With love &amp; blessings</div>
+  </footer>
+  <aside class="studio" aria-label="Invitation designed by Shaadi Shopping">
+    <div class="studio-in">
+      <span class="studio-k">Digital invitation crafted by</span>
+      <span class="studio-n">Shaadi Shopping</span>
+      <span class="studio-t">Engagement · Wedding · Haldi · Mehendi · Reception</span>
+      <div class="studio-links" id="studioLinks"></div>
+    </div>
+  </aside>
+</main>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="lanternShape" viewBox="0 0 60 200">
+    <line x1="30" y1="0" x2="30" y2="92" stroke="url(#brass)" stroke-width="1.6"/>
+    <circle cx="30" cy="104" r="26" fill="url(#glow)"/>
+    <path d="M18 92 h24 l-4 6 h-16z" fill="url(#brass)"/>
+    <path d="M16 98 C14 112 16 124 22 132 H38 C44 124 46 112 44 98 Z" fill="url(#brass)"/>
+    <path d="M21 101 C20 112 21 121 25 128 H35 C39 121 40 112 39 101 Z" fill="#ffd77a" opacity=".85"/>
+    <path d="M30 101 V128 M24 104 C23 114 24 121 27 127 M36 104 C37 114 36 121 33 127" stroke="#a46a1c" stroke-width=".8" fill="none"/>
+    <path d="M20 132 h20 l-3 6 h-14z" fill="url(#brass)"/>
+    <line x1="30" y1="138" x2="30" y2="156" stroke="url(#brass)" stroke-width="1.2"/>
+    <circle cx="30" cy="160" r="4" fill="url(#brass)"/>
+    <circle cx="30" cy="170" r="2.4" fill="#fffaf0" stroke="#d9c7a8" stroke-width=".5"/>
+    <circle cx="30" cy="178" r="2" fill="#fffaf0" stroke="#d9c7a8" stroke-width=".5"/>
+  </symbol>
+</svg>
+
+<button id="music" type="button" aria-label="Play music">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#a8792f" stroke-width="1.4"/><circle cx="12" cy="12" r="2.4" fill="#6d2c4c"/><path d="M12 4.5a7.5 7.5 0 0 1 7.5 7.5" fill="none" stroke="#d9b46a" stroke-width="1.4" stroke-linecap="round"/></svg>
+</button>
+<canvas id="petals" aria-hidden="true"></canvas>
+
+<script>
+/* ================= EDIT FOR EACH CLIENT ================= */
+const INVITE = {
+  bride: "{{BRIDE}}",
+  groom: "{{GROOM}}",
+  groomNick: "{{GROOM_NICK}}",
+  brideParents: null,        // not shown on this invite
+  groomParents: null,        // not shown on this invite
+  families: "",
+  ceremony: "{{CEREMONY}}",
+  eventStart: "{{EVENT_START}}",
+  durationHours: 4,
+  time: "{{TIME}}",
+  venue: "{{VENUE}}",
+  mapUrl: "{{MAP_URL}}",
+  contacts: [                // RSVP: name + 10-digit mobile number
+    { name: "", phone: "{{CALL}}", whatsapp: "{{WHATSAPP}}" },
+  ],
+  music: "assets/{{MUSIC_FILE}}",  // background music
+  musicCredit: "{{MUSIC_CREDIT}}",
+  youtube: null,             // optional "Music for the occasion" YouTube card, e.g. { id: "zMkGAzAmcnA", title: "...", channel: "...", channelUrl: "..." }
+  studio: {                  // shown at the very end so guests can order their own invite
+    whatsapp: "",            // e.g. "98xxxxxxxx"
+    instagram: "",           // e.g. "shaadishopping"
+    website: "https://www.shaadishopping.com",
+    vivahOS: "https://www.shaadishopping.com/vivah-os"
+  }
+};
+/* ======================================================== */
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = id => document.getElementById(id);
+if ("IntersectionObserver" in window && !reduce) document.documentElement.classList.add("anim");
+
+// ---------- fill fields ----------
+(function(){
+  const d = new Date(INVITE.eventStart);
+  const part = o => new Intl.DateTimeFormat("en-IN", Object.assign({ timeZone: "Asia/Kolkata" }, o)).format(d);
+  const v = Object.assign({}, INVITE, {
+    weekday: part({ weekday: "long" }), day: part({ day: "2-digit" }), month: part({ month: "long" }), year: part({ year: "numeric" }),
+    bInit: INVITE.groom[0], gInit: INVITE.bride[0]
+  });
+  v.dateLong = `${v.day} ${v.month} ${v.year}`;
+  document.querySelectorAll("[data-f]").forEach(el => { const x = v[el.dataset.f]; if (x) { el.textContent = x; el.classList.remove("ph"); } });
+  $("mapBtn").href = INVITE.mapUrl; $("deskMap").href = INVITE.mapUrl;
+  const fmt = x => x.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const end = new Date(d.getTime() + INVITE.durationHours * 3600e3);
+  const cal = new URL("https://calendar.google.com/calendar/render");
+  cal.searchParams.set("action", "TEMPLATE");
+  cal.searchParams.set("text", `${INVITE.ceremony}: ${INVITE.groom} (${INVITE.groomNick}) & ${INVITE.bride}`);
+  cal.searchParams.set("dates", `${fmt(d)}/${fmt(end)}`);
+  cal.searchParams.set("location", INVITE.venue);
+  cal.searchParams.set("details", `Directions: ${INVITE.mapUrl}`);
+  $("calBtn").href = cal.toString();
+  // RSVP contacts
+  const box = $("contacts");
+  INVITE.contacts.forEach(c => {
+    const row = document.createElement("div"); row.className = "contact";
+    const digits = (c.phone || "").replace(/\D/g, "");
+    const wa = (c.whatsapp || c.phone || "").replace(/\D/g, "");
+    const intl = d => (d.length === 10 ? "91" + d : d);
+    // one line per number: "Call: {{CALL}} [Call]" and "WhatsApp: {{WHATSAPP}} [WhatsApp]"
+    row.innerHTML = `<b class="who"></b>`;
+    row.querySelector(".who").textContent = c.name; if (!c.name) row.querySelector(".who").remove();
+    const line = (label, number, href, btnText, cls, newTab) => {
+      const l = document.createElement("div"); l.className = "cline";
+      l.innerHTML = `<span class="lab"></span><span class="num"></span><a class="wa ${cls}"></a>`;
+      l.querySelector(".lab").textContent = label + ":";
+      l.querySelector(".num").textContent = number;
+      const a = l.querySelector("a"); a.href = href; a.textContent = btnText;
+      if (newTab) { a.target = "_blank"; a.rel = "noopener"; }
+      row.appendChild(l);
+    };
+    if (digits) line("Call", c.phone, `tel:+${intl(digits)}`, "Call", "call", false);
+    if (wa) line("WhatsApp", c.whatsapp || c.phone,
+      `https://wa.me/${intl(wa)}?text=${encodeURIComponent(`Namaste! Confirming our presence at ${INVITE.groom} (${INVITE.groomNick}) & ${INVITE.bride}’s ${INVITE.ceremony}.`)}`,
+      "WhatsApp", "", true);
+    if (!digits && !wa) { const l = document.createElement("div"); l.className = "cline"; l.textContent = "Number to be added"; row.appendChild(l); }
+    box.appendChild(row);
+  });
+})();
+
+// gate blur backdrop follows the gate art
+$("gateBlur").style.backgroundImage = `url("${$("gateArt").getAttribute("src")}")`;
+$("gateArt").addEventListener("error", () => { $("gateBlur").style.backgroundImage = 'url("assets/rk-garden.jpg")'; });
+
+// ---------- countdown ----------
+(function(){
+  const t = new Date(INVITE.eventStart).getTime(), pad = n => String(n).padStart(2, "0");
+  const tick = () => {
+    let s = Math.max(0, Math.floor((t - Date.now()) / 1000));
+    const d = Math.floor(s / 86400); s -= d * 86400;
+    const h = Math.floor(s / 3600); s -= h * 3600;
+    const m = Math.floor(s / 60); s -= m * 60;
+    flipSet("cd-d", String(d)); flipSet("cd-h", pad(h)); flipSet("cd-m", pad(m)); flipSet("cd-s", pad(s));
+  };
+  tick(); setInterval(tick, 1000);
+})();
+
+// ---------- reveal ----------
+if (document.documentElement.classList.contains("anim")) {
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+  }), { threshold: 0.18 });
+  document.querySelectorAll(".rv,.wr").forEach(el => io.observe(el));
+} else {
+  document.querySelectorAll(".rv,.wr").forEach(el => el.classList.add("in"));
+}
+
+// ---------- audio: temple bell + soft santoor/tanpura ----------
+const Audio2 = (() => {
+  let ac, master, timer, playing = false, step = 0, el;
+  const SA = 261.63, SC = [0, 2, 4, 7, 9];
+  const ctx = () => { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); return ac; };
+  function bell(){
+    try {
+      const a = ctx(), t = a.currentTime + .02, out = a.createGain(); out.gain.value = .5; out.connect(a.destination);
+      [[1, .5, 4.5], [2.01, .3, 3], [2.76, .22, 2.4], [5.4, .12, 1.4], [8.9, .06, .8], [.5, .25, 5]].forEach(([m, amp, dec]) => {
+        const o = a.createOscillator(), g = a.createGain();
+        o.frequency.value = 523 * m; o.type = "sine";
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(amp, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + dec);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + dec + .1);
+      });
+    } catch (e) {}
+  }
+  function startMusic(){
+    if (INVITE.music) { el = el || Object.assign(new Audio(INVITE.music), { loop: true, volume: .8 }); el.play().catch(() => {}); playing = true; return; }
+    try {
+      const a = ctx();
+      if (!master) {
+        master = a.createGain(); master.gain.value = 0;
+        const dl = a.createDelay(1); dl.delayTime.value = .38; const fb = a.createGain(); fb.gain.value = .3; const wet = a.createGain(); wet.gain.value = .3;
+        dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(a.destination); master.connect(a.destination); master.connect(dl);
+        [[SA * .375, .05], [SA / 2, .06], [SA, .022]].forEach(([f, g]) => {
+          const o = a.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
+          const lp = a.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 650;
+          const gg = a.createGain(); gg.gain.value = g;
+          const lfo = a.createOscillator(); lfo.frequency.value = .1 + Math.random() * .1; const lg = a.createGain(); lg.gain.value = g * .6;
+          lfo.connect(lg); lg.connect(gg.gain); o.connect(lp); lp.connect(gg); gg.connect(master); o.start(); lfo.start();
+        });
+      }
+      master.gain.cancelScheduledValues(a.currentTime); master.gain.setTargetAtTime(.5, a.currentTime, 1.5);
+      playing = true; loop();
+    } catch (e) {}
+  }
+  function pluck(semi, when, vel){
+    const f = SA * Math.pow(2, semi / 12), g = ac.createGain();
+    g.gain.setValueAtTime(0, when); g.gain.linearRampToValueAtTime(.15 * vel, when + .006); g.gain.exponentialRampToValueAtTime(.0008, when + 2.2);
+    [[1, "triangle", 1], [2.01, "sine", .35], [3.02, "sine", .12]].forEach(([m, type, amp]) => {
+      const o = ac.createOscillator(), og = ac.createGain(); o.type = type; o.frequency.value = f * m; og.gain.value = amp;
+      o.connect(og); og.connect(g); o.start(when); o.stop(when + 2.3);
+    });
+    g.connect(master);
+  }
+  function loop(){
+    clearTimeout(timer); if (!playing || !ac) return;
+    const now = ac.currentTime + .05, base = [0, 5, 7, 3][Math.floor(step / 8) % 4];
+    const idx = (base + [0, 1, 2, 1, 3, 2, 4, 2][step % 8]) % 10, semi = SC[idx % 5] + 12 * Math.floor(idx / 5);
+    pluck(semi, now, .7 + Math.random() * .3);
+    if (step % 2 === 0 && Math.random() < .5) pluck(semi + 12, now + .19, .32);
+    step++; timer = setTimeout(loop, step % 8 === 0 ? 900 : 430);
+  }
+  function stopMusic(){ playing = false; clearTimeout(timer); if (el) el.pause(); if (ac && master) master.gain.setTargetAtTime(0, ac.currentTime, .3); }
+  return { bell, startMusic, stopMusic, get on(){ return playing; } };
+})();
+
+// YouTube background music state (filled in once YouTube's player is ready)
+const YTM = { player: null, ready: false, playing: false };
+const musicOn = () => YTM.playing || Audio2.on;
+function setMusicUI(){ $("music").classList.toggle("on", musicOn()); $("music").setAttribute("aria-label", musicOn() ? "Pause music" : "Play music"); }
+// Start the background music from a guest's tap: the YouTube song if it can play, otherwise the santoor tune.
+function startBackgroundMusic(){
+  if (YTM.ready && YTM.player) {
+    try { YTM.player.unMute(); YTM.player.setVolume(70); YTM.player.playVideo(); } catch (e) {}
+    // some phones refuse to start a YouTube player on their own: fall back to the built-in tune
+    setTimeout(() => { if (!YTM.playing && !Audio2.on) { Audio2.startMusic(); setMusicUI(); } }, 1800);
+  } else {
+    Audio2.startMusic();
+  }
+  setMusicUI();
+}
+$("music").addEventListener("click", () => {
+  if (YTM.playing) { try { YTM.player.pauseVideo(); } catch (e) {} YTM.playing = false; }
+  else if (Audio2.on) Audio2.stopMusic();
+  else startBackgroundMusic();
+  setMusicUI();
+});
+
+// ---------- gate ----------
+document.body.classList.add("locked");
+let opened = false;
+function enterSite(){
+  $("bloom").classList.add("go");
+  document.body.classList.remove("locked");
+  scrollTo(0, 0);
+}
+function openGate(){
+  if (opened) return; opened = true;
+  Audio2.bell();   // one soft chime as the two hands meet
+  startBackgroundMusic();
+  $("gate").classList.add("rung", "united");
+  setTimeout(() => { for (let i = 0; i < 50; i++) setTimeout(() => spawn(true), i * 20); }, 1500);   // petals as they meet
+  if (reduce) {                                   // no motion: straight in
+    $("gate").classList.add("gone"); enterSite();
+    setTimeout(() => { $("gate").hidden = true; }, 50);
+    return;
+  }
+  const g = $("garden");
+  // 1 · the bell gate fades into the floral arch with its closed ivory-and-gold doors
+  setTimeout(() => { g.hidden = false; void g.offsetWidth; g.classList.add("show"); $("gate").classList.add("gone"); }, 3000);
+  setTimeout(() => { $("gate").hidden = true; }, 4200);
+  // 2 · the monogram lock turns away, then both doors swing open with a shower of petals
+  setTimeout(() => g.classList.add("unlock"), 4200);
+  setTimeout(() => {
+    g.classList.add("open");
+    for (let i = 0; i < 70; i++) setTimeout(() => spawn(true), 200 + i * 22);
+  }, 4800);
+  // 3 · walk through the gate into the invitation
+  setTimeout(() => { g.classList.add("through"); enterSite(); }, 6900);
+  setTimeout(() => { g.hidden = true; }, 9100);
+}
+$("gate").addEventListener("click", openGate);
+$("gate").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openGate(); } });
+
+// ---------- petals ----------
+const cv = $("petals"), cx = cv.getContext("2d");
+let W = 0, H = 0;
+function size(){ const r = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * r; cv.height = H * r; cx.setTransform(r, 0, 0, r, 0, 0); }
+size(); addEventListener("resize", size);
+const COL = ["#f4a7b9", "#f7c6d0", "#ffffff", "#e98aa5", "#f9d9a8", "#c9a7e3"];
+const petals = [];
+function spawn(burst){
+  petals.push({
+    x: burst ? W / 2 + (Math.random() - .5) * Math.min(W, 600) * .6 : Math.random() * W,
+    y: burst ? H * .42 : -20,
+    vx: burst ? (Math.random() - .5) * 7 : (Math.random() - .5) * .4,
+    vy: burst ? -2 - Math.random() * 4 : .45 + Math.random() * .7,
+    r: 4 + Math.random() * 5, rot: Math.random() * 6.28, vr: (Math.random() - .5) * .05,
+    f: Math.random() * 6.28, vf: .03 + Math.random() * .05, sw: Math.random() * 6.28,
+    c: COL[(Math.random() * COL.length) | 0]
+  });
+}
+function frame(){
+  cx.clearRect(0, 0, W, H);
+  if (opened && petals.length < (W < 700 ? 14 : 24) && Math.random() < .03) spawn(false);
+  for (let i = petals.length - 1; i >= 0; i--) {
+    const p = petals[i];
+    p.sw += .02; p.f += p.vf; p.rot += p.vr; p.vy = Math.min(p.vy + .05, 1.2); p.vx *= .985;
+    p.x += p.vx + Math.sin(p.sw) * .5; p.y += p.vy;
+    if (p.y > H + 30) { petals.splice(i, 1); continue; }
+    cx.save(); cx.translate(p.x, p.y); cx.rotate(p.rot); cx.scale(1, Math.max(.15, Math.abs(Math.cos(p.f))));
+    cx.globalAlpha = .9; cx.fillStyle = p.c;
+    cx.beginPath(); cx.moveTo(0, -p.r); cx.quadraticCurveTo(p.r, -p.r * .2, 0, p.r); cx.quadraticCurveTo(-p.r, -p.r * .2, 0, -p.r); cx.fill();
+    cx.restore();
+  }
+  requestAnimationFrame(frame);
+}
+if (!reduce) requestAnimationFrame(frame);
+
+// ---------- YouTube music card ----------
+(function(){
+  const y = INVITE.youtube, sec = $("music-sec");
+  if (!y || !y.id) { sec.hidden = true; return; }
+  $("ytFallback").href = `https://www.youtube.com/watch?v=${y.id}`;
+  $("ytTitle").textContent = y.title; $("ytChannel").textContent = y.channel; $("ytChannel").href = y.channelUrl;
+  window.onYouTubeIframeAPIReady = function(){
+    try {
+      const p = new YT.Player("ytPlayer", {
+        videoId: y.id, width: "100%", height: "100%",
+        playerVars: { rel: 0, playsinline: 1, modestbranding: 1 },
+        events: {
+          onReady: () => { $("ytFallback").hidden = true; YTM.player = p; YTM.ready = true; },
+          onStateChange: e => {
+            YTM.playing = e.data === 1;
+            // the YouTube song is the background music; the soft santoor tune steps aside while it plays
+            if (YTM.playing && Audio2.on) Audio2.stopMusic();
+            setMusicUI();
+          }
+        }
+      });
+    } catch (e) {}
+  };
+  const s = document.createElement("script");
+  s.src = "https://www.youtube.com/iframe_api"; s.async = true;
+  document.head.appendChild(s);   // where YouTube can't load (e.g. a locked-down preview), the "Play on YouTube" link stays
+})();
+
+// ---------- 3D opening: hands (or rings) + gentle parallax ----------
+(function(){
+  const g3 = $("g3d"); let missing = 0;
+  const onMiss = () => { if (++missing) g3.classList.add("no-hands"); };   // any hand picture missing → use the gold rings
+  ["handL", "handR"].forEach(id => { const im = $(id); if (im.complete && !im.naturalWidth) onMiss(); im.addEventListener("error", onMiss); });
+  if (reduce) return;
+  let tx = 0, ty = 0, last = -1e9;
+  $("gate").addEventListener("pointermove", e => { tx = e.clientX / innerWidth * 2 - 1; ty = e.clientY / innerHeight * 2 - 1; last = performance.now(); }, { passive: true });
+  (function loop(t){
+    if (!$("gate").hidden) {
+      if (t - last > 2000) { tx = Math.sin(t * .0005) * .6; ty = Math.cos(t * .0004) * .4; }
+      g3.style.setProperty("--px", tx.toFixed(3)); g3.style.setProperty("--py", ty.toFixed(3)); const tl = document.querySelector(".tl3d"); if (tl) { tl.style.setProperty("--px", tx.toFixed(3)); tl.style.setProperty("--py", ty.toFixed(3)); }
+      requestAnimationFrame(loop);
+    }
+  })(0);
+})();
+
+// ---------- flip-clock digits ----------
+function flipSet(id, val){
+  const el = document.getElementById(id);
+  if (!el || el.textContent === val) return;
+  el.textContent = val;
+  if (reduce) return;
+  el.classList.remove("flip"); void el.offsetWidth; el.classList.add("flip");
+}
+
+// ---------- studio credit links ----------
+(function(){
+  const s = INVITE.studio || {}, box = $("studioLinks");
+  const add = (href, label) => { const a = document.createElement("a"); a.href = href; a.target = "_blank"; a.rel = "noopener"; a.textContent = label; box.appendChild(a); };
+  const wa = (s.whatsapp || "").replace(/\D/g, "");
+  if (wa) add(`https://wa.me/${wa.length === 10 ? "91" + wa : wa}?text=${encodeURIComponent("Hi Shaadi Shopping! I saw an invitation you made and would like one for my function.")}`, "WhatsApp us");
+  if (s.instagram) add(`https://instagram.com/${s.instagram.replace(/^@/, "")}`, "Instagram");
+  if (s.website) add(s.website, "shaadishopping.com");
+  if (s.vivahOS) add(s.vivahOS, "Plan with Vivah OS");
+})();
+
+// ---------- 3D scene: scroll-driven tilt + pointer parallax on every section ----------
+(function(){
+  if (reduce) return;
+  const secs = [...document.querySelectorAll("main > section")].map(sec => ({
+    sec, bg: sec.querySelector(":scope > .bg"), d3: sec.querySelector(":scope > .d3")
+  }));
+  let tx = 0, ty = 0, px = 0, py = 0, last = -1e9;
+  const setT = (x, y) => { tx = x / innerWidth * 2 - 1; ty = y / innerHeight * 2 - 1; last = performance.now(); };
+  addEventListener("pointermove", e => setT(e.clientX, e.clientY), { passive: true });
+  addEventListener("touchmove", e => { const t = e.touches[0]; if (t) setT(t.clientX, t.clientY); }, { passive: true });
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function loop(t){
+    if (t - last > 2500) { tx = Math.sin(t * .00035) * .45; ty = Math.cos(t * .00028) * .3; }   // gentle idle drift on phones
+    px += (tx - px) * .06; py += (ty - py) * .06;
+    const vh = innerHeight;
+    for (const s of secs) {
+      const r = s.sec.getBoundingClientRect();
+      if (r.bottom < -100 || r.top > vh + 100) continue;
+      const c = clamp((r.top + r.height / 2 - vh / 2) / vh, -1.2, 1.2);   // 0 when centred, + below, - above
+      if (s.bg) s.bg.style.transform = `translate3d(${(-px * 16).toFixed(1)}px, ${(c * -70).toFixed(1)}px, 0) scale(1.24)`;
+      if (s.d3) {
+        const rx = c * 16 - py * 4, ry = px * 7, z = -Math.abs(c) * 160;
+        s.d3.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateZ(${z.toFixed(1)}px)`;
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
