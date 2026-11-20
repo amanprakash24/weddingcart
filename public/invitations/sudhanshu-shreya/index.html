@@ -438,7 +438,13 @@ html.anim .contacts:not(.in) .contact{transform:rotateX(-75deg) translateZ(-60px
 .hero .rule{margin-top:12px}
 .card .nick{display:block;margin:10px 0 4px}
 .card .amp{margin:6px 0 0}
-img.mono{height:auto;aspect-ratio:900/480}
+img.mono{height:auto;aspect-ratio:auto}
+/* the client's own monogram (स + S), in the invitation's gold */
+.hero img.mono{width:min(150px,38cqi)!important}
+#gate img.logo-gate{width:110px}
+footer img.mono{width:104px!important}
+.desk-left img.desk-logo{width:min(150px,55%)}
+.gg-lock img{width:70%}
 /* ---------- the temple bell on the opening screen ---------- */
 .bell-wrap{position:absolute;left:50%;top:0;width:min(34cqi,150px);margin-left:calc(min(34cqi,150px) / -2);
   transform-origin:50% 0;animation:bellIdle 3.6s ease-in-out infinite;z-index:2;pointer-events:none;
@@ -628,12 +634,7 @@ footer{background:var(--paper)}
   <span class="ring"></span><span class="ring"></span>
   <div class="gate-top">
     <div class="names-pill">
-      <svg class="mono play" viewBox="0 0 300 160" aria-hidden="true">
-        <defs><linearGradient id="mg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc9c"/><stop offset=".4" stop-color="#c8913c"/><stop offset=".75" stop-color="#8a5c1a"/><stop offset="1" stop-color="#e9c47a"/></linearGradient></defs>
-        <path class="heart" stroke="url(#mg1)" transform="translate(122 50) scale(.56)" d="M50 86 C22 66 5 48 5 28 C5 13 16 4 29 4 C39 4 46 10 50 19 C54 10 61 4 71 4 C84 4 95 13 95 28 C95 48 78 66 50 86Z"/>
-        <text fill="url(#mg1)" class="ml" x="84" y="116" text-anchor="middle" data-f="bInit">S</text>
-        <text fill="url(#mg1)" class="mr" x="216" y="116" text-anchor="middle" data-f="gInit">S</text>
-      </svg>
+      <img class="mono logo-gate" src="/invitations/sudhanshu-shreya/assets/logo.png" alt="Sudhanshu and Shreya monogram">
       <div class="gate-names">Engagement Invitation</div>
       <small>You are warmly invited</small>
     </div>
@@ -660,7 +661,7 @@ footer{background:var(--paper)}
         <i class="finial"></i>
         <i class="latch"></i>
       </div>
-      <div class="gg-lock"><img src="/invitations/sudhanshu-shreya/assets/monogram-ss.png" alt=""></div>
+      <div class="gg-lock"><img src="/invitations/sudhanshu-shreya/assets/logo.png" alt=""></div>
     </div>
     <img class="gg-arch" src="/invitations/sudhanshu-shreya/assets/floral-arch.jpg" alt="">
     <div class="gg-hint">The gates are opening…</div>
@@ -671,7 +672,7 @@ footer{background:var(--paper)}
 <!-- laptop / desktop only: soft art backdrop and side panels around the invite column -->
 <div class="desk desk-bg" aria-hidden="true"></div>
 <aside class="desk desk-side desk-left" aria-label="At a glance">
-  <img src="/invitations/sudhanshu-shreya/assets/monogram-ss.png" alt="">
+  <img src="/invitations/sudhanshu-shreya/assets/logo.png" alt="" class="desk-logo">
   <div class="k">The engagement of</div>
   <div class="n"><span data-f="groom">Sudhanshu</span><small>( <span data-f="groomNick">Charlie</span> )</small>&amp; <span data-f="bride">Shreya</span></div>
   <div class="rule"><i></i></div>
@@ -695,7 +696,7 @@ footer{background:var(--paper)}
     </div>
     <div class="wash"></div>
     <div class="inner d3">
-      <img class="mono rv" src="/invitations/sudhanshu-shreya/assets/monogram-ss.png" alt="Monogram: S and S joined by a heart">
+      <img class="mono rv" src="/invitations/sudhanshu-shreya/assets/logo.png" alt="Sudhanshu and Shreya monogram">
       <div class="caps sub rv" style="--d:.4s">The engagement of</div>
       <h1 class="names wr" style="--d:1.6s"><span data-f="groom">Sudhanshu</span><span class="nickline">( <span data-f="groomNick">Charlie</span> )</span><span class="amp">&amp;</span><span data-f="bride">Shreya</span></h1>
       <div class="rule rv" style="--d:1.8s"><i></i></div>
@@ -826,7 +827,7 @@ footer{background:var(--paper)}
   </section>
 
   <footer class="inner">
-    <img class="mono rv" src="/invitations/sudhanshu-shreya/assets/monogram-ss.png" alt="Monogram: S and S joined by a heart" style="width:150px">
+    <img class="mono rv" src="/invitations/sudhanshu-shreya/assets/logo.png" alt="Sudhanshu and Shreya monogram" style="width:150px">
     <div class="caps">With love &amp; blessings</div>
     <div class="fam" data-f="families">The Family</div>
     <div class="music-credit" data-f="musicCredit"></div>
