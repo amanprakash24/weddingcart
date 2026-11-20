@@ -500,6 +500,33 @@ main{container:page / inline-size;position:relative;z-index:1;background:var(--p
   #music{right:calc((100vw - min(500px, 42vw)) / 2 + 16px)}
 }
 @media (min-width: 900px) and (max-width: 1199px){ .desk-side{display:none} main{width:min(520px, 70vw)} #music{right:calc((100vw - min(520px, 70vw)) / 2 + 16px)} }
+/* ================= one theme for the whole invitation =================
+   every section shares the ivory paper; artwork is warmed to one grade and dissolves into the paper
+   at its edges, so the page reads as one continuous card instead of separate coloured slides */
+main > section{background:var(--paper)!important;color:var(--ink)}
+main > section > .bg img{filter:sepia(.18) saturate(.82) brightness(1.02)}
+main > section:not(.hero) > .bg{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%);
+  mask-image:linear-gradient(180deg,transparent 0,#000 16%,#000 84%,transparent 100%)}
+.hero > .bg{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 82%,transparent 100%);mask-image:linear-gradient(180deg,#000 0,#000 82%,transparent 100%)}
+/* the floral sections all use the same, gentle strength */
+.invite .bg img,.event .bg img,.countdown .bg img,.rsvp .bg img{opacity:.55!important}
+.invite .wash,.event .wash,.countdown .wash,.rsvp .wash{background:radial-gradient(70% 55% at 50% 50%, rgba(251,246,238,.92), rgba(251,246,238,.55) 70%, rgba(251,246,238,0) 100%)!important}
+/* the story art keeps its picture but in the same warm ivory family */
+.couple .bg img{filter:sepia(.32) saturate(.7) hue-rotate(-8deg) brightness(1.04)}
+.couple .wash{background:linear-gradient(180deg, rgba(251,246,238,.96) 0%, rgba(251,246,238,.82) 38%, rgba(251,246,238,0) 62%)!important}
+/* RSVP: ivory like the rest, with a plum card as the accent */
+.rsvp h2{color:var(--plum)!important}
+.rsvp .caps{color:#8a5f1f!important}
+.rsvp p{color:var(--muted)!important}
+.contact{background:linear-gradient(180deg,#7d3558,var(--plum))!important;color:#fff6ea;box-shadow:0 0 0 1px rgba(168,121,47,.6), 0 0 0 6px #fbf6ee, 0 0 0 7px rgba(168,121,47,.3), 0 20px 40px rgba(74,35,54,.2)!important}
+.contact span{color:#f3d79a!important}
+/* section headings: one style everywhere */
+main h2{color:var(--plum)}
+/* gold ornament at every section break, like pages of one printed card */
+main > section:not(.hero)::before{content:"";position:absolute;left:50%;top:22px;width:150px;height:16px;margin-left:-75px;z-index:3;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 16'%3E%3Cpath d='M0 8h58M92 8h58' stroke='%23b0813a' stroke-width='1'/%3E%3Cpath d='M75 1l7 7-7 7-7-7z' fill='%23b0813a'/%3E%3Ccircle cx='62' cy='8' r='2' fill='%23b0813a'/%3E%3Ccircle cx='88' cy='8' r='2' fill='%23b0813a'/%3E%3C/svg%3E") center/contain no-repeat}
+footer{background:var(--paper)}
+.couple h2{font-size:clamp(32px,8.6cqi,56px)!important;text-wrap:balance}
 </style>
 </head>
 <body>
@@ -733,6 +760,7 @@ main{container:page / inline-size;position:relative;z-index:1;background:var(--p
 
   <!-- ===== RSVP ===== -->
   <section class="rsvp" aria-label="RSVP">
+    <div class="bg"><img src="/invitations/sudhanshu-shreya/assets/floral-arch.jpg" alt=""></div>
     <div class="wash"></div>
     <div class="inner d3">
       <div class="caps rv">Join the celebration</div>
