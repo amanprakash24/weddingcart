@@ -90,7 +90,7 @@ const TAB_IDS = ['dashboard', 'vendors', 'categories', 'special-services', 'spec
 type Tab = (typeof TAB_IDS)[number];
 const isTab = (value: string | null): value is Tab => TAB_IDS.some((id) => id === value);
 
-interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number; }
+interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number | null; }
 
 // Explicit discriminated union for GET /api/stats — replaces the earlier
 // two-variable (stats + statsError) representation, which let "loading",
@@ -117,9 +117,9 @@ export type DashboardStatDisplay = { kind: 'loading' } | { kind: 'unavailable' }
 
 export function dashboardStatValue(statsState: StatsState, field: keyof Stats): DashboardStatDisplay {
   if (statsState.status === 'loading') return { kind: 'loading' };
-  if (statsState.status === 'success') return { kind: 'value', value: statsState.data[field] };
-  if (statsState.lastGood) return { kind: 'value', value: statsState.lastGood[field] };
-  return { kind: 'unavailable' };
+  // A null value is a figure this person may not see (revenue without company-financials access) — shown as unavailable.
+  const value = statsState.status === 'success' ? statsState.data[field] : statsState.lastGood ? statsState.lastGood[field] : null;
+  return value === null ? { kind: 'unavailable' } : { kind: 'value', value };
 }
 interface InvoiceItemForm {
   description: string;
@@ -1179,7 +1179,7 @@ Create a separate standalone invoice anyway?`)) return;
                 <div className="w-full mb-5 bg-gradient-to-r from-amber-500 to-rose-500 rounded-2xl px-6 py-5 flex items-center justify-between">
                   <div>
                     <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mb-1">Confirmed Revenue</p>
-                    <p className="text-white text-3xl font-bold">₹{(stats!.revenue).toLocaleString('en-IN')}</p>
+                    <p className="text-white text-3xl font-bold">₹{(stats!.revenue ?? 0).toLocaleString('en-IN')}</p>
                     <p className="text-white/70 text-xs mt-1">From confirmed &amp; closed bookings</p>
                   </div>
                   <TrendingUp className="w-12 h-12 text-white/30" />

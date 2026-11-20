@@ -79,8 +79,8 @@ describe('commandCenterService.getDashboard — finance (live Payment rows for w
     const dashboard = await commandCenterService.getDashboard();
 
     expect(dashboard.today.paymentsDue).toBe(0);
-    expect(dashboard.finance.duePayments).toHaveLength(0);
-    expect(dashboard.finance.outstanding).toBe(0);
+    expect(dashboard.finance!.duePayments).toHaveLength(0);
+    expect(dashboard.finance!.outstanding).toBe(0);
   });
 
   test('computes outstanding/duePayments correctly across unpaid, partially paid, and multiple-payment wedding-linked invoices, ignoring non-SUCCESS payments', async () => {
@@ -144,12 +144,12 @@ describe('commandCenterService.getDashboard — finance (live Payment rows for w
     const dashboard = await commandCenterService.getDashboard();
 
     // outstanding: (10000-4000) + (5000-5000) + (8000-0) + (12000-7000) = 6000+0+8000+5000
-    expect(dashboard.finance.outstanding).toBe(19000);
+    expect(dashboard.finance!.outstanding).toBe(19000);
 
     // duePayments: inv-partial, inv-unpaid, inv-multi (inv-paid excluded by
     // status, inv-draft excluded by status)
     expect(dashboard.today.paymentsDue).toBe(3);
-    const byInvoiceNumber = Object.fromEntries(dashboard.finance.duePayments.map((d) => [d.invoiceNumber, d.amount]));
+    const byInvoiceNumber = Object.fromEntries(dashboard.finance!.duePayments.map((d) => [d.invoiceNumber, d.amount]));
     expect(byInvoiceNumber['INV-A']).toBe(6000);
     expect(byInvoiceNumber['INV-C']).toBe(8000);
     expect(byInvoiceNumber['INV-D']).toBe(5000); // FAILED payment correctly excluded from the paid sum
@@ -184,9 +184,9 @@ describe('commandCenterService.getDashboard — finance (live Payment rows for w
     const dashboard = await commandCenterService.getDashboard();
 
     // outstanding: (10000-4000) + (8000-3000) = 6000 + 5000
-    expect(dashboard.finance.outstanding).toBe(11000);
+    expect(dashboard.finance!.outstanding).toBe(11000);
     expect(dashboard.today.paymentsDue).toBe(2);
-    const byInvoiceNumber = Object.fromEntries(dashboard.finance.duePayments.map((d) => [d.invoiceNumber, d.amount]));
+    const byInvoiceNumber = Object.fromEntries(dashboard.finance!.duePayments.map((d) => [d.invoiceNumber, d.amount]));
     expect(byInvoiceNumber['INV-STANDALONE']).toBe(6000); // respects amountPaid, not the empty Payment array
     expect(byInvoiceNumber['INV-WEDDING']).toBe(5000); // respects the Payment sum, not the stale amountPaid=0
   });
@@ -208,7 +208,38 @@ describe('commandCenterService.getDashboard — finance (live Payment rows for w
     const dashboard = await commandCenterService.getDashboard();
 
     expect(dashboard.today.paymentsDue).toBe(0);
-    expect(dashboard.finance.duePayments).toHaveLength(0);
-    expect(dashboard.finance.outstanding).toBe(0);
+    expect(dashboard.finance!.duePayments).toHaveLength(0);
+    expect(dashboard.finance!.outstanding).toBe(0);
+  });
+});
+
+describe('commandCenterService.getDashboard — company financials only when asked for (founder-only money, 21 Nov 2026)', () => {
+  const unpaid: FixtureInvoice = {
+    id: 'inv-due', status: 'SENT', total: 50000, amountPaid: 0, weddingId: 'w1',
+    clientName: 'Sharma', invoiceNumber: 'INV-1', payments: [],
+  };
+
+  test('includeFinancials: false returns no finance block and never reads the company-wide invoice total or recent payments', async () => {
+    // basePrismaMock shares one "empty" mock across several tables, so payments get their own here to count calls exactly.
+    const prisma = { ...basePrismaMock([unpaid]), payment: { findMany: mock(async () => []) } };
+    mock.module('@/lib/prisma', () => ({ prisma }));
+    const { commandCenterService } = await import('./commandCenter.service');
+
+    const dashboard = await commandCenterService.getDashboard(new Date(), { includeFinancials: false });
+
+    expect(dashboard.finance).toBeNull();
+    // The work count stays for everyone.
+    expect(dashboard.today.paymentsDue).toBe(1);
+    expect(prisma.payment.findMany).not.toHaveBeenCalled();
+    // Only the "payments due" list is read (for the count) — not the all-invoices outstanding query.
+    expect(prisma.invoice.findMany).toHaveBeenCalledTimes(1);
+  });
+
+  test('the default (and includeFinancials: true) still returns the finance block', async () => {
+    const commandCenterService = await loadServiceWith([unpaid]);
+    const byDefault = await commandCenterService.getDashboard();
+    const explicit = await commandCenterService.getDashboard(new Date(), { includeFinancials: true });
+    expect(byDefault.finance?.outstanding).toBe(50000);
+    expect(explicit.finance?.outstanding).toBe(50000);
   });
 });

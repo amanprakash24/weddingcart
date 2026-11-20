@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invoiceService } from '@/services/invoice.service';
-import { requireAdmin } from '@/lib/adminAuth';
+import { denyUnlessCompanyFinancials } from '@/lib/auth/companyFinancialsGuard';
 import { handleApiError } from '@/lib/errors';
 import type { InvoiceWithDetails } from '@/repositories/invoice.repository';
 import { findWeddingsForClientPhone, standaloneInvoiceWarning } from '@/services/invoiceWorkflow.service';
@@ -18,10 +18,11 @@ function toResponseShape(invoice: InvoiceWithDetails) {
   return { ...rest, _id: invoice.id, status: invoice.status.toLowerCase() };
 }
 
+// The Invoices screen lists every invoice in the company with its amounts, so the whole screen (list, read, create, edit,
+// delete) is company-financials only (lib/auth/financialAccess.ts). Invoices on a wedding stay in that wedding's Money section.
 async function handleGET() {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await denyUnlessCompanyFinancials();
+  if (denied) return denied;
   try {
     const { data } = await invoiceService.list();
     return NextResponse.json({ success: true, data: data.map(toResponseShape) });
@@ -32,9 +33,8 @@ async function handleGET() {
 }
 
 async function handlePOST(req: NextRequest) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await denyUnlessCompanyFinancials();
+  if (denied) return denied;
   try {
     const body = await req.json();
     const {

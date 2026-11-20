@@ -49,12 +49,15 @@ export default function FounderDashboardClient() {
         <>
           <CommandCenter data={dashboard.commandCenter} />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <BusinessPerformanceCard revenue={dashboard.revenue} />
-            <CommissionCard commission={dashboard.commission} />
-          </div>
+          {/* Company-wide money: null for anyone who may not see company financials, so these cards are left out. */}
+          {(dashboard.revenue || dashboard.commission) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {dashboard.revenue && <BusinessPerformanceCard revenue={dashboard.revenue} />}
+              {dashboard.commission && <CommissionCard commission={dashboard.commission} />}
+            </div>
+          )}
 
-          <RevenueByMonthCard revenueByMonth={dashboard.revenueByMonth} />
+          {dashboard.revenueByMonth && <RevenueByMonthCard revenueByMonth={dashboard.revenueByMonth} />}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <PipelineHealthCard pipelineHealth={dashboard.pipelineHealth} />

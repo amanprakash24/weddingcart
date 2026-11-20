@@ -238,7 +238,7 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
   test('15 · The Command Center shows the wedding as upcoming and the money as due', async () => {
     // Only non-draft invoices count as due: the balance invoice is PARTIALLY_PAID (a payment reached it), so its ₹2,75,000 is due.
     const after = await app.commandCenterService.getDashboard();
-    expect(after.finance.outstanding).toBeGreaterThanOrEqual(275000);
+    expect(after.finance!.outstanding).toBeGreaterThanOrEqual(275000);
     expect(after.today.paymentsDue).toBeGreaterThanOrEqual(1);
     expect(after.upcomingEvents.some((e) => e.weddingId === weddingId && e.date.startsWith('2026-11-20'))).toBe(true);
   });
