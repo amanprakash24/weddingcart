@@ -21,7 +21,7 @@ const EDGE = [
 const file = process.argv[2];
 if (!file) { console.error("Usage: node new-invite.mjs <client.json>"); process.exit(1); }
 const c = JSON.parse(fs.readFileSync(file, "utf8"));
-const need = ["slug", "groom", "bride", "ceremony", "eventStart", "time", "venue", "mapUrl", "family", "call"];
+const need = ["slug", "groom", "bride", "ceremony", "eventStart", "time", "venue", "mapUrl", "call"];
 const missing = need.filter(k => !c[k]);
 if (missing.length) { console.error("Missing in " + file + ": " + missing.join(", ")); process.exit(1); }
 if (!/^[a-z0-9-]+$/.test(c.slug)) { console.error("slug must be lowercase letters, numbers and dashes, e.g. rahul-priya"); process.exit(1); }
@@ -43,7 +43,7 @@ if (c.music && c.music.file) {
 
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const T = {
-  GROOM: c.groom, GROOM_NICK: c.groomNick || "", BRIDE: c.bride, CEREMONY: c.ceremony, FAMILY: c.family,
+  GROOM: c.groom, GROOM_NICK: c.groomNick || "", BRIDE: c.bride, CEREMONY: c.ceremony,
   VENUE: c.venue, TIME: c.time, MAP_URL: c.mapUrl, EVENT_START: c.eventStart,
   CALL: c.call, WHATSAPP: c.whatsapp || c.call,
   DATE_LONG: `${day} ${month} ${year}`, WEEKDAY: part({ weekday: "long" }), MONTH: month,
@@ -87,9 +87,13 @@ const tmp = fs.mkdtempSync(path.join(OUT, ".build-"));
 const g0 = c.groom.trim()[0].toUpperCase(), b0 = c.bride.trim()[0].toUpperCase();
 fs.writeFileSync(path.join(tmp, "mono.html"), fs.readFileSync(path.join(HERE, "tools", "monogram.html"), "utf8").replace("{{G}}", esc(g0)).replace("{{B}}", esc(b0)));
 fs.copyFileSync(path.join(HERE, "assets", "floral-arch.jpg"), path.join(tmp, "floral-arch.jpg"));
+if (c.logo && c.logo.trim()) {
+  if (!fs.existsSync(c.logo)) { console.error("Logo file not found: " + c.logo); process.exit(1); }
+  fs.copyFileSync(c.logo, path.join(A, "logo.png"));            // client's own logo (transparent PNG, ideally in gold)
+}
 if (EDGE) {
-  shot(path.join(tmp, "mono.html"), path.join(A, "monogram.png"), 900, 480, true);
-  fs.copyFileSync(path.join(A, "monogram.png"), path.join(tmp, "monogram.png"));
+  if (!(c.logo && c.logo.trim())) shot(path.join(tmp, "mono.html"), path.join(A, "logo.png"), 900, 480, true);
+  fs.copyFileSync(path.join(A, "logo.png"), path.join(tmp, "monogram.png"));
   const og = fs.readFileSync(path.join(HERE, "tools", "og.html"), "utf8")
     .replace("{{LABEL}}", esc(c.eventLabel || "Engagement Invitation"))
     .replace("{{NAMES}}", esc(`${c.groom} & ${c.bride}`))
@@ -105,7 +109,7 @@ fs.rmSync(tmp, { recursive: true, force: true });
 
 console.log(`\nCreated ${OUT}`);
 console.log(`  ${c.groom}${c.groomNick ? " (" + c.groomNick + ")" : ""} & ${c.bride} · ${c.ceremony} · ${T.WEEKDAY} ${T.DATE_LONG}, ${c.time} · ${c.venue}`);
-console.log(`  monogram ${g0}♥${b0} · music ${musicFile}${musicCredit ? " (" + musicCredit + ")" : ""}`);
+console.log(`  logo ${c.logo && c.logo.trim() ? path.basename(c.logo) + " (client's own)" : g0 + "♥" + b0 + " monogram"} · music ${musicFile}${musicCredit ? " (" + musicCredit + ")" : ""}`);
 console.log(`\nNext: open ${path.join(OUT, "index.html")} to check it, then publish:`);
 console.log(`  bash "${path.join(ROOT, "build-for-site.sh")}" ${c.slug} ${c.slug}`);
 console.log(`  → https://www.shaadishopping.com/invitations/${c.slug}`);

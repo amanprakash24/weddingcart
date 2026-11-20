@@ -5,10 +5,10 @@ https://www.shaadishopping.com/invitations/sudhanshu-shreya
 
 ## What guests see
 
-1. **"Tap to unite"**: two gold rings swing in from the sides in 3D and link together. They are replaced by Krishna's and the bride's hands if `assets/hand-krishna.png` and `assets/hand-bride.png` exist.
+1. **Opening**: the couple's logo, a soft-gold 3D "ENGAGEMENT" over a raised plum script "Invitation", and a 3D gold **Open Invitation** button. On tap, two gold rings swing in from the sides in 3D and link together. They are replaced by Krishna's and the bride's hands if `assets/hand-krishna.png` and `assets/hand-bride.png` exist.
 2. **Garden gate**: ivory-and-gold gates open inside a rose arch, with a shower of petals.
-3. **Hero**: the couple's monogram (for example S♥S), names, date and venue over the Radha-Krishna garden.
-4. **Invitation card**: Ganesh, the family line, and the couple's names.
+3. **Hero**: the couple's logo, names, date and venue over the Radha-Krishna garden.
+4. **Invitation card**: Ganesh, "With the blessings of Lord Ganesha and our elders, we cordially invite you to celebrate the engagement of", and the couple's names.
 5. **Ceremony card**: 3D doors open onto the date, time, venue, **Directions** and **Save the date**.
 6. **Story**: a Shiv-Parvati / Radha-Krishna line.
 7. **RSVP**: separate **Call** and **WhatsApp** buttons.
@@ -31,7 +31,7 @@ Background music starts with the first tap, and the floating button pauses it. O
    | `eventStart` | `2027-02-14T18:30:00+05:30` | Date and time in India time. The countdown and the calendar use this. |
    | `time` | `6:30 PM onwards` | |
    | `venue`, `mapUrl` | `Hotel Maurya, Patna`, a Google Maps link | |
-   | `family` | `The Family` / `The Sharma Family` | Use whatever wording the client wants. |
+   | `logo` | `C:/…/client-logo.png` | Optional. The client's own logo as a transparent PNG (gold looks best). Leave it `""` and an initials monogram (for example R♥P) is drawn instead. |
    | `call`, `whatsapp` | `98765 43210` | Leave `whatsapp` empty to use the call number. |
    | `music` | *(optional)* | Leave it out to use our own original track. See the music section below. |
 
@@ -40,7 +40,7 @@ Background music starts with the first tap, and the floating button pauses it. O
    cd "C:\Shaadi Shopping\Invitation Sample\templates\divine-union"
    node new-invite.mjs clients\rahul-priya.json
    ```
-   This creates `C:\Shaadi Shopping\Invitation Sample\rahul-priya\` and draws the R♥P monogram and the WhatsApp preview image. Open its `index.html` to check it.
+   This creates `C:\Shaadi Shopping\Invitation Sample\rahul-priya\` adds the client's logo (or draws an R♥P monogram), and draws the WhatsApp preview image. Open its `index.html` to check it.
 
 3. Publish it on shaadishopping.com:
    ```
@@ -76,3 +76,11 @@ Background music starts with the first tap, and the floating button pauses it. O
 - `tools/monogram.html`, `tools/og.html`: draw the monogram and the WhatsApp preview image.
 - `tools/tokenize-from-page.mjs`: rebuilds the template from a finished page, if the design is improved later.
 - `clients/`: one details file per client. `sudhanshu-shreya.json` is the first one.
+
+## Checked on every screen
+
+Every section was checked at 320, 360, 375, 390, 412 and 768 px wide, and on laptops. No text runs off-screen; labels, headings, the date row and the RSVP numbers scale and wrap to fit.
+
+## Making a client's logo gold
+
+If a client sends a logo on a coloured or cream background, cut it out to a transparent PNG and recolour it in the invitation's gold before setting `logo`. The first client's logo (स + S) was done this way: it was separated from the cream paper by colour distance and filled with the invitation's gold gradient.

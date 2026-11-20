@@ -1,5 +1,5 @@
 <title>{{GROOM}} & {{BRIDE}} Engagement Invitation</title>
-<meta name="description" content="You are warmly invited to the {{CEREMONY}} of {{GROOM}} ({{GROOM_NICK}}) & {{BRIDE}} · {{WEEKDAY}}, {{DATE_LONG}} · 5:00 PM · {{VENUE}}. With love, {{FAMILY}}.">
+<meta name="description" content="You are warmly invited to the {{CEREMONY}} of {{GROOM}} ({{GROOM_NICK}}) & {{BRIDE}} · {{WEEKDAY}}, {{DATE_LONG}} · 5:00 PM · {{VENUE}}.">
 <meta property="og:title" content="{{GROOM}} & {{BRIDE}} Engagement Invitation">
 <meta property="og:description" content="{{CEREMONY}} · {{WEEKDAY}}, {{DATE_LONG}} · 5:00 PM · {{VENUE}}">
 <meta property="og:image" content="assets/rk-garden.jpg">
@@ -425,7 +425,13 @@ html.anim .contacts:not(.in) .contact{transform:rotateX(-75deg) translateZ(-60px
 .hero .rule{margin-top:12px}
 .card .nick{display:block;margin:10px 0 4px}
 .card .amp{margin:6px 0 0}
-img.mono{height:auto;aspect-ratio:900/480}
+img.mono{height:auto;aspect-ratio:auto}
+/* the client's own monogram (स + S), in the invitation's gold */
+.hero img.mono{width:min(150px,38cqi)!important}
+#gate img.logo-gate{width:110px}
+footer img.mono{width:104px!important}
+.desk-left img.desk-logo{width:min(150px,55%)}
+.gg-lock img{width:70%}
 /* ---------- the temple bell on the opening screen ---------- */
 .bell-wrap{position:absolute;left:50%;top:0;width:min(34cqi,150px);margin-left:calc(min(34cqi,150px) / -2);
   transform-origin:50% 0;animation:bellIdle 3.6s ease-in-out infinite;z-index:2;pointer-events:none;
@@ -513,6 +519,7 @@ main h2{color:var(--plum)}
 main > section:not(.hero)::before{content:"";position:absolute;left:50%;top:22px;width:150px;height:16px;margin-left:-75px;z-index:3;pointer-events:none;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 16'%3E%3Cpath d='M0 8h58M92 8h58' stroke='%23b0813a' stroke-width='1'/%3E%3Cpath d='M75 1l7 7-7 7-7-7z' fill='%23b0813a'/%3E%3Ccircle cx='62' cy='8' r='2' fill='%23b0813a'/%3E%3Ccircle cx='88' cy='8' r='2' fill='%23b0813a'/%3E%3C/svg%3E") center/contain no-repeat}
 footer{background:var(--paper)}
+footer > .caps{font-size:clamp(11px,3.6cqi,14px);letter-spacing:.2em;white-space:nowrap}
 .music-credit{font-size:13px;color:var(--muted);letter-spacing:.04em;margin-top:10px}
 .music-credit:empty{display:none}
 .couple h2{font-size:clamp(32px,8.6cqi,56px)!important;text-wrap:balance}
@@ -574,6 +581,84 @@ footer{background:var(--paper)}
 .contact .num{flex:1;min-width:0;font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;color:#fff6ea!important;white-space:nowrap}
 .contact .cline .wa{flex-shrink:0;min-width:84px;padding-inline:12px;text-align:center}
 @container page (max-width: 380px){ .contact .num{font-size:17px} .contact .cline .wa{min-width:80px} }
+/* labels and the story heading scale with the invite width, so they fit on narrow phones (360px Samsung Galaxy) */
+main .caps{font-size:clamp(10.5px,3.25cqi,14px)!important;letter-spacing:.18em!important}
+main .rsvp .caps,main .countdown .lead,main footer > .caps{white-space:nowrap}
+.couple h2{font-size:clamp(27px,9cqi,56px)!important}
+.studio-t{font-size:clamp(12px,3.6cqi,15px)}
+/* ---------- opening screen: curved title over the logo + 3D gold button ---------- */
+.gate-top{top:calc(31% + env(safe-area-inset-top,0px))!important}
+#gate .hint{bottom:calc(11% + env(safe-area-inset-bottom,0px))!important}
+#gate .names-pill{padding:16px 28px 26px!important;gap:0!important;background:radial-gradient(closest-side, rgba(255,250,242,.94), rgba(255,250,242,.75) 60%, rgba(255,250,242,0))!important}
+.arc-title{width:min(330px,84cqi);height:auto;overflow:visible;display:block}
+.arc-title text{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;font-size:31px;fill:url(#arcInk);letter-spacing:.01em}
+#gate img.logo-gate{width:min(170px,42cqi)!important;margin-top:-34px}
+#gate .names-pill small{margin-top:14px!important;font-size:12px!important}
+.unite{top:11%!important;height:15%!important}
+.g3d-glow{top:18%!important;width:70%!important}
+#gate .ring{top:calc(env(safe-area-inset-top,0px) + 18%)!important}
+/* 3D gold button */
+.btn3d{all:unset;cursor:pointer;display:inline-block;border-radius:999px;padding:0 0 7px;
+  background:linear-gradient(180deg,#9a6a22,#6a430e);box-shadow:0 14px 28px rgba(74,35,54,.28);animation:btnFloat 3s ease-in-out infinite}
+.btn3d .face{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:13px 34px 12px;border-radius:999px;overflow:hidden;
+  background:linear-gradient(180deg,#fff1c4 0%,#e8c06e 38%,#c99a45 62%,#e3b25a 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.8), inset 0 -2px 4px rgba(122,79,18,.45), 0 0 0 1px #8a5c1a;
+  transition:transform .15s ease}
+.btn3d .face::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;transform:skewX(-20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);animation:shine3d 3.2s ease-in-out infinite}
+#gate .btn3d b{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:15px;letter-spacing:.24em;text-transform:uppercase;color:#4a1a30;text-shadow:0 1px 0 rgba(255,255,255,.55)}
+#gate .btn3d i{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:14.5px;color:#4a1a30}
+.btn3d:active .face,#gate.rung .btn3d .face{transform:translateY(5px)}
+@keyframes shine3d{0%,55%{left:-60%}100%{left:130%}}
+@keyframes btnFloat{50%{transform:translateY(-4px)}}
+#gate .hint .pill{display:none}
+/* ---------- fit every phone width (checked 320–768px) ---------- */
+/* ceremony date row: columns can shrink, sizes follow the card width */
+.dateblock{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:clamp(6px,2.5cqi,14px)!important;width:100%;max-width:330px;margin-inline:auto}
+.dateblock .side{font-size:clamp(10px,3.1cqi,13px)!important;letter-spacing:.12em!important;min-width:0;overflow-wrap:anywhere}
+.dateblock .day{font-size:clamp(44px,15cqi,62px)!important}
+.ecard{padding-inline:clamp(14px,5cqi,26px)!important}
+.stagebox{width:min(440px,100%)!important}
+/* RSVP: number and its button wrap under the label instead of pushing off-screen */
+.contacts{width:100%!important;max-width:420px}
+.contact{min-width:0;padding:14px clamp(12px,4cqi,18px)!important}
+.contact .cline{flex-wrap:wrap;row-gap:6px}
+.contact .cline:first-child{border-top:0;padding-top:0}
+.contact .num{min-width:0}
+@container page (max-width: 400px){
+  .contact .lab{flex-basis:100%;min-width:0}
+  .contact .num{font-size:18px}
+  .contact .cline .wa{min-width:0;padding-inline:14px}
+}
+/* never let a long word push the page sideways */
+main h1,main h2,main h3,main p,.ecard .venue,.card .name{overflow-wrap:anywhere}
+html,body{max-width:100%;overflow-x:hidden}
+.event h2,.rsvp h2,.countdown h2{font-size:clamp(30px,10cqi,60px)!important}
+/* ---------- opening title: gold caps + script, with a 3D finish ---------- */
+.arc-title{display:none!important}
+#gate img.logo-gate{margin-top:0!important;width:min(150px,38cqi)!important}
+.tl3d{margin:12px 0 0;display:flex;flex-direction:column;align-items:center;font-weight:400;transform-style:preserve-3d;
+  transform:perspective(700px) rotateX(calc(var(--py,0) * -6deg)) rotateY(calc(var(--px,0) * 8deg));transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+.tl-orn{display:flex;align-items:center;gap:12px}
+.tl-orn i{width:clamp(26px,9cqi,44px);height:2px;background:linear-gradient(90deg,transparent,#c99a45);box-shadow:0 1px 0 rgba(255,255,255,.7)}
+.tl-orn i:last-child{transform:scaleX(-1)}
+/* embossed gold capitals: gradient face + stacked depth + light sweep */
+.tl-orn b{position:relative;font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:clamp(16px,5cqi,22px);letter-spacing:.32em;padding-left:.32em;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff3c8 0%,#e8bf6a 40%,#a8792f 62%,#d9ae5c 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 1px 0 #7a4f12) drop-shadow(0 2px 0 #6a430e) drop-shadow(0 4px 4px rgba(74,35,54,.35))}
+.tl-orn b::after{content:attr(data-t);position:absolute;inset:0;padding-left:.32em;
+  background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%);background-size:250% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:tlShine 3.6s ease-in-out infinite}
+@keyframes tlShine{0%,40%{background-position:120% 0}100%{background-position:-120% 0}}
+/* raised plum script with a gold rim */
+.tl-script{position:relative;font-family:"Great Vibes","Pinyon Script",cursive;font-size:clamp(48px,15cqi,68px);line-height:1;margin-top:2px;padding:0 .12em;
+  color:#6d2c4c;text-shadow:0 1px 0 #f3d79a, 0 2px 0 #b0813a, 0 3px 0 #8a5c1a, 0 7px 10px rgba(74,35,54,.35)}
+@media (prefers-reduced-motion: reduce){ .tl-orn b::after{animation:none} .tl3d{transform:none} }
+/* softer, eye-friendly "ENGAGEMENT": muted antique gold, gentle emboss, faint slow glow */
+.tl-orn b{background:linear-gradient(180deg,#c9a265 0%,#a77d3c 55%,#8f6a33 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;
+  filter:drop-shadow(0 1px 0 rgba(255,250,240,.9)) drop-shadow(0 2px 3px rgba(74,35,54,.18))!important}
+.tl-orn b::after{background:linear-gradient(110deg,transparent 40%,rgba(255,248,230,.45) 50%,transparent 60%)!important;background-size:250% 100%!important;animation-duration:7s!important}
+.tl-orn i{background:linear-gradient(90deg,transparent,#b8935a)!important;box-shadow:none!important;height:1px!important}
 </style>
 
 <!-- shared gradients -->
@@ -592,7 +677,7 @@ footer{background:var(--paper)}
 </svg>
 
 <!-- ===== Gate ===== -->
-<div id="gate" role="button" tabindex="0" aria-label="Tap to unite and open the invitation">
+<div id="gate" role="button" tabindex="0" aria-label="Open the engagement invitation">
   <div class="blur" id="gateBlur"></div>
   <img class="art" id="gateArt" src="assets/floral-arch.jpg" alt="An ivory card framed with roses and jasmine"
        onerror="this.onerror=null;this.src='assets/rk-garden.jpg'">
@@ -613,18 +698,13 @@ footer{background:var(--paper)}
   <span class="ring"></span><span class="ring"></span>
   <div class="gate-top">
     <div class="names-pill">
-      <svg class="mono play" viewBox="0 0 300 160" aria-hidden="true">
-        <defs><linearGradient id="mg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc9c"/><stop offset=".4" stop-color="#c8913c"/><stop offset=".75" stop-color="#8a5c1a"/><stop offset="1" stop-color="#e9c47a"/></linearGradient></defs>
-        <path class="heart" stroke="url(#mg1)" transform="translate(122 50) scale(.56)" d="M50 86 C22 66 5 48 5 28 C5 13 16 4 29 4 C39 4 46 10 50 19 C54 10 61 4 71 4 C84 4 95 13 95 28 C95 48 78 66 50 86Z"/>
-        <text fill="url(#mg1)" class="ml" x="84" y="116" text-anchor="middle" data-f="bInit">S</text>
-        <text fill="url(#mg1)" class="mr" x="216" y="116" text-anchor="middle" data-f="gInit">S</text>
-      </svg>
-      <div class="gate-names">Engagement Invitation</div>
+      <img class="mono logo-gate" src="assets/logo.png" alt="{{GROOM}} and {{BRIDE}} monogram">
+      <h1 class="tl3d" aria-label="Engagement Invitation"><span class="tl-orn"><i></i><b data-t="Engagement">Engagement</b><i></i></span><span class="tl-script" data-t="Invitation">Invitation</span></h1>
       <small>You are warmly invited</small>
     </div>
   </div>
   <div class="hint">
-    <div class="pill"><b>Tap to unite</b><i>two hearts, one promise</i></div>
+    <button class="btn3d" type="button" tabindex="-1"><span class="face"><b>Open Invitation</b><i>tap to unite · two hearts, one promise</i></span></button>
   </div>
 </div>
 <!-- ===== Garden gate: after the bell, ivory-and-gold doors open inside the floral arch ===== -->
@@ -645,7 +725,7 @@ footer{background:var(--paper)}
         <i class="finial"></i>
         <i class="latch"></i>
       </div>
-      <div class="gg-lock"><img src="assets/monogram.png" alt=""></div>
+      <div class="gg-lock"><img src="assets/logo.png" alt=""></div>
     </div>
     <img class="gg-arch" src="assets/floral-arch.jpg" alt="">
     <div class="gg-hint">The gates are opening…</div>
@@ -656,7 +736,7 @@ footer{background:var(--paper)}
 <!-- laptop / desktop only: soft art backdrop and side panels around the invite column -->
 <div class="desk desk-bg" aria-hidden="true"></div>
 <aside class="desk desk-side desk-left" aria-label="At a glance">
-  <img src="assets/monogram.png" alt="">
+  <img src="assets/logo.png" alt="" class="desk-logo">
   <div class="k">The engagement of</div>
   <div class="n"><span data-f="groom">{{GROOM}}</span><small>( <span data-f="groomNick">{{GROOM_NICK}}</span> )</small>&amp; <span data-f="bride">{{BRIDE}}</span></div>
   <div class="rule"><i></i></div>
@@ -680,7 +760,7 @@ footer{background:var(--paper)}
     </div>
     <div class="wash"></div>
     <div class="inner d3">
-      <img class="mono rv" src="assets/monogram.png" alt="Monogram: S and S joined by a heart">
+      <img class="mono rv" src="assets/logo.png" alt="{{GROOM}} and {{BRIDE}} monogram">
       <div class="caps sub rv" style="--d:.4s">The engagement of</div>
       <h1 class="names wr" style="--d:1.6s"><span data-f="groom">{{GROOM}}</span><span class="nickline">( <span data-f="groomNick">{{GROOM_NICK}}</span> )</span><span class="amp">&amp;</span><span data-f="bride">{{BRIDE}}</span></h1>
       <div class="rule rv" style="--d:1.8s"><i></i></div>
@@ -719,8 +799,7 @@ footer{background:var(--paper)}
       <div class="card rv">
         <img class="ganesh" src="assets/ganesh.png" alt="Lord Ganesha">
         <div class="deva" lang="hi">॥ श्री गणेशाय नमः ॥</div>
-        <div class="host" data-f="families">{{FAMILY}}</div>
-        <p class="bless">with the blessings of Lord Ganesha and our elders, joyfully invite you to celebrate the engagement of</p>
+        <p class="bless">With the blessings of Lord Ganesha and our elders, we cordially invite you to celebrate the engagement of</p>
         <div class="name wr" style="--d:.5s" data-f="groom">{{GROOM}}</div>
         <div class="caps nick">( <span data-f="groomNick">{{GROOM_NICK}}</span> )</div>
         <div class="amp">&amp;</div>
@@ -811,16 +890,14 @@ footer{background:var(--paper)}
   </section>
 
   <footer class="inner">
-    <img class="mono rv" src="assets/monogram.png" alt="Monogram: S and S joined by a heart" style="width:150px">
+    <img class="mono rv" src="assets/logo.png" alt="{{GROOM}} and {{BRIDE}} monogram" style="width:150px">
     <div class="caps">With love &amp; blessings</div>
-    <div class="fam" data-f="families">{{FAMILY}}</div>
-    <div class="music-credit" data-f="musicCredit"></div>
   </footer>
   <aside class="studio" aria-label="Invitation designed by Shaadi Shopping">
     <div class="studio-in">
       <span class="studio-k">Digital invitation crafted by</span>
       <span class="studio-n">Shaadi Shopping</span>
-      <span class="studio-t">Engagement · Wedding · Haldi · Mehendi · Reception invites</span>
+      <span class="studio-t">Engagement · Wedding · Haldi · Mehendi · Reception</span>
       <div class="studio-links" id="studioLinks"></div>
     </div>
   </aside>
@@ -855,7 +932,7 @@ const INVITE = {
   groomNick: "{{GROOM_NICK}}",
   brideParents: null,        // not shown on this invite
   groomParents: null,        // not shown on this invite
-  families: "{{FAMILY}}",
+  families: "",
   ceremony: "{{CEREMONY}}",
   eventStart: "{{EVENT_START}}",
   durationHours: 4,
@@ -863,7 +940,7 @@ const INVITE = {
   venue: "{{VENUE}}",
   mapUrl: "{{MAP_URL}}",
   contacts: [                // RSVP: name + 10-digit mobile number
-    { name: "{{FAMILY}}", phone: "{{CALL}}", whatsapp: "{{WHATSAPP}}" },
+    { name: "", phone: "{{CALL}}", whatsapp: "{{WHATSAPP}}" },
   ],
   music: "assets/{{MUSIC_FILE}}",  // background music
   musicCredit: "{{MUSIC_CREDIT}}",
@@ -910,7 +987,7 @@ if ("IntersectionObserver" in window && !reduce) document.documentElement.classL
     const intl = d => (d.length === 10 ? "91" + d : d);
     // one line per number: "Call: {{CALL}} [Call]" and "WhatsApp: {{WHATSAPP}} [WhatsApp]"
     row.innerHTML = `<b class="who"></b>`;
-    row.querySelector(".who").textContent = c.name;
+    row.querySelector(".who").textContent = c.name; if (!c.name) row.querySelector(".who").remove();
     const line = (label, number, href, btnText, cls, newTab) => {
       const l = document.createElement("div"); l.className = "cline";
       l.innerHTML = `<span class="lab"></span><span class="num"></span><a class="wa ${cls}"></a>`;
@@ -1145,7 +1222,7 @@ if (!reduce) requestAnimationFrame(frame);
   (function loop(t){
     if (!$("gate").hidden) {
       if (t - last > 2000) { tx = Math.sin(t * .0005) * .6; ty = Math.cos(t * .0004) * .4; }
-      g3.style.setProperty("--px", tx.toFixed(3)); g3.style.setProperty("--py", ty.toFixed(3));
+      g3.style.setProperty("--px", tx.toFixed(3)); g3.style.setProperty("--py", ty.toFixed(3)); const tl = document.querySelector(".tl3d"); if (tl) { tl.style.setProperty("--px", tx.toFixed(3)); tl.style.setProperty("--py", ty.toFixed(3)); }
       requestAnimationFrame(loop);
     }
   })(0);
