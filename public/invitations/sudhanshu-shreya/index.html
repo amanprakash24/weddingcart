@@ -453,6 +453,23 @@ img.mono{height:auto;aspect-ratio:900/480}
 #gate.rung .art{transform:none}
 #gate.rung .gate-top{transform:translateY(20px);opacity:0}
 @media (max-aspect-ratio: 3/4){ .gate-top{top:calc(33% + env(safe-area-inset-top,0px))} #gate .names-pill{padding:28px 40px} }
+/* ---------- music card ---------- */
+.music-sec{padding-block:90px;background:#fbeef1}
+.music-sec .bg img{opacity:.35;object-position:50% 20%}
+.music-sec .wash{background:linear-gradient(180deg,#fbf6ee 0%,rgba(251,238,241,.6) 30%,rgba(251,238,241,.6) 70%,#fbf6ee 100%)}
+.music-sec .inner{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
+.music-sec h2{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;font-size:clamp(36px,9vw,56px);line-height:1.1;color:var(--plum);margin:0;translate:0 0 60px}
+.yt-card{width:min(640px,100%);margin-top:16px;padding:10px;border-radius:22px;background:#fffaf2;
+  box-shadow:0 0 0 1px rgba(168,121,47,.55),0 0 0 7px #fbf6ee,0 0 0 8px rgba(168,121,47,.3),0 30px 70px rgba(74,35,54,.2)}
+.yt-frame{position:relative;aspect-ratio:16/9;min-height:200px;border-radius:14px;overflow:hidden;background:#2f1424}
+.yt-frame iframe,#ytPlayer{position:absolute;inset:0;width:100%;height:100%;border:0}
+.yt-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  color:#fff6ea;text-decoration:none;font-family:"Cinzel",Georgia,serif;font-weight:600;letter-spacing:.18em;text-transform:uppercase;font-size:13px;
+  background:radial-gradient(circle at 50% 40%,#6d2c4c,#2f1424)}
+.yt-play{width:64px;height:64px;border-radius:50%;background:#fff6ea;position:relative;box-shadow:0 0 0 6px rgba(255,246,234,.2)}
+.yt-play::after{content:"";position:absolute;left:26px;top:20px;border-left:18px solid var(--plum);border-top:12px solid transparent;border-bottom:12px solid transparent}
+.yt-credit{font-size:15px;color:var(--muted);max-width:40ch;margin:10px 0 0}
+.yt-credit a{color:var(--plum)}
 </style>
 </head>
 <body>
@@ -573,6 +590,25 @@ img.mono{height:auto;aspect-ratio:900/480}
       <div class="caps rv" style="--d:2.2s;letter-spacing:.18em" data-f="venue">Jalsa Garden</div>
     </div>
     <a class="cue" href="#invite">Scroll<i></i></a>
+  </section>
+
+  <!-- ===== Music (YouTube's own visible player, as YouTube's embed rules require) ===== -->
+  <section class="music-sec" id="music-sec" aria-label="Music for the occasion">
+    <div class="bg"><img src="/invitations/sudhanshu-shreya/assets/rk-lanterns.jpg" alt=""></div>
+    <div class="wash"></div>
+    <div class="inner d3">
+      <div class="caps rv">Music for the occasion</div>
+      <h2 class="wr">Let the music begin</h2>
+      <div class="rule rv"><i></i></div>
+      <div class="yt-card rv">
+        <div class="yt-frame"><div id="ytPlayer"></div>
+          <a class="yt-fallback" id="ytFallback" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=zMkGAzAmcnA">
+            <span class="yt-play" aria-hidden="true"></span><span>Play on YouTube</span>
+          </a>
+        </div>
+      </div>
+      <p class="yt-credit rv">Press play and keep scrolling. <span id="ytTitle">Flute, tabla &amp; sitar</span> · <a id="ytChannel" href="https://www.youtube.com/@HindusthaniInstrumentals" target="_blank" rel="noopener">Hindustani Instrumentals</a> on YouTube</p>
+    </div>
   </section>
 
   <!-- ===== Invitation card ===== -->
@@ -730,6 +766,12 @@ const INVITE = {
     { name: "The Family", phone: "95255 55331", whatsapp: "94728 58331" },
   ],
   music: "",                 // optional client song, e.g. "/invitations/sudhanshu-shreya/assets/song.mp3"
+  youtube: {                 // shown in the "Music for the occasion" card (YouTube's visible embedded player)
+    id: "zMkGAzAmcnA",
+    title: "Flute, tabla & sitar",
+    channel: "Hindustani Instrumentals",
+    channelUrl: "https://www.youtube.com/@HindusthaniInstrumentals"
+  },
   studio: {                  // shown at the very end so guests can order their own invite
     whatsapp: "",            // e.g. "98xxxxxxxx"
     instagram: "",           // e.g. "shaadishopping"
@@ -947,6 +989,30 @@ function frame(){
   requestAnimationFrame(frame);
 }
 if (!reduce) requestAnimationFrame(frame);
+
+// ---------- YouTube music card ----------
+(function(){
+  const y = INVITE.youtube, sec = $("music-sec");
+  if (!y || !y.id) { sec.hidden = true; return; }
+  $("ytFallback").href = `https://www.youtube.com/watch?v=${y.id}`;
+  $("ytTitle").textContent = y.title; $("ytChannel").textContent = y.channel; $("ytChannel").href = y.channelUrl;
+  window.onYouTubeIframeAPIReady = function(){
+    try {
+      new YT.Player("ytPlayer", {
+        videoId: y.id, width: "100%", height: "100%",
+        playerVars: { rel: 0, playsinline: 1, modestbranding: 1 },
+        events: {
+          onReady: () => $("ytFallback").hidden = true,
+          // when the guest plays the YouTube music, the soft santoor tune steps aside
+          onStateChange: e => { if (e.data === 1 && Audio2.on) { Audio2.stopMusic(); setMusicUI(); } }
+        }
+      });
+    } catch (e) {}
+  };
+  const s = document.createElement("script");
+  s.src = "https://www.youtube.com/iframe_api"; s.async = true;
+  document.head.appendChild(s);   // where YouTube can't load (e.g. a locked-down preview), the "Play on YouTube" link stays
+})();
 
 // ---------- flip-clock digits ----------
 function flipSet(id, val){
