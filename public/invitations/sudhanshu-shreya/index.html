@@ -12,7 +12,7 @@
 <meta name="twitter:image" content="https://www.shaadishopping.com/invitations/sudhanshu-shreya/assets/og.jpg">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Sudhanshu & Shreya Engagement Invitation</title>
-<meta name="description" content="You are warmly invited to the Ring Ceremony of Sudhanshu (Charlie) & Shreya · Saturday, 05 December 2026 · 5:00 PM · Jalsa Garden. With love, all family members.">
+<meta name="description" content="You are warmly invited to the Ring Ceremony of Sudhanshu (Charlie) & Shreya · Saturday, 05 December 2026 · 5:00 PM · Jalsa Garden. With love, The Family.">
 <meta property="og:title" content="Sudhanshu & Shreya Engagement Invitation">
 <meta property="og:description" content="Ring Ceremony · Saturday, 05 December 2026 · 5:00 PM · Jalsa Garden">
 <meta property="og:image" content="https://www.shaadishopping.com/invitations/sudhanshu-shreya/assets/og.jpg">
@@ -99,7 +99,7 @@ section{position:relative;overflow:hidden;isolation:isolate}
   box-shadow:0 0 0 1px rgba(168,121,47,.45),0 10px 30px rgba(74,35,54,.2);animation:float 3s ease-in-out infinite}
 #gate .hint b{font-family:var(--f-caps);font-weight:400;letter-spacing:.32em;text-transform:uppercase;font-size:15px;color:var(--plum)}
 #gate .hint i{font-family:var(--f-body);font-size:16px;color:var(--gold)}
-#gate .ring{position:absolute;left:50%;top:var(--bell-y,34%);width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
+#gate .ring{position:absolute;left:50%;top:calc(env(safe-area-inset-top,0px) + min(27svh, 230px));width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
   border:2px solid rgba(255,236,190,.9);opacity:0;pointer-events:none}
 #gate.rung .ring{animation:ripple 1.4s ease-out forwards}
 #gate.rung .ring:nth-of-type(2){animation-delay:.25s}
@@ -283,7 +283,11 @@ html:not(.anim) .doors{display:none}
 .contact div{text-align:left;min-width:0}
 .contact b{display:block;font-family:var(--f-caps);font-weight:400;letter-spacing:.12em;font-size:15px}
 .contact span{font-variant-numeric:tabular-nums;color:var(--gold-hi);font-size:18px;letter-spacing:.06em}
-.contact .wa{font-family:var(--f-caps);font-size:11px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none;
+.contact .btns{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.contact .ln{display:block}
+.contact .wa-ln:empty{display:none}
+.contact .wa.call{background:transparent;color:#fff6ea;box-shadow:inset 0 0 0 1px rgba(255,246,234,.7);text-align:center}
+.contact .wa{text-align:center;font-family:var(--f-caps);font-size:11px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none;
   padding:9px 12px;border-radius:999px;background:#fff6ea;color:var(--plum);white-space:nowrap}
 
 /* ---------- countdown ---------- */
@@ -415,7 +419,7 @@ html.anim .contacts:not(.in) .contact{transform:rotateX(-75deg) translateZ(-60px
 @media (prefers-reduced-motion: reduce){ .d3,.bg{transform:none!important} }
 
 /* gate: title floats in the open sky, no box over the artwork */
-.gate-top{position:absolute;left:0;right:0;top:calc(19% + env(safe-area-inset-top,0px));display:flex;justify-content:center;
+.gate-top{position:absolute;left:0;right:0;top:calc(40% + env(safe-area-inset-top,0px));display:flex;justify-content:center;
   padding-left:var(--gl);padding-right:var(--gr);pointer-events:none;transition:transform 1s ease, opacity .8s ease}
 #gate.rung .gate-top{transform:translateZ(200px) translateY(-40px);opacity:0}
 #gate .names-pill{background:radial-gradient(closest-side, rgba(255,250,242,.92), rgba(255,250,242,.7) 55%, rgba(255,250,242,0));
@@ -435,6 +439,20 @@ html.anim .contacts:not(.in) .contact{transform:rotateX(-75deg) translateZ(-60px
 .card .nick{display:block;margin:10px 0 4px}
 .card .amp{margin:6px 0 0}
 img.mono{height:auto;aspect-ratio:900/480}
+/* ---------- the temple bell on the opening screen ---------- */
+.bell-wrap{position:absolute;left:50%;top:0;width:min(34vw,150px);margin-left:calc(min(34vw,150px) / -2);
+  transform-origin:50% 0;animation:bellIdle 3.6s ease-in-out infinite;z-index:2;pointer-events:none;
+  filter:drop-shadow(0 8px 10px rgba(74,35,54,.28))}
+.bell-wrap .bell{width:100%;height:auto;display:block;max-height:34svh}
+.bell-wrap .clapper{transform-box:view-box;transform-origin:80px 240px}
+@keyframes bellIdle{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+#gate.rung .bell-wrap{animation:bellRing 1.5s cubic-bezier(.3,.6,.3,1)}
+#gate.rung .bell-wrap .clapper{animation:clap 1.5s cubic-bezier(.3,.6,.3,1)}
+@keyframes bellRing{0%{transform:rotate(0)}15%{transform:rotate(16deg)}35%{transform:rotate(-13deg)}55%{transform:rotate(8deg)}75%{transform:rotate(-4deg)}100%{transform:rotate(0)}}
+@keyframes clap{0%{transform:rotate(0)}15%{transform:rotate(-22deg)}35%{transform:rotate(18deg)}55%{transform:rotate(-10deg)}75%{transform:rotate(5deg)}100%{transform:rotate(0)}}
+#gate.rung .art{transform:none}
+#gate.rung .gate-top{transform:translateY(20px);opacity:0}
+@media (max-aspect-ratio: 3/4){ .gate-top{top:calc(33% + env(safe-area-inset-top,0px))} #gate .names-pill{padding:28px 40px} }
 </style>
 </head>
 <body>
@@ -459,6 +477,41 @@ img.mono{height:auto;aspect-ratio:900/480}
   <div class="blur" id="gateBlur"></div>
   <img class="art" id="gateArt" src="/invitations/sudhanshu-shreya/assets/gate-bell.jpg" alt="A temple gateway with a brass bell, a peacock and a lotus pond"
        onerror="this.onerror=null;this.src='/invitations/sudhanshu-shreya/assets/rk-garden.jpg';document.getElementById('gate').style.setProperty('--bell-y','45%')">
+  <!-- brass temple bell hanging from the arch: sways gently, swings and rings when tapped -->
+  <div class="bell-wrap" aria-hidden="true">
+    <svg class="bell" viewBox="0 0 160 330">
+      <defs>
+        <linearGradient id="brassB" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#6e4610"/><stop offset=".22" stop-color="#b8862e"/><stop offset=".42" stop-color="#ffe7a8"/>
+          <stop offset=".58" stop-color="#d9a64a"/><stop offset=".85" stop-color="#8a5a16"/><stop offset="1" stop-color="#5c3a0c"/>
+        </linearGradient>
+        <linearGradient id="brassD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a16"/><stop offset="1" stop-color="#4a2e08"/></linearGradient>
+        <radialGradient id="bellGlow"><stop offset="0" stop-color="#fff3c4" stop-opacity=".8"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+      </defs>
+      <!-- chain -->
+      <g fill="none" stroke="url(#brassB)" stroke-width="4">
+        <ellipse cx="80" cy="12" rx="6" ry="10"/><ellipse cx="80" cy="30" rx="4" ry="10" stroke-width="3.4"/>
+        <ellipse cx="80" cy="48" rx="6" ry="10"/><ellipse cx="80" cy="66" rx="4" ry="10" stroke-width="3.4"/>
+        <ellipse cx="80" cy="84" rx="6" ry="10"/><ellipse cx="80" cy="102" rx="4" ry="10" stroke-width="3.4"/>
+      </g>
+      <circle cx="80" cy="200" r="78" fill="url(#bellGlow)"/>
+      <!-- crown -->
+      <path d="M68 112 h24 l-3 10 h-18z" fill="url(#brassB)"/>
+      <ellipse cx="80" cy="126" rx="20" ry="6" fill="url(#brassB)"/>
+      <!-- bell body -->
+      <path d="M80 128 C52 128 44 150 42 182 C40 214 34 236 18 252 L142 252 C126 236 120 214 118 182 C116 150 108 128 80 128Z" fill="url(#brassB)"/>
+      <path d="M50 196 H110" stroke="#5c3a0c" stroke-opacity=".55" stroke-width="2"/>
+      <path d="M48 206 H112" stroke="#ffe7a8" stroke-opacity=".7" stroke-width="1.6"/>
+      <path d="M58 150 C62 140 70 136 78 136" stroke="#fff6d8" stroke-opacity=".75" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- lip -->
+      <path d="M12 252 Q80 270 148 252 L150 262 Q80 282 10 262Z" fill="url(#brassB)"/>
+      <ellipse cx="80" cy="258" rx="66" ry="7" fill="url(#brassD)" opacity=".55"/>
+      <!-- clapper -->
+      <g class="clapper"><line x1="80" y1="240" x2="80" y2="280" stroke="#5c3a0c" stroke-width="3"/><circle cx="80" cy="286" r="9" fill="url(#brassB)"/></g>
+      <!-- tassel -->
+      <path d="M80 295 v14" stroke="#b33a4c" stroke-width="2"/><path d="M74 309 h12 l-2 16 h-8z" fill="#c8455a"/>
+    </svg>
+  </div>
   <span class="ring"></span><span class="ring"></span>
   <div class="gate-top">
     <div class="names-pill">
@@ -532,7 +585,7 @@ img.mono{height:auto;aspect-ratio:900/480}
       <div class="card rv">
         <img class="ganesh" src="/invitations/sudhanshu-shreya/assets/ganesh.png" alt="Lord Ganesha">
         <div class="deva" lang="hi">॥ श्री गणेशाय नमः ॥</div>
-        <div class="host" data-f="families">All Family Members</div>
+        <div class="host" data-f="families">The Family</div>
         <p class="bless">with the blessings of Lord Ganesha and our elders, joyfully invite you to celebrate the engagement of</p>
         <div class="name wr" style="--d:.5s" data-f="groom">Sudhanshu</div>
         <div class="caps nick">( <span data-f="groomNick">Charlie</span> )</div>
@@ -590,7 +643,7 @@ img.mono{height:auto;aspect-ratio:900/480}
       <div class="caps rv">Two hearts</div>
       <h2 class="wr">One beautiful promise</h2>
       <div class="rule rv"><i></i></div>
-      <p class="rv" style="--d:.3s">As eternal as Shiv and Parvati, as timeless as Radha and Krishna, <span data-f="groom">Sudhanshu</span> (<span data-f="groomNick">Charlie</span>) and <span data-f="bride">Shreya</span> begin a new chapter of love and togetherness, with the blessings of all family members.</p>
+      <p class="rv" style="--d:.3s">As eternal as Shiv and Parvati, as timeless as Radha and Krishna, <span data-f="groom">Sudhanshu</span> (<span data-f="groomNick">Charlie</span>) and <span data-f="bride">Shreya</span> begin a new chapter of love and togetherness, with the blessings of the family.</p>
       <p class="rv" style="--d:.6s;font-style:italic;color:var(--muted)">Join us as we celebrate the beginning of their forever.</p>
     </div>
   </section>
@@ -625,7 +678,7 @@ img.mono{height:auto;aspect-ratio:900/480}
   <footer class="inner">
     <img class="mono rv" src="/invitations/sudhanshu-shreya/assets/monogram-ss.png" alt="Monogram: S and S joined by a heart" style="width:150px">
     <div class="caps">With love &amp; blessings</div>
-    <div class="fam" data-f="families">All Family Members</div>
+    <div class="fam" data-f="families">The Family</div>
   </footer>
   <aside class="studio" aria-label="Invitation designed by Shaadi Shopping">
     <div class="studio-in">
@@ -666,7 +719,7 @@ const INVITE = {
   groomNick: "Charlie",
   brideParents: null,        // not shown on this invite
   groomParents: null,        // not shown on this invite
-  families: "All Family Members",
+  families: "The Family",
   ceremony: "Ring Ceremony",
   eventStart: "2026-12-05T17:00:00+05:30",
   durationHours: 4,
@@ -674,7 +727,7 @@ const INVITE = {
   venue: "Jalsa Garden",
   mapUrl: "https://maps.app.goo.gl/4YLEYV4PuoKeoCyJ9",
   contacts: [                // RSVP: name + 10-digit mobile number
-    { name: "All Family Members", phone: "95255 55331" },
+    { name: "The Family", phone: "95255 55331", whatsapp: "94728 58331" },
   ],
   music: "",                 // optional client song, e.g. "/invitations/sudhanshu-shreya/assets/song.mp3"
   studio: {                  // shown at the very end so guests can order their own invite
@@ -715,15 +768,24 @@ if ("IntersectionObserver" in window && !reduce) document.documentElement.classL
   INVITE.contacts.forEach(c => {
     const row = document.createElement("div"); row.className = "contact";
     const digits = (c.phone || "").replace(/\D/g, "");
-    row.innerHTML = `<div><b></b><span></span></div>`;
+    const wa = (c.whatsapp || c.phone || "").replace(/\D/g, "");
+    const intl = d => (d.length === 10 ? "91" + d : d);
+    row.innerHTML = `<div><b></b><span class="ln"></span><span class="ln wa-ln"></span></div><div class="btns"></div>`;
     row.querySelector("b").textContent = c.name;
-    row.querySelector("span").textContent = digits ? c.phone : "Number to be added";
+    row.querySelector(".ln").textContent = digits ? `Call · ${c.phone}` : "Number to be added";
+    row.querySelector(".wa-ln").textContent = c.whatsapp ? `WhatsApp · ${c.whatsapp}` : "";
+    const btns = row.querySelector(".btns");
     if (digits) {
+      const call = document.createElement("a");
+      call.className = "wa call"; call.href = `tel:+${intl(digits)}`; call.textContent = "Call";
+      btns.appendChild(call);
+    }
+    if (wa) {
       const a = document.createElement("a");
       a.className = "wa"; a.target = "_blank"; a.rel = "noopener";
-      a.href = `https://wa.me/${digits.length === 10 ? "91" + digits : digits}?text=${encodeURIComponent(`Namaste! Confirming our presence at ${INVITE.groom} (${INVITE.groomNick}) & ${INVITE.bride}’s ${INVITE.ceremony}.`)}`;
+      a.href = `https://wa.me/${intl(wa)}?text=${encodeURIComponent(`Namaste! Confirming our presence at ${INVITE.groom} (${INVITE.groomNick}) & ${INVITE.bride}’s ${INVITE.ceremony}.`)}`;
       a.textContent = "WhatsApp";
-      row.appendChild(a);
+      btns.appendChild(a);
     }
     box.appendChild(row);
   });
@@ -836,17 +898,17 @@ function openGate(){
   }
   const g = $("garden");
   // 1 · the bell gate fades into the floral arch with its closed ivory-and-gold doors
-  setTimeout(() => { g.hidden = false; void g.offsetWidth; g.classList.add("show"); $("gate").classList.add("gone"); }, 800);
-  setTimeout(() => { $("gate").hidden = true; }, 2000);
+  setTimeout(() => { g.hidden = false; void g.offsetWidth; g.classList.add("show"); $("gate").classList.add("gone"); }, 1400);
+  setTimeout(() => { $("gate").hidden = true; }, 2600);
   // 2 · the monogram lock turns away, then both doors swing open with a shower of petals
-  setTimeout(() => g.classList.add("unlock"), 2000);
+  setTimeout(() => g.classList.add("unlock"), 2600);
   setTimeout(() => {
     g.classList.add("open");
     for (let i = 0; i < 70; i++) setTimeout(() => spawn(true), 200 + i * 22);
-  }, 2600);
+  }, 3200);
   // 3 · walk through the gate into the invitation
-  setTimeout(() => { g.classList.add("through"); enterSite(); }, 4700);
-  setTimeout(() => { g.hidden = true; }, 6900);
+  setTimeout(() => { g.classList.add("through"); enterSite(); }, 5300);
+  setTimeout(() => { g.hidden = true; }, 7500);
 }
 $("gate").addEventListener("click", openGate);
 $("gate").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openGate(); } });
