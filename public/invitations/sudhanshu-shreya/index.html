@@ -12,7 +12,7 @@
 <meta name="twitter:image" content="https://www.shaadishopping.com/invitations/sudhanshu-shreya/assets/og.jpg">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Sudhanshu & Shreya Engagement Invitation</title>
-<meta name="description" content="You are warmly invited to the Ring Ceremony of Sudhanshu (Charlie) & Shreya · Saturday, 05 December 2026 · 5:00 PM · Jalsa Garden. With love, The Family.">
+<meta name="description" content="You are warmly invited to the Ring Ceremony of Sudhanshu (Charlie) & Shreya · Saturday, 05 December 2026 · 5:00 PM · Jalsa Garden.">
 <meta property="og:title" content="Sudhanshu & Shreya Engagement Invitation">
 <meta property="og:description" content="Ring Ceremony · Saturday, 05 December 2026 · 5:00 PM · Jalsa Garden">
 <meta property="og:image" content="https://www.shaadishopping.com/invitations/sudhanshu-shreya/assets/og.jpg">
@@ -636,6 +636,7 @@ main .rsvp .caps,main .countdown .lead,main footer > .caps{white-space:nowrap}
 .contacts{width:100%!important;max-width:420px}
 .contact{min-width:0;padding:14px clamp(12px,4cqi,18px)!important}
 .contact .cline{flex-wrap:wrap;row-gap:6px}
+.contact .cline:first-child{border-top:0;padding-top:0}
 .contact .num{min-width:0}
 @container page (max-width: 400px){
   .contact .lab{flex-basis:100%;min-width:0}
@@ -887,8 +888,6 @@ html,body{max-width:100%;overflow-x:hidden}
   <footer class="inner">
     <img class="mono rv" src="/invitations/sudhanshu-shreya/assets/logo.png" alt="Sudhanshu and Shreya monogram" style="width:150px">
     <div class="caps">With love &amp; blessings</div>
-    <div class="fam" data-f="families">The Family</div>
-    <div class="music-credit" data-f="musicCredit"></div>
   </footer>
   <aside class="studio" aria-label="Invitation designed by Shaadi Shopping">
     <div class="studio-in">
@@ -929,7 +928,7 @@ const INVITE = {
   groomNick: "Charlie",
   brideParents: null,        // not shown on this invite
   groomParents: null,        // not shown on this invite
-  families: "The Family",
+  families: "",
   ceremony: "Ring Ceremony",
   eventStart: "2026-12-05T17:00:00+05:30",
   durationHours: 4,
@@ -937,7 +936,7 @@ const INVITE = {
   venue: "Jalsa Garden",
   mapUrl: "https://maps.app.goo.gl/4YLEYV4PuoKeoCyJ9",
   contacts: [                // RSVP: name + 10-digit mobile number
-    { name: "The Family", phone: "95255 55331", whatsapp: "94728 58331" },
+    { name: "", phone: "95255 55331", whatsapp: "94728 58331" },
   ],
   music: "/invitations/sudhanshu-shreya/assets/chanakya-clip.mp3",  // "Chanakya" by Rishab Rikhiram Sharma, from 0:41, used with permission (client confirmed)
   musicCredit: "Music: “Chanakya” · Rishab Rikhiram Sharma",
@@ -984,7 +983,7 @@ if ("IntersectionObserver" in window && !reduce) document.documentElement.classL
     const intl = d => (d.length === 10 ? "91" + d : d);
     // one line per number: "Call: 95255 55331 [Call]" and "WhatsApp: 94728 58331 [WhatsApp]"
     row.innerHTML = `<b class="who"></b>`;
-    row.querySelector(".who").textContent = c.name;
+    row.querySelector(".who").textContent = c.name; if (!c.name) row.querySelector(".who").remove();
     const line = (label, number, href, btnText, cls, newTab) => {
       const l = document.createElement("div"); l.className = "cline";
       l.innerHTML = `<span class="lab"></span><span class="num"></span><a class="wa ${cls}"></a>`;
