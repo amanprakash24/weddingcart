@@ -607,7 +607,7 @@ img.mono{height:auto;aspect-ratio:900/480}
           </a>
         </div>
       </div>
-      <p class="yt-credit rv">Press play and keep scrolling. <span id="ytTitle">Flute, tabla &amp; sitar</span> · <a id="ytChannel" href="https://www.youtube.com/@HindusthaniInstrumentals" target="_blank" rel="noopener">Hindustani Instrumentals</a> on YouTube</p>
+      <p class="yt-credit rv">Plays in the background once you ring the bell. Use the music button to pause. <span id="ytTitle">Flute, tabla &amp; sitar</span> · <a id="ytChannel" href="https://www.youtube.com/@HindusthaniInstrumentals" target="_blank" rel="noopener">Hindustani Instrumentals</a> on YouTube</p>
     </div>
   </section>
 
@@ -917,8 +917,27 @@ const Audio2 = (() => {
   return { bell, startMusic, stopMusic, get on(){ return playing; } };
 })();
 
-function setMusicUI(){ $("music").classList.toggle("on", Audio2.on); $("music").setAttribute("aria-label", Audio2.on ? "Pause music" : "Play music"); }
-$("music").addEventListener("click", () => { Audio2.on ? Audio2.stopMusic() : Audio2.startMusic(); setMusicUI(); });
+// YouTube background music state (filled in once YouTube's player is ready)
+const YTM = { player: null, ready: false, playing: false };
+const musicOn = () => YTM.playing || Audio2.on;
+function setMusicUI(){ $("music").classList.toggle("on", musicOn()); $("music").setAttribute("aria-label", musicOn() ? "Pause music" : "Play music"); }
+// Start the background music from a guest's tap: the YouTube song if it can play, otherwise the santoor tune.
+function startBackgroundMusic(){
+  if (YTM.ready && YTM.player) {
+    try { YTM.player.unMute(); YTM.player.setVolume(70); YTM.player.playVideo(); } catch (e) {}
+    // some phones refuse to start a YouTube player on their own: fall back to the built-in tune
+    setTimeout(() => { if (!YTM.playing && !Audio2.on) { Audio2.startMusic(); setMusicUI(); } }, 1800);
+  } else {
+    Audio2.startMusic();
+  }
+  setMusicUI();
+}
+$("music").addEventListener("click", () => {
+  if (YTM.playing) { try { YTM.player.pauseVideo(); } catch (e) {} YTM.playing = false; }
+  else if (Audio2.on) Audio2.stopMusic();
+  else startBackgroundMusic();
+  setMusicUI();
+});
 
 // ---------- gate ----------
 document.body.classList.add("locked");
@@ -931,7 +950,7 @@ function enterSite(){
 function openGate(){
   if (opened) return; opened = true;
   Audio2.bell();
-  Audio2.startMusic(); setMusicUI();
+  startBackgroundMusic();
   $("gate").classList.add("rung");
   if (reduce) {                                   // no motion: straight in
     $("gate").classList.add("gone"); enterSite();
@@ -998,13 +1017,17 @@ if (!reduce) requestAnimationFrame(frame);
   $("ytTitle").textContent = y.title; $("ytChannel").textContent = y.channel; $("ytChannel").href = y.channelUrl;
   window.onYouTubeIframeAPIReady = function(){
     try {
-      new YT.Player("ytPlayer", {
+      const p = new YT.Player("ytPlayer", {
         videoId: y.id, width: "100%", height: "100%",
         playerVars: { rel: 0, playsinline: 1, modestbranding: 1 },
         events: {
-          onReady: () => $("ytFallback").hidden = true,
-          // when the guest plays the YouTube music, the soft santoor tune steps aside
-          onStateChange: e => { if (e.data === 1 && Audio2.on) { Audio2.stopMusic(); setMusicUI(); } }
+          onReady: () => { $("ytFallback").hidden = true; YTM.player = p; YTM.ready = true; },
+          onStateChange: e => {
+            YTM.playing = e.data === 1;
+            // the YouTube song is the background music; the soft santoor tune steps aside while it plays
+            if (YTM.playing && Audio2.on) Audio2.stopMusic();
+            setMusicUI();
+          }
         }
       });
     } catch (e) {}
