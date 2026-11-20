@@ -79,3 +79,31 @@ describe('proposal pages carry a secret link — never indexed, never leaked as 
     expect(h['referrer-policy']).toBe('strict-origin-when-cross-origin');
   });
 });
+
+type Rewrite = { source: string; destination: string };
+
+describe('client invitations (static pages in public/invitations/<slug>/)', () => {
+  async function rewriteFor(path: string): Promise<string | null> {
+    const rules = (await nextConfig.rewrites!()) as Rewrite[];
+    for (const r of rules) {
+      const m = match(r.source, { decode: decodeURIComponent })(path);
+      if (m) return compile(r.destination)(m.params as object);
+    }
+    return null;
+  }
+
+  test('the short address opens the invitation page', async () => {
+    expect(await rewriteFor('/invitations/sudhanshu-shreya')).toBe('/invitations/sudhanshu-shreya/index.html');
+  });
+
+  test('the page\'s own files are served as they are, not rewritten', async () => {
+    expect(await rewriteFor('/invitations/sudhanshu-shreya/assets/og.jpg')).toBeNull();
+    expect(await rewriteFor('/invitations/sudhanshu-shreya/index.html')).toBeNull();
+  });
+
+  test('invitations are never indexed, and keep the site-wide security headers', async () => {
+    const h = await headersFor('/invitations/sudhanshu-shreya');
+    expect(h['x-robots-tag']).toBe('noindex, nofollow');
+    expect(h['x-content-type-options']).toBe('nosniff');
+  });
+});
