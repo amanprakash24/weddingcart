@@ -579,6 +579,14 @@ footer{background:var(--paper)}
 @keyframes sburst{0%{opacity:0;transform:scale(1)}20%{opacity:1}100%{opacity:0;transform:scale(26)}}
 #gate .ring{top:calc(env(safe-area-inset-top,0px) + 27%)!important}
 #gate.united .gate-top{opacity:1!important;transform:none!important}
+/* RSVP card: one clear line per number */
+.contact{display:flex!important;flex-direction:column;align-items:stretch!important;gap:10px!important;text-align:left}
+.contact .who{font-family:"Cinzel",Georgia,serif;font-weight:600;letter-spacing:.14em;font-size:15px;text-transform:uppercase;color:#fff6ea}
+.contact .cline{display:flex;align-items:center;gap:10px;padding-top:10px;border-top:1px solid rgba(243,215,154,.3)}
+.contact .lab{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f3d79a;min-width:5.6em}
+.contact .num{flex:1;min-width:0;font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;color:#fff6ea!important;white-space:nowrap}
+.contact .cline .wa{flex-shrink:0;min-width:84px;padding-inline:12px;text-align:center}
+@container page (max-width: 380px){ .contact .num{font-size:17px} .contact .cline .wa{min-width:80px} }
 </style>
 </head>
 <body>
@@ -915,23 +923,23 @@ if ("IntersectionObserver" in window && !reduce) document.documentElement.classL
     const digits = (c.phone || "").replace(/\D/g, "");
     const wa = (c.whatsapp || c.phone || "").replace(/\D/g, "");
     const intl = d => (d.length === 10 ? "91" + d : d);
-    row.innerHTML = `<div><b></b><span class="ln"></span><span class="ln wa-ln"></span></div><div class="btns"></div>`;
-    row.querySelector("b").textContent = c.name;
-    row.querySelector(".ln").textContent = digits ? `Call · ${c.phone}` : "Number to be added";
-    row.querySelector(".wa-ln").textContent = c.whatsapp ? `WhatsApp · ${c.whatsapp}` : "";
-    const btns = row.querySelector(".btns");
-    if (digits) {
-      const call = document.createElement("a");
-      call.className = "wa call"; call.href = `tel:+${intl(digits)}`; call.textContent = "Call";
-      btns.appendChild(call);
-    }
-    if (wa) {
-      const a = document.createElement("a");
-      a.className = "wa"; a.target = "_blank"; a.rel = "noopener";
-      a.href = `https://wa.me/${intl(wa)}?text=${encodeURIComponent(`Namaste! Confirming our presence at ${INVITE.groom} (${INVITE.groomNick}) & ${INVITE.bride}’s ${INVITE.ceremony}.`)}`;
-      a.textContent = "WhatsApp";
-      btns.appendChild(a);
-    }
+    // one line per number: "Call: 95255 55331 [Call]" and "WhatsApp: 94728 58331 [WhatsApp]"
+    row.innerHTML = `<b class="who"></b>`;
+    row.querySelector(".who").textContent = c.name;
+    const line = (label, number, href, btnText, cls, newTab) => {
+      const l = document.createElement("div"); l.className = "cline";
+      l.innerHTML = `<span class="lab"></span><span class="num"></span><a class="wa ${cls}"></a>`;
+      l.querySelector(".lab").textContent = label + ":";
+      l.querySelector(".num").textContent = number;
+      const a = l.querySelector("a"); a.href = href; a.textContent = btnText;
+      if (newTab) { a.target = "_blank"; a.rel = "noopener"; }
+      row.appendChild(l);
+    };
+    if (digits) line("Call", c.phone, `tel:+${intl(digits)}`, "Call", "call", false);
+    if (wa) line("WhatsApp", c.whatsapp || c.phone,
+      `https://wa.me/${intl(wa)}?text=${encodeURIComponent(`Namaste! Confirming our presence at ${INVITE.groom} (${INVITE.groomNick}) & ${INVITE.bride}’s ${INVITE.ceremony}.`)}`,
+      "WhatsApp", "", true);
+    if (!digits && !wa) { const l = document.createElement("div"); l.className = "cline"; l.textContent = "Number to be added"; row.appendChild(l); }
     box.appendChild(row);
   });
 })();
