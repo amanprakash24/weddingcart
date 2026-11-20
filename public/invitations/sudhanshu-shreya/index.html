@@ -452,7 +452,7 @@ img.mono{height:auto;aspect-ratio:900/480}
 @keyframes clap{0%{transform:rotate(0)}15%{transform:rotate(-22deg)}35%{transform:rotate(18deg)}55%{transform:rotate(-10deg)}75%{transform:rotate(5deg)}100%{transform:rotate(0)}}
 #gate.rung .art{transform:none}
 #gate.rung .gate-top{transform:translateY(20px);opacity:0}
-@media (max-aspect-ratio: 3/4){ .gate-top{top:calc(33% + env(safe-area-inset-top,0px))} #gate .names-pill{padding:28px 40px} }
+@media (max-aspect-ratio: 3/4){ .gate-top{top:calc(35% + env(safe-area-inset-top,0px))} #gate .names-pill{padding:28px 40px} }
 /* ---------- music card ---------- */
 .music-sec{padding-block:90px;background:#fbeef1}
 .music-sec .bg img{opacity:.35;object-position:50% 20%}
@@ -527,6 +527,22 @@ main > section:not(.hero)::before{content:"";position:absolute;left:50%;top:22px
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 16'%3E%3Cpath d='M0 8h58M92 8h58' stroke='%23b0813a' stroke-width='1'/%3E%3Cpath d='M75 1l7 7-7 7-7-7z' fill='%23b0813a'/%3E%3Ccircle cx='62' cy='8' r='2' fill='%23b0813a'/%3E%3Ccircle cx='88' cy='8' r='2' fill='%23b0813a'/%3E%3C/svg%3E") center/contain no-repeat}
 footer{background:var(--paper)}
 .couple h2{font-size:clamp(32px,8.6cqi,56px)!important;text-wrap:balance}
+/* ---------- twin golden wedding bells with an ivory satin bow ---------- */
+.bell-wrap{width:min(66vw,320px)!important;margin-left:calc(min(66vw,320px) / -2)!important;top:1%!important;animation:bellIdle 4.2s ease-in-out infinite}
+.bell-wrap .bell.twin{max-height:36svh;width:100%;overflow:visible}
+.twin .tb{transform-box:view-box;transform-origin:200px 64px}
+.twin .tb.l{animation:tbIdleL 3.2s ease-in-out infinite}
+.twin .tb.r{animation:tbIdleR 3.2s ease-in-out infinite}
+@keyframes tbIdleL{0%,100%{transform:rotate(0)}50%{transform:rotate(3deg)}}
+@keyframes tbIdleR{0%,100%{transform:rotate(0)}50%{transform:rotate(-3deg)}}
+#gate.rung .bell-wrap{animation:none}
+#gate.rung .twin .tb.l{animation:tbRingL 1.7s cubic-bezier(.3,.6,.3,1)}
+#gate.rung .twin .tb.r{animation:tbRingR 1.7s cubic-bezier(.3,.6,.3,1)}
+@keyframes tbRingL{0%{transform:rotate(0)}18%{transform:rotate(-16deg)}36%{transform:rotate(5deg)}54%{transform:rotate(-9deg)}72%{transform:rotate(3deg)}100%{transform:rotate(0)}}
+@keyframes tbRingR{0%{transform:rotate(0)}18%{transform:rotate(16deg)}36%{transform:rotate(-5deg)}54%{transform:rotate(9deg)}72%{transform:rotate(-3deg)}100%{transform:rotate(0)}}
+.twin .sp{transform-box:fill-box;transform-origin:center;animation:twinkle 2.4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(.6)}50%{opacity:1;transform:scale(1.15)}}
+#gate .ring{top:calc(env(safe-area-inset-top,0px) + min(24svh, 210px))!important}
 </style>
 </head>
 <body>
@@ -547,43 +563,60 @@ footer{background:var(--paper)}
 </svg>
 
 <!-- ===== Gate ===== -->
-<div id="gate" role="button" tabindex="0" aria-label="Ring the bell to open the invitation">
+<div id="gate" role="button" tabindex="0" aria-label="Ring the bells to open the invitation">
   <div class="blur" id="gateBlur"></div>
   <img class="art" id="gateArt" src="/invitations/sudhanshu-shreya/assets/gate-bell.jpg" alt="A temple gateway with a brass bell, a peacock and a lotus pond"
        onerror="this.onerror=null;this.src='/invitations/sudhanshu-shreya/assets/rk-garden.jpg';document.getElementById('gate').style.setProperty('--bell-y','45%')">
   <!-- brass temple bell hanging from the arch: sways gently, swings and rings when tapped -->
   <div class="bell-wrap" aria-hidden="true">
-    <svg class="bell" viewBox="0 0 160 330">
+    <svg class="bell twin" viewBox="0 0 400 390">
       <defs>
-        <linearGradient id="brassB" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#6e4610"/><stop offset=".22" stop-color="#b8862e"/><stop offset=".42" stop-color="#ffe7a8"/>
-          <stop offset=".58" stop-color="#d9a64a"/><stop offset=".85" stop-color="#8a5a16"/><stop offset="1" stop-color="#5c3a0c"/>
+        <linearGradient id="tbGold" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#7a4f12"/><stop offset=".18" stop-color="#c8913c"/><stop offset=".38" stop-color="#fff0be"/>
+          <stop offset=".55" stop-color="#e3b25a"/><stop offset=".82" stop-color="#9a6a22"/><stop offset="1" stop-color="#6a430e"/>
         </linearGradient>
-        <linearGradient id="brassD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a16"/><stop offset="1" stop-color="#4a2e08"/></linearGradient>
-        <radialGradient id="bellGlow"><stop offset="0" stop-color="#fff3c4" stop-opacity=".8"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+        <linearGradient id="tbLip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d996"/><stop offset=".5" stop-color="#c8913c"/><stop offset="1" stop-color="#7a4f12"/></linearGradient>
+        <linearGradient id="tbSatin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6"/><stop offset=".5" stop-color="#f1e3c6"/><stop offset="1" stop-color="#fff6e4"/></linearGradient>
+        <linearGradient id="tbSatinD" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6d2ab"/><stop offset="1" stop-color="#fbf1dc"/></linearGradient>
+        <radialGradient id="tbGlow"><stop offset="0" stop-color="#fff3c4" stop-opacity=".95"/><stop offset=".45" stop-color="#ffd98a" stop-opacity=".35"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+        <g id="tbBell">
+          <ellipse cx="0" cy="-4" rx="9" ry="12" fill="none" stroke="url(#tbGold)" stroke-width="5"/>
+          <path d="M-15 6 h30 l-4 11 h-22z" fill="url(#tbGold)"/>
+          <path d="M0 15 C-30 15 -44 37 -46 73 C-48 107 -56 127 -78 139 L78 139 C56 127 48 107 46 73 C44 37 30 15 0 15Z" fill="url(#tbGold)"/>
+          <path d="M-45 55 Q0 64 45 55" fill="none" stroke="#7a4f12" stroke-opacity=".55" stroke-width="2"/>
+          <path d="M-45 59 Q0 68 45 59" fill="none" stroke="#fff0be" stroke-opacity=".7" stroke-width="1.2"/>
+          <path d="M0 103 C-14 93 -20 85 -20 77 C-20 70 -14 66 -9 66 C-4 66 -1 69 0 72 C1 69 4 66 9 66 C14 66 20 70 20 77 C20 85 14 93 0 103Z" fill="none" stroke="#7a4f12" stroke-width="2.4"/>
+          <path d="M-26 92 c-9 -1 -14 -9 -8 -14 c4 -3 9 0 7 4 M26 92 c9 -1 14 -9 8 -14 c-4 -3 -9 0 -7 4 M-34 108 c-6 2 -10 -2 -7 -6 M34 108 c6 2 10 -2 7 -6" fill="none" stroke="#7a4f12" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M-30 33 C-25 23 -15 19 -7 18" fill="none" stroke="#fffaf0" stroke-opacity=".85" stroke-width="4" stroke-linecap="round"/>
+          <path d="M-56 121 Q0 131 56 121" fill="none" stroke="#7a4f12" stroke-opacity=".5" stroke-width="2"/>
+          <path d="M-84 139 Q0 155 84 139 L87 149 Q0 170 -87 149Z" fill="url(#tbLip)"/>
+          <ellipse cx="0" cy="147" rx="74" ry="7" fill="#5c3a0c" opacity=".35"/>
+          <g class="tb-clap"><line x1="0" y1="132" x2="0" y2="160" stroke="#6a430e" stroke-width="3"/><circle cx="0" cy="168" r="11" fill="url(#tbGold)"/></g>
+        </g>
       </defs>
-      <!-- chain -->
-      <g fill="none" stroke="url(#brassB)" stroke-width="4">
-        <ellipse cx="80" cy="12" rx="6" ry="10"/><ellipse cx="80" cy="30" rx="4" ry="10" stroke-width="3.4"/>
-        <ellipse cx="80" cy="48" rx="6" ry="10"/><ellipse cx="80" cy="66" rx="4" ry="10" stroke-width="3.4"/>
-        <ellipse cx="80" cy="84" rx="6" ry="10"/><ellipse cx="80" cy="102" rx="4" ry="10" stroke-width="3.4"/>
+      <circle cx="200" cy="230" r="150" fill="url(#tbGlow)"/>
+      <!-- satin ribbon tails, behind the bells -->
+      <path d="M193 68 C170 106 138 160 98 214 L118 226 C152 176 180 116 199 74Z" fill="url(#tbSatinD)" stroke="#c99a45" stroke-width="1.6"/>
+      <path d="M207 68 C230 106 262 160 302 214 L282 226 C248 176 220 116 201 74Z" fill="url(#tbSatinD)" stroke="#c99a45" stroke-width="1.6"/>
+      <!-- the two bells, tilted towards each other -->
+      <g class="tb l"><g transform="translate(200 74) rotate(16) translate(-62 26)"><use href="#tbBell"/></g></g>
+      <g class="tb r"><g transform="translate(200 74) rotate(-16) translate(62 26)"><use href="#tbBell"/></g></g>
+      <!-- the bow -->
+      <path d="M200 62 C168 26 104 14 86 38 C72 58 106 86 200 68Z" fill="url(#tbSatin)" stroke="#c99a45" stroke-width="2"/>
+      <path d="M200 62 C232 26 296 14 314 38 C328 58 294 86 200 68Z" fill="url(#tbSatin)" stroke="#c99a45" stroke-width="2"/>
+      <path d="M186 60 C156 40 118 36 104 46" fill="none" stroke="#e2cda2" stroke-width="3" stroke-linecap="round"/>
+      <path d="M214 60 C244 40 282 36 296 46" fill="none" stroke="#e2cda2" stroke-width="3" stroke-linecap="round"/>
+      <rect x="186" y="48" width="28" height="30" rx="9" fill="url(#tbSatin)" stroke="#c99a45" stroke-width="2"/>
+      <path d="M192 55 Q200 63 208 55" fill="none" stroke="#e2cda2" stroke-width="2"/>
+      <!-- sparkles -->
+      <g fill="#fff6d0">
+        <path class="sp" d="M200 300 l3 11 l11 3 l-11 3 l-3 11 l-3 -11 l-11 -3 l11 -3z"/>
+        <path class="sp" style="animation-delay:-.6s" d="M60 150 l2 7 l7 2 l-7 2 l-2 7 l-2 -7 l-7 -2 l7 -2z"/>
+        <path class="sp" style="animation-delay:-1.2s" d="M342 170 l2 8 l8 2 l-8 2 l-2 8 l-2 -8 l-8 -2 l8 -2z"/>
+        <path class="sp" style="animation-delay:-1.8s" d="M120 330 l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2 l6 -2z"/>
+        <path class="sp" style="animation-delay:-.9s" d="M290 320 l2 7 l7 2 l-7 2 l-2 7 l-2 -7 l-7 -2 l7 -2z"/>
+        <path class="sp" style="animation-delay:-2.2s" d="M200 20 l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2 l6 -2z"/>
       </g>
-      <circle cx="80" cy="200" r="78" fill="url(#bellGlow)"/>
-      <!-- crown -->
-      <path d="M68 112 h24 l-3 10 h-18z" fill="url(#brassB)"/>
-      <ellipse cx="80" cy="126" rx="20" ry="6" fill="url(#brassB)"/>
-      <!-- bell body -->
-      <path d="M80 128 C52 128 44 150 42 182 C40 214 34 236 18 252 L142 252 C126 236 120 214 118 182 C116 150 108 128 80 128Z" fill="url(#brassB)"/>
-      <path d="M50 196 H110" stroke="#5c3a0c" stroke-opacity=".55" stroke-width="2"/>
-      <path d="M48 206 H112" stroke="#ffe7a8" stroke-opacity=".7" stroke-width="1.6"/>
-      <path d="M58 150 C62 140 70 136 78 136" stroke="#fff6d8" stroke-opacity=".75" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <!-- lip -->
-      <path d="M12 252 Q80 270 148 252 L150 262 Q80 282 10 262Z" fill="url(#brassB)"/>
-      <ellipse cx="80" cy="258" rx="66" ry="7" fill="url(#brassD)" opacity=".55"/>
-      <!-- clapper -->
-      <g class="clapper"><line x1="80" y1="240" x2="80" y2="280" stroke="#5c3a0c" stroke-width="3"/><circle cx="80" cy="286" r="9" fill="url(#brassB)"/></g>
-      <!-- tassel -->
-      <path d="M80 295 v14" stroke="#b33a4c" stroke-width="2"/><path d="M74 309 h12 l-2 16 h-8z" fill="#c8455a"/>
     </svg>
   </div>
   <span class="ring"></span><span class="ring"></span>
@@ -600,7 +633,7 @@ footer{background:var(--paper)}
     </div>
   </div>
   <div class="hint">
-    <div class="pill"><b>Ring the bell</b><i>to begin the celebration</i></div>
+    <div class="pill"><b>Ring the bells</b><i>to begin the celebration</i></div>
   </div>
 </div>
 <!-- ===== Garden gate: after the bell, ivory-and-gold doors open inside the floral arch ===== -->
@@ -1019,7 +1052,7 @@ function enterSite(){
 }
 function openGate(){
   if (opened) return; opened = true;
-  Audio2.bell();
+  Audio2.bell(); setTimeout(() => Audio2.bell(), 240);   // two bells, two chimes
   startBackgroundMusic();
   $("gate").classList.add("rung");
   if (reduce) {                                   // no motion: straight in
