@@ -625,6 +625,27 @@ main .rsvp .caps,main .countdown .lead,main footer > .caps{white-space:nowrap}
 @keyframes shine3d{0%,55%{left:-60%}100%{left:130%}}
 @keyframes btnFloat{50%{transform:translateY(-4px)}}
 #gate .hint .pill{display:none}
+/* ---------- fit every phone width (checked 320–768px) ---------- */
+/* ceremony date row: columns can shrink, sizes follow the card width */
+.dateblock{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;gap:clamp(6px,2.5cqi,14px)!important;width:100%;max-width:330px;margin-inline:auto}
+.dateblock .side{font-size:clamp(10px,3.1cqi,13px)!important;letter-spacing:.12em!important;min-width:0;overflow-wrap:anywhere}
+.dateblock .day{font-size:clamp(44px,15cqi,62px)!important}
+.ecard{padding-inline:clamp(14px,5cqi,26px)!important}
+.stagebox{width:min(440px,100%)!important}
+/* RSVP: number and its button wrap under the label instead of pushing off-screen */
+.contacts{width:100%!important;max-width:420px}
+.contact{min-width:0;padding:14px clamp(12px,4cqi,18px)!important}
+.contact .cline{flex-wrap:wrap;row-gap:6px}
+.contact .num{min-width:0}
+@container page (max-width: 400px){
+  .contact .lab{flex-basis:100%;min-width:0}
+  .contact .num{font-size:18px}
+  .contact .cline .wa{min-width:0;padding-inline:14px}
+}
+/* never let a long word push the page sideways */
+main h1,main h2,main h3,main p,.ecard .venue,.card .name{overflow-wrap:anywhere}
+html,body{max-width:100%;overflow-x:hidden}
+.event h2,.rsvp h2,.countdown h2{font-size:clamp(30px,10cqi,60px)!important}
 </style>
 </head>
 <body>
