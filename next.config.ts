@@ -30,6 +30,18 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'no-referrer' },
         ],
       },
+      // Client invitations carry a family's names and phone number: shared by link, never listed by search engines.
+      {
+        source: '/invitations/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+    ];
+  },
+  // Digital invitations made by Shaadi Shopping for clients are static pages in public/invitations/<slug>/
+  // (index.html + assets/). This lets the short address /invitations/<slug> open that page.
+  async rewrites() {
+    return [
+      { source: '/invitations/:slug', destination: '/invitations/:slug/index.html' },
     ];
   },
   async redirects() {
