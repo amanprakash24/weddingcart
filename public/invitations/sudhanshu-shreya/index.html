@@ -647,6 +647,26 @@ main .rsvp .caps,main .countdown .lead,main footer > .caps{white-space:nowrap}
 main h1,main h2,main h3,main p,.ecard .venue,.card .name{overflow-wrap:anywhere}
 html,body{max-width:100%;overflow-x:hidden}
 .event h2,.rsvp h2,.countdown h2{font-size:clamp(30px,10cqi,60px)!important}
+/* ---------- opening title: gold caps + script, with a 3D finish ---------- */
+.arc-title{display:none!important}
+#gate img.logo-gate{margin-top:0!important;width:min(150px,38cqi)!important}
+.tl3d{margin:12px 0 0;display:flex;flex-direction:column;align-items:center;font-weight:400;transform-style:preserve-3d;
+  transform:perspective(700px) rotateX(calc(var(--py,0) * -6deg)) rotateY(calc(var(--px,0) * 8deg));transition:transform .6s cubic-bezier(.2,.7,.2,1)}
+.tl-orn{display:flex;align-items:center;gap:12px}
+.tl-orn i{width:clamp(26px,9cqi,44px);height:2px;background:linear-gradient(90deg,transparent,#c99a45);box-shadow:0 1px 0 rgba(255,255,255,.7)}
+.tl-orn i:last-child{transform:scaleX(-1)}
+/* embossed gold capitals: gradient face + stacked depth + light sweep */
+.tl-orn b{position:relative;font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:clamp(16px,5cqi,22px);letter-spacing:.32em;padding-left:.32em;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff3c8 0%,#e8bf6a 40%,#a8792f 62%,#d9ae5c 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 1px 0 #7a4f12) drop-shadow(0 2px 0 #6a430e) drop-shadow(0 4px 4px rgba(74,35,54,.35))}
+.tl-orn b::after{content:attr(data-t);position:absolute;inset:0;padding-left:.32em;
+  background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%);background-size:250% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:tlShine 3.6s ease-in-out infinite}
+@keyframes tlShine{0%,40%{background-position:120% 0}100%{background-position:-120% 0}}
+/* raised plum script with a gold rim */
+.tl-script{position:relative;font-family:"Great Vibes","Pinyon Script",cursive;font-size:clamp(48px,15cqi,68px);line-height:1;margin-top:2px;padding:0 .12em;
+  color:#6d2c4c;text-shadow:0 1px 0 #f3d79a, 0 2px 0 #b0813a, 0 3px 0 #8a5c1a, 0 7px 10px rgba(74,35,54,.35)}
+@media (prefers-reduced-motion: reduce){ .tl-orn b::after{animation:none} .tl3d{transform:none} }
 </style>
 </head>
 <body>
@@ -688,14 +708,8 @@ html,body{max-width:100%;overflow-x:hidden}
   <span class="ring"></span><span class="ring"></span>
   <div class="gate-top">
     <div class="names-pill">
-      <svg class="arc-title" viewBox="0 0 340 120" aria-label="Engagement Invitation">
-        <defs>
-          <path id="arcPath" d="M18 118 Q170 -30 322 118"/>
-          <linearGradient id="arcInk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5a2140"/><stop offset=".5" stop-color="#7d3558"/><stop offset="1" stop-color="#5a2140"/></linearGradient>
-        </defs>
-        <text><textPath href="#arcPath" startOffset="50%" text-anchor="middle">Engagement Invitation</textPath></text>
-      </svg>
       <img class="mono logo-gate" src="/invitations/sudhanshu-shreya/assets/logo.png" alt="Sudhanshu and Shreya monogram">
+      <h1 class="tl3d" aria-label="Engagement Invitation"><span class="tl-orn"><i></i><b data-t="Engagement">Engagement</b><i></i></span><span class="tl-script" data-t="Invitation">Invitation</span></h1>
       <small>You are warmly invited</small>
     </div>
   </div>
@@ -1218,7 +1232,7 @@ if (!reduce) requestAnimationFrame(frame);
   (function loop(t){
     if (!$("gate").hidden) {
       if (t - last > 2000) { tx = Math.sin(t * .0005) * .6; ty = Math.cos(t * .0004) * .4; }
-      g3.style.setProperty("--px", tx.toFixed(3)); g3.style.setProperty("--py", ty.toFixed(3));
+      g3.style.setProperty("--px", tx.toFixed(3)); g3.style.setProperty("--py", ty.toFixed(3)); const tl = document.querySelector(".tl3d"); if (tl) { tl.style.setProperty("--px", tx.toFixed(3)); tl.style.setProperty("--py", ty.toFixed(3)); }
       requestAnimationFrame(loop);
     }
   })(0);
