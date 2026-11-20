@@ -532,6 +532,7 @@ main h2{color:var(--plum)}
 main > section:not(.hero)::before{content:"";position:absolute;left:50%;top:22px;width:150px;height:16px;margin-left:-75px;z-index:3;pointer-events:none;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 16'%3E%3Cpath d='M0 8h58M92 8h58' stroke='%23b0813a' stroke-width='1'/%3E%3Cpath d='M75 1l7 7-7 7-7-7z' fill='%23b0813a'/%3E%3Ccircle cx='62' cy='8' r='2' fill='%23b0813a'/%3E%3Ccircle cx='88' cy='8' r='2' fill='%23b0813a'/%3E%3C/svg%3E") center/contain no-repeat}
 footer{background:var(--paper)}
+footer > .caps{font-size:clamp(11px,3.6cqi,14px);letter-spacing:.2em;white-space:nowrap}
 .music-credit{font-size:13px;color:var(--muted);letter-spacing:.04em;margin-top:10px}
 .music-credit:empty{display:none}
 .couple h2{font-size:clamp(32px,8.6cqi,56px)!important;text-wrap:balance}
@@ -593,6 +594,37 @@ footer{background:var(--paper)}
 .contact .num{flex:1;min-width:0;font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;color:#fff6ea!important;white-space:nowrap}
 .contact .cline .wa{flex-shrink:0;min-width:84px;padding-inline:12px;text-align:center}
 @container page (max-width: 380px){ .contact .num{font-size:17px} .contact .cline .wa{min-width:80px} }
+/* labels and the story heading scale with the invite width, so they fit on narrow phones (360px Samsung Galaxy) */
+main .caps{font-size:clamp(10.5px,3.25cqi,14px)!important;letter-spacing:.18em!important}
+main .rsvp .caps,main .countdown .lead,main footer > .caps{white-space:nowrap}
+.couple h2{font-size:clamp(27px,9cqi,56px)!important}
+.studio-t{font-size:clamp(12px,3.6cqi,15px)}
+/* ---------- opening screen: curved title over the logo + 3D gold button ---------- */
+.gate-top{top:calc(31% + env(safe-area-inset-top,0px))!important}
+#gate .hint{bottom:calc(11% + env(safe-area-inset-bottom,0px))!important}
+#gate .names-pill{padding:16px 28px 26px!important;gap:0!important;background:radial-gradient(closest-side, rgba(255,250,242,.94), rgba(255,250,242,.75) 60%, rgba(255,250,242,0))!important}
+.arc-title{width:min(330px,84cqi);height:auto;overflow:visible;display:block}
+.arc-title text{font-family:"Playfair Display",Georgia,serif;font-style:italic;font-weight:500;font-size:31px;fill:url(#arcInk);letter-spacing:.01em}
+#gate img.logo-gate{width:min(170px,42cqi)!important;margin-top:-34px}
+#gate .names-pill small{margin-top:14px!important;font-size:12px!important}
+.unite{top:11%!important;height:15%!important}
+.g3d-glow{top:18%!important;width:70%!important}
+#gate .ring{top:calc(env(safe-area-inset-top,0px) + 18%)!important}
+/* 3D gold button */
+.btn3d{all:unset;cursor:pointer;display:inline-block;border-radius:999px;padding:0 0 7px;
+  background:linear-gradient(180deg,#9a6a22,#6a430e);box-shadow:0 14px 28px rgba(74,35,54,.28);animation:btnFloat 3s ease-in-out infinite}
+.btn3d .face{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:13px 34px 12px;border-radius:999px;overflow:hidden;
+  background:linear-gradient(180deg,#fff1c4 0%,#e8c06e 38%,#c99a45 62%,#e3b25a 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.8), inset 0 -2px 4px rgba(122,79,18,.45), 0 0 0 1px #8a5c1a;
+  transition:transform .15s ease}
+.btn3d .face::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;transform:skewX(-20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);animation:shine3d 3.2s ease-in-out infinite}
+#gate .btn3d b{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:15px;letter-spacing:.24em;text-transform:uppercase;color:#4a1a30;text-shadow:0 1px 0 rgba(255,255,255,.55)}
+#gate .btn3d i{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:14.5px;color:#4a1a30}
+.btn3d:active .face,#gate.rung .btn3d .face{transform:translateY(5px)}
+@keyframes shine3d{0%,55%{left:-60%}100%{left:130%}}
+@keyframes btnFloat{50%{transform:translateY(-4px)}}
+#gate .hint .pill{display:none}
 </style>
 </head>
 <body>
@@ -613,7 +645,7 @@ footer{background:var(--paper)}
 </svg>
 
 <!-- ===== Gate ===== -->
-<div id="gate" role="button" tabindex="0" aria-label="Tap to unite and open the invitation">
+<div id="gate" role="button" tabindex="0" aria-label="Open the engagement invitation">
   <div class="blur" id="gateBlur"></div>
   <img class="art" id="gateArt" src="/invitations/sudhanshu-shreya/assets/floral-arch.jpg" alt="An ivory card framed with roses and jasmine"
        onerror="this.onerror=null;this.src='/invitations/sudhanshu-shreya/assets/rk-garden.jpg'">
@@ -634,13 +666,19 @@ footer{background:var(--paper)}
   <span class="ring"></span><span class="ring"></span>
   <div class="gate-top">
     <div class="names-pill">
+      <svg class="arc-title" viewBox="0 0 340 120" aria-label="Engagement Invitation">
+        <defs>
+          <path id="arcPath" d="M18 118 Q170 -30 322 118"/>
+          <linearGradient id="arcInk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5a2140"/><stop offset=".5" stop-color="#7d3558"/><stop offset="1" stop-color="#5a2140"/></linearGradient>
+        </defs>
+        <text><textPath href="#arcPath" startOffset="50%" text-anchor="middle">Engagement Invitation</textPath></text>
+      </svg>
       <img class="mono logo-gate" src="/invitations/sudhanshu-shreya/assets/logo.png" alt="Sudhanshu and Shreya monogram">
-      <div class="gate-names">Engagement Invitation</div>
       <small>You are warmly invited</small>
     </div>
   </div>
   <div class="hint">
-    <div class="pill"><b>Tap to unite</b><i>two hearts, one promise</i></div>
+    <button class="btn3d" type="button" tabindex="-1"><span class="face"><b>Open Invitation</b><i>tap to unite · two hearts, one promise</i></span></button>
   </div>
 </div>
 <!-- ===== Garden gate: after the bell, ivory-and-gold doors open inside the floral arch ===== -->
@@ -835,7 +873,7 @@ footer{background:var(--paper)}
     <div class="studio-in">
       <span class="studio-k">Digital invitation crafted by</span>
       <span class="studio-n">Shaadi Shopping</span>
-      <span class="studio-t">Engagement · Wedding · Haldi · Mehendi · Reception invites</span>
+      <span class="studio-t">Engagement · Wedding · Haldi · Mehendi · Reception</span>
       <div class="studio-links" id="studioLinks"></div>
     </div>
   </aside>
