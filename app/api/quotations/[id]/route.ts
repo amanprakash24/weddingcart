@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
@@ -12,6 +13,8 @@ type Params = { params: Promise<{ id: string }> };
 const unauthorized = () => NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
 async function handleGET(_req: NextRequest, { params }: Params) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'read');
+  if (denied) return denied;
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
     return NextResponse.json({ success: true, data: await quotationService.getById((await params).id) });
@@ -22,6 +25,8 @@ async function handleGET(_req: NextRequest, { params }: Params) {
 
 // PATCH — edit a DRAFT (409 once it has been sent).
 async function handlePATCH(req: NextRequest, { params }: Params) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
     const input = updateQuotationSchema.parse(await req.json());
@@ -37,6 +42,8 @@ async function handlePATCH(req: NextRequest, { params }: Params) {
 
 // DELETE — remove a DRAFT (409 for anything that was sent; those are kept as history).
 async function handleDELETE(_req: NextRequest, { params }: Params) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
     const id = (await params).id;

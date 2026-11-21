@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
@@ -8,6 +9,8 @@ import { platformScoped } from '@/lib/ownership/entry';
 // POST /api/quotations/[id]/send — DRAFT → SENT. 400 if it has no lines or no future valid-until date,
 // 409 if it is not a draft. `stageAdvanced` says whether the CRM stage moved to Quotation Sent too.
 async function handlePOST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {

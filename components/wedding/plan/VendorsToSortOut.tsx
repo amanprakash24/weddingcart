@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AlertTriangle, CircleDashed } from 'lucide-react';
 import type { VendorRow } from '@/lib/wedding/controlRoom';
 import VendorPicker, { type VendorHit } from './VendorPicker';
+import { useWorkspaceMoney } from '@/components/wedding/workspace/MoneyContext';
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const btn = 'min-h-9 rounded-lg px-3 py-1.5 text-sm font-medium';
@@ -26,6 +27,9 @@ export default function VendorsToSortOut({
   onAssign: (input: AssignInput) => Promise<void>;
   onRemove?: (taskId: string) => Promise<void>;
 }) {
+  // Recording a vendor's yes / no is everyday coordination — anyone on the team. Assigning a vendor to a quoted service sets its
+  // price, so that is the coordinator's and the founder's (MoneyContext; the API refuses everyone else).
+  const { vendorMoney } = useWorkspaceMoney();
   const work = rows.filter((r) => r.state === 'pending' || r.state === 'unassigned');
   if (work.length === 0) return null;
   return (
@@ -34,7 +38,15 @@ export default function VendorsToSortOut({
       <ul className="mt-3 grid grid-cols-1 gap-2">
         {work.map((row) => (
           <li key={row.key} className="rounded-xl border border-amber-100 bg-white p-3">
-            {row.state === 'pending' ? <PendingRow row={row} onConfirm={onConfirm} onDecline={onDecline} /> : <UnassignedRow row={row} onAssign={onAssign} onRemove={onRemove} />}
+            {row.state === 'pending' ? (
+              <PendingRow row={row} onConfirm={onConfirm} onDecline={onDecline} />
+            ) : vendorMoney ? (
+              <UnassignedRow row={row} onAssign={onAssign} onRemove={onRemove} />
+            ) : (
+              <p className="text-sm text-gray-700">
+                {row.name} · {row.category}{row.functionName ? ` · ${row.functionName}` : ''} — needs a vendor. The coordinator assigns it.
+              </p>
+            )}
           </li>
         ))}
       </ul>

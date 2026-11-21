@@ -27,7 +27,9 @@ function fakeBooking(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 async function loadRouteWith(list: ReturnType<typeof mock>) {
-  mock.module('@/lib/adminAuth', () => ({ requireAdmin: mock(async () => true) }));
+  // Signed in as the founder: these tests cover the route's own behaviour; who sees booking money is in moneyAccess tests.
+  const founderSession = { user: { id: 'founder-1', roles: ['SUPER_ADMIN'] } };
+  mock.module('@/lib/auth/session', () => ({ requireRole: mock(async () => founderSession), getSession: mock(async () => founderSession) }));
   mock.module('@/services/booking.service', () => ({ bookingService: { list } }));
   const route = await import('./route');
   return { GET: route.GET };
