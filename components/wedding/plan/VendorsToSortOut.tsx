@@ -27,33 +27,26 @@ export default function VendorsToSortOut({
   onAssign: (input: AssignInput) => Promise<void>;
   onRemove?: (taskId: string) => Promise<void>;
 }) {
-  // Confirming, declining and assigning vendors change vendor prices and bookings: the coordinator and the founder (MoneyContext;
-  // the API refuses everyone else). Others still see what is waiting.
+  // Recording a vendor's yes / no is everyday coordination — anyone on the team. Assigning a vendor to a quoted service sets its
+  // price, so that is the coordinator's and the founder's (MoneyContext; the API refuses everyone else).
   const { vendorMoney } = useWorkspaceMoney();
   const work = rows.filter((r) => r.state === 'pending' || r.state === 'unassigned');
   if (work.length === 0) return null;
-  if (!vendorMoney) {
-    return (
-      <section aria-label="Vendors to sort out" className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 sm:p-5">
-        <h2 className="text-[11px] font-bold uppercase tracking-widest text-amber-800">Vendors to sort out · {work.length}</h2>
-        <ul className="mt-3 grid grid-cols-1 gap-2">
-          {work.map((row) => (
-            <li key={row.key} className="rounded-xl border border-amber-100 bg-white p-3 text-sm text-gray-700">
-              {row.name} · {row.category}{row.functionName ? ` · ${row.functionName}` : ''} — {row.state === 'pending' ? 'waiting for the vendor' : 'needs a vendor'}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2 text-xs text-gray-500">The coordinator sorts out vendors.</p>
-      </section>
-    );
-  }
   return (
     <section aria-label="Vendors to sort out" className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 sm:p-5">
       <h2 className="text-[11px] font-bold uppercase tracking-widest text-amber-800">Vendors to sort out · {work.length}</h2>
       <ul className="mt-3 grid grid-cols-1 gap-2">
         {work.map((row) => (
           <li key={row.key} className="rounded-xl border border-amber-100 bg-white p-3">
-            {row.state === 'pending' ? <PendingRow row={row} onConfirm={onConfirm} onDecline={onDecline} /> : <UnassignedRow row={row} onAssign={onAssign} onRemove={onRemove} />}
+            {row.state === 'pending' ? (
+              <PendingRow row={row} onConfirm={onConfirm} onDecline={onDecline} />
+            ) : vendorMoney ? (
+              <UnassignedRow row={row} onAssign={onAssign} onRemove={onRemove} />
+            ) : (
+              <p className="text-sm text-gray-700">
+                {row.name} · {row.category}{row.functionName ? ` · ${row.functionName}` : ''} — needs a vendor. The coordinator assigns it.
+              </p>
+            )}
           </li>
         ))}
       </ul>

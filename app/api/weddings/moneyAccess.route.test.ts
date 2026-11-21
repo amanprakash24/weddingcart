@@ -54,8 +54,20 @@ const workspaceFixture = {
   activity: [{ id: 'a1', summary: 'Payment received: ₹50,000 via upi', detail: null }],
 };
 const assignCoordinator = mock(async () => ({}));
+const updateVendorBookingStatus = mock(async () => ({ id: 'vb1', status: 'CONFIRMED', agreedPrice: 90000 }));
+const updateVendorBookingPrice = mock(async () => ({ id: 'vb1', agreedPrice: 95000 }));
+const listForWedding = mock(async () => [{ id: 'ap1', title: 'Decor upgrade', amount: 40000 }]);
+const createApproval = mock(async () => ({ id: 'ap2' }));
+mock.module('@/services/approval.service', () => ({ approvalService: { listForWedding, create: createApproval } }));
+const bookingList = mock(async () => ({ data: [{ id: 'b1', status: 'NEW', name: 'Priya', total: 250000, items: [{ price: 125000, quantity: 2 }] }] }));
+const bookingGet = mock(async () => ({ id: 'b1', status: 'NEW', items: [], total: 1, phone: '9', name: 'x', city: 'y' }));
+const bookingUpdate = mock(async (id: string, d: { status: string }) => ({ id, status: d.status, total: 250000, items: [] }));
+mock.module('@/services/booking.service', () => ({ bookingService: { list: bookingList, getById: bookingGet, update: bookingUpdate } }));
+mock.module('@/lib/whatsapp', () => ({ sendWhatsAppMessage: mock(async () => ({ ok: true })) }));
+class FakeInvalidBookingStateError extends Error {}
+mock.module('@/services/weddingConversion.service', () => ({ convertBookingToWedding: mock(async () => ({})), convertLeadToWedding: mock(async () => ({})), InvalidBookingStateError: FakeInvalidBookingStateError }));
 mock.module('@/services/weddingWorkspace.service', () => ({
-  weddingWorkspaceService: { getWorkspace: mock(async () => structuredClone(workspaceFixture)), assignCoordinator },
+  weddingWorkspaceService: { getWorkspace: mock(async () => structuredClone(workspaceFixture)), assignCoordinator, updateVendorBookingStatus, updateVendorBookingPrice },
 }));
 const assignLead = mock(async () => ({}));
 mock.module('@/services/leadWorkspace.service', () => ({ leadWorkspaceService: { assignLead } }));
@@ -69,6 +81,10 @@ const coordinator = await import('./[id]/coordinator/route');
 const assign = await import('../crm/leads/[sourceType]/[id]/assign/route');
 const quotations = await import('../quotations/route');
 const quotation = await import('../quotations/[id]/route');
+const vendorBooking = await import('./[id]/vendor-bookings/[vbId]/route');
+const approvals = await import('./[id]/approvals/route');
+const bookings = await import('../bookings/route');
+const booking = await import('../bookings/[id]/route');
 
 const as = (id: string, ...roles: Role[]) => { session.current = { user: { id, roles } }; };
 const founder = () => as('f', Role.SUPER_ADMIN);
@@ -191,5 +207,73 @@ describe('quotations follow the lead they belong to', () => {
   test('after booking the rep may still read the quotes, but not change them', async () => {
     as('rep', Role.SALES);
     expect((await list('L1')).status).toBe(200);
+  });
+});
+
+describe('vendor bookings: coordination open to the team, money to the coordinator and founder', () => {
+  const patchVb = (body: unknown) => vendorBooking.PATCH(req('/x', 'PATCH', body), { params: Promise.resolve({ id: 'w1', vbId: 'vb1' }) });
+  test('anyone on the team records a vendor’s yes — and does not get the vendor price back', async () => {
+    as('someone', Role.SALES);
+    const res = await patchVb({ status: 'CONFIRMED' });
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.agreedPrice).toBeNull();
+  });
+  test('the coordinator gets the price back', async () => {
+    as('ops', Role.OPERATIONS);
+    expect((await (await patchVb({ status: 'CONFIRMED' })).json()).data.agreedPrice).toBe(90000);
+  });
+  test('re-pricing or cancelling a vendor: refused for others and the read-only lead owner; allowed for the coordinator', async () => {
+    for (const who of ['someone', 'rep']) {
+      as(who, Role.SALES);
+      expect((await patchVb({ agreedPrice: 95000 })).status).toBe(403);
+      expect((await patchVb({ status: 'CANCELLED' })).status).toBe(403);
+    }
+    expect(updateVendorBookingPrice).not.toHaveBeenCalled();
+    as('ops', Role.OPERATIONS);
+    expect((await patchVb({ agreedPrice: 95000 })).status).toBe(200);
+  });
+});
+
+describe('client approvals: open to the team, amounts follow the wedding’s money rule', () => {
+  const list = () => approvals.GET(req('/x'), { params: Promise.resolve({ id: 'w1' }) });
+  const create = (body: unknown) => approvals.POST(req('/x', 'POST', body), { params: Promise.resolve({ id: 'w1' }) });
+  test('another team member sees approvals without amounts', async () => {
+    as('someone', Role.SALES);
+    const data = (await (await list()).json()).data;
+    expect(data[0]).toEqual({ id: 'ap1', title: 'Decor upgrade', amount: null });
+  });
+  test('the read-only lead owner and the coordinator see the amount', async () => {
+    for (const [id, role] of [['rep', Role.SALES], ['ops', Role.OPERATIONS]] as const) {
+      as(id, role);
+      expect((await (await list()).json()).data[0].amount).toBe(40000);
+    }
+  });
+  test('asking the couple to approve an amount needs full access; an approval without an amount does not', async () => {
+    as('someone', Role.SALES);
+    expect((await create({ subjectType: 'MENU', title: 'Menu', amount: 5000 })).status).toBe(403);
+    expect((await create({ subjectType: 'MENU', title: 'Menu' })).status).toBe(200);
+    as('ops', Role.OPERATIONS);
+    expect((await create({ subjectType: 'MENU', title: 'Menu', amount: 5000 })).status).toBe(200);
+  });
+});
+
+describe('old cart Bookings: totals founder-only, follow-up open to the team', () => {
+  test('a team member sees the bookings without totals or prices', async () => {
+    as('someone', Role.SALES);
+    const data = (await (await bookings.GET()).json()).data;
+    expect(data[0]).toMatchObject({ name: 'Priya', total: null });
+    expect(data[0].items[0].price).toBeNull();
+  });
+  test('the founder sees totals', async () => {
+    founder();
+    expect((await (await bookings.GET()).json()).data[0].total).toBe(250000);
+  });
+  test('a team member marks a booking contacted, but cannot confirm it', async () => {
+    as('someone', Role.OPERATIONS);
+    const put = (status: string) => booking.PUT(req('/x', 'PUT', { status }), { params: Promise.resolve({ id: 'b1' }) });
+    const contacted = await put('contacted');
+    expect(contacted.status).toBe(200);
+    expect((await contacted.json()).data.total).toBeNull();
+    expect((await put('confirmed')).status).toBe(403);
   });
 });

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { moneyGuard } from '@/lib/auth/moneyGuard';
+import { requireRole } from '@/lib/auth/session';
+import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { moneyAccessFor, moneyDenied } from '@/lib/auth/moneyGuard';
+import { canSeeVendorMoney } from '@/lib/auth/moneyAccess';
 import { z } from 'zod';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
@@ -26,19 +29,29 @@ const bodySchema = z
   .refine((v) => v.status !== undefined || v.agreedPrice !== undefined, { message: 'Send a status or an agreed price' })
   .refine((v) => v.status === undefined || v.agreedPrice === undefined, { message: 'Change the status or the price, not both at once' });
 
+// Who may do what (lib/auth/moneyAccess.ts):
+//  • re-pricing or cancelling a vendor changes the wedding's vendor money → the coordinator or the founder;
+//  • recording the vendor's answer (confirmed / declined / completed …) is everyday coordination → anyone on the team. The
+//    vendor's price is left out of the reply for anyone who may not see it.
 async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
+  const session = await requireRole(ADMIN_ROLES);
+  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   const { id, vbId } = await params;
-  const guard = await moneyGuard({ wedding: id }, 'full');
-  if (guard instanceof NextResponse) return guard;
-  const { session } = guard;
   try {
     const { status, declineReason, onTimeService, agreedPrice } = bodySchema.parse(await req.json());
+    const changesMoney = agreedPrice !== undefined || status === 'CANCELLED';
+    if (changesMoney) {
+      const denied = await moneyDenied({ wedding: id }, 'full');
+      if (denied) return denied;
+    }
     if (agreedPrice !== undefined) {
       const updated = await weddingWorkspaceService.updateVendorBookingPrice(id, vbId, agreedPrice, session.user.id ?? null);
       return NextResponse.json({ success: true, data: updated });
     }
     const vendorBooking = await weddingWorkspaceService.updateVendorBookingStatus(id, vbId, status as NonNullable<typeof status>, declineReason, onTimeService);
-    return NextResponse.json({ success: true, data: vendorBooking });
+    const access = changesMoney ? 'full' : await moneyAccessFor(session, { wedding: id });
+    const data = canSeeVendorMoney(access) ? vendorBooking : { ...vendorBooking, agreedPrice: null };
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     return handleApiError(err);
   }
