@@ -4,6 +4,9 @@ import { buildQuotationMessage } from '@/lib/quotation/message';
 import { dbDescribe, inDays, loadApp, type App } from './helpers/app';
 import { createFixtures, type Fixtures } from './helpers/fixtures';
 
+// Always upcoming: 120 days from today (UTC). A fixed date turned "upcoming" checks red the day after it passed (20 Nov 2026).
+const WEDDING_DATE = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
 // THE GOLDEN WEDDING WORKFLOW (handoff §12/§21; docs/VIVAH_OS_TECH_COMPLETION.md).
 //
 //   Rahul & Priya · 20 Nov 2026 · 500 guests · budget ₹5,00,000 · confirmation (25%) ₹1,25,000 · then ₹1,00,000 more · pending ₹2,75,000
@@ -52,12 +55,12 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
   const [VENUE, CATERING, DECOR, PHOTO, DJ] = [0, 1, 2, 3, 4];
 
   test('1 · The enquiry arrives: a consultation for Rahul Sharma, 500 guests, 20 November 2026', async () => {
-    const c = await fx.consultation({ name: 'Rahul Sharma', phone: '9876500001', weddingDate: '2026-11-20', guestCount: 500, totalBudget: 500000 });
+    const c = await fx.consultation({ name: 'Rahul Sharma', phone: '9876500001', weddingDate: WEDDING_DATE, guestCount: 500, totalBudget: 500000 });
     consultationId = c.id;
     const workspace = await app.leadWorkspaceService.getWorkspace('CONSULTATION', c.id);
     expect(workspace.customer.name).toBe('Rahul Sharma');
     expect(workspace.weddingDetails.guestCount).toBe(500);
-    expect(workspace.weddingDetails.date).toBe('2026-11-20');
+    expect(workspace.weddingDetails.date).toBe(WEDDING_DATE);
     expect(workspace.subject.pipelineStage).toBe('NEW');
   });
 
@@ -120,7 +123,7 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
     expect(booking.status).toBe('NEW');
     expect(booking.total).toBe(500000);
     expect(booking.items).toHaveLength(5);
-    expect(booking.weddingDate?.toISOString().slice(0, 10)).toBe('2026-11-20');
+    expect(booking.weddingDate?.toISOString().slice(0, 10)).toBe(WEDDING_DATE);
     expect(booking.guestCount).toBe(500);
     expect(booking.items.find((i) => i.packageName === 'Catering per plate')).toMatchObject({ price: 300, quantity: 500 });
     expect(await app.prisma.booking.count({ where: { quotationId } })).toBe(1);
@@ -240,7 +243,7 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
     const after = await app.commandCenterService.getDashboard();
     expect(after.finance!.outstanding).toBeGreaterThanOrEqual(275000);
     expect(after.today.paymentsDue).toBeGreaterThanOrEqual(1);
-    expect(after.upcomingEvents.some((e) => e.weddingId === weddingId && e.date.startsWith('2026-11-20'))).toBe(true);
+    expect(after.upcomingEvents.some((e) => e.weddingId === weddingId && e.date.startsWith(WEDDING_DATE))).toBe(true);
   });
 
   test('16 · Everything important was recorded in the wedding activity log', async () => {
