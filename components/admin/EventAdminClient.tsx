@@ -27,7 +27,7 @@ interface Order {
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
-  amount: number;
+  amount: number | null; // null = withheld: only the founder sees order amounts (app/api/events/[id])
   status: string;
   tickets: Ticket[];
 }
@@ -129,7 +129,7 @@ export default function EventAdminClient({ eventId }: { eventId: string }) {
           <div className="mt-4 space-y-3">
             <div className="text-sm text-slate-600">Total tickets: {event.tickets.length}</div>
             <div className="text-sm text-slate-600">Total orders: {event.orders.length}</div>
-            <div className="text-sm text-slate-600">Revenue: ₹{event.orders.reduce((sum, order) => sum + order.amount, 0).toLocaleString('en-IN')}</div>
+            {event.orders.every((order) => order.amount !== null) && <div className="text-sm text-slate-600">Revenue: ₹{event.orders.reduce((sum, order) => sum + (order.amount ?? 0), 0).toLocaleString('en-IN')}</div>}
           </div>
         </div>
       </div>
