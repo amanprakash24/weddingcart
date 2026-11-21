@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
@@ -8,6 +9,8 @@ import { paymentSubmissionService } from '@/services/paymentSubmission.service';
 // POST /api/quotations/[id]/payment-submissions/[submissionId]/reject — staff could not match the payment. Body: { reason } — shown to
 // the couple on their link. Nothing about money changes.
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; submissionId: string }> }) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {

@@ -1,5 +1,6 @@
 import type { WorkspaceWeddingEvent } from './types';
 import { functionLabel, type VendorRow } from '@/lib/wedding/controlRoom';
+import { useWorkspaceMoney } from './MoneyContext';
 
 const REQUIREMENTS = ['Venue', 'Decoration', 'Catering', 'Photography', 'Videography', 'DJ', 'SFX', 'Makeup', 'Entertainment', 'Transport', 'Accommodation', 'Other'];
 
@@ -13,6 +14,8 @@ function matches(category: string, requirement: string): boolean {
 // One line per kind of service the wedding needs: which function, what state it is in, what was quoted, what was agreed, and who has it.
 // A quoted service nobody is booked for yet shows as "Needs a vendor" with its quoted price as the estimate; a cancelled vendor is not listed.
 export default function ServiceRequirements({ events, unassigned }: { events: WorkspaceWeddingEvent[]; unassigned: VendorRow[] }) {
+  // Quoted prices: anyone with access to this wedding's money; agreed vendor prices: the coordinator and founder (MoneyContext).
+  const money = useWorkspaceMoney();
   const rows = REQUIREMENTS.map((name) => {
     const bookings = events.flatMap((event) => event.vendorBookings.filter((booking) => booking.status !== 'CANCELLED' && matches(booking.vendorCategory, name)).map((booking) => ({ ...booking, functionName: functionLabel(event) })));
     const waiting = unassigned.filter((row) => matches(row.category, name));
@@ -35,8 +38,8 @@ export default function ServiceRequirements({ events, unassigned }: { events: Wo
                 <td className="py-2 font-medium text-gray-900">{row.name}</td>
                 <td className="py-2 text-gray-600">{functions.join(', ') || '—'}</td>
                 <td className="py-2 capitalize text-gray-600">{status || 'Not assigned'}</td>
-                <td className="py-2 text-gray-500">{estimate > 0 ? `₹${estimate.toLocaleString('en-IN')}` : '—'}</td>
-                <td className="py-2 font-medium text-gray-700">{row.bookings.length ? `₹${total.toLocaleString('en-IN')}` : '—'}</td>
+                <td className="py-2 text-gray-500">{money.access !== 'none' && estimate > 0 ? `₹${estimate.toLocaleString('en-IN')}` : '—'}</td>
+                <td className="py-2 font-medium text-gray-700">{money.vendorMoney && row.bookings.length ? `₹${total.toLocaleString('en-IN')}` : '—'}</td>
                 <td className="py-2 text-gray-600">{row.bookings.map((booking) => booking.vendorName).join(', ') || '—'}</td>
               </tr>
             );

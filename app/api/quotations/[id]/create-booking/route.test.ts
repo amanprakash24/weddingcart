@@ -4,7 +4,9 @@ import { NextRequest } from 'next/server';
 import { ConflictError, ConversionLockedError, NotFoundError, ValidationError } from '@/lib/errors';
 
 // Same isolation technique as ../actions.route.test.ts.
-const session = { current: { user: { id: 'staff-1' } } as { user: { id: string } } | null };
+// The founder: these tests are about each route's own behaviour; who may see a quote's money is covered in
+// app/api/quotations/moneyAccess.route.test.ts and lib/auth/moneyAccess.test.ts.
+const session = { current: { user: { id: 'staff-1', roles: ['SUPER_ADMIN'] } } as { user: { id: string; roles: string[] } } | null };
 type AnyFn = (...args: unknown[]) => Promise<unknown>;
 const requireRole = mock<(roles: unknown) => Promise<typeof session.current>>(async () => session.current);
 const BOOKING = {
@@ -36,7 +38,7 @@ const post = (body?: unknown, raw?: string) =>
   });
 
 beforeEach(() => {
-  session.current = { user: { id: 'staff-1' } };
+  session.current = { user: { id: 'staff-1', roles: ['SUPER_ADMIN'] } };
   service.createBooking.mockClear();
   service.createBooking.mockImplementation(async () => BOOKING);
 });

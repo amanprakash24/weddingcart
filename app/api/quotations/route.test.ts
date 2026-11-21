@@ -8,7 +8,9 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 // module through lib/adminAuth aren't broken by this file's mock) and
 // `@/services/quotation.service` (only this route's tests import the real one, so mocking it here
 // can't hijack another file). The service's own rules are covered by lib/quotation/*.test.ts.
-const session = { current: { user: { id: 'staff-1' } } as { user: { id: string } } | null };
+// The founder: these tests are about each route's own behaviour; who may see a quote's money is covered in
+// app/api/quotations/moneyAccess.route.test.ts and lib/auth/moneyAccess.test.ts.
+const session = { current: { user: { id: 'staff-1', roles: ['SUPER_ADMIN'] } } as { user: { id: string; roles: string[] } } | null };
 type AnyFn = (...args: unknown[]) => Promise<unknown>;
 const requireRole = mock<(roles: unknown) => Promise<typeof session.current>>(async () => session.current);
 const service = {
@@ -34,7 +36,7 @@ const post = (body: unknown) =>
 const get = (qs: string) => new NextRequest(`http://localhost/api/quotations${qs}`);
 
 beforeEach(() => {
-  session.current = { user: { id: 'staff-1' } };
+  session.current = { user: { id: 'staff-1', roles: ['SUPER_ADMIN'] } };
   requireRole.mockClear();
   for (const fn of Object.values(service)) fn.mockClear();
   service.create.mockImplementation(async () => ({ id: 'q1' }));

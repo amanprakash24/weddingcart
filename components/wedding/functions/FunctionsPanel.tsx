@@ -9,6 +9,7 @@ import { functionSpend } from '@/lib/wedding/functions';
 import { UnassignedRow, useAction, type AssignInput } from '@/components/wedding/plan/VendorsToSortOut';
 import VendorPicker, { type VendorHit } from '@/components/wedding/plan/VendorPicker';
 import FunctionForm, { draftFromEvent, emptyDraft, type FunctionPayload } from './FunctionForm';
+import { useWorkspaceMoney } from '@/components/wedding/workspace/MoneyContext';
 
 type Booking = WorkspaceWeddingEvent['vendorBookings'][number];
 
@@ -88,6 +89,8 @@ function FunctionCard({ event, unassigned, ...h }: { event: WorkspaceWeddingEven
   const cancelled = event.vendorBookings.filter((b) => b.status === 'CANCELLED');
   const spend = functionSpend(event.budget, event.vendorBookings);
   const place = [event.venueName, event.city].filter(Boolean).join(', ');
+  // Vendor prices are only for the coordinator and the founder (MoneyContext); without them "Booked" would read ₹0.
+  const { vendorMoney } = useWorkspaceMoney();
 
   return (
     <div className="rounded-xl border border-gray-100 p-3 sm:p-4">
@@ -98,12 +101,13 @@ function FunctionCard({ event, unassigned, ...h }: { event: WorkspaceWeddingEven
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-gray-900">{functionLabel(event)}</h3>
             <p className="mt-0.5 text-xs text-gray-500">{[dateWords(event.date), event.startTime, place].filter(Boolean).join(' · ')}</p>
-            {(event.budget !== null || spend.booked > 0) && (
+            {vendorMoney && (event.budget !== null || spend.booked > 0) && (
               <p className="mt-0.5 text-xs text-gray-500">
                 {event.budget !== null ? `Budget ${money(event.budget)} · ` : ''}Booked {money(spend.booked)}
                 {spend.over > 0 && <span className="font-semibold text-amber-800"> · {money(spend.over)} over budget</span>}
               </p>
             )}
+            {!vendorMoney && event.budget !== null && <p className="mt-0.5 text-xs text-gray-500">Budget {money(event.budget)}</p>}
           </div>
           {!deleting && (
             <div className="flex shrink-0 gap-1">
@@ -127,11 +131,13 @@ function FunctionCard({ event, unassigned, ...h }: { event: WorkspaceWeddingEven
         <div className="mt-3 grid grid-cols-1 gap-2">
           {active.map((b) => <ServiceRow key={b.id} booking={b} {...h} />)}
           {unassigned.map((row) => (
-            <div key={row.key} className="rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-3"><UnassignedRow row={row} onAssign={h.onAssign} onRemove={h.onRemoveService} /></div>
+            <div key={row.key} className="rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-3">
+              {vendorMoney ? <UnassignedRow row={row} onAssign={h.onAssign} onRemove={h.onRemoveService} /> : <p className="text-sm text-gray-700">{row.name} — not assigned to a vendor yet</p>}
+            </div>
           ))}
           {active.length === 0 && unassigned.length === 0 && <p className="text-sm text-gray-500">No services for this function yet.</p>}
           {cancelled.length > 0 && <p className="text-xs text-gray-400">Cancelled: {cancelled.map((b) => b.vendorName).join(', ')}</p>}
-          {addingService ? (
+          {!vendorMoney ? null : addingService ? (
             <AddService onAdd={async (vendorId, price) => { await h.onAddService(event.id, vendorId, price); setAddingService(false); }} onCancel={() => setAddingService(false)} />
           ) : (
             <div><button type="button" onClick={() => setAddingService(true)} className={`${btn} inline-flex items-center gap-1 text-emerald-700 hover:bg-emerald-50`}><Plus className="h-4 w-4" aria-hidden />Add service</button></div>
@@ -157,6 +163,8 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
   const canChange = s === 'PENDING_VENDOR_CONFIRMATION' || s === 'CONFIRMED';
   const amount = (text: string) => Number(text.replace(/,/g, ''));
   const valid = (text: string) => Number.isInteger(amount(text)) && amount(text) > 0;
+  // Prices, payouts and every vendor action are for the coordinator and the founder; commission for the founder (MoneyContext).
+  const { vendorMoney, commission } = useWorkspaceMoney();
 
   const markPaid = () => {
     if (!booking.payout) return;
@@ -169,9 +177,14 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900">{booking.vendorName}</p>
-          <p className="text-xs text-gray-500">{booking.vendorCategory} · {money(booking.agreedPrice)}</p>
+          <p className="text-xs text-gray-500">{booking.vendorCategory}{vendorMoney ? ` · ${money(booking.agreedPrice)}` : ''}</p>
           {s === 'DECLINED' && booking.declineReason && <p className="mt-0.5 text-xs text-red-600">{booking.declineReason}</p>}
-          {booking.payout && <p className="mt-0.5 text-xs text-gray-400">Gross {money(booking.payout.grossAmount)} · Commission {money(booking.payout.commissionAmount)} ({booking.payout.commissionRate}%) · Net {money(booking.payout.netAmount)}</p>}
+          {booking.payout && (
+            <p className="mt-0.5 text-xs text-gray-400">
+              Gross {money(booking.payout.grossAmount)}
+              {commission ? ` · Commission ${money(booking.payout.commissionAmount)} (${booking.payout.commissionRate}%)` : ''} · Net {money(booking.payout.netAmount)}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[s]}`}>{STATUS_LABEL[s]}</span>
@@ -179,7 +192,7 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
         </div>
       </div>
 
-      {mode === 'idle' && (
+      {mode === 'idle' && vendorMoney && (
         <div className="mt-2 flex flex-wrap gap-2">
           {s === 'PENDING_VENDOR_CONFIRMATION' && (
             <>
