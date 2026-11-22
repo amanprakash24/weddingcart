@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
@@ -11,6 +12,8 @@ const body = z.object({ amount: z.number().int().positive().optional(), paidAt: 
 // POST /api/quotations/[id]/payment-submissions/[submissionId]/verify — staff found the money in the bank. Records the payment through
 // the normal Money v1 path (25% rule, hold, auto-confirm). Safe to press twice. Body: { amount?, paidAt? } to correct what arrived.
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; submissionId: string }> }) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {

@@ -2456,13 +2456,14 @@ Create a separate standalone invoice anyway?`)) return;
                                   <span className="text-xs text-gray-400 capitalize ml-2">({item.vendorCategory?.replace(/-/g, ' ')})</span>
                                 </div>
                               </div>
-                              <span className="text-xs font-bold text-amber-600">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                              {/* Prices are null for anyone without company-financials access (app/api/bookings) — hidden, never ₹0. */}
+                              {item.price != null && <span className="text-xs font-bold text-amber-600">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>}
                             </div>
                             <div className="px-3 py-2 text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5">
                               <span>Package: <span className="font-medium text-gray-700">{item.packageName}</span></span>
                               {item.quantity > 1 && <span>Qty: <span className="font-medium text-gray-700">{item.quantity}</span></span>}
                               {item.guestCount && <span>👥 <span className="font-medium text-gray-700">{item.guestCount} guests</span></span>}
-                              <span>Rate: <span className="font-medium text-gray-700">₹{item.price?.toLocaleString('en-IN')}</span></span>
+                              {item.price != null && <span>Rate: <span className="font-medium text-gray-700">₹{item.price.toLocaleString('en-IN')}</span></span>}
                             </div>
                             {/* Vendor contact — only if found */}
                             {vendorData && (
@@ -2493,7 +2494,7 @@ Create a separate standalone invoice anyway?`)) return;
 
                     {/* Total + status controls */}
                     <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-gray-100">
-                      <p className="text-amber-600 font-bold text-base">Total: ₹{b.total?.toLocaleString('en-IN')}</p>
+                      {b.total != null ? <p className="text-amber-600 font-bold text-base">Total: ₹{b.total.toLocaleString('en-IN')}</p> : <p className="text-xs text-gray-400">Amounts: founder only</p>}
                       <div className="flex gap-1.5 flex-wrap">
                         {(['new', 'contacted', 'confirmed', 'closed'] as const).map((s) => (
                           <button

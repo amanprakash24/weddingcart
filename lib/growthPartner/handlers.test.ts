@@ -78,3 +78,36 @@ describe('staff routes', () => {
     expect(staff.listReferrals).toHaveBeenCalledWith({ status: undefined, type: 'VENUE', partnerId: undefined });
   });
 });
+
+describe('partner payouts are founder-only (21 Nov 2026)', () => {
+  const patch = (body: unknown) => new NextRequest('https://www.shaadishopping.com/api/x', { method: 'PATCH', body: JSON.stringify(body) });
+  const asRoles = (...roles: string[]) => { session = { user: { id: 'u1', roles } } as unknown as typeof session; };
+
+  test('a team member sees referrals without payout amounts, and the payout totals withheld', async () => {
+    asRoles('SALES');
+    staff.listReferrals.mockImplementationOnce(async () => [{ id: 'r1', status: 'NEW', payoutAmount: 5000 }] as never);
+    const referrals = await (await makeListReferrals(staff)(get())).json();
+    expect(referrals.data[0]).toEqual({ id: 'r1', status: 'NEW', payoutAmount: null });
+
+    staff.stats.mockImplementationOnce(async () => ({ partners: 3, payoutsDue: 9000, totalPaid: 12000 }) as never);
+    const partners = await (await makeListPartners(staff)(get())).json();
+    expect(partners.data.stats).toEqual({ partners: 3, payoutsDue: null, totalPaid: null });
+  });
+
+  test('a team member can still save status, assignee and notes — but not a payout (403, nothing saved)', async () => {
+    asRoles('OPERATIONS');
+    expect((await makeUpdateReferral(staff)(patch({ status: 'CONTACTED', staffNotes: 'called' }), ctx)).status).toBe(200);
+    staff.updateReferral.mockClear();
+    for (const body of [{ payoutAmount: 5000 }, { payoutStatus: 'PAID' }]) {
+      expect((await makeUpdateReferral(staff)(patch(body), ctx)).status).toBe(403);
+    }
+    expect(staff.updateReferral).not.toHaveBeenCalled();
+  });
+
+  test('the founder sees and sets payouts', async () => {
+    asRoles('SUPER_ADMIN');
+    staff.listReferrals.mockImplementationOnce(async () => [{ id: 'r1', payoutAmount: 5000 }] as never);
+    expect((await (await makeListReferrals(staff)(get())).json()).data[0].payoutAmount).toBe(5000);
+    expect((await makeUpdateReferral(staff)(patch({ payoutAmount: 5000, payoutStatus: 'DUE' }), ctx)).status).toBe(200);
+  });
+});

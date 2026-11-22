@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
@@ -11,6 +12,8 @@ import { platformScoped } from '@/lib/ownership/entry';
 // accepted and has no booking yet; 400 if the wedding date or city is missing and not supplied here.
 // Confirming the booking afterwards uses the existing PUT /api/bookings/[id].
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {

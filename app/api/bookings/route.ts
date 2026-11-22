@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bookingService } from '@/services/booking.service';
-import { requireAdmin } from '@/lib/adminAuth';
+import { requireRole } from '@/lib/auth/session';
+import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { bookingMoneyView } from '@/lib/booking/moneyView';
 import { handleApiError } from '@/lib/errors';
 import { bookingCreateSchema } from './schema';
 import type { Booking } from '@/generated/prisma/client';
@@ -15,12 +17,14 @@ function toResponseShape<T extends Pick<Booking, 'id' | 'status'>>(booking: T) {
 }
 
 async function handleGET() {
-  if (!(await requireAdmin())) {
+  const session = await requireRole(ADMIN_ROLES);
+  if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   try {
     const { data } = await bookingService.list();
-    return NextResponse.json({ success: true, data: data.map(toResponseShape) });
+    // Totals and item prices: founder only (lib/booking/moneyView.ts).
+    return NextResponse.json({ success: true, data: data.map((b) => bookingMoneyView(session.user.roles, toResponseShape(b))) });
   } catch (err) {
     console.error('GET /api/bookings failed:', err);
     return NextResponse.json({ success: false, error: 'Failed to fetch bookings' }, { status: 500 });

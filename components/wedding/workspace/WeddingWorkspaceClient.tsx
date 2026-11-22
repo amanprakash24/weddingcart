@@ -6,7 +6,8 @@ import WeddingTasks, { type NewTask, type TaskPatch } from '@/components/wedding
 import VendorsToSortOut, { type AssignInput } from '@/components/wedding/plan/VendorsToSortOut';
 import type { StaffMember } from '@/components/wedding/plan/CoordinatorPicker';
 import ControlRoomHeader from '@/components/wedding/control-room/ControlRoomHeader';
-import Overview from '@/components/wedding/control-room/Overview';
+import Overview, { NoMoneyAccess } from '@/components/wedding/control-room/Overview';
+import { FULL_MONEY, WorkspaceMoneyProvider } from './MoneyContext';
 import WeddingReviews from '@/components/wedding/workspace/WeddingReviews';
 import ControlRoomTabs, { isTabKey, type TabKey } from '@/components/wedding/control-room/ControlRoomTabs';
 import { buildControlRoom } from '@/lib/wedding/controlRoom';
@@ -227,7 +228,11 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     return <div className="p-6 max-w-6xl mx-auto text-center text-red-500 text-sm">{error ?? 'Not found'}</div>;
   }
 
+  // What of this wedding's money this person may see — the API trims the data; the screens show notes in its place.
+  const money = workspace.money ?? FULL_MONEY;
+
   return (
+    <WorkspaceMoneyProvider value={money}>
     <div className="mx-auto max-w-6xl space-y-4 p-3 sm:p-6">
       <ControlRoomHeader view={view} staff={staff} coordinatorId={workspace.wedding.coordinatorId ?? null} onAssignCoordinator={assignCoordinator} onTransition={transitionStatus} />
 
@@ -271,7 +276,14 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         </div>
       )}
 
-      {tab === 'money' && <Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} onRecordAgreementPayment={recordAgreementPayment} onMoneyChanged={load} />}
+      {tab === 'money' && money.access === 'none' && <NoMoneyAccess />}
+      {tab === 'money' && money.access === 'read' && (
+        <p role="note" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          View only — you owned this lead, so you can follow its payments. The coordinator or the founder makes any change.
+        </p>
+      )}
+      {/* A disabled fieldset greys out every button and field inside while keeping the figures readable. */}
+      {tab === 'money' && money.access !== 'none' && <fieldset disabled={money.access === 'read'} className="contents"><Finance weddingId={id} finance={workspace.finance} onCreateInvoice={createInvoice} onGeneratePaymentLink={generatePaymentLink} onIssueInvoice={issueInvoice} onCreateBalanceInvoice={createBalanceInvoice} onRecordPayment={recordPayment} onRecordAgreementPayment={recordAgreementPayment} onMoneyChanged={load} /></fieldset>}
 
       {tab === 'people' && (
         <div className="space-y-4">
@@ -288,5 +300,6 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
         </div>
       )}
     </div>
+    </WorkspaceMoneyProvider>
   );
 }
