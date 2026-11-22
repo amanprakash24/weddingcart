@@ -5,6 +5,7 @@ import type { ControlRoomView, JourneyStep, PulseCard, Tone, VendorRow } from '@
 import type { ActionTarget } from '@/lib/wedding/stage';
 import NextActionCard, { TARGET_LABEL } from './NextActionCard';
 import type { StaffMember } from '@/components/wedding/plan/CoordinatorPicker';
+import { useWorkspaceMoney } from '@/components/wedding/workspace/MoneyContext';
 
 const rupees = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const card = 'rounded-2xl border border-gray-100 bg-white p-4 sm:p-5';
@@ -16,6 +17,22 @@ const TONE_TEXT: Record<Tone, string> = { ok: 'text-gray-900', warn: 'text-amber
 // ---- money ---------------------------------------------------------------------------------------------------------------
 
 function Money({ view }: { view: ControlRoomView }) {
+  const { access } = useWorkspaceMoney();
+  if (access === 'none') return <NoMoneyAccess />;
+  return <MoneyTiles view={view} />;
+}
+
+// For a team member this wedding is not assigned to: its money is withheld by the API, so say so instead of showing ₹0.
+export function NoMoneyAccess() {
+  return (
+    <section aria-label="Money" className={card}>
+      <h2 className={h2}>Money</h2>
+      <p className="mt-3 text-sm text-gray-500">Only this wedding&rsquo;s coordinator and the founder can see its money.</p>
+    </section>
+  );
+}
+
+function MoneyTiles({ view }: { view: ControlRoomView }) {
   const m = view.money;
   const tiles: { label: string; value: string; note?: string; strong?: boolean }[] =
     m.mode === 'agreement'

@@ -9,23 +9,30 @@ import { commissionRateRepository } from '@/repositories/commissionRate.reposito
 // 01-command-center.md §4.1's already-resolved sourcing, composing 6
 // independent, individually empty-safe queries.
 
+export interface RevenueSummary {
+  outstanding: number;
+  totalCollected: number;
+  invoicedThisMonth: { count: number; total: number };
+  paymentsToday: number;
+}
+
+export interface CommissionSummary {
+  confirmed: number;
+  pendingWeddings: number;
+  expected: number;
+  outstandingPayoutAmount: number;
+  pendingPayoutCount: number;
+  grossMargin: number;
+}
+
+export type RevenueByMonth = { month: string; total: number }[];
+
 export interface FounderDashboard {
   commandCenter: CommandCenter;
-  revenue: {
-    outstanding: number;
-    totalCollected: number;
-    invoicedThisMonth: { count: number; total: number };
-    paymentsToday: number;
-  };
-  commission: {
-    confirmed: number;
-    pendingWeddings: number;
-    expected: number;
-    outstandingPayoutAmount: number;
-    pendingPayoutCount: number;
-    grossMargin: number;
-  };
-  revenueByMonth: { month: string; total: number }[];
+  // Company-wide money — null unless the caller may see company financials (lib/auth/financialAccess.ts).
+  revenue: RevenueSummary | null;
+  commission: CommissionSummary | null;
+  revenueByMonth: RevenueByMonth | null;
   pipelineHealth: { newThisWeek: number; convertedThisWeek: number; lostThisWeek: number; onHold: number };
   velocity: { stage: PipelineStage; avgDays: number | null; sampleSize: number }[];
   vendorAvailability: { date: string; categories: { category: string; counts: Record<string, number> }[] };
@@ -91,7 +98,7 @@ async function countAcrossAll(where: SubjectCountWhere): Promise<number> {
 // Exported (unlike this file's other section-getters) specifically so it's
 // independently unit-testable without mocking every other section's Prisma
 // calls — see founderDashboard.service.test.ts.
-export async function getRevenue(): Promise<FounderDashboard['revenue']> {
+export async function getRevenue(): Promise<RevenueSummary> {
   const now = new Date();
   const [invoices, monthAgg, paymentsTodayAgg] = await Promise.all([
     prisma.invoice.findMany({
@@ -164,7 +171,7 @@ async function getExpectedCommission(): Promise<number> {
   }, 0);
 }
 
-async function getCommission(): Promise<FounderDashboard['commission']> {
+async function getCommission(): Promise<CommissionSummary> {
   const [paidPayoutAgg, pendingPayoutAgg, allSuccessfulPaymentsAgg, pendingWeddings, expected] = await Promise.all([
     prisma.payout.aggregate({ where: { status: 'PAID' }, _sum: { commissionAmount: true, netAmount: true } }),
     prisma.payout.aggregate({ where: { status: 'PENDING' }, _sum: { netAmount: true }, _count: true }),
@@ -193,7 +200,7 @@ async function getCommission(): Promise<FounderDashboard['commission']> {
 // SQL groupBy/date_trunc — same precedent as getVelocity() below for
 // time-based aggregation. Every month is present even at 0 (no "only push if
 // non-zero" shortcut), so a real empty month reads as 0, not missing.
-async function getRevenueByMonth(): Promise<FounderDashboard['revenueByMonth']> {
+async function getRevenueByMonth(): Promise<RevenueByMonth> {
   const now = new Date();
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
@@ -210,7 +217,7 @@ async function getRevenueByMonth(): Promise<FounderDashboard['revenueByMonth']> 
     totalsByMonth.set(key, (totalsByMonth.get(key) ?? 0) + p.amount);
   }
 
-  const result: FounderDashboard['revenueByMonth'] = [];
+  const result: RevenueByMonth = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = monthKey(d);
@@ -368,7 +375,10 @@ async function getTeamPerformance(): Promise<FounderDashboard['teamPerformance']
 }
 
 export const founderDashboardService = {
-  async getDashboard(date: Date = new Date()): Promise<FounderDashboard> {
+  // includeFinancials: false = the company-wide money (revenue, commission, revenue by month, the Command Center's finance
+  // block) is neither read nor returned. The route decides it from the signed-in person's roles.
+  async getDashboard(date: Date = new Date(), { includeFinancials = true }: { includeFinancials?: boolean } = {}): Promise<FounderDashboard> {
+    const skip = Promise.resolve(null);
     const [
       commandCenter,
       revenue,
@@ -380,10 +390,10 @@ export const founderDashboardService = {
       followUpHealth,
       teamPerformance,
     ] = await Promise.all([
-      commandCenterService.getDashboard(date),
-      getRevenue(),
-      getCommission(),
-      getRevenueByMonth(),
+      commandCenterService.getDashboard(date, { includeFinancials }),
+      includeFinancials ? getRevenue() : skip,
+      includeFinancials ? getCommission() : skip,
+      includeFinancials ? getRevenueByMonth() : skip,
       getPipelineHealth(),
       getVelocity(),
       getVendorAvailability(date),

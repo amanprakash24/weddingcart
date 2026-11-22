@@ -24,6 +24,7 @@ function Metric({ label, value, icon: Icon, tone }: { label: string; value: numb
 }
 
 export default function CommandCenter({ data }: { data: CommandCenterData }) {
+  const finance = data.finance;
   return (
     <div className="space-y-6">
       <div>
@@ -68,20 +69,21 @@ export default function CommandCenter({ data }: { data: CommandCenterData }) {
         {data.upcomingEvents.length === 0 ? <p className="rounded-xl bg-slate-50 p-5 text-center text-sm text-slate-500">No upcoming weddings yet.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="text-xs uppercase tracking-wide text-slate-500"><tr><th className="pb-2 font-medium">Event / client</th><th className="pb-2 font-medium">Type</th><th className="pb-2 font-medium">Date</th><th className="pb-2 font-medium">Location</th><th className="pb-2 font-medium">Guests</th><th className="pb-2 font-medium">Status</th><th className="pb-2 font-medium">Coordinator</th></tr></thead><tbody>{data.upcomingEvents.map((event) => <tr key={event.id} className="border-t border-slate-100"><td className="py-3 font-semibold text-slate-900"><Link href={`/admin/weddings/${event.weddingId}`} className="hover:text-rose-600">{event.name}</Link></td><td className="py-3 text-slate-600">{event.type}</td><td className="py-3 text-slate-600">{dateLabel(event.date)}</td><td className="py-3 text-slate-600">{event.location}</td><td className="py-3 text-slate-600">{event.guestCount ?? '—'}</td><td className="py-3"><span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{event.status}</span></td><td className="py-3 text-slate-600">{event.coordinator}</td></tr>)}</tbody></table></div>}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Finance is company-wide money: the API leaves it out (null) for anyone who may not see company financials. */}
+      <div className={`grid gap-6 ${finance ? 'lg:grid-cols-2' : ''}`}>
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 text-lg font-bold text-slate-900">Tasks</h2>
           <div className="mb-4 grid grid-cols-3 gap-2 text-center"><div><div className="text-xl font-bold text-red-600">{data.tasks.overdue}</div><div className="text-xs text-slate-500">Overdue</div></div><div><div className="text-xl font-bold text-amber-600">{data.tasks.dueToday}</div><div className="text-xs text-slate-500">Due today</div></div><div><div className="text-xl font-bold text-blue-600">{data.tasks.upcoming}</div><div className="text-xs text-slate-500">Upcoming</div></div></div>
           {data.tasks.items.length === 0 ? <p className="text-sm text-slate-500">No open tasks in the next week.</p> : <div className="space-y-2">{data.tasks.items.slice(0, 6).map((task) => <div key={task.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3"><span className="truncate text-sm font-medium text-slate-700">{task.title}</span><span className="shrink-0 text-xs text-slate-500">{task.dueAt ? dateLabel(task.dueAt) : 'No date'}</span></div>)}</div>}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-slate-900">Finance</h2><span className="text-lg font-bold text-rose-600">{money(data.finance.outstanding)} outstanding</span></div>
+        {finance && <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-slate-900">Finance</h2><span className="text-lg font-bold text-rose-600">{money(finance.outstanding)} outstanding</span></div>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Payments due</h3>
-          {data.finance.duePayments.length === 0 ? <p className="mb-4 text-sm text-slate-500">No outstanding client payments.</p> : <div className="mb-4 space-y-2">{data.finance.duePayments.slice(0, 5).map((payment) => <div key={payment.id} className="flex items-center justify-between rounded-xl bg-amber-50 p-3 text-sm"><span className="font-medium text-slate-700">{payment.clientName} <span className="text-xs text-slate-500">({payment.invoiceNumber})</span></span><span className="font-bold text-amber-700">{money(payment.amount)}</span></div>)}</div>}
+          {finance.duePayments.length === 0 ? <p className="mb-4 text-sm text-slate-500">No outstanding client payments.</p> : <div className="mb-4 space-y-2">{finance.duePayments.slice(0, 5).map((payment) => <div key={payment.id} className="flex items-center justify-between rounded-xl bg-amber-50 p-3 text-sm"><span className="font-medium text-slate-700">{payment.clientName} <span className="text-xs text-slate-500">({payment.invoiceNumber})</span></span><span className="font-bold text-amber-700">{money(payment.amount)}</span></div>)}</div>}
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Recent payments</h3>
-          {data.finance.recentPayments.length === 0 ? <p className="text-sm text-slate-500">No payments recorded yet.</p> : <div className="space-y-2">{data.finance.recentPayments.slice(0, 4).map((payment) => <div key={payment.id} className="flex items-center justify-between text-sm"><span className="text-slate-600">{payment.clientName} · {payment.method}</span><span className="font-semibold text-emerald-700">+{money(payment.amount)}</span></div>)}</div>}
-        </section>
+          {finance.recentPayments.length === 0 ? <p className="text-sm text-slate-500">No payments recorded yet.</p> : <div className="space-y-2">{finance.recentPayments.slice(0, 4).map((payment) => <div key={payment.id} className="flex items-center justify-between text-sm"><span className="text-slate-600">{payment.clientName} · {payment.method}</span><span className="font-semibold text-emerald-700">+{money(payment.amount)}</span></div>)}</div>}
+        </section>}
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyGuard } from '@/lib/auth/moneyGuard';
 import { z } from 'zod';
-import { requireRole } from '@/lib/auth/session';
-import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { invoiceWorkflowService } from '@/services/invoiceWorkflow.service';
 import { MANUAL_PAYMENT_METHODS } from '@/lib/invoice/lifecycle';
 import { handleApiError } from '@/lib/errors';
@@ -16,9 +15,10 @@ const bodySchema = z.object({
 
 // Records money received OUTSIDE Razorpay (cash, UPI, bank transfer, cheque) against one invoice of this wedding.
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; invoiceId: string }> }) {
-  const session = await requireRole(ADMIN_ROLES);
-  if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   const { id, invoiceId } = await params;
+  const guard = await moneyGuard({ wedding: id }, 'full');
+  if (guard instanceof NextResponse) return guard;
+  const { session } = guard;
   try {
     const body = bodySchema.parse(await req.json());
     const result = await invoiceWorkflowService.recordManualPayment(
