@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/session';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
@@ -22,6 +23,9 @@ async function handleGET(req: NextRequest) {
   if (!isSourceType(sourceType) || !sourceId) {
     return NextResponse.json({ success: false, error: 'sourceType and sourceId are required' }, { status: 400 });
   }
+  // Quotes carry prices: only the person the lead is assigned to (or the founder) sees them (lib/auth/moneyAccess.ts).
+  const denied = await moneyDenied({ source: { sourceType, id: sourceId } }, 'read');
+  if (denied) return denied;
   try {
     return NextResponse.json({ success: true, data: await quotationService.listForSource(sourceType, sourceId) });
   } catch (err) {
@@ -37,6 +41,8 @@ async function handlePOST(req: NextRequest) {
   }
   try {
     const { sourceType, sourceId, ...input } = createQuotationSchema.parse(await req.json());
+    const denied = await moneyDenied({ source: { sourceType, id: sourceId } }, 'full');
+    if (denied) return denied;
     const created = await quotationService.create(sourceType, sourceId, input, session.user.id ?? null);
     // Vendors linked on the quote are asked for availability (04-vendor-os.md §9) — best-effort, never fails the save.
     const source = sourceOfQuotation(created);

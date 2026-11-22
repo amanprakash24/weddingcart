@@ -1,3 +1,4 @@
+import type { WorkspaceMoney } from './MoneyContext';
 // Mirrors services/weddingWorkspace.service.ts's WeddingWorkspace, Date
 // fields as ISO strings — same JSON-serialization convention as
 // components/crm/workspace/types.ts.
@@ -209,6 +210,8 @@ export interface WeddingWorkspace {
   tasks: WeddingTask[];
   documents: WorkspaceDocument[];
   finance: WorkspaceFinance;
+  // What of the money this person may see (lib/wedding/moneyView.ts). Absent from older responses = everything.
+  money?: WorkspaceMoney;
   guests: {
     id: string;
     name: string;

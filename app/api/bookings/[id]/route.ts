@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bookingService } from '@/services/booking.service';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { convertBookingToWedding, InvalidBookingStateError } from '@/services/weddingConversion.service';
-import { requireAdmin } from '@/lib/adminAuth';
+import { requireRole } from '@/lib/auth/session';
+import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { bookingMoneyView, canSetBookingStatus } from '@/lib/booking/moneyView';
 import { handleApiError } from '@/lib/errors';
 import type { Booking, BookingStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
@@ -20,7 +22,8 @@ function toBookingStatus(status: unknown): BookingStatus | undefined {
 }
 
 async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin())) {
+  const session = await requireRole(ADMIN_ROLES);
+  if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -30,6 +33,10 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
     const status = toBookingStatus(body.status);
     if (!status) {
       return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
+    }
+    // Confirming creates the wedding and its money — the founder does that; the team follows up (lib/booking/moneyView.ts).
+    if (!canSetBookingStatus(session.user.roles, status)) {
+      return NextResponse.json({ success: false, error: 'Only the founder can confirm a booking' }, { status: 403 });
     }
 
     const existing = await bookingService.getById(id);
@@ -104,7 +111,7 @@ We look forward to making your special day truly memorable! ✨
       }
     }
 
-    return NextResponse.json({ success: true, data: toResponseShape(booking) });
+    return NextResponse.json({ success: true, data: bookingMoneyView(session.user.roles, toResponseShape(booking)) });
   } catch (err) {
     return handleApiError(err);
   }

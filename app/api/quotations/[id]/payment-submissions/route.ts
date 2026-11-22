@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
@@ -8,6 +9,8 @@ import { paymentSubmissionService } from '@/services/paymentSubmission.service';
 // GET /api/quotations/[id]/payment-submissions — the couple's "I have paid" claims on this agreement (08-quotation.md §20), newest
 // first, each with a screenshot link that expires in minutes. Staff only.
 async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'read');
+  if (denied) return denied;
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {

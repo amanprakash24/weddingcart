@@ -7,7 +7,9 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 // Covers the four lifecycle routes (send / revise / accept / reject) with the same isolation technique
 // as ../route.test.ts: session and service are mocked; the business rules themselves are covered by
 // lib/quotation/rules.test.ts and by the staging verification of the real service.
-const session = { current: { user: { id: 'staff-1' } } as { user: { id: string } } | null };
+// The founder: these tests are about each route's own behaviour; who may see a quote's money is covered in
+// app/api/quotations/moneyAccess.route.test.ts and lib/auth/moneyAccess.test.ts.
+const session = { current: { user: { id: 'staff-1', roles: ['SUPER_ADMIN'] } } as { user: { id: string; roles: string[] } } | null };
 type AnyFn = (...args: unknown[]) => Promise<unknown>;
 const requireRole = mock<(roles: unknown) => Promise<typeof session.current>>(async () => session.current);
 const service = {
@@ -37,7 +39,7 @@ const post = (body?: unknown) =>
   });
 
 beforeEach(() => {
-  session.current = { user: { id: 'staff-1' } };
+  session.current = { user: { id: 'staff-1', roles: ['SUPER_ADMIN'] } };
   requireRole.mockClear();
   for (const fn of Object.values(service)) fn.mockClear();
 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { canAssignWork } from '@/lib/auth/moneyAccess';
 import { leadWorkspaceService } from '@/services/leadWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
@@ -15,6 +16,10 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ sou
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  // Who a lead is assigned to decides who sees its money, so only the founder assigns (lib/auth/moneyAccess.ts).
+  if (!canAssignWork({ userId: session.user.id, roles: session.user.roles })) {
+    return NextResponse.json({ success: false, error: 'Only the founder can assign leads' }, { status: 403 });
   }
 
   const { sourceType, id } = await params;

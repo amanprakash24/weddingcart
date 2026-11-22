@@ -90,7 +90,7 @@ const TAB_IDS = ['dashboard', 'vendors', 'categories', 'special-services', 'spec
 type Tab = (typeof TAB_IDS)[number];
 const isTab = (value: string | null): value is Tab => TAB_IDS.some((id) => id === value);
 
-interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number; }
+interface Stats { vendors: number; categories: number; enquiries: number; consultations: number; newEnquiries: number; newConsultations: number; bookings: number; newBookings: number; outsideVendors: number; newOutsideVendors: number; leads: number; revenue: number | null; }
 
 // Explicit discriminated union for GET /api/stats — replaces the earlier
 // two-variable (stats + statsError) representation, which let "loading",
@@ -117,9 +117,9 @@ export type DashboardStatDisplay = { kind: 'loading' } | { kind: 'unavailable' }
 
 export function dashboardStatValue(statsState: StatsState, field: keyof Stats): DashboardStatDisplay {
   if (statsState.status === 'loading') return { kind: 'loading' };
-  if (statsState.status === 'success') return { kind: 'value', value: statsState.data[field] };
-  if (statsState.lastGood) return { kind: 'value', value: statsState.lastGood[field] };
-  return { kind: 'unavailable' };
+  // A null value is a figure this person may not see (revenue without company-financials access) — shown as unavailable.
+  const value = statsState.status === 'success' ? statsState.data[field] : statsState.lastGood ? statsState.lastGood[field] : null;
+  return value === null ? { kind: 'unavailable' } : { kind: 'value', value };
 }
 interface InvoiceItemForm {
   description: string;
@@ -1179,7 +1179,7 @@ Create a separate standalone invoice anyway?`)) return;
                 <div className="w-full mb-5 bg-gradient-to-r from-amber-500 to-rose-500 rounded-2xl px-6 py-5 flex items-center justify-between">
                   <div>
                     <p className="text-white/80 text-xs font-semibold uppercase tracking-widest mb-1">Confirmed Revenue</p>
-                    <p className="text-white text-3xl font-bold">₹{(stats!.revenue).toLocaleString('en-IN')}</p>
+                    <p className="text-white text-3xl font-bold">₹{(stats!.revenue ?? 0).toLocaleString('en-IN')}</p>
                     <p className="text-white/70 text-xs mt-1">From confirmed &amp; closed bookings</p>
                   </div>
                   <TrendingUp className="w-12 h-12 text-white/30" />
@@ -2456,13 +2456,14 @@ Create a separate standalone invoice anyway?`)) return;
                                   <span className="text-xs text-gray-400 capitalize ml-2">({item.vendorCategory?.replace(/-/g, ' ')})</span>
                                 </div>
                               </div>
-                              <span className="text-xs font-bold text-amber-600">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                              {/* Prices are null for anyone without company-financials access (app/api/bookings) — hidden, never ₹0. */}
+                              {item.price != null && <span className="text-xs font-bold text-amber-600">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>}
                             </div>
                             <div className="px-3 py-2 text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5">
                               <span>Package: <span className="font-medium text-gray-700">{item.packageName}</span></span>
                               {item.quantity > 1 && <span>Qty: <span className="font-medium text-gray-700">{item.quantity}</span></span>}
                               {item.guestCount && <span>👥 <span className="font-medium text-gray-700">{item.guestCount} guests</span></span>}
-                              <span>Rate: <span className="font-medium text-gray-700">₹{item.price?.toLocaleString('en-IN')}</span></span>
+                              {item.price != null && <span>Rate: <span className="font-medium text-gray-700">₹{item.price.toLocaleString('en-IN')}</span></span>}
                             </div>
                             {/* Vendor contact — only if found */}
                             {vendorData && (
@@ -2493,7 +2494,7 @@ Create a separate standalone invoice anyway?`)) return;
 
                     {/* Total + status controls */}
                     <div className="flex items-center justify-between flex-wrap gap-3 pt-3 border-t border-gray-100">
-                      <p className="text-amber-600 font-bold text-base">Total: ₹{b.total?.toLocaleString('en-IN')}</p>
+                      {b.total != null ? <p className="text-amber-600 font-bold text-base">Total: ₹{b.total.toLocaleString('en-IN')}</p> : <p className="text-xs text-gray-400">Amounts: founder only</p>}
                       <div className="flex gap-1.5 flex-wrap">
                         {(['new', 'contacted', 'confirmed', 'closed'] as const).map((s) => (
                           <button

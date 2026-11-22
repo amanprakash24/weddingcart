@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth/session';
-import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { moneyGuard } from '@/lib/auth/moneyGuard';
+import { withoutCommission } from '@/lib/auth/moneyAccess';
 import { payoutService } from '@/services/payout.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
@@ -9,15 +9,16 @@ import { platformScoped } from '@/lib/ownership/entry';
 // booking's agreedPrice and the current CommissionRate, same "never trust a
 // client amount" rule as the invoice/payment-link routes.
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
-  const session = await requireRole(ADMIN_ROLES);
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { id, vbId } = await params;
+  const guard = await moneyGuard({ wedding: id }, 'full');
+  if (guard instanceof NextResponse) return guard;
+  const { session } = guard;
   try {
     const payout = await payoutService.calculatePayoutForBooking(id, vbId, session.user.id ?? null);
-    return NextResponse.json({ success: true, data: payout }, { status: 201 });
+    return NextResponse.json(
+      { success: true, data: withoutCommission({ userId: session.user.id, roles: session.user.roles }, payout) },
+      { status: 201 }
+    );
   } catch (err) {
     return handleApiError(err);
   }

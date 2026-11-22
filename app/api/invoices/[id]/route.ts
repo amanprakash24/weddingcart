@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { invoiceService } from '@/services/invoice.service';
-import { requireAdmin } from '@/lib/adminAuth';
+import { denyUnlessCompanyFinancials } from '@/lib/auth/companyFinancialsGuard';
 import { handleApiError } from '@/lib/errors';
 import type { InvoiceWithDetails } from '@/repositories/invoice.repository';
 import type { Prisma, InvoiceStatus } from '@/generated/prisma/client';
@@ -19,9 +19,8 @@ function toInvoiceStatus(status: unknown): InvoiceStatus | undefined {
 }
 
 async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await denyUnlessCompanyFinancials();
+  if (denied) return denied;
   try {
     const { id } = await params;
     const invoice = await invoiceService.getById(id);
@@ -40,9 +39,8 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: 
 // system-generated, matches the original route's explicit protection
 // (`const { invoiceNumber: _removed, ...safeUpdate } = body`).
 async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await denyUnlessCompanyFinancials();
+  if (denied) return denied;
   try {
     const { id } = await params;
     const body = await req.json();
@@ -88,9 +86,8 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
 }
 
 async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
+  const denied = await denyUnlessCompanyFinancials();
+  if (denied) return denied;
   try {
     const { id } = await params;
     await invoiceService.delete(id);
