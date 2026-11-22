@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/adminAuth';
+import { getSession } from '@/lib/auth/session';
+import { hasAdminRole, hasSuperAdmin } from '@/lib/auth/permissions';
+import { eventView } from '@/lib/events/view';
 import { eventService } from '@/services/event.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
@@ -11,12 +14,14 @@ async function handleGET(_: NextRequest, { params }: { params: Promise<{ id: str
     return NextResponse.json({ success: false, error: 'Event not found' }, { status: 404 });
   }
 
-  const isAdmin = await requireAdmin();
+  const session = await getSession();
+  const roles = session?.user?.roles ?? [];
+  const isAdmin = hasAdminRole(roles);
   if (event.status !== 'PUBLISHED' && !isAdmin) {
     return NextResponse.json({ success: false, error: 'Event not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ success: true, data: event });
+  return NextResponse.json({ success: true, data: eventView(event, { isAdmin, isFounder: hasSuperAdmin(roles) }) });
 }
 
 async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
