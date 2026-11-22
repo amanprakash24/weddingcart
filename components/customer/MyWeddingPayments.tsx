@@ -11,8 +11,10 @@ import { upiLink } from '@/lib/payments/upi';
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const day = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
-const STEP_TONE = { PAID: 'bg-[#E6F0E9] text-[#1F5C37]', PART_PAID: 'bg-[#F5EEDD] text-[#7A5410]', DUE: 'bg-[#F0ECE7] text-[#4D3E36]' } as const;
-const STEP_WORDS = { PAID: 'Paid', PART_PAID: 'Part paid', DUE: 'Due' } as const;
+const STEP_TONE = { PAID: 'bg-[#E6F0E9] text-[#1F5C37]', PART_PAID: 'bg-[#F5EEDD] text-[#7A5410]', DUE: 'bg-[#F0ECE7] text-[#4D3E36]', OVERDUE: 'bg-[#FDE8E7] text-[#B42318]' } as const;
+const STEP_WORDS = { PAID: 'Paid', PART_PAID: 'Part paid', DUE: 'Due', OVERDUE: 'Overdue' } as const;
+// A schedule date (YYYY-MM-DD, an India calendar date) in words — read as that date, never shifted by time zone
+const dateWords = (ymd: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${ymd}T00:00:00Z`));
 
 export default function MyWeddingPayments({ event, expert, onReceipt }: { event: ClientPortalEvent; expert: string; onReceipt: (r: CustomerReceipt) => void }) {
   const m = event.money;
@@ -51,12 +53,13 @@ export default function MyWeddingPayments({ event, expert, onReceipt }: { event:
           <li key={s.key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#F0E6D6] px-3.5 py-3">
             <div className="min-w-0">
               <p className="font-semibold">{s.label}</p>
+              {s.dueDate && <p className={`text-xs ${s.status === 'OVERDUE' ? 'font-semibold text-[#B42318]' : 'text-[#6B5A4E]'}`}>Due by {dateWords(s.dueDate)}</p>}
               {s.note && <p className="text-xs text-[#6B5A4E]">{s.note}</p>}
             </div>
             <div className="ml-auto text-right">
               <p className="font-bold tabular-nums">{inr(s.amount)}</p>
               <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STEP_TONE[s.status]}`}>
-                {s.status === 'PART_PAID' ? `${inr(s.paid)} paid · ${inr(s.remaining)} left` : STEP_WORDS[s.status]}
+                {s.paid > 0 && s.remaining > 0 ? `${inr(s.paid)} paid · ${inr(s.remaining)} left` : STEP_WORDS[s.status]}
               </span>
             </div>
           </li>
@@ -67,7 +70,7 @@ export default function MyWeddingPayments({ event, expert, onReceipt }: { event:
       {m.due > 0 && (
         <div className="mt-4 rounded-xl bg-[#FBF6EE] p-4">
           {m.plan.next ? (
-            <p className="text-sm">Next: <b>{inr(m.plan.next.amount)}</b> <span className="text-[#6B5A4E]">· {m.plan.next.label.toLowerCase()}</span></p>
+            <p className="text-sm">Next: <b>{inr(m.plan.next.amount)}</b> <span className="text-[#6B5A4E]">· {m.plan.next.label}{m.plan.next.dueDate && <> · due by {dateWords(m.plan.next.dueDate)}</>}</span></p>
           ) : (
             <p className="text-sm text-[#4D3E36]">Your booking amount is paid. {expert} will share the dates for the balance.</p>
           )}

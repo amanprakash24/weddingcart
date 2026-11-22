@@ -267,7 +267,7 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
                   <div className="h-2.5 overflow-hidden rounded-full bg-[#F0E6D6]"><div className="h-full bg-[#2F6B45]" style={{ width: `${paidPercent}%` }} /></div>
                   <p className="flex flex-wrap justify-between gap-x-3 text-sm text-[#4D3E36]"><span>Paid {inr(m.received)}</span><span>Balance {inr(m.due)}</span></p>
                   <p className="text-sm text-[#4D3E36]">
-                    {m.plan.next ? <>Next: <b>{inr(m.plan.next.amount)}</b> · {m.plan.next.label.toLowerCase()}</> : m.due > 0 ? 'Booking amount paid. Balance dates from your expert.' : 'Paid in full. Thank you!'}
+                    {m.plan.next ? <>Next: <b>{inr(m.plan.next.amount)}</b> · {m.plan.next.label}{m.plan.next.dueDate && <> · by {new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${m.plan.next.dueDate}T00:00:00Z`))}</>}</> : m.due > 0 ? 'Booking amount paid. Balance dates from your expert.' : 'Paid in full. Thank you!'}
                   </p>
                 </>
               )}

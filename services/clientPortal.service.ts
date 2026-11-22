@@ -8,6 +8,7 @@ import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { upiLink, upiPayeeFrom, upiPayeeOf } from '@/lib/payments/upi';
 import { groupReceipts, type CustomerReceipt } from '@/lib/payments/customerPayment';
 import { paymentPlan, type PaymentPlan } from '@/lib/customer/paymentPlan';
+import { indiaToday } from '@/lib/money/schedule';
 import { SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import type { ReceiptIssuer } from '@/components/proposal/PaymentReceipt';
 
@@ -117,6 +118,17 @@ export const clientPortalService = {
       approvalService.listForClient(userId),
       prisma.business.findUnique({ where: { id: businessId }, select: { name: true, contactPhone: true, upiId: true, upiName: true, logoUrl: true, gstin: true } }),
     ]);
+    // The payment schedule (22 Nov 2026): the dated instalments staff set for the agreement's balance.
+    const agreementQuotationId = workspace.finance.agreement?.quotationId ?? null;
+    const instalments = agreementQuotationId
+      ? (
+          await prisma.paymentInstalment.findMany({
+            where: { agreement: { quotationId: agreementQuotationId } },
+            orderBy: { sortOrder: 'asc' },
+            select: { label: true, amount: true, dueDate: true },
+          })
+        ).map((i) => ({ label: i.label, amount: i.amount, dueDate: i.dueDate.toISOString().slice(0, 10) }))
+      : [];
     return [workspace].map((workspace) => {
       const { wedding, couple, events, tasks, timeline, finance, documents, activity, guests } = workspace;
       const services = events.flatMap((event) =>
@@ -243,6 +255,8 @@ export const clientPortalService = {
             // the frozen confirmation rule (e.g. 25 %); a wedding from before the rule keeps the quotation's own advance
             confirmationAmount: deal?.money?.confirmationAmount ?? deal?.advance ?? null,
             confirmationPercent: deal?.money?.confirmationPercent ?? null,
+            instalments,
+            today: indiaToday(),
           });
           const next = plan.next?.amount ?? null;
           const payee = isPlatform ? upiPayeeFrom({ SHAADI_UPI_ID: process.env.SHAADI_UPI_ID, SHAADI_UPI_NAME: process.env.SHAADI_UPI_NAME }) : biz ? upiPayeeOf(biz) : null;
