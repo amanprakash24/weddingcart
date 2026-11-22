@@ -37,7 +37,24 @@ export interface ClientPortalEvent {
     location: string;
     status: string;
     services: { name: string; status: string; provider: string | null }[];
+    // Couple-controlled functions (22 Nov 2026)
+    type: string;
+    label: string | null;
+    day: string; // YYYY-MM-DD
+    endTime: string | null;
+    description: string | null;
+    place: 'BOOKED_VENUE' | 'ELSEWHERE';
+    venueSpaceId: string | null;
+    spaceName: string | null;
+    venueName: string | null;
+    venueAddress: string | null;
+    addedByCouple: boolean;
+    confirmation: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE';
+    confirmationNote: string | null;
   }[];
+  // What the couple can choose when they add a function: the booked venue's name (for "At <venue>") and its own halls (a venue's
+  // wedding only; Shaadi Shopping's weddings have none).
+  booking: { venueName: string | null; spaces: { id: string; name: string }[] };
   services: { name: string; functionName: string; status: string; provider: string | null }[];
   tasks: { id: string; title: string; status: string; dueAt: string | null }[];
   timeline: { id: string; label: string; status: string; dueDate: string | null }[];
@@ -117,6 +134,12 @@ export const clientPortalService = {
       approvalService.listForClient(userId),
       prisma.business.findUnique({ where: { id: businessId }, select: { name: true, contactPhone: true, upiId: true, upiName: true, logoUrl: true, gstin: true } }),
     ]);
+    // The venue's own halls (a venue's wedding): the couple may place a function in one (it then waits for the venue to confirm).
+    // VenueSpace is not an owned table, so it is filtered by the wedding's business explicitly.
+    const spaces =
+      businessId === PLATFORM_BUSINESS_ID
+        ? []
+        : await prisma.venueSpace.findMany({ where: { businessId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], select: { id: true, name: true, active: true } });
     return [workspace].map((workspace) => {
       const { wedding, couple, events, tasks, timeline, finance, documents, activity, guests } = workspace;
       const services = events.flatMap((event) =>
@@ -186,7 +209,25 @@ export const clientPortalService = {
             status: booking.status,
             provider: booking.vendorName || null,
           })),
+          type: event.type,
+          label: event.label,
+          day: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(event.date), // the India date (old rows may be stored at IST midnight)
+          endTime: event.endTime,
+          description: event.description,
+          place: event.atBookedVenue || event.venueSpaceId ? ('BOOKED_VENUE' as const) : ('ELSEWHERE' as const),
+          venueSpaceId: event.venueSpaceId,
+          spaceName: spaces.find((s) => s.id === event.venueSpaceId)?.name ?? null,
+          venueName: event.venueName,
+          venueAddress: event.venueAddress,
+          addedByCouple: event.addedByCouple,
+          confirmation: event.confirmation,
+          confirmationNote: event.confirmationNote,
         })),
+        booking: {
+          // a venue's wedding is at that venue; on Shaadi Shopping's, the main "Wedding" function's place (if staff set one)
+          venueName: businessId !== PLATFORM_BUSINESS_ID ? (biz?.name ?? null) : (events.find((e) => e.type === 'WEDDING' && !e.addedByCouple)?.venueName ?? null),
+          spaces: spaces.filter((s) => s.active).map((s) => ({ id: s.id, name: s.name })),
+        },
         services,
         tasks: tasks
           .filter((task) => task.context === 'WEDDING_TASK')
