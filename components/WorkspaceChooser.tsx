@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { signOut } from 'next-auth/react';
 import { Building2, ChevronRight, Loader2, LogOut, ShieldCheck } from 'lucide-react';
+import { VivahOsMark } from '@/components/vivah-os/VivahOsLogo';
+import { PRODUCT_NAME, type Product } from '@/lib/productName';
 
 // "Choose Workspace" (7 Oct 2026): where a person lands right after signing in. One person may be a member of several businesses
 // — and of Shaadi Shopping's own team — so they pick the one they are working in now. With exactly one membership there is nothing
 // to choose: it opens by itself. The server checks every choice against their memberships (POST /api/workspace); this screen only
 // lists what the server said they belong to.
-type Workspace = { businessId: string; name: string; kind: 'PLATFORM' | 'VENDOR'; role: string; jobTitle: string | null; home: string };
+type Workspace = { businessId: string; name: string; kind: 'PLATFORM' | 'VENDOR'; product?: Product; role: string; jobTitle: string | null; home: string };
 
 const ROLE_WORDS: Record<string, string> = { OWNER: 'Owner', MANAGER: 'Manager', EMPLOYEE: 'Employee', STAFF: 'Staff' };
 
@@ -32,7 +33,7 @@ export default function WorkspaceChooser() {
       }
       setError(b.error ?? 'That workspace could not be opened. Please try again.');
     } catch {
-      setError('Could not reach Vivah OS — please check your connection and try again.');
+      setError('Could not connect — please check your connection and try again.');
     }
     setOpening(null);
   }
@@ -63,8 +64,8 @@ export default function WorkspaceChooser() {
     <div className="flex min-h-screen items-center justify-center bg-[#1E0510] px-5 py-10">
       <div className="w-full max-w-md">
         <div className="mb-7 text-center">
-          {/* Vivah OS's own logo (28 Oct 2026) — this screen is inside Vivah OS, not the Shaadi Shopping website. */}
-          <Image src="/images/vivah-os/logo-on-dark.png" alt="Vivah OS — the operating system for celebrations" width={800} height={711} priority className="mx-auto h-auto w-[200px]" />        </div>
+          {/* The mark only (11 Nov 2026): someone choosing here may work in Vivah OS, Venue OS and Vendor OS — each card names its own. */}
+          <div className="flex justify-center"><VivahOsMark size={88} tone="light" title="Shaadi Shopping" /></div>        </div>
 
         <div className="rounded-[24px] bg-[#FFFAF5] p-6 sm:p-8">
           {(state === 'loading' || (list?.length === 1 && state !== 'error')) && (
@@ -91,7 +92,7 @@ export default function WorkspaceChooser() {
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-base font-semibold text-[#2A1F1B]">{w.name}</span>
-                        <span className="block truncate text-xs text-[#6B5B4D]">{[ROLE_WORDS[w.role] ?? w.role, w.jobTitle].filter((word, i, all) => word && all.indexOf(word) === i).join(' · ')}</span>
+                        <span className="block truncate text-xs text-[#6B5B4D]">{[w.product ? PRODUCT_NAME[w.product] : null, ROLE_WORDS[w.role] ?? w.role, w.jobTitle].filter((word, i, all) => word && all.indexOf(word) === i).join(' · ')}</span>
                       </span>
                       {opening === w.businessId ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#8B1A4A]" aria-hidden /> : <ChevronRight className="h-4 w-4 shrink-0 text-[#B08D55]" aria-hidden />}
                     </button>

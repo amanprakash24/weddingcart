@@ -7,7 +7,7 @@ import { clientPortalService } from '@/services/clientPortal.service';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'My Wedding on Vivah OS',
+  title: 'My Wedding · Client OS',
   robots: { index: false, follow: false },
 };
 

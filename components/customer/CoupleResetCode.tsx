@@ -11,7 +11,7 @@ type Errors = Partial<Record<'mobile' | 'otp' | 'next' | 'confirm', string>>;
 const RESEND_SECONDS = 60; // services/otp.service.ts: one WhatsApp code a minute
 const spaced = (phone: string) => (phone.length > 5 ? `${phone.slice(0, 5)} ${phone.slice(5)}` : phone);
 const digitsOnly = (v: string) => v.replace(/\D/g, '').slice(0, 6);
-const box = 'h-14 w-full rounded-[14px] border-[1.5px] border-[#D9C9B2] bg-white px-4 text-lg tracking-[0.3em] outline-none focus:border-[#7A1238]';
+const box = 'h-14 w-full rounded-[14px] border-[1.5px] border-[var(--color-border-default)] bg-white px-4 text-lg tracking-[0.3em] outline-none focus:border-[var(--primary)]';
 
 export default function CoupleResetCode({ initialPhone, redirectPath, onBack, helpLink }: { initialPhone: string; redirectPath: string; onBack: () => void; helpLink: string }) {
   const [step, setStep] = useState<'mobile' | 'code'>('mobile');
@@ -97,20 +97,20 @@ export default function CoupleResetCode({ initialPhone, redirectPath, onBack, he
         aria-invalid={!!errors[key]}
         className={box}
       />
-      {hint && !errors[key] && <span className="text-[13px] text-[#6B5A4E]">{hint}</span>}
+      {hint && !errors[key] && <span className="text-[13px] text-[var(--color-text-muted)]">{hint}</span>}
       {errors[key] && <span className="text-sm text-rose-700">{errors[key]}</span>}
     </label>
   );
 
   return (
     <div className="flex flex-col gap-6">
-      <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold text-[#7A1238]">
+      <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold text-[var(--color-primary-text)]">
         <ArrowLeft className="h-4 w-4" aria-hidden /> Back to sign in
       </button>
 
       <div>
         <h1 className="font-cormorant text-[2rem] font-semibold leading-[1.1] lg:text-[2.75rem]">Choose a new code</h1>
-        <p className="mt-2 text-[15px] leading-relaxed text-[#6B5A4E]">
+        <p className="mt-2 text-[15px] leading-relaxed text-[var(--color-text-muted)]">
           {step === 'mobile'
             ? 'We will send a one-time code on WhatsApp to the mobile number you sign in with.'
             : <>If +91 {spaced(phone)} has a My Wedding sign-in, a 6-digit code is on its way on WhatsApp. It works for 5 minutes.</>}
@@ -118,10 +118,10 @@ export default function CoupleResetCode({ initialPhone, redirectPath, onBack, he
       </div>
 
       {step === 'mobile' ? (
-        <form onSubmit={send} className="flex flex-col gap-3.5 lg:rounded-[20px] lg:border lg:border-[#EADFCF] lg:bg-white lg:p-7">
+        <form onSubmit={send} className="flex flex-col gap-3.5 lg:rounded-[20px] lg:border lg:border-[var(--color-border-default)] lg:bg-white lg:p-7">
           <label htmlFor="reset-mobile" className="text-[13px] font-semibold">Mobile number</label>
-          <div className="flex h-14 items-center overflow-hidden rounded-[14px] border-[1.5px] border-[#D9C9B2] bg-white focus-within:border-[#7A1238]">
-            <span className="flex h-full items-center border-r border-[#EADFCF] bg-[#F7F0E6] px-4 text-base font-semibold text-[#6B5A4E]">+91</span>
+          <div className="flex h-14 items-center overflow-hidden rounded-[14px] border-[1.5px] border-[var(--color-border-default)] bg-white focus-within:border-[var(--primary)]">
+            <span className="flex h-full items-center border-r border-[var(--color-border-default)] bg-white/70 px-4 text-base font-semibold text-[var(--color-text-muted)]">+91</span>
             <input
               id="reset-mobile"
               type="tel"
@@ -131,39 +131,39 @@ export default function CoupleResetCode({ initialPhone, redirectPath, onBack, he
               value={spaced(phone)}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').replace(/^(91|0)(?=\d{10})/, '').slice(0, 10))}
               placeholder="98765 43210"
-              className="h-full min-w-0 flex-1 bg-transparent px-4 text-lg tracking-[0.04em] outline-none placeholder:text-[#B8A898]"
+              className="h-full min-w-0 flex-1 bg-transparent px-4 text-lg tracking-[0.04em] outline-none placeholder:text-[var(--color-text-muted)]"
             />
           </div>
           {errors.mobile && <p className="text-sm text-rose-700">{errors.mobile}</p>}
           {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>}
-          <button type="submit" disabled={busy || phone.length !== 10} className="mt-1 h-[54px] rounded-[14px] bg-[#7A1238] text-base font-semibold text-white transition hover:bg-[#5A0D29] disabled:opacity-55">
+          <button type="submit" disabled={busy || phone.length !== 10} className="mt-1 h-[54px] rounded-[14px] bg-[var(--primary)] text-base font-semibold text-white transition hover:bg-[var(--color-primary-hover)] disabled:opacity-55">
             {busy ? 'Sending…' : 'Send code on WhatsApp'}
           </button>
         </form>
       ) : (
-        <form onSubmit={confirm} className="flex flex-col gap-4 lg:rounded-[20px] lg:border lg:border-[#EADFCF] lg:bg-white lg:p-7">
+        <form onSubmit={confirm} className="flex flex-col gap-4 lg:rounded-[20px] lg:border lg:border-[var(--color-border-default)] lg:bg-white lg:p-7">
           {devCode && <p className="rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-900">Test computer, WhatsApp not set up — the code is {devCode}</p>}
           {codeField('otp', 'Code from WhatsApp')}
           {codeField('next', 'New 6-digit login code', 'Not easy to guess — no 123456 or 111111.')}
           {codeField('confirm', 'New code again')}
           {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>}
-          <button type="submit" disabled={busy || v.otp.length !== 6 || v.next.length !== 6 || v.confirm.length !== 6} className="mt-1 h-[54px] rounded-[14px] bg-[#7A1238] text-base font-semibold text-white transition hover:bg-[#5A0D29] disabled:opacity-55">
+          <button type="submit" disabled={busy || v.otp.length !== 6 || v.next.length !== 6 || v.confirm.length !== 6} className="mt-1 h-[54px] rounded-[14px] bg-[var(--primary)] text-base font-semibold text-white transition hover:bg-[var(--color-primary-hover)] disabled:opacity-55">
             {busy ? 'Saving…' : 'Save and open my wedding'}
           </button>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <button type="button" disabled={busy || wait > 0} onClick={() => send()} className="min-h-11 font-semibold text-[#7A1238] disabled:text-[#9C8B7E]">
+            <button type="button" disabled={busy || wait > 0} onClick={() => send()} className="min-h-11 font-semibold text-[var(--color-primary-text)] disabled:text-[var(--color-text-muted)]">
               {wait > 0 ? `Send again in ${wait}s` : 'Send the code again'}
             </button>
-            <button type="button" onClick={() => { setStep('mobile'); setV({ otp: '', next: '', confirm: '' }); setErrors({}); setError(''); }} className="min-h-11 font-semibold text-[#6B5A4E]">
+            <button type="button" onClick={() => { setStep('mobile'); setV({ otp: '', next: '', confirm: '' }); setErrors({}); setError(''); }} className="min-h-11 font-semibold text-[var(--color-text-muted)]">
               Change number
             </button>
           </div>
         </form>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[#EFE4D3] px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/70 bg-[var(--color-primary-subtle-bg)] px-5 py-4">
         <p className="text-sm font-semibold">No WhatsApp on this number?</p>
-        <a href={helpLink} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[#7A1238] hover:bg-[#FBF6EE]">
+        <a href={helpLink} target="_blank" rel="noopener noreferrer" className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-[var(--color-primary-text)] hover:bg-white/70">
           <MessageCircle className="h-[18px] w-[18px]" aria-hidden /> WhatsApp us
         </a>
       </div>

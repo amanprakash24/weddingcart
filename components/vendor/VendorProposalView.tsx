@@ -31,7 +31,7 @@ export function VendorProposalList({ proposals }: { proposals: VendorProposalSum
     <Shell>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Vivah OS · Vendor Portal</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">From Shaadi Shopping</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">Accepted proposals</h1>
           <p className="mt-1 text-sm text-slate-600">Your work on proposals the couple has accepted.</p>
         </div>

@@ -78,7 +78,7 @@ export default function VendorEnquiriesClient({ initial, embedded = false }: { i
       <div className={embedded ? 'space-y-4' : 'mx-auto max-w-3xl space-y-5'}>
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            {!embedded && <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Vivah OS · Vendor Portal</p>}
+            {!embedded && <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">From Shaadi Shopping</p>}
             {embedded ? (
               <h2 className="text-lg font-bold text-slate-900">From Shaadi Shopping</h2>
             ) : (

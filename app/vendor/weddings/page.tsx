@@ -7,7 +7,7 @@ import YourWeddings from '@/components/vendor/weddings/YourWeddings';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'Weddings | Vendor OS',
+  title: 'Weddings | Shaadi Shopping',
   robots: { index: false, follow: false },
 };
 

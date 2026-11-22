@@ -7,7 +7,7 @@ import { KeyRound } from 'lucide-react';
 // Shopping, who can still sign in with it until it is changed. Same rules as everyone's code (lib/auth/vendorCode.ts), checked on
 // the server (/api/customer/login-code).
 type Errors = Partial<Record<'current' | 'next' | 'confirm', string>>;
-const field = 'h-12 w-full rounded-xl border-[1.5px] border-[#D9C9B2] bg-white px-3 text-lg tracking-[0.3em] outline-none focus:border-[#7A1238]';
+const field = 'h-12 w-full rounded-xl border-[1.5px] border-[var(--color-border-default)] bg-white px-3 text-lg tracking-[0.3em] outline-none focus:border-[var(--primary)]';
 
 // open/onOpenChange: My Wedding's "choose your own code" reminder opens this form from the top of the page. onChanged: the
 // reminder goes away once the couple's own code is saved.
@@ -51,14 +51,14 @@ export default function ChangeLoginCode({ open, onOpenChange: setOpen, onChanged
   );
 
   return (
-    <section id="sign-in" aria-labelledby="c-signin" className="scroll-mt-4 rounded-[22px] border border-[#EADFCC] bg-white p-5 sm:p-6">
+    <section id="sign-in" aria-labelledby="c-signin" className="scroll-mt-4 rounded-[22px] border border-[var(--color-border-default)] bg-white p-5 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="c-signin" className="flex items-center gap-2 text-[17px] font-bold"><KeyRound className="h-[18px] w-[18px] text-[#7A1238]" aria-hidden /> Your login code</h2>
-          <p className="mt-1 text-sm text-[#4D3E36]">{done ? 'Done — use your new code next time you sign in.' : 'Got your code from your venue or Shaadi Shopping? Choose your own, so only you know it.'}</p>
+          <h2 id="c-signin" className="flex items-center gap-2 text-[17px] font-bold"><KeyRound className="h-[18px] w-[18px] text-[var(--color-primary-text)]" aria-hidden /> Your login code</h2>
+          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{done ? 'Done — use your new code next time you sign in.' : 'Got your code from your venue or Shaadi Shopping? Choose your own, so only you know it.'}</p>
         </div>
         {!open && (
-          <button type="button" onClick={() => setOpen(true)} className="min-h-11 rounded-full border border-[#D9C9B2] px-4 text-sm font-bold text-[#7A1238]">Choose my own code</button>
+          <button type="button" onClick={() => setOpen(true)} className="min-h-11 rounded-full border border-[var(--color-border-default)] px-4 text-sm font-bold text-[var(--color-primary-text)]">Choose my own code</button>
         )}
       </div>
       {open && (
@@ -68,8 +68,8 @@ export default function ChangeLoginCode({ open, onOpenChange: setOpen, onChanged
           {box('confirm', 'New code again')}
           {error && <p role="alert" className="text-sm text-rose-700 sm:col-span-3">{error}</p>}
           <div className="flex gap-2 sm:col-span-3">
-            <button type="submit" disabled={busy} className="min-h-11 rounded-full bg-[#7A1238] px-5 text-sm font-bold text-white disabled:opacity-55">{busy ? 'Saving…' : 'Save my code'}</button>
-            <button type="button" disabled={busy} onClick={() => { setOpen(false); setErrors({}); setError(null); }} className="min-h-11 rounded-full border border-[#D9C9B2] px-5 text-sm font-bold text-[#6B5A4E]">Cancel</button>
+            <button type="submit" disabled={busy} className="min-h-11 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-white disabled:opacity-55">{busy ? 'Saving…' : 'Save my code'}</button>
+            <button type="button" disabled={busy} onClick={() => { setOpen(false); setErrors({}); setError(null); }} className="min-h-11 rounded-full border border-[var(--color-border-default)] px-5 text-sm font-bold text-[var(--color-text-muted)]">Cancel</button>
           </div>
         </form>
       )}

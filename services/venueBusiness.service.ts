@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import type { Scope } from '@/lib/ownership/scope';
 import { effectivePermissions, type MemberRole, type Permission } from '@/lib/auth/permissions';
 import { photosFromRegistration } from '@/lib/venue/profile';
+import { productOfBusiness, type Product } from '@/lib/productName';
 import { ONBOARDING_UPLOAD_FOLDER, isOnboardingVideo } from '@/lib/onboardingUpload';
 
 // A person's place in a business (7 Oct 2026):  Person (User) → Business Membership → Role → Permissions.
@@ -40,12 +41,13 @@ export interface Workspace {
   name: string;
   kind: 'PLATFORM' | 'VENDOR';
   vendorId: string | null; // the vendor this business is, if it is one — to tell a person's OWN vendor from another they work in
+  product: Product; // which product this business works in — its name on screen (lib/productName.ts)
   role: MemberRole;
   jobTitle: string | null;
   permissions: Permission[];
 }
 
-const memberSelect = { role: true, jobTitle: true, grants: true, denies: true, business: { select: { id: true, name: true, kind: true, vendorId: true } } } as const;
+const memberSelect = { role: true, jobTitle: true, grants: true, denies: true, business: { select: { id: true, name: true, kind: true, vendorId: true, vendor: { select: { category: { select: { name: true } } } } } } } as const;
 
 export function createVenueBusinessService(deps: VenueBusinessDeps = defaultDeps()) {
   // The owner link from before memberships: a login tied to a vendor by VendorProfile owns that vendor's business. Makes the
@@ -89,6 +91,7 @@ export function createVenueBusinessService(deps: VenueBusinessDeps = defaultDeps
       name: m.business.name,
       kind: m.business.kind,
       vendorId: m.business.vendorId,
+      product: productOfBusiness(m.business.kind, m.business.vendor?.category?.name),
       role: m.role,
       jobTitle: m.jobTitle,
       permissions: effectivePermissions({ role: m.role, grants: m.grants, denies: m.denies }),

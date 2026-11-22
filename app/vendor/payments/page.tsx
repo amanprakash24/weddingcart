@@ -6,7 +6,7 @@ import MoneyToCollect from '@/components/vendor/payments/MoneyToCollect';
 import { platformScoped } from '@/lib/ownership/entry';
 
 export const metadata = {
-  title: 'Payments | Vendor OS',
+  title: 'Payments | Shaadi Shopping',
   robots: { index: false, follow: false },
 };
 
