@@ -39,6 +39,7 @@ export async function loadApp() {
   const { commandCenterService } = await import('@/services/commandCenter.service');
   const agreement = await import('@/services/agreement.service');
   const commercialFlow = await import('@/services/commercialFlow.service');
+  const { clientPortalService } = await import('@/services/clientPortal.service');
   const { generateInvoiceNumber } = await import('@/services/documentNumber.service');
   const { monthBucket } = await import('@/lib/numbering');
 
@@ -56,6 +57,7 @@ export async function loadApp() {
     paymentService,
     agreement,
     commercialFlow,
+    clientPortalService,
     commandCenterService,
     generateInvoiceNumber,
     monthBucket,

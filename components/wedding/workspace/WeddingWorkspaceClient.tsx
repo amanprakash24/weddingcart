@@ -15,6 +15,7 @@ import type { ActionTarget } from '@/lib/wedding/stage';
 import CoupleCard from './CoupleCard';
 import CoupleSignInCard from '@/components/vivah-os/CoupleSignInCard';
 import FunctionsPanel from '@/components/wedding/functions/FunctionsPanel';
+import CoupleVendorRequests from '@/components/wedding/functions/CoupleVendorRequests';
 import type { FunctionPayload } from '@/components/wedding/functions/FunctionForm';
 import TimelineMilestones from './TimelineMilestones';
 import Documents from './Documents';
@@ -273,6 +274,8 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
             onMarkPayoutPaid={markPayoutPaid}
           />
           <ServiceRequirements events={workspace.events} unassigned={view.vendors.filter((r) => r.state === 'unassigned')} />
+          {/* Client OS → Vendors (22 Nov 2026): quotes the couple asked for, and the vendors they hired themselves */}
+          <CoupleVendorRequests weddingId={id} />
         </div>
       )}
 

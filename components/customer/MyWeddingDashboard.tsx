@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import PaymentReceipt from '@/components/proposal/PaymentReceipt';
 import ClientDocumentPrint, { type PrintableDocument } from '@/components/customer/ClientDocumentPrint';
 import MyWeddingPayments from '@/components/customer/MyWeddingPayments';
+import CoupleVendors from '@/components/customer/CoupleVendors';
 import type { CustomerReceipt } from '@/lib/payments/customerPayment';
 import { signOut } from 'next-auth/react';
 import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, KeyRound, LogOut, MapPin, Phone, ShoppingBag, Users } from 'lucide-react';
@@ -183,7 +184,6 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
   const waiting = guests.length - coming - declined;
   const answeredPct = guests.length ? Math.round(((coming + declined) / guests.length) * 100) : 0;
   const open = (approvals[event.id] ?? []).filter((a) => a.status === 'PENDING_CLIENT' || a.status === 'CHANGES_REQUESTED');
-  const services = event.services;
 
   return (
     <div className={`${theme} pb-28 lg:pb-10 print:min-h-0 print:bg-white print:p-0`}>
@@ -331,25 +331,7 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
           <MyWeddingPayments event={event} expert={expert} onReceipt={(r) => setPrinting({ kind: 'receipt', receipt: r })} />
 
           {/* Vendors */}
-          <section id="vendors" aria-labelledby="c-vendors" className={`${card} scroll-mt-4`}>
-            <h2 id="c-vendors" className="text-[17px] font-bold">Your vendors</h2>
-            {services.length === 0 ? (
-              <p className="mt-3 text-sm text-[var(--color-text-secondary)]">The vendors for each function appear here once they are booked.</p>
-            ) : (
-              <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
-                {services.map((s, i) => {
-                  const st = serviceStatus(s.status);
-                  return (
-                    <li key={`${s.name}-${s.functionName}-${i}`} className="rounded-2xl border border-white/70 bg-white/55 p-3.5">
-                      <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--color-primary-text)]">{s.name}</p>
-                      <p className="mt-1 font-semibold">{s.provider ?? 'Being chosen'}</p>
-                      <p className="mt-0.5 text-sm text-[var(--color-text-muted)]"><span className="capitalize">{s.functionName.toLowerCase()}</span> · <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tone[st.tone]}`}>{st.words}</span></p>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+          <CoupleVendors event={event} />
 
           {/* Guests & RSVP (the existing guest list — step 2 redesigns it) */}
           <section id="guests" aria-labelledby="c-guestlist" className="scroll-mt-4">
