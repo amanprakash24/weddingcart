@@ -166,7 +166,9 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
     expect(bookings.every((b) => b.status === 'PENDING_VENDOR_CONFIRMATION')).toBe(true);
     expect(workspace.finance.budget).toMatchObject({ planned: 500000, committed: 500000, variance: 0 });
     // the booking route seeds one confirmation task per vendor booking (the umbrella task and milestones come only from the CRM route)
-    expect(workspace.tasks).toHaveLength(5);
+    // five vendor follow-ups + "give the couple their My Wedding sign-in code" (22 Nov 2026: the couple has no sign-in yet)
+    expect(workspace.tasks).toHaveLength(6);
+    expect(workspace.tasks.map((t) => t.title)).toContain('Give the couple their My Wedding sign-in code');
     // no orphaned operational records
     expect(await app.prisma.vendorBooking.count({ where: { weddingEvent: { weddingId } } })).toBe(5);
     expect(await app.prisma.task.count({ where: { weddingId, weddingEventId: null, vendorBookingId: { not: null } } })).toBe(0);

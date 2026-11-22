@@ -47,7 +47,7 @@ dbDescribe('Plan tab actions (real database)', () => {
     expect(v.vendors.map((r) => `${r.category}:${r.state}`)).toEqual(['Venues:pending', 'Photography:unassigned']);
     expect(v.vendors[1]).toMatchObject({ quotedPrice: 12500 });
     expect(v.vendors[1].weddingEventId).toBeTruthy();
-    expect(v.tasks.total).toBe(0); // the two follow-up tasks are not counted as tasks
+    expect(v.tasks.total).toBe(1); // the two vendor follow-ups are not counted as tasks; giving the couple their sign-in code is (22 Nov 2026)
     expect(v.next.title).toContain('to confirm'); // pending vendor first…
     expect(v.attention.map((a) => a.kind)).toEqual(expect.arrayContaining(['PENDING_VENDOR_CONFIRMATION', 'ASSIGN_VENDOR']));
     expect(v.next.target).toBe('plan');
@@ -67,6 +67,8 @@ dbDescribe('Plan tab actions (real database)', () => {
   });
 
   test('a task with a due date, priority, owner and function — overdue shows up in the Overview; reopen, edit and cancel work', async () => {
+    // the couple's sign-in code is given first (the task closes itself), so this test counts only the task it adds
+    await app.prisma.task.updateMany({ where: { weddingId, title: 'Give the couple their My Wedding sign-in code' }, data: { status: 'DONE' } });
     const eventId = (await app.prisma.weddingEvent.findFirstOrThrow({ where: { weddingId } })).id;
     const yesterday = new Date(Date.now() - 2 * 86_400_000);
     yesterday.setUTCHours(0, 0, 0, 0);

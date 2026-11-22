@@ -20,6 +20,9 @@ async function customerUserId(db: Db, mobile: string): Promise<string | null> {
 }
 
 // The fields to put on a new wedding.
+// The task a new wedding gets while its couple cannot sign in to My Wedding yet (22 Nov 2026); closed when their code is given.
+export const COUPLE_SIGN_IN_TASK = 'Give the couple their My Wedding sign-in code';
+
 export async function weddingCustomerFields(db: Db, sourcePhone: string | null | undefined): Promise<Pick<Prisma.WeddingCreateInput, 'customerPhone' | 'customer'>> {
   const mobile = coupleMobile(sourcePhone);
   if (!mobile) return {};

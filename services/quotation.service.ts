@@ -93,6 +93,8 @@ export function toQuotationView(q: QuotationWithItems) {
   return {
     ...rest,
     hasCustomerLink: customerTokenHash !== null,
+    // true when the couple's link was made for an earlier version that this one revises (listForSource)
+    linkOnEarlierVersion: false as boolean,
     balance: q.total - q.advanceAmount,
     items: q.items.map(({ vendor, ...item }) => ({
       ...item,
@@ -277,7 +279,20 @@ export const quotationService = {
   async listForSource(sourceType: SourceType, sourceId: string): Promise<QuotationView[]> {
     await expireOverdue(subjectWhere(sourceType, sourceId));
     const rows = await quotationRepository.findMany(subjectWhere(sourceType, sourceId));
-    return rows.map(toQuotationView);
+    // One link per couple: a version whose own link is empty is still reachable when an EARLIER version (that it revises) holds the
+    // couple's link — the proposal page follows revisions forward. Staff see that, so they do not make a second link.
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const viaEarlier = (r: (typeof rows)[number]): boolean => {
+      for (let prev = r.supersedesId ? byId.get(r.supersedesId) : undefined, n = 0; prev && n < 50; prev = prev.supersedesId ? byId.get(prev.supersedesId) : undefined, n++) {
+        if (prev.customerTokenHash) return true;
+      }
+      return false;
+    };
+    return rows.map((r) => {
+      const view = toQuotationView(r);
+      // a draft is not shown on the link yet (the couple sees "being updated"), so only a version that has been sent counts
+      return !view.hasCustomerLink && r.status !== 'DRAFT' && viaEarlier(r) ? { ...view, hasCustomerLink: true, linkOnEarlierVersion: true } : view;
+    });
   },
 
   async getById(id: string): Promise<QuotationView> {
@@ -602,13 +617,12 @@ export const quotationService = {
         const quotationNumber = await nextQuotationNumber(tx);
         mark(`numbered ${quotationNumber}`);
         // Status first: the old SENT quotation must stop being "open" before the new draft is inserted.
-        // Its proposal link dies here, for good: discarding the new draft later restores the original's STATUS but not its
-        // link (decision D7) — staff create a fresh link explicitly. Applies to expired/rejected originals too.
+        // One link per couple (22 Nov 2026, replaces decision D7): the couple's link is NOT killed by a revision. It stays on the
+        // original, and the proposal page follows the revisions forward to the newest version that has been sent (while the new
+        // one is still a draft the couple sees "your proposal is being updated"). "Create a new link" still retires every older one.
         if (q.status === 'SENT') {
-          const replaced = await quotationRepository.update(id, { status: 'SUPERSEDED', customerTokenHash: null }, tx);
+          const replaced = await quotationRepository.update(id, { status: 'SUPERSEDED' }, tx);
           mark(`original now ${replaced.status}`);
-        } else if (q.customerTokenHash) {
-          await quotationRepository.update(id, { customerTokenHash: null }, tx);
         }
         mark('saving the draft');
         const revision = await quotationRepository.create(
@@ -682,13 +696,16 @@ export const quotationService = {
         throw new ConflictError('A customer link can only be created for a sent quotation that is still valid, or an accepted one');
       }
       const token = newCustomerToken();
+      // One link per couple: a new link retires every older one for this couple — on this version and on any earlier version
+      // (a revision keeps the couple's link, so it may live on an earlier quotation of the same lead / enquiry / consultation).
+      const retired = await tx.quotation.updateMany({ where: { ...subjectWhere(sourceType, sourceId), id: { not: id }, customerTokenHash: { not: null } }, data: { customerTokenHash: null } });
       await quotationRepository.update(id, { customerTokenHash: hashCustomerToken(token), customerTokenCreatedAt: new Date() }, tx);
       await logEvent(
         tx,
         sourceType,
         sourceId,
         ActivityType.NOTE,
-        `Proposal link created for ${q.quotationNumber} (revision ${q.revision})${q.customerTokenHash ? ' — the previous link no longer works' : ''}`,
+        `Proposal link created for ${q.quotationNumber} (revision ${q.revision})${q.customerTokenHash || retired.count > 0 ? ' — the previous link no longer works' : ''}`,
         null,
         actorId
       );
@@ -696,13 +713,13 @@ export const quotationService = {
     });
   },
 
-  // Stops the current link working (the couple then sees the generic "no longer valid" page).
+  // Stops the couple's link working — whichever version it was made for (the couple then sees the generic "no longer valid" page).
   async revokeCustomerLink(id: string, actorId: string | null): Promise<void> {
     await prisma.$transaction(async (tx) => {
       const { q, sourceType, sourceId } = await loadLocked(tx, id);
-      if (!q.customerTokenHash) return;
-      await quotationRepository.update(id, { customerTokenHash: null }, tx);
-      await logEvent(tx, sourceType, sourceId, ActivityType.NOTE, `Proposal link revoked for ${q.quotationNumber} (revision ${q.revision})`, null, actorId);
+      const off = await tx.quotation.updateMany({ where: { ...subjectWhere(sourceType, sourceId), customerTokenHash: { not: null } }, data: { customerTokenHash: null } });
+      if (off.count === 0) return;
+      await logEvent(tx, sourceType, sourceId, ActivityType.NOTE, `Proposal link turned off for ${q.quotationNumber} (revision ${q.revision})`, null, actorId);
     });
   },
 };
