@@ -5,6 +5,7 @@ import { applyCommercialEvent } from '@/services/leadStage.service';
 import { subjectWhere } from '@/lib/crm/subject';
 import { generateWeddingNumber } from '@/services/documentNumber.service';
 import { agreedPriceFor, planVendorlessItem } from '@/lib/booking/unassigned';
+import { netShares } from '@/lib/booking/allocate';
 import { prisma } from '@/lib/prisma';
 import { bookingRepository } from '@/repositories/booking.repository';
 import { weddingRepository } from '@/repositories/wedding.repository';
@@ -212,7 +213,14 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
       tx
     );
 
-    for (const item of booking.items) {
+    // What each line may cost: its share of what was actually agreed, before tax (lib/booking/allocate.ts). A quotation that listed items
+    // at full price and took a discount off the whole no longer turns into vendor budgets at full price (WED-2026-0002, 22 Nov 2026).
+    const quoted = booking.quotationId ? await tx.quotation.findUnique({ where: { id: booking.quotationId }, select: { subtotal: true, discount: true } }) : null;
+    const lineAmounts = booking.items.map((i) => agreedPriceFor(i));
+    const shares = netShares(lineAmounts, quoted ? quoted.subtotal - quoted.discount : lineAmounts.reduce((sum, a) => sum + a, 0));
+
+    for (const [index, item] of booking.items.entries()) {
+      const share = shares[index];
       if (!item.vendorId && ownBooking) continue;
       if (!item.vendorId) {
         // Resolved in docs/wedding-os/step4-workflow-review.md: BookingItem.vendorId
@@ -222,7 +230,7 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
         // or loosening VendorBooking's constraint.
         // Two different reasons land here (lib/booking/unassigned.ts): a quoted custom line that never
         // had a vendor, and a legacy vendor that was removed — each gets its own honest wording.
-        const plan = planVendorlessItem(item);
+        const plan = planVendorlessItem(item, share);
         await activityLogRepository.create(
           {
             type: 'STATUS_CHANGED',
@@ -249,8 +257,8 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
         {
           weddingEvent: { connect: { id: weddingEvent.id } },
           vendor: { connect: { id: item.vendorId } },
-          // unit price × quantity — the vendor's whole share of this line, not one unit of it
-          agreedPrice: agreedPriceFor(item),
+          // the line's share of the agreed amount (unit price × quantity, less its part of any discount) — not one unit of it
+          agreedPrice: share,
           status: 'PENDING_VENDOR_CONFIRMATION',
         },
         tx
