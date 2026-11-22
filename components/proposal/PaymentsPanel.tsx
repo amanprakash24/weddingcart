@@ -5,6 +5,14 @@ import QRCode from 'qrcode';
 import type { ProposalPayments, CustomerReceipt } from '@/lib/payments/customerPayment';
 import { upiLink } from '@/lib/payments/upi';
 import { couplePaidMessage } from '@/lib/payments/claimMessages';
+import PaymentReceipt from '@/components/proposal/PaymentReceipt';
+
+// Every receipt up to and including this one (receipts come in date order), so an older receipt shows the balance as it
+// stood then.
+function receiptsUpTo(receipts: CustomerReceipt[], upTo: CustomerReceipt): CustomerReceipt[] {
+  const i = receipts.findIndex((r) => r.number === upTo.number);
+  return i === -1 ? [upTo] : receipts.slice(0, i + 1);
+}
 
 // Roadmap 1.3 (docs/wedding-os/08-quotation.md §20) — the couple's Payments view on the proposal link: where they stand (total → paid →
 // pending → due date), pay by UPI (QR, or the UPI app on a phone), "I have paid" with the UTR, and their receipts.
@@ -65,7 +73,8 @@ export default function PaymentsPanel({
   weddingDate: string | null;
   initial: ProposalPayments;
   // whatsApp: on a business's own link with a number — the couple can tell the business there is a payment to check.
-  from: { name: string; phone: string | null; whatsApp?: ((message: string) => string) | null };
+  // isPlatform / logoUrl / gstin: the letterhead on the printed receipt (PaymentReceipt).
+  from: { name: string; phone: string | null; isPlatform: boolean; logoUrl?: string | null; gstin?: string | null; whatsApp?: ((message: string) => string) | null };
 }) {
   const callThem = from.phone ? `call ${from.phone}` : `contact ${from.name}`;
   const [m, setM] = useState(initial);
@@ -336,36 +345,15 @@ export default function PaymentsPanel({
 
       {/* The printed receipt — only this prints while a receipt is chosen. */}
       {printing && (
-        <section aria-label="Payment receipt" className="hidden text-[#2A1F1B] print:block">
-          <p className="text-2xl" style={serif}>
-            {from.name} — Payment receipt
-          </p>
-          <p className="mt-1 text-sm">Receipt {printing.number}</p>
-          <dl className="mt-6 grid max-w-md grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-            <dt>Received from</dt>
-            <dd className="font-semibold">{coupleName ?? '—'}</dd>
-            <dt>Amount</dt>
-            <dd className="font-semibold">{rupees(printing.amount)}</dd>
-            <dt>Paid by</dt>
-            <dd>{printing.method}</dd>
-            {printing.reference && (
-              <>
-                <dt>Reference</dt>
-                <dd>{printing.reference}</dd>
-              </>
-            )}
-            <dt>Date</dt>
-            <dd>{formatDate(printing.paidAt)}</dd>
-            <dt>For</dt>
-            <dd>
-              Quotation {number}
-              {weddingDate && <> · Wedding on {formatDate(weddingDate)}</>}
-            </dd>
-            <dt>Agreed total</dt>
-            <dd>{rupees(m.total)}</dd>
-          </dl>
-          <p className="mt-8 text-xs">{from.name}{from.phone && <> · {from.phone}</>} · This receipt was generated from our records.</p>
-        </section>
+        <PaymentReceipt
+          receipt={printing}
+          issuer={{ name: from.name, phone: from.phone, isPlatform: from.isPlatform, logoUrl: from.logoUrl ?? null, gstin: from.gstin ?? null }}
+          coupleName={coupleName}
+          quotationNumber={number}
+          weddingDate={weddingDate}
+          total={m.total}
+          history={receiptsUpTo(m.receipts, printing)}
+        />
       )}
     </div>
   );
