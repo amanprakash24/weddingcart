@@ -3,6 +3,8 @@ import { vendorRepository } from '@/repositories/vendor.repository';
 import { categoryRepository } from '@/repositories/category.repository';
 import { blogRepository } from '@/repositories/blog.repository';
 import { BIHAR_CITY_SLUGS } from '@/data/biharCities';
+import { resolveCategorySlugs } from '@/lib/serializers/vendor';
+import { listingPath } from '@/lib/listing/href';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,9 +59,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/venues/patna/boring-road`,   lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.85 },
     { url: `${BASE_URL}/venues/patna/bailey-road`,   lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.85 },
     { url: `${BASE_URL}/venues/patna/kankarbagh`,    lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'weekly',  priority: 0.85 },
-    { url: `${BASE_URL}/vendors/touch-of-cozy-patna`,        lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${BASE_URL}/vendors/swayamvar-hall-patna`,       lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.85 },
-    { url: `${BASE_URL}/vendors/7-vachan-patna`,       lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.85 },
     // High-value blog posts pinned at top priority
     { url: `${BASE_URL}/blog/court-marriage-registration-patna-bihar`, lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.92 },
     { url: `${BASE_URL}/blog/best-banquet-hall-in-patna`,              lastModified: STATIC_LAST_MODIFIED, changeFrequency: 'monthly', priority: 0.92 },
@@ -96,8 +95,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     const { data: vendors } = await vendorRepository.findMany({ where: { status: 'PUBLISHED' } });
 
+    // Venues are listed at /venues/<slug> (the master venue page), every other category at /vendors/<slug>.
+    const categorySlugs = await resolveCategorySlugs([...new Set(vendors.map((v) => v.categoryId))]);
     vendorRoutes = vendors.map(vendor => ({
-      url: `${BASE_URL}/vendors/${vendor.slug}`,
+      url: `${BASE_URL}${listingPath({ slug: vendor.slug, category: categorySlugs.get(vendor.categoryId) })}`,
       lastModified: vendor.updatedAt ?? STATIC_LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 0.7,

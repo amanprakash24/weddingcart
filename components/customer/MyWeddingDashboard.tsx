@@ -1,6 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import PaymentReceipt from '@/components/proposal/PaymentReceipt';
+import ClientDocumentPrint, { type PrintableDocument } from '@/components/customer/ClientDocumentPrint';
+import MyWeddingPayments from '@/components/customer/MyWeddingPayments';
+import type { CustomerReceipt } from '@/lib/payments/customerPayment';
 import { signOut } from 'next-auth/react';
 import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, KeyRound, LogOut, MapPin, Phone, ShoppingBag, Users } from 'lucide-react';
 import type { ClientPortalEvent } from '@/services/clientPortal.service';
@@ -24,13 +28,23 @@ const tone = { good: 'bg-[#DCF3E5] text-[#14532D]', wait: 'bg-[#FEF3C7] text-[#7
 const theme = `os-theme ${osFontClasses} relative isolate min-h-screen`;
 
 const MENU = [
-  { id: 'overview', label: 'Overview', icon: Home },
-  { id: 'functions', label: 'Functions', icon: CalendarDays },
-  { id: 'payments', label: 'Payments', icon: CreditCard },
-  { id: 'vendors', label: 'Vendors', icon: ShoppingBag },
-  { id: 'guests', label: 'Guests & RSVP', icon: Users },
-  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'overview', label: 'Overview', short: 'Home', icon: Home },
+  { id: 'functions', label: 'Functions', short: 'Functions', icon: CalendarDays },
+  { id: 'payments', label: 'Payments', short: 'Payments', icon: CreditCard },
+  { id: 'vendors', label: 'Vendors', short: 'Vendors', icon: ShoppingBag },
+  { id: 'guests', label: 'Guests & RSVP', short: 'Guests', icon: Users },
+  { id: 'documents', label: 'Documents', short: 'Docs', icon: FileText },
 ] as const;
+
+// What is being printed: a payment receipt, an invoice or the accepted quotation (22 Nov 2026).
+type Printing = { kind: 'receipt'; receipt: CustomerReceipt } | { kind: 'doc'; doc: PrintableDocument } | null;
+
+function receiptsUpTo(receipts: CustomerReceipt[], upTo: CustomerReceipt): CustomerReceipt[] {
+  const i = receipts.findIndex((r) => r.number === upTo.number);
+  return i === -1 ? [upTo] : receipts.slice(0, i + 1);
+}
+
+const INVOICE_SUBJECT = { ADVANCE: 'Booking amount', BALANCE: 'Balance', OTHER: 'Wedding services' } as const;
 
 function Approvals({ approvals, onDecision }: { approvals: ClientPortalEvent['approvals']; onDecision: (id: string, decision: 'APPROVED' | 'CHANGES_REQUESTED', comment?: string) => Promise<void> }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -94,7 +108,20 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
     setCodeOpen(true);
     requestAnimationFrame(() => document.getElementById('sign-in')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
-  const codeBox = <ChangeLoginCode open={codeOpen} onOpenChange={setCodeOpen} onChanged={() => setRemind(false)} />;
+  // While the reminder banner is up it is the one prompt; the code box itself only appears when the couple opens it (it used to
+  // repeat the same "choose your own code" prompt at the bottom of the page).
+  const codeBox = !remind || codeOpen ? <ChangeLoginCode open={codeOpen} onOpenChange={setCodeOpen} onChanged={() => setRemind(false)} /> : null;
+  const [printing, setPrinting] = useState<Printing>(null);
+  useEffect(() => {
+    if (!printing) return;
+    const done = () => setPrinting(null);
+    window.addEventListener('afterprint', done);
+    const t = setTimeout(() => window.print(), 50);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('afterprint', done);
+    };
+  }, [printing]);
   const [selectedId, setSelectedId] = useState(events[0]?.id ?? '');
   const [approvals, setApprovals] = useState<Record<string, ClientPortalEvent['approvals']>>(() => Object.fromEntries(events.map((e) => [e.id, e.approvals])));
   const event = events.find((e) => e.id === selectedId) ?? events[0];
@@ -159,10 +186,10 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
   const services = event.services;
 
   return (
-    <div className={`${theme} pb-28 lg:pb-10`}>
-      <OsBackdrop />
-      {header}
-      <div className="mx-auto flex max-w-[1360px] flex-wrap items-start gap-6 px-4 py-5 sm:px-6">
+    <div className={`${theme} pb-28 lg:pb-10 print:min-h-0 print:bg-white print:p-0`}>
+      <div className="print:hidden"><OsBackdrop /></div>
+      <div className="print:hidden">{header}</div>
+      <div className="mx-auto flex max-w-[1360px] flex-wrap items-start gap-6 px-4 py-5 sm:px-6 print:hidden">
         {/* Side menu — stays in place while the page scrolls (desktop) */}
         <nav aria-label="My wedding" className="os-glass-dark sticky top-20 hidden max-h-[calc(100vh-6rem)] w-[240px] shrink-0 overflow-y-auto rounded-[22px] border border-white/10 bg-[var(--color-bg-inverse)] p-3 lg:block">
           {MENU.map(({ id, label, icon: Icon }) => (
@@ -204,7 +231,6 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
                 <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden />{event.city}</span>
                 <span>{dateRangeWords(event.functions.map((f) => f.date), event.primaryDate)}</span>
                 {event.guestCount ? <span>{event.guestCount.toLocaleString('en-IN')} guests</span> : null}
-                {event.budget ? <span>Budget {rupeesShort(event.budget)}</span> : null}
               </p>
             </div>
           </section>
@@ -233,10 +259,10 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
                   </div>
                 </>
               )}
-              <a href="#guests" className="mt-auto text-sm font-bold text-[var(--color-primary-text)]">Guests &amp; RSVP →</a>
+              <a href="#guests" className="mt-auto inline-flex min-h-11 items-center self-start text-sm font-bold text-[var(--color-primary-text)]">Guests &amp; RSVP →</a>
             </section>
 
-            <section id="payments" aria-labelledby="c-pay" className={`${card} flex scroll-mt-4 flex-col gap-3`}>
+            <section aria-labelledby="c-pay" className={`${card} flex flex-col gap-3`}>
               <h2 id="c-pay" className="flex items-center gap-2 text-[17px] font-bold"><CreditCard className="h-5 w-5 text-[#15803D]" aria-hidden />Payments</h2>
               {m.agreed === 0 ? (
                 <p className="text-sm text-[var(--color-text-secondary)]">Your payments appear here once your quotation is accepted.</p>
@@ -244,22 +270,13 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
                 <>
                   <p><span className="os-display text-[2.2rem] font-semibold leading-none">{rupeesShort(m.agreed)}</span> <span className="text-sm text-[var(--color-text-muted)]">agreed</span></p>
                   <div className="h-2.5 overflow-hidden rounded-full bg-white/70"><div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${paidPercent}%` }} /></div>
-                  <p className="flex justify-between text-sm text-[var(--color-text-secondary)]"><span>Paid {inr(m.received)}</span><span>Due {inr(m.due)}</span></p>
-                  {m.next && (
-                    <div className="mt-auto space-y-2 border-t border-white/70 pt-3">
-                      <p className="text-sm">Next: <b>{inr(m.next)}</b></p>
-                      {m.payTo ? (
-                        <>
-                          <a href={m.payTo.link} className="flex min-h-11 items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-bold text-white">Pay by UPI</a>
-                          <p className="text-xs text-[var(--color-text-muted)]">To {m.payTo.payee} · {m.payTo.upiId}. After paying, tell us on WhatsApp so we can confirm it.</p>
-                        </>
-                      ) : (
-                        <p className="text-xs text-[var(--color-text-muted)]">Ask {expert} how to pay.</p>
-                      )}
-                    </div>
-                  )}
+                  <p className="flex flex-wrap justify-between gap-x-3 text-sm text-[var(--color-text-secondary)]"><span>Paid {inr(m.received)}</span><span>Balance {inr(m.due)}</span></p>
+                  <p className="text-sm text-[var(--color-text-secondary)]">
+                    {m.plan.next ? <>Next: <b>{inr(m.plan.next.amount)}</b> · {m.plan.next.label.toLowerCase()}</> : m.due > 0 ? 'Booking amount paid. Balance dates from your expert.' : 'Paid in full. Thank you!'}
+                  </p>
                 </>
               )}
+              <a href="#payments" className="mt-auto inline-flex min-h-11 items-center self-start text-sm font-bold text-[var(--color-primary-text)]">Payments &amp; receipts →</a>
             </section>
 
             <section aria-labelledby="c-wait" className={`${card} flex flex-col gap-3`}>
@@ -310,6 +327,9 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
             </aside>
           </div>
 
+          {/* Payments: plan, every payment and its receipt, pay by UPI (22 Nov 2026) */}
+          <MyWeddingPayments event={event} expert={expert} onReceipt={(r) => setPrinting({ kind: 'receipt', receipt: r })} />
+
           {/* Vendors */}
           <section id="vendors" aria-labelledby="c-vendors" className={`${card} scroll-mt-4`}>
             <h2 id="c-vendors" className="text-[17px] font-bold">Your vendors</h2>
@@ -334,22 +354,64 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
           {/* Guests & RSVP (the existing guest list — step 2 redesigns it) */}
           <section id="guests" aria-labelledby="c-guestlist" className="scroll-mt-4">
             <h2 id="c-guestlist" className="sr-only">Guests and RSVP</h2>
-            <GuestRsvp weddingId={event.id} events={event.functions.map((f) => ({ id: f.id, type: f.name, label: f.name }))} initialGuests={event.guests} clientMode />
+            <GuestRsvp weddingId={event.id} events={event.functions.map((f) => ({ id: f.id, type: f.name, label: f.name, date: f.date }))} initialGuests={event.guests} clientMode />
           </section>
 
           {/* Documents */}
           <section id="documents" aria-labelledby="c-docs" className={`${card} scroll-mt-4`}>
             <h2 id="c-docs" className="text-[17px] font-bold">Documents</h2>
-            {event.finance.invoices.length === 0 && event.documents.length === 0 ? (
-              <p className="mt-3 text-sm text-[var(--color-text-secondary)]">Your invoices and documents appear here.</p>
+            {!event.quotation && event.finance.invoices.length === 0 && event.documents.length === 0 ? (
+              <p className="mt-3 text-sm text-[var(--color-text-secondary)]">Your quotation, invoices and documents appear here.</p>
             ) : (
               <ul className="mt-3 space-y-2">
-                {event.finance.invoices.map((inv) => (
-                  <li key={inv.id} className="flex min-h-12 flex-wrap items-center justify-between gap-2 rounded-xl border border-white/70 bg-white/55 px-3.5 py-2 text-sm">
-                    <span><b>Invoice {inv.number}</b> · {inr(inv.total)} · {inv.pending > 0 ? `${inr(inv.pending)} due` : 'paid'}</span>
-                    {inv.paymentUrl && inv.pending > 0 && <a href={inv.paymentUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-[var(--color-primary-text)]">Pay</a>}
-                  </li>
-                ))}
+                {event.quotation && (() => {
+                  const q = event.quotation;
+                  const doc: PrintableDocument = {
+                    title: 'QUOTATION',
+                    number: q.number,
+                    date: q.acceptedAt,
+                    subject: `Accepted quotation${q.revision > 1 ? `, version ${q.revision}` : ''}`,
+                    lines: q.lines,
+                    subtotal: q.subtotal,
+                    discount: q.discount,
+                    gstAmount: q.gstAmount,
+                    total: q.total,
+                    gstin: q.sellerGstin,
+                    paid: null,
+                    terms: q.terms,
+                  };
+                  return (
+                    <li className="flex min-h-12 flex-wrap items-center justify-between gap-2 rounded-xl border border-white/70 bg-white/55 px-3.5 py-2 text-sm">
+                      <span><b>Quotation {q.number}</b> · {inr(q.total)} · accepted{q.acceptedAt && <> {dayWords(q.acceptedAt)}</>}</span>
+                      <button type="button" onClick={() => setPrinting({ kind: 'doc', doc })} className="inline-flex min-h-11 items-center font-bold text-[var(--color-primary-text)]">View / download</button>
+                    </li>
+                  );
+                })()}
+                {event.finance.invoices.map((inv) => {
+                  const doc: PrintableDocument = {
+                    title: inv.gstAmount > 0 && inv.sellerGstin ? 'TAX INVOICE' : 'INVOICE',
+                    number: inv.number,
+                    date: inv.issuedAt,
+                    subject: `${INVOICE_SUBJECT[inv.kind]}${event.quotation ? ` · quotation ${event.quotation.number}` : ''}`,
+                    lines: inv.lines,
+                    subtotal: inv.subtotal,
+                    discount: inv.discount,
+                    gstAmount: inv.gstAmount,
+                    total: inv.total,
+                    gstin: inv.sellerGstin,
+                    paid: inv.total - inv.pending,
+                    terms: null,
+                  };
+                  return (
+                    <li key={inv.id} className="flex min-h-12 flex-wrap items-center justify-between gap-2 rounded-xl border border-white/70 bg-white/55 px-3.5 py-2 text-sm">
+                      <span><b>Invoice {inv.number}</b> · {INVOICE_SUBJECT[inv.kind].toLowerCase()} · {inr(inv.total)} · {inv.pending > 0 ? `${inr(inv.pending)} due` : 'paid'}</span>
+                      <span className="flex gap-4">
+                        {inv.paymentUrl && inv.pending > 0 && <a href={inv.paymentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-bold text-[var(--color-primary-text)]">Pay</a>}
+                        <button type="button" onClick={() => setPrinting({ kind: 'doc', doc })} className="inline-flex min-h-11 items-center font-bold text-[var(--color-primary-text)]">View / download</button>
+                      </span>
+                    </li>
+                  );
+                })}
                 {event.documents.map((d) => (
                   <li key={d.id}><a href={d.url} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-white/70 bg-white/55 px-3.5 text-sm text-[var(--color-text-primary)]"><span><b>{d.fileName}</b> · {d.category.toLowerCase()}</span><span className="font-bold text-[var(--color-primary-text)]">Open</span></a></li>
                 ))}
@@ -362,13 +424,27 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
       </div>
 
       {/* Phone: bottom tabs */}
-      <nav aria-label="My wedding" className="os-glass-bar fixed inset-x-3 z-40 grid grid-cols-5 rounded-[28px] px-1 lg:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}>
-        {MENU.filter((x) => x.id !== 'vendors').map(({ id, label, icon: Icon }) => (
-          <a key={id} href={`#${id}`} className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-[var(--color-text-secondary)]">
-            <Icon className="h-[21px] w-[21px]" aria-hidden />{label.split(' ')[0]}
+      <nav aria-label="My wedding" className="os-glass-bar fixed inset-x-3 z-40 grid grid-cols-6 rounded-[28px] px-1 lg:hidden print:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}>
+        {MENU.map(({ id, short, icon: Icon }) => (
+          <a key={id} href={`#${id}`} className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-[var(--color-text-secondary)]">
+            <Icon className="h-[21px] w-[21px]" aria-hidden /><span className="max-w-full truncate">{short}</span>
           </a>
         ))}
       </nav>
+
+      {/* What is being printed (receipt, invoice, quotation) — the only thing on the printed page */}
+      {printing?.kind === 'receipt' && (
+        <PaymentReceipt
+          receipt={printing.receipt}
+          issuer={event.issuer}
+          coupleName={names}
+          quotationNumber={event.quotation?.number ?? event.weddingNumber}
+          weddingDate={event.primaryDate}
+          total={m.agreed}
+          history={receiptsUpTo(m.receipts, printing.receipt)}
+        />
+      )}
+      {printing?.kind === 'doc' && <ClientDocumentPrint doc={printing.doc} issuer={event.issuer} coupleName={names} weddingNumber={event.weddingNumber} weddingDate={event.primaryDate} />}
     </div>
   );
 }

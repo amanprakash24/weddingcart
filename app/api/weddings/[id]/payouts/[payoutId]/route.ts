@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyGuard } from '@/lib/auth/moneyGuard';
+import { withoutCommission } from '@/lib/auth/moneyAccess';
 import { z } from 'zod';
-import { requireRole } from '@/lib/auth/session';
-import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { payoutService } from '@/services/payout.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
@@ -13,16 +13,14 @@ const bodySchema = z.object({
 });
 
 async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; payoutId: string }> }) {
-  const session = await requireRole(ADMIN_ROLES);
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { id, payoutId } = await params;
+  const guard = await moneyGuard({ wedding: id }, 'full');
+  if (guard instanceof NextResponse) return guard;
+  const { session } = guard;
   try {
     bodySchema.parse(await req.json());
     const payout = await payoutService.markPayoutPaid(id, payoutId, session.user.id ?? null);
-    return NextResponse.json({ success: true, data: payout });
+    return NextResponse.json({ success: true, data: withoutCommission({ userId: session.user.id, roles: session.user.roles }, payout) });
   } catch (err) {
     return handleApiError(err);
   }

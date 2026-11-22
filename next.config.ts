@@ -30,6 +30,18 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'no-referrer' },
         ],
       },
+      // Client invitations carry a family's names and phone number: shared by link, never listed by search engines.
+      {
+        source: '/invitations/:path*',
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
+    ];
+  },
+  // Digital invitations made by Shaadi Shopping for clients are static pages in public/invitations/<slug>/
+  // (index.html + assets/). This lets the short address /invitations/<slug> open that page.
+  async rewrites() {
+    return [
+      { source: '/invitations/:slug', destination: '/invitations/:slug/index.html' },
     ];
   },
   async redirects() {
@@ -55,29 +67,19 @@ const nextConfig: NextConfig = {
         destination: '/cities/patna/venue',
         permanent: true,
       },
-      {
-        source: '/lp/swayamvar-hall',
-        destination: '/vendors/swayamvar-hall-patna',
-        permanent: true,
-      },
-      {
-        // Pre-existing DB-backed vendor record (id: "swayamvar-hall") was rendering
-        // a separate, lower-quality generic page via app/vendors/[id] — redirect it
-        // into the canonical page so there's exactly one URL for this venue.
-        source: '/vendors/swayamvar-hall',
-        destination: '/vendors/swayamvar-hall-patna',
-        permanent: true,
-      },
-      {
-        source: '/lp/touch-of-cozy',
-        destination: '/vendors/touch-of-cozy-patna',
-        permanent: true,
-      },
-      {
-        source: '/lp/7-vachan-patna',
-        destination: '/vendors/7-vachan-patna',
-        permanent: true,
-      },
+      // Venues have one master page at /venues/<slug> (founder-approved design, 19 Nov 2026). The three hand-built
+      // venue pages are retired; their old addresses forward to the venue's master page in one hop.
+      // (Other /vendors/<venue-slug> links forward from app/vendors/[id]/page.tsx.)
+      { source: '/lp/swayamvar-hall', destination: '/venues/swayamvar-hall', permanent: true },
+      { source: '/vendors/swayamvar-hall-patna', destination: '/venues/swayamvar-hall', permanent: true },
+      { source: '/vendors/swayamvar-hall', destination: '/venues/swayamvar-hall', permanent: true },
+      { source: '/lp/touch-of-cozy', destination: '/venues/touch-of-cozy-patna', permanent: true },
+      { source: '/vendors/touch-of-cozy-patna', destination: '/venues/touch-of-cozy-patna', permanent: true },
+      { source: '/lp/7-vachan-patna', destination: '/venues/7-vachan-patna', permanent: true },
+      { source: '/vendors/7-vachan-patna', destination: '/venues/7-vachan-patna', permanent: true },
+      // No page of its own at /venues or /venue: the list of venues.
+      { source: '/venues', destination: '/cities/patna/venue', permanent: false },
+      { source: '/venue', destination: '/cities/patna/venue', permanent: false },
       { source: `/cities/${nonBiharCity}`, destination: '/cities/patna', permanent: false },
       { source: `/cities/${nonBiharCity}/:category`, destination: '/cities/patna/:category', permanent: false },
     ];

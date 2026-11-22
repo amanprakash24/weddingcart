@@ -25,7 +25,7 @@ describe('toLocalityVenue', () => {
     expect(v.rating).toBe(4.5);
     expect(v.vegPrice).toBe(700);
     expect(v.nonVegPrice).toBe(850);
-    expect(v.href).toBe('/vendors/dream-banquet-hall-patna');
+    expect(v.href).toBe('/venues/dream-banquet-hall-patna');
     expect(v.highlights).toEqual(['In-house catering', 'Power backup']);
   });
 

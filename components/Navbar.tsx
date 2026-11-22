@@ -95,6 +95,8 @@ const navLinks: { href: string; label: string; badge?: string; wideOnly?: boolea
   { href: '/#how-it-works', label: 'How It Works' },
   { href: '/growth-partner', label: 'Growth Partner' },
   { href: '/vivah-os', label: 'Vivah OS', badge: 'New' },
+  // Client OS entry, option A (founder, 19 Nov 2026): couples sign in to My Wedding with the code their expert gives them
+  { href: '/customer/login', label: 'My Wedding' },
   { href: '/about', label: 'About Us', wideOnly: true },
   { href: '/blog', label: 'Blog', wideOnly: true },
 ];
@@ -107,6 +109,14 @@ export default function Navbar() {
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
   const megaRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  // The phone menu closes whenever the page changes (a link, or the browser's back button) — React's
+  // "reset state when a value changes" pattern, done during render rather than in an effect.
+  const [menuPath, setMenuPath] = useState(pathname);
+  if (menuPath !== pathname) {
+    setMenuPath(pathname);
+    setMobileOpen(false);
+    setMobileServicesOpen(false);
+  }
   const isAdmin = pathname.startsWith('/admin') || isVendorOsPath(pathname); // admin and Vendor OS have their own shells
 
   useEffect(() => {
@@ -361,7 +371,14 @@ export default function Navbar() {
 
         {/* Mobile Menu */}
         {mobileOpen && (
-          <div className="lg:hidden bg-white border-t border-[#C5A46D]/10 shadow-xl animate-fade-in max-h-[calc(100vh-5.5rem)] overflow-y-auto">
+          // Tapping ANY link in the phone menu closes it at once (founder, 19 Nov 2026) — including a link to the page
+          // already open or to a section of it (/#how-it-works), where the page itself does not change.
+          <div
+            className="lg:hidden bg-white border-t border-[#C5A46D]/10 shadow-xl animate-fade-in max-h-[calc(100vh-5.5rem)] overflow-y-auto"
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest('a')) setMobileOpen(false);
+            }}
+          >
             <div className="px-5 py-4 space-y-1">
               {navLinks.map((link) => (
                 <Link

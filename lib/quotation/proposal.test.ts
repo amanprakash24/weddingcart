@@ -167,7 +167,7 @@ describe('toCustomerProposal — allow-list only', () => {
         guestCapacity: 500,
         venueType: 'indoor',
         rating: { value: 4.5, reviews: 12 },
-        url: '/vendors/swayamvar-hall-patna',
+        url: '/venues/swayamvar-hall-patna',
       },
     });
     expect(p.items[1].vendor).toEqual({ name: 'ABC Caterers', profile: null });

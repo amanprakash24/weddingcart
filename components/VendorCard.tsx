@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Star, MapPin, ChevronRight } from 'lucide-react';
 import { Vendor } from '@/types';
+import { listingPath } from '@/lib/listing/href';
 
 interface Props {
   vendor: Vendor;
@@ -37,7 +38,7 @@ export default function VendorCard({ vendor }: Props) {
   const showRating = (vendor.reviewCount ?? 0) > 0;
 
   return (
-    <Link href={`/vendors/${vendor.slug ?? vendor.id}`} className="block group vendor-card-luxury">
+    <Link href={listingPath(vendor)} className="block group vendor-card-luxury">
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100/80 h-full transition-all duration-300 group-hover:border-[#C5A46D]/35 group-hover:shadow-[0_20px_50px_rgba(139,26,74,0.1)]">
 
         {/* Image */}

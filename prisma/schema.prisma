@@ -1473,6 +1473,13 @@ enum GuestRsvpStatus {
   MAYBE
 }
 
+// Whose guest (Client OS guest management, 19 Nov 2026). Null = not set yet.
+enum GuestSide {
+  BRIDE
+  GROOM
+  BOTH
+}
+
 model Guest {
   id                 String          @id @default(uuid())
   weddingId          String
@@ -1483,7 +1490,17 @@ model Guest {
   category           String?
   accompanyingGuests Int             @default(0)
   rsvpStatus         GuestRsvpStatus @default(PENDING)
-  notes              String?
+  notes              String? // shown as "Special requirements" (food, wheelchair, a room on the ground floor …)
+  // Client OS guest management (19 Nov 2026), all optional so existing guests are unchanged:
+  side               GuestSide? // bride side, groom side or both
+  familyGroup        String? // e.g. "Sharma family" — guests with the same group are shown together
+  relation           String? // e.g. "Mama", "College friend"
+  isVip              Boolean         @default(false)
+  // "Comes with" another guest on the same wedding (e.g. a husband and wife listed separately). One link per guest;
+  // the service keeps both sides pointing at each other. Removing a guest clears the other's link.
+  pairedGuestId      String?         @unique
+  pairedGuest        Guest?          @relation("GuestPair", fields: [pairedGuestId], references: [id], onDelete: SetNull)
+  pairedBy           Guest?          @relation("GuestPair")
   rsvpToken          String          @unique @default(uuid())
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
@@ -1491,6 +1508,7 @@ model Guest {
   functionResponses GuestFunctionResponse[]
 
   @@index([weddingId, rsvpStatus])
+  @@index([weddingId, side])
   @@map("guests")
 }
 
@@ -1503,6 +1521,8 @@ model GuestFunctionResponse {
   status         GuestRsvpStatus @default(PENDING)
   updatedAt      DateTime        @updatedAt
 
+  // One row per function the guest is invited to (Client OS, 19 Nov 2026). A guest with no rows at all is invited to
+  // every function — how guests worked before — so nothing changes for existing guests.
   @@unique([guestId, weddingEventId])
   @@index([weddingEventId, status])
   @@map("guest_function_responses")

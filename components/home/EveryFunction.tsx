@@ -12,7 +12,7 @@ const FUNCTIONS = [
 
 export default function EveryFunction() {
   return (
-    <section aria-labelledby="home-functions" className={`bg-[#F4ECDF] ${sectionPad}`}>
+    <section data-depth aria-labelledby="home-functions" className={`bg-[#F4ECDF] ${sectionPad}`}>
       <div className={`${container} grid items-center gap-10 lg:grid-cols-[1fr_1.4fr] lg:gap-16`}>
         <div>
           <p className={eyebrow}>Every function, one plan</p>
@@ -24,7 +24,7 @@ export default function EveryFunction() {
         </div>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3.5">
           {FUNCTIONS.map((f) => (
-            <li key={f.name} className={`rounded-[22px] p-5 sm:p-6 ${f.main ? 'bg-[#7A1238]' : 'border border-[#E2D3BC] bg-white'}`}>
+            <li key={f.name} data-tilt className={`rounded-[22px] p-5 sm:p-6 ${f.main ? 'bg-[#7A1238]' : 'border border-[#E2D3BC] bg-white'}`}>
               <span className={`block text-[1.8rem] font-semibold leading-none ${f.color}`} style={serif}>{f.name}</span>
               <p className={`mt-2 text-sm leading-snug ${f.main ? 'text-[#F4DCE5]' : 'text-[#4D3E36]'}`}>{f.text}</p>
             </li>

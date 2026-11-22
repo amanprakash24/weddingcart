@@ -18,7 +18,7 @@ function Row({ label, value }: { label: string; value: string }) {
 // expected/outstandingPayoutAmount/pendingPayoutCount render regardless of
 // isActive, since those derive from CONFIRMED/PENDING states that can exist
 // before any PAID payout does.
-export default function CommissionCard({ commission }: { commission: FounderDashboard['commission'] }) {
+export default function CommissionCard({ commission }: { commission: NonNullable<FounderDashboard['commission']> }) {
   const isActive = commission.confirmed > 0;
 
   const divergence = Math.abs(commission.grossMargin - commission.confirmed);

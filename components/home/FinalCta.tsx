@@ -6,7 +6,7 @@ import { btnGold, btnLight, serif } from './styles';
 // Closing block, split for the two audiences: families and wedding businesses.
 export default function FinalCta() {
   return (
-    <section aria-label="Get started" className="bg-[linear-gradient(#F4ECDF_50%,#2A1F1B_50%)] px-4 sm:px-6">
+    <section data-depth aria-label="Get started" className="bg-[linear-gradient(#F4ECDF_50%,#2A1F1B_50%)] px-4 sm:px-6">
       <div className="mx-auto grid max-w-[1240px] overflow-hidden rounded-[32px] shadow-[0_30px_80px_rgba(34,23,20,0.25)] md:grid-cols-2">
         <div className="bg-[#7A1238] px-6 py-12 text-white sm:px-12 sm:py-14">
           <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#F3E3C3]">For families</p>

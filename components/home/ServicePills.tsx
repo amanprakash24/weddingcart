@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { categoryHref } from '@/lib/home/categoryTiles';
+import PillsCurve from './PillsCurve';
 import { serif } from './styles';
 
 // Moving row of services under the hero (A+ "photo pills"). Photos from /public. Band & DJ is the founder's DJ & sangeet
@@ -26,7 +27,7 @@ function Row({ copy }: { copy: boolean }) {
           <Link
             href={p.href}
             tabIndex={copy ? -1 : undefined}
-            className="inline-flex items-center gap-3 rounded-full border border-[#E2D3BC] bg-white py-1.5 pl-1.5 pr-6 shadow-[0_6px_18px_rgba(34,23,20,0.06)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-[3px] hover:border-[#7A1238] hover:shadow-[0_14px_30px_rgba(122,18,56,0.14)] outline-none focus-visible:border-[#7A1238] focus-visible:ring-2 focus-visible:ring-[#7A1238]/40"
+            className="inline-flex items-center gap-3 rounded-full border border-[#E2D3BC] bg-white py-1.5 pl-1.5 pr-6 shadow-[0_6px_0_#DCC9AB,0_16px_28px_rgba(34,23,20,0.12)] transition-[translate,box-shadow,border-color] duration-300 hover:-translate-y-[3px] hover:border-[#7A1238] hover:shadow-[0_14px_30px_rgba(122,18,56,0.14)] outline-none focus-visible:border-[#7A1238] focus-visible:ring-2 focus-visible:ring-[#7A1238]/40"
           >
             {p.photo ? (
               <Image src={p.photo} alt="" width={52} height={52} className={`h-[52px] w-[52px] flex-shrink-0 rounded-full object-cover ${p.pos ?? ''}`} />
@@ -45,12 +46,19 @@ function Row({ copy }: { copy: boolean }) {
 
 export default function ServicePills() {
   return (
-    <nav aria-label="Wedding services" className="home-pills home-pills-fade overflow-hidden border-y border-[#E2D3BC] bg-[#F4ECDF] py-5">
+    <nav aria-label="Wedding services" className="home-pills home-pills-fade relative isolate overflow-hidden py-12">
+      {/* The band behind the pills, shaped like a curved TV: top and bottom edges bow in towards the middle */}
+      <svg aria-hidden viewBox="0 0 1000 100" preserveAspectRatio="none" className="absolute inset-0 -z-10 h-full w-full">
+        <path d="M0 0 Q500 26 1000 0 L1000 100 Q500 74 0 100 Z" fill="#F4ECDF" />
+        <path d="M0 0 Q500 26 1000 0 M0 100 Q500 74 1000 100" fill="none" stroke="#E2D3BC" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+      </svg>
       {/* Two identical rows so the scroll loops without a jump; the second is hidden from screen readers */}
       <div className="home-pills-track flex w-max">
         <Row copy={false} />
         <Row copy />
       </div>
+      {/* 3D (19 Nov 2026): the row curves like a turning drum */}
+      <PillsCurve selector=".home-pills" />
     </nav>
   );
 }

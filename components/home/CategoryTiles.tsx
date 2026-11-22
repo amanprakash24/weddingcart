@@ -25,7 +25,7 @@ export default function CategoryTiles({ tiles }: { tiles: CategoryTile[] }) {
   const bento = shown.length === 4;
 
   return (
-    <section id="services" aria-labelledby="home-services" className={`scroll-mt-28 bg-[#FBF6EE] ${sectionPad}`}>
+    <section data-depth id="services" aria-labelledby="home-services" className={`scroll-mt-28 bg-[#FBF6EE] ${sectionPad}`}>
       <div className={container}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -44,7 +44,7 @@ export default function CategoryTiles({ tiles }: { tiles: CategoryTile[] }) {
               <li key={t.slug} className={big ? 'col-span-2 lg:col-span-1 lg:row-span-2' : ''}>
                 <Link
                   href={t.href}
-                  className={`group relative flex h-full flex-col justify-end overflow-hidden rounded-[26px] border border-[#EADFCC] bg-[#F4ECDF] p-5 outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238] focus-visible:ring-offset-2 sm:p-6 ${big ? 'min-h-[300px]' : 'min-h-[200px] sm:min-h-[240px]'}`}
+                  data-tilt className={`group relative flex h-full flex-col justify-end overflow-hidden rounded-[26px] border border-[#EADFCC] bg-[#F4ECDF] p-5 outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238] focus-visible:ring-offset-2 sm:p-6 ${big ? 'min-h-[300px]' : 'min-h-[200px] sm:min-h-[240px]'}`}
                 >
                   {t.picture && (
                     <>
@@ -65,7 +65,7 @@ export default function CategoryTiles({ tiles }: { tiles: CategoryTile[] }) {
           })}
           {bento && more.length > 0 && (
             <li>
-              <div className="flex h-full flex-col gap-3 rounded-[26px] border border-[#E2D3BC] bg-[#F4ECDF] p-5 sm:p-6">
+              <div data-tilt className="flex h-full flex-col gap-3 rounded-[26px] border border-[#E2D3BC] bg-[#F4ECDF] p-5 sm:p-6">
                 <p className="text-[1.6rem] font-semibold text-[#221714]" style={serif}>And everything else</p>
                 <ul className="flex flex-wrap gap-2">
                   {more.map((m) => (

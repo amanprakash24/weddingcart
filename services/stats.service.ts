@@ -29,7 +29,8 @@ import { leadRepository } from '@/repositories/lead.repository';
 // size itself, per the agreed scope — this is the smallest change that
 // removes this route's own worst-case simultaneous-connection demand.
 export const statsService = {
-  async get() {
+  // includeRevenue: false = the company-wide booking revenue is neither read nor returned (null).
+  async get({ includeRevenue = true }: { includeRevenue?: boolean } = {}) {
     const vendors = await vendorRepository.count();
     const categories = await categoryRepository.count();
     const enquiries = await enquiryRepository.count();
@@ -42,7 +43,7 @@ export const statsService = {
     const outsideVendors = await vendorApplicationRepository.count();
     const newOutsideVendors = await vendorApplicationRepository.count({ status: 'NEW' });
     const leads = await leadRepository.count();
-    const revenue = await bookingRepository.sumTotal({ status: { in: ['CONFIRMED', 'CLOSED'] } });
+    const revenue = includeRevenue ? await bookingRepository.sumTotal({ status: { in: ['CONFIRMED', 'CLOSED'] } }) : null;
 
     return {
       vendors, categories, enquiries, consultations,

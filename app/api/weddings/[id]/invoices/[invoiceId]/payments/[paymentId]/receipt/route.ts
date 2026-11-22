@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRole } from '@/lib/auth/session';
-import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { moneyGuard } from '@/lib/auth/moneyGuard';
 import { invoiceRepository } from '@/repositories/invoice.repository';
 import { weddingRepository } from '@/repositories/wedding.repository';
 import { NotFoundError, handleApiError } from '@/lib/errors';
@@ -13,12 +12,10 @@ async function handleGET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; invoiceId: string; paymentId: string }> }
 ) {
-  const session = await requireRole(ADMIN_ROLES);
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { id, invoiceId, paymentId } = await params;
+  const guard = await moneyGuard({ wedding: id }, 'read');
+  if (guard instanceof NextResponse) return guard;
+
   try {
     const invoice = await invoiceRepository.findById(invoiceId);
     if (!invoice || invoice.weddingId !== id) {

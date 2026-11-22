@@ -3,12 +3,16 @@ import { ArrowRight, MapPin } from 'lucide-react';
 import VendorCard from '@/components/VendorCard';
 import type { Vendor } from '@/types';
 import { PATNA_AREAS } from '@/lib/home/areas';
+import VenueRing from './VenueRing';
 import { accent, btnGold, container, eyebrow, h2, sectionPad, serif } from './styles';
 
 // Real published venues, rendered on the server, and a card for families who want a shortlist instead.
+// In 3D (18 Nov 2026): the cards stand on a turning ring (VenueRing). With fewer than two venues, the plain grid shows.
 export default function VenuesByArea({ venues }: { venues: Vendor[] }) {
+  const shown = venues.slice(0, 5);
+  if (shown.length >= 2) return <VenuesRing venues={shown} />;
   return (
-    <section id="venues" aria-labelledby="home-venues" className={`scroll-mt-28 bg-[#FBF6EE] ${sectionPad}`}>
+    <section data-depth id="venues" aria-labelledby="home-venues" className={`scroll-mt-28 bg-[#FBF6EE] ${sectionPad}`}>
       <div className={container}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -35,9 +39,9 @@ export default function VenuesByArea({ venues }: { venues: Vendor[] }) {
 
         <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {venues.slice(0, 5).map((v) => (
-            <li key={v.id}><VendorCard vendor={v} /></li>
+            <li key={v.id} data-tilt><VendorCard vendor={v} /></li>
           ))}
-          <li className="relative flex min-h-[320px] flex-col gap-4 overflow-hidden rounded-[26px] bg-[#221714] p-8 text-[#FBF6EE]">
+          <li data-tilt className="relative flex min-h-[320px] flex-col gap-4 overflow-hidden rounded-[26px] bg-[#221714] p-8 text-[#FBF6EE]">
             <svg aria-hidden viewBox="0 0 200 200" className="pointer-events-none absolute -bottom-14 -right-14 h-56 w-56 opacity-20">
               <g fill="none" stroke="#E9C98E" strokeWidth="1"><circle cx="100" cy="100" r="90" /><circle cx="100" cy="100" r="60" /><path d="M100 10v180M10 100h180" /></g>
             </svg>
@@ -45,6 +49,61 @@ export default function VenuesByArea({ venues }: { venues: Vendor[] }) {
             <p className="text-base leading-relaxed text-[#D9CBB8]">Tell your Wedding Expert. You get a shortlist, and we arrange the visits for you.</p>
             <Link href="/plan" className={`${btnGold} relative mt-auto self-start`}>Get a free shortlist</Link>
           </li>
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function Heading() {
+  return (
+    <div className={`${container} w-full`}>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className={eyebrow}>Venues in Patna</p>
+          <h2 id="home-venues" className={h2} style={serif}>Real venues, <span className={accent}>real prices</span></h2>
+        </div>
+        <Link href="/cities/patna/venue" className="inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-bold text-[#7A1238] underline-offset-4 hover:underline">
+          See all venues <ArrowRight className="h-4 w-4" aria-hidden />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ShortlistCard() {
+  return (
+    <div className="relative flex min-h-[320px] flex-col gap-4 overflow-hidden rounded-[26px] bg-[#221714] p-8 text-[#FBF6EE]">
+      <svg aria-hidden viewBox="0 0 200 200" className="pointer-events-none absolute -bottom-14 -right-14 h-56 w-56 opacity-20">
+        <g fill="none" stroke="#E9C98E" strokeWidth="1"><circle cx="100" cy="100" r="90" /><circle cx="100" cy="100" r="60" /><path d="M100 10v180M10 100h180" /></g>
+      </svg>
+      <p className="text-[2rem] font-semibold leading-[1.12]" style={serif}>Not sure which venue fits your guests and budget?</p>
+      <p className="text-base leading-relaxed text-[#D9CBB8]">Tell your Wedding Expert. You get a shortlist, and we arrange the visits for you.</p>
+      <Link href="/plan" className={`${btnGold} relative mt-auto self-start`}>Get a free shortlist</Link>
+    </div>
+  );
+}
+
+function VenuesRing({ venues }: { venues: Vendor[] }) {
+  return (
+    <section id="venues" aria-labelledby="home-venues" className="scroll-mt-28 bg-[radial-gradient(1200px_700px_at_50%_55%,#F6E7D2_0%,#FBF6EE_60%)] pb-16 sm:pb-20">
+      <VenueRing
+        header={<Heading />}
+        items={[...venues.map((v) => <VendorCard key={v.id} vendor={v} />), <ShortlistCard key="shortlist" />]}
+        labels={[...venues.map((v) => v.name), 'Your free shortlist']}
+      />
+      <div className={`${container} px-4 sm:px-6`}>
+        <ul className="flex flex-wrap justify-center gap-2" aria-label="Venues by area">
+          {PATNA_AREAS.map((a) => (
+            <li key={a.slug}>
+              <Link
+                href={`/venues/patna/${a.slug}`}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-[#E2D3BC] bg-white px-4 text-sm font-medium text-[#221714] transition-colors hover:border-[#7A1238] hover:text-[#7A1238] outline-none focus-visible:ring-2 focus-visible:ring-[#7A1238]"
+              >
+                <MapPin className="h-3.5 w-3.5 text-[#8A6A2F]" aria-hidden /> {a.label}
+              </Link>
+            </li>
+          ))}
         </ul>
       </div>
     </section>

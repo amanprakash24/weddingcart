@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
+import HowDepth from './HowDepth';
+import s3 from './home3d.module.css';
 import { btnGold, serif } from './styles';
 
 // Vivah OS on the homepage: four features you can tap, each with a sample phone screen. The screens are drawings of the
@@ -14,6 +16,10 @@ const FEATURES = [
   { key: 'team', title: 'Your team, each with a sign-in', text: 'Owner, manager, employee: mobile number and code, each sees their own work.', screen: 'Team' },
 ] as const;
 type Key = (typeof FEATURES)[number]['key'];
+
+// 3D (19 Nov 2026): the phone turns to face the visitor as the section scrolls in (--v), the selected feature lifts
+// forward and the phone screen flips when the feature changes.
+const VOS_VARS = [{ sel: '[data-vos-stage]', name: '--v', start: 0.95, span: 0.6 }];
 
 const Bar = ({ w = 'w-24', dark = false }: { w?: string; dark?: boolean }) => (
   <span aria-hidden className={`block h-2.5 rounded-full ${w} ${dark ? 'bg-[#D9CBB8]' : 'bg-[#EADFCC]'}`} />
@@ -96,7 +102,7 @@ export default function VivahOsSection() {
   const current = FEATURES.find((f) => f.key === active)!;
 
   return (
-    <section id="vivah-os" aria-labelledby="home-vivah-os" className="relative isolate scroll-mt-28 overflow-hidden bg-[#140A09] px-4 py-16 text-[#FBF6EE] sm:px-6 sm:py-24 lg:py-28">
+    <section id="vivah-os" aria-labelledby="home-vivah-os" className={`${s3.vos} relative isolate scroll-mt-28 overflow-hidden bg-[#140A09] px-4 py-16 text-[#FBF6EE] sm:px-6 sm:py-24 lg:py-28`}>
       <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(900px_500px_at_80%_20%,#3A0A1C_0%,rgba(58,10,28,0)_70%)]" />
       <div className="mx-auto grid max-w-[1240px] items-center gap-12 lg:grid-cols-[1.15fr_1fr] lg:gap-16">
         <div>
@@ -111,7 +117,7 @@ export default function VivahOsSection() {
             For venues and wedding businesses: run every enquiry, quotation and booked wedding in one place, with your team, on your phone.
           </p>
 
-          <div role="tablist" aria-label="Vivah OS features" className="mt-8 flex flex-col gap-2.5">
+          <div role="tablist" aria-label="Vivah OS features" className={`${s3.vosTabs} mt-8 flex flex-col gap-2.5`}>
             {FEATURES.map((f) => {
               const on = f.key === active;
               return (
@@ -123,7 +129,7 @@ export default function VivahOsSection() {
                   aria-selected={on}
                   aria-controls="vos-panel"
                   onClick={() => setActive(f.key)}
-                  className={`rounded-[18px] border border-l-4 px-5 py-4 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#E9C98E] ${on ? 'border-[#E9C98E] bg-[#2A1714]' : 'border-[#3A2722] hover:border-[#5A433B]'}`}
+                  className={`${s3.vosTab} rounded-[18px] border border-l-4 px-5 py-4 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#E9C98E] ${on ? 'border-[#E9C98E] bg-[#2A1714]' : 'border-[#3A2722] hover:border-[#5A433B]'}`}
                 >
                   <span className="flex items-center gap-2 text-[17px] font-bold">{on && <Check className="h-4 w-4 text-[#E9C98E]" aria-hidden />}{f.title}</span>
                   <span className="mt-1 block text-sm leading-relaxed text-[#CDBCA8]">{f.text}</span>
@@ -140,15 +146,16 @@ export default function VivahOsSection() {
           </div>
         </div>
 
-        <div className="relative flex justify-center">
+        <div data-vos-stage className={`${s3.vosStage} relative flex justify-center`}>
           <div aria-hidden className="absolute top-14 h-[420px] w-[420px] max-w-full rounded-full bg-[radial-gradient(circle,rgba(233,201,142,0.25),rgba(233,201,142,0)_70%)]" />
+          <div className={`${s3.vosPhone} relative`}>
           <div
             id="vos-panel"
             role="tabpanel"
             aria-labelledby={`vos-tab-${active}`}
-            className="relative w-[300px] rounded-[46px] border border-[#3A2722] bg-[#0A0505] p-3 shadow-[0_40px_90px_rgba(0,0,0,0.6)] sm:w-[340px]"
+            className="relative w-[300px] rounded-[46px] border border-[#3A2722] bg-[#0A0505] p-3 [transform-style:preserve-3d] shadow-[0_40px_90px_rgba(0,0,0,0.6)] sm:w-[340px]"
           >
-            <div className="flex h-[560px] flex-col gap-3 rounded-[36px] bg-[#FBF6EE] px-5 py-6 text-[#221714] sm:h-[600px]">
+            <div key={active} className={`${s3.vosScreen} flex h-[560px] flex-col gap-3 rounded-[36px] bg-[#FBF6EE] px-5 py-6 text-[#221714] sm:h-[600px]`}>
               <div className="flex items-center justify-between">
                 <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-[#8A6A2F]">{current.screen}</span>
                 <span aria-hidden className="h-8 w-8 rounded-full bg-[#7A1238]" />
@@ -158,8 +165,10 @@ export default function VivahOsSection() {
               <p className="mt-auto text-center text-xs text-[#6B5A4E]">Sample screen</p>
             </div>
           </div>
+          </div>
         </div>
       </div>
+      <HowDepth sectionId="vivah-os" vars={VOS_VARS} />
     </section>
   );
 }

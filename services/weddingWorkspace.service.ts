@@ -90,6 +90,7 @@ export interface WeddingWorkspaceFinance {
     quotationId: string | null;
     bookingId: string | null;
     issuedAt: Date | null;
+    sellerGstin: string | null; // the GSTIN printed on the invoice (null when it has no tax line)
     items: { id: string; description: string; vendorName: string | null; amount: number; quantity: number }[];
     payments: {
       id: string;
@@ -128,6 +129,7 @@ export interface WeddingWorkspaceFinance {
     advance: number;
     balance: number;
     terms: string | null;
+    sellerGstin: string | null;
     lines: { description: string; category: string | null; quantity: number; unitPrice: number }[];
     hasBalanceInvoice: boolean;
     // Money v1: the frozen confirmation rule and what has been received against it (null for a wedding whose agreement predates the
@@ -157,6 +159,7 @@ export interface WeddingWorkspace {
   guests: {
     id: string; name: string; phone: string | null; email: string | null; category: string | null;
     accompanyingGuests: number; rsvpStatus: string; rsvpToken: string;
+    notes: string | null; side: string | null; familyGroup: string | null; relation: string | null; isVip: boolean; pairedGuestId: string | null;
     functionResponses: { status: string; weddingEvent: { id: string; type: string; label: string | null } }[];
   }[];
   // No backing entity yet — LeadInsight is hard-typed to lead/enquiry/
@@ -421,6 +424,7 @@ export const weddingWorkspaceService = {
         quotationId: inv.quotationId,
         bookingId: inv.bookingId,
         issuedAt: inv.issuedAt,
+        sellerGstin: inv.sellerGstin ?? null,
         items: inv.items.map((i) => ({
           id: i.id,
           description: i.description,
@@ -488,6 +492,7 @@ export const weddingWorkspaceService = {
           // the agreement's frozen confirmation amount is the advance; a wedding from before the rule keeps the quotation's own advance
           ...(({ advance, balance }) => ({ advance, balance }))(agreementFigures({ total: found.quotation.total, advanceAmount: frozen?.confirmationAmount ?? found.quotation.advanceAmount })),
           terms: found.quotation.terms,
+          sellerGstin: found.quotation.sellerGstin ?? null,
           lines: found.quotation.items.map((i) => ({ description: i.description, category: i.category, quantity: i.quantity, unitPrice: i.unitPrice })),
           hasBalanceInvoice: financeInvoices.some((i) => i.kind === 'BALANCE'),
           money,

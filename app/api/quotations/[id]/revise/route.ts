@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
@@ -9,6 +10,8 @@ import { platformScoped } from '@/lib/ownership/entry';
 // POST /api/quotations/[id]/revise — copy a sent / rejected / expired quotation into a new DRAFT
 // (revision + 1). The original is kept as history; 409 if it cannot be revised (e.g. already accepted).
 async function handlePOST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {

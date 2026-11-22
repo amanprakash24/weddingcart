@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import VendorDetailClient from '@/components/VendorDetailClient';
 import { reviewService } from '@/services/review.service';
@@ -178,6 +178,8 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
   const vendor = await getVendorMeta(id);
 
   if (!vendor) notFound();
+  // Venues have one master page at /venues/<slug> (19 Nov 2026); old /vendors/<venue> links forward there permanently.
+  if (vendor.category === 'venue') permanentRedirect(`/venues/${vendor.id}`);
   // Roadmap 1.4: published couple reviews only. A failure here never breaks the vendor page.
   const verified = await reviewService.publicForVendor(vendor.dbId).catch(() => null);
 

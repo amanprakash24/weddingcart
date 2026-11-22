@@ -15,7 +15,7 @@ mock.module('next/cache', () => ({ revalidatePath }));
 mock.module('@/lib/adminAuth', () => ({ requireAdmin }));
 mock.module('@/services/vendor.service', () => ({ vendorService: { getById, update, delete: del } }));
 
-const { PUT, DELETE } = await import('./route');
+const { GET, PUT, DELETE } = await import('./route');
 
 const ctx = { params: Promise.resolve({ id: 'vendor-uuid-1' }) };
 const putRequest = (body: unknown) =>
@@ -97,5 +97,28 @@ describe('DELETE /api/vendors/[id] — revalidates the public vendor page', () =
     expect(res.status).toBe(401);
     expect(del).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+// 19 Nov 2026 test round: the public venue API sent the owner's own phone and email to anyone.
+describe('GET /api/vendors/[id] — owner contact is admin-only', () => {
+  const published = { ...vendor, status: 'PUBLISHED', name: 'The Grand Venue', ownerName: 'Owner', ownerPhone: '+919800000000', ownerEmail: 'owner@example.com' };
+  const getRequest = () => new NextRequest('http://localhost/api/vendors/vendor-uuid-1');
+
+  test('a visitor gets the venue without the owner name, phone or email', async () => {
+    requireAdmin.mockImplementation(async () => false);
+    getById.mockImplementation(async () => published as never);
+    const body = await (await GET(getRequest(), ctx)).json();
+    expect(body.data.name).toBe('The Grand Venue');
+    expect(body.data).not.toHaveProperty('ownerPhone');
+    expect(body.data).not.toHaveProperty('ownerEmail');
+    expect(body.data).not.toHaveProperty('ownerName');
+  });
+
+  test('an admin still gets them, for the admin edit form', async () => {
+    getById.mockImplementation(async () => published as never);
+    const body = await (await GET(getRequest(), ctx)).json();
+    expect(body.data.ownerPhone).toBe('+919800000000');
+    expect(body.data.ownerEmail).toBe('owner@example.com');
   });
 });

@@ -81,6 +81,7 @@ export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
 export const SELF_LINKS: Partial<Record<OwnedModel | ChildModel, ParentLink[]>> = {
   Quotation: [link('supersedes', 'Quotation')],
   TimelineMilestone: [link('dependsOn', 'TimelineMilestone')],
+  Guest: [link('pairedGuest', 'Guest')], // "comes with": the partner must be on the same wedding (services/guest.service.ts setPartner)
 };
 
 // Every relation field (either direction) from an owned / child record to an OWNED record — kept equal to the schema by

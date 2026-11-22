@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyGuard } from '@/lib/auth/moneyGuard';
 import { z } from 'zod';
-import { requireRole } from '@/lib/auth/session';
-import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { paymentService } from '@/services/payment.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
@@ -13,12 +12,10 @@ const bodySchema = z.object({
 });
 
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; invoiceId: string }> }) {
-  const session = await requireRole(ADMIN_ROLES);
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { id, invoiceId } = await params;
+  const guard = await moneyGuard({ wedding: id }, 'full');
+  if (guard instanceof NextResponse) return guard;
+  const { session } = guard;
   try {
     bodySchema.parse(await req.json().catch(() => ({})));
     const link = await paymentService.createPaymentLinkForInvoice(id, invoiceId, session.user.id ?? null);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { canAssignWork } from '@/lib/auth/moneyAccess';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
@@ -13,6 +14,10 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   const session = await requireRole(ADMIN_ROLES);
   if (!session) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  // The coordinator sees and works the wedding's money, so only the founder chooses them (lib/auth/moneyAccess.ts).
+  if (!canAssignWork({ userId: session.user.id, roles: session.user.roles })) {
+    return NextResponse.json({ success: false, error: 'Only the founder can choose the coordinator' }, { status: 403 });
   }
 
   const { id } = await params;

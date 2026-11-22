@@ -122,8 +122,8 @@ interface Stats {
   newReferrals: number;
   converted: number;
   completed: number;
-  payoutsDue: number;
-  totalPaid: number;
+  payoutsDue: number | null; // null = withheld (founder only)
+  totalPaid: number | null;
 }
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -152,7 +152,13 @@ function ReferralRow({ r, reps, onSaved }: { r: Referral; reps: { id: string; na
     setBusy(true);
     setError(null);
     try {
-      await send(`/api/admin/growth-partner-referrals/${r.id}`, 'PATCH', { status, assignedToId: assignedToId || null, payoutStatus, payoutAmount: payoutAmount === '' ? null : payoutAmount, staffNotes });
+      // Payout fields are sent only when changed: setting a payout is founder-only (the API refuses anyone else), and a team member
+      // saving a status or a note must not be refused because unchanged payout fields came along.
+      const payoutChanged = payoutStatus !== r.payoutStatus || payoutAmount !== (r.payoutAmount != null ? String(r.payoutAmount) : '');
+      await send(`/api/admin/growth-partner-referrals/${r.id}`, 'PATCH', {
+        status, assignedToId: assignedToId || null, staffNotes,
+        ...(payoutChanged ? { payoutStatus, payoutAmount: payoutAmount === '' ? null : payoutAmount } : {}),
+      });
       onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -257,8 +263,8 @@ export default function GrowthPartnersAdminClient() {
         ['New referrals', stats.newReferrals],
         ['Converted', stats.converted],
         ['Completed', stats.completed],
-        ['Payouts due', rupees(stats.payoutsDue)],
-        ['Total paid', rupees(stats.totalPaid)],
+        ['Payouts due', stats.payoutsDue == null ? 'Founder only' : rupees(stats.payoutsDue)],
+        ['Total paid', stats.totalPaid == null ? 'Founder only' : rupees(stats.totalPaid)],
       ]
     : [];
 

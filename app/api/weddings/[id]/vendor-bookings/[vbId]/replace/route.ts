@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyGuard } from '@/lib/auth/moneyGuard';
 import { z } from 'zod';
-import { requireRole } from '@/lib/auth/session';
-import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
@@ -14,12 +13,10 @@ const bodySchema = z.object({
 });
 
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string; vbId: string }> }) {
-  const session = await requireRole(ADMIN_ROLES);
-  if (!session) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { id, vbId } = await params;
+  const guard = await moneyGuard({ wedding: id }, 'full');
+  if (guard instanceof NextResponse) return guard;
+  const { session } = guard;
   try {
     const body = bodySchema.parse(await req.json());
     const booking = await weddingWorkspaceService.replaceVendorBooking(id, vbId, body, session.user.id ?? null);

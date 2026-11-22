@@ -1,23 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { requireRole } from '@/lib/auth/session';
 import { Role } from '@/lib/auth/roles';
-import { GuestRsvpStatus } from '@/generated/prisma/enums';
 import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
+import { guestInputSchema } from '@/lib/guest/guestInput';
 
-const schema = z.object({
-  name: z.string().trim().min(1),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal('')),
-  category: z.string().optional(),
-  accompanyingGuests: z.coerce.number().int().min(0).max(20).default(0),
-  rsvpStatus: z.nativeEnum(GuestRsvpStatus).default(GuestRsvpStatus.PENDING),
-  notes: z.string().optional(),
-  functionResponses: z.array(z.object({ weddingEventId: z.string().min(1), status: z.nativeEnum(GuestRsvpStatus) })).default([]),
-});
+// The shared guest rules (lib/guest/guestInput.ts): optional details may be null.
+const schema = guestInputSchema;
 
 async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string; guestId: string }> }) {
   const session = await requireRole([Role.CUSTOMER]);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
@@ -12,6 +13,8 @@ const NO_STORE = { 'Cache-Control': 'no-store' };
 // POST /api/quotations/[id]/customer-link — create a NEW proposal link for a sent, still-valid quotation. Any previous
 // link stops working. The URL is returned ONLY in this response; it is never stored and cannot be fetched again.
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return unauthorized();
   try {
@@ -25,6 +28,8 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
 
 // DELETE /api/quotations/[id]/customer-link — stop the current link working.
 async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await moneyDenied({ quotation: (await params).id }, 'full');
+  if (denied) return denied;
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return unauthorized();
   try {

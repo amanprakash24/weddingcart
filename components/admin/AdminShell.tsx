@@ -63,6 +63,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   const ctx: ActiveContext = { pathname, tab, section };
   const moreItems = role === 'super_admin' ? [...MORE, OUR_TEAM, COUPLE_SIGN_IN, SETUP] : MORE;
+  // Invoices lists every invoice in the company with its amounts — company financials, founder only (lib/auth/financialAccess.ts;
+  // the API refuses everyone else too).
+  const primaryItems = role === 'super_admin' ? PRIMARY : PRIMARY.filter((item) => item.key !== 'invoices');
   const inMore = [...moreItems, ...OLD_SCREENS].some((item) => item.isActive(ctx));
 
   const logout = useCallback(async () => {
@@ -139,7 +142,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         </div>
         {role && <div className="border-b border-white/10 p-2">{profileLink(pathname.startsWith('/admin/profile') ? 'bg-[var(--primary)]/30' : 'hover:bg-white/[0.06]')}</div>}
         <nav aria-label="Admin" className="flex-1 space-y-1 px-2 py-3">
-          {PRIMARY.map((item) => link(item))}
+          {primaryItems.map((item) => link(item))}
 
           <div className="pt-3">
             <button
@@ -228,7 +231,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             </div>
             {role && <div className="mb-2 border-b border-white/10 pb-2">{profileLink('hover:bg-white/[0.06]')}</div>}
             <div className="space-y-0.5">
-              {PRIMARY.filter((item) => item.key === 'invoices').map((item) => link(item))}
+              {primaryItems.filter((item) => item.key === 'invoices').map((item) => link(item))}
               {moreLinks(false)}
               <button
                 type="button"

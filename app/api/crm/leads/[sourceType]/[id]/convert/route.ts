@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
+import { canAssignWork } from '@/lib/auth/moneyAccess';
+import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { convertLeadToWedding } from '@/services/weddingConversion.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
@@ -28,8 +30,16 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ sour
     return NextResponse.json({ success: false, error: 'Invalid sourceType' }, { status: 400 });
   }
 
+  // Booking it creates the wedding's invoices: the person the lead is assigned to (or the founder) does that.
+  const denied = await moneyDenied({ source: { sourceType, id } }, 'full');
+  if (denied) return denied;
+
   try {
     const body = bodySchema.parse(await req.json());
+    // Choosing the coordinator decides who sees the wedding's money — founder only (lib/auth/moneyAccess.ts).
+    if (body.coordinatorId && !canAssignWork({ userId: session.user.id, roles: session.user.roles })) {
+      return NextResponse.json({ success: false, error: 'Only the founder can choose the coordinator' }, { status: 403 });
+    }
     const wedding = await convertLeadToWedding(
       sourceType,
       id,
