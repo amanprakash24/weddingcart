@@ -41,7 +41,7 @@ export default function YourWork() {
       if (res.ok && b.success) setData(b.data);
       else setError(b.error ?? 'Something went wrong. It was not saved — please try again.');
     } catch {
-      setError('Could not reach Vivah OS. It was not saved — please check your connection.');
+      setError('Could not connect. It was not saved — please check your connection.');
     }
     setBusy(null);
   }
@@ -59,7 +59,7 @@ export default function YourWork() {
         setNote('');
       } else setError(b.error ?? 'Something went wrong. The note was not saved — please try again.');
     } catch {
-      setError('Could not reach Vivah OS. The note was not saved — please check your connection.');
+      setError('Could not connect. The note was not saved — please check your connection.');
     }
     setBusy(null);
   }

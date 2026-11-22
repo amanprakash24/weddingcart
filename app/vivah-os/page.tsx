@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, Briefcase, CalendarClock, FileText, Inbox, ListChecks, Receipt, Smartphone, Users } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import ConnectedWedding from '@/components/vivah-os/ConnectedWedding';
+import FeaturesBento from '@/components/vivah-os/FeaturesBento';
+import ProductsBento from '@/components/vivah-os/ProductsBento';
+import { osFontClasses } from '@/app/fonts/osFonts';
 
 // The public page that introduces Vivah OS (14 Oct 2026) — honestly. Vivah OS is in early access: a small number of partner
 // businesses in Patna use it, and couples meet parts of it through Shaadi Shopping. So every list on this page says which of
@@ -22,6 +25,15 @@ export const metadata: Metadata = {
 };
 
 const serif = { fontFamily: 'var(--font-playfair), serif' };
+// The apps' own type (Poppins), for the navy bands that show the apps (12 Nov 2026).
+const appHeading = { fontFamily: 'var(--font-os-poppins), system-ui, sans-serif' };
+const band = `relative isolate overflow-hidden bg-[#0F172A] text-white ${osFontClasses}`;
+const bandGlow = (
+  <>
+    <div aria-hidden className="pointer-events-none absolute -left-32 -top-24 -z-10 h-96 w-96 rounded-full bg-[#7B3FF2] opacity-40 blur-3xl" />
+    <div aria-hidden className="pointer-events-none absolute -right-24 bottom-0 -z-10 h-80 w-80 rounded-full bg-[#FF6B8B] opacity-20 blur-3xl" />
+  </>
+);
 const eyebrow = 'text-[11px] font-semibold uppercase tracking-[0.3em] text-[#8A6A2F]';
 const primary = 'inline-flex min-h-[52px] whitespace-nowrap items-center justify-center gap-2 rounded-full bg-[#8B1A4A] px-8 text-[15px] font-semibold tracking-wide text-white shadow-[0_12px_32px_rgba(139,26,74,0.28)] transition-opacity hover:opacity-90 outline-none focus-visible:ring-2 focus-visible:ring-[#8B1A4A] focus-visible:ring-offset-2';
 const secondary = 'inline-flex min-h-[52px] whitespace-nowrap items-center justify-center rounded-full border border-[#8B1A4A]/35 px-7 text-sm font-semibold text-[#8B1A4A] transition-colors hover:bg-[#8B1A4A] hover:text-white outline-none focus-visible:ring-2 focus-visible:ring-[#8B1A4A] focus-visible:ring-offset-2';
@@ -43,16 +55,6 @@ const COUPLES: { status: Status; title: string; text: string }[] = [
   { status: 'planned', title: 'One workspace for your whole wedding', text: 'Functions, guests, vendors and payments together, shared with your venue and vendors under one Wedding ID.' },
 ];
 
-const BUSINESS = [
-  { icon: Inbox, title: 'Every enquiry in one place', text: 'The enquiries you bring and the requests Shaadi Shopping sends you, with follow-ups you can give to someone in your team.' },
-  { icon: FileText, title: 'Quotations under your own name', text: 'Build a quotation from your own price list, with your logo, and share it as a link the couple opens on their phone.' },
-  { icon: Receipt, title: 'Payments you can follow', text: 'Your UPI details on the proposal, what has been received and what is still due — seen only by the people you allow.' },
-  { icon: Briefcase, title: 'Weddings, function by function', text: 'Each booked wedding with its functions, the services you are giving, and a to-do list you can hand out.' },
-  { icon: Users, title: 'Your team, each with their own sign-in', text: 'Owner, manager, employee — everyone signs in with their own mobile number and code and sees their own work.' },
-  { icon: CalendarClock, title: 'Availability, answered quickly', text: 'Keep your dates up to date and answer availability requests without a phone call.' },
-  { icon: ListChecks, title: 'What you offer, kept tidy', text: 'Your services and prices in one list, ready to drop into a quotation.' },
-  { icon: Smartphone, title: 'Made for the phone in your hand', text: 'Every screen works on a phone — the one you carry on the wedding day.' },
-];
 
 const STEPS = [
   { n: '01', title: 'Request early access', text: 'Tell us about your venue or wedding service on the registration form.' },
@@ -92,6 +94,19 @@ export default function VivahOsPage() {
         </div>
       </section>
 
+      {/* The four products — the interactive bento (12 Nov 2026) */}
+      <section aria-labelledby="vivah-os-products" className={`${band} px-4 py-16 sm:px-6 sm:py-24`} style={{ fontFamily: 'var(--font-os-inter), system-ui, sans-serif' }}>
+        {bandGlow}
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#C4B5FD]">Four products, one wedding</p>
+            <h2 id="vivah-os-products" className="mt-4 text-3xl font-semibold leading-tight sm:text-[40px]" style={appHeading}>Each person, their own app</h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-[#CBD5E1]">The venue, every vendor and the couple each sign in to their own part of the same wedding — and no one sees another business&apos;s prices or customers.</p>
+          </div>
+          <div className="mt-12"><ProductsBento /></div>
+        </div>
+      </section>
+
       {/* For couples */}
       <section id="couples" aria-labelledby="vivah-os-couples" className="scroll-mt-28 px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-5xl">
@@ -128,15 +143,11 @@ export default function VivahOsPage() {
             </p>
             <p className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-[#6B5B4D]"><Pill status="today" /> for businesses in early access:</p>
           </div>
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {BUSINESS.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="rounded-[22px] border border-[#EFE6D8] bg-white p-6 shadow-[0_10px_30px_rgba(42,6,20,0.05)]">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#8B1A4A]/8"><Icon className="h-5 w-5 text-[#8B1A4A]" aria-hidden /></span>
-                <h3 className="mt-4 text-lg leading-snug" style={serif}>{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[#6B5B4D]">{text}</p>
-              </li>
-            ))}
-          </ul>
+          {/* What it does, shown live — the animated features bento (12 Nov 2026) */}
+          <div className={`${band} mt-10 rounded-[32px] px-4 py-8 sm:px-8 sm:py-10`} style={{ fontFamily: 'var(--font-os-inter), system-ui, sans-serif' }}>
+            {bandGlow}
+            <FeaturesBento />
+          </div>
           <p className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-2 text-center text-sm leading-relaxed text-[#6B5B4D]">
             <Pill status="planned" /> one shared view of each wedding for the couple, the venue and every vendor, under one Wedding ID.
           </p>

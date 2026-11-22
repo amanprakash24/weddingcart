@@ -68,7 +68,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
     fetch(api)
       .then((r) => r.json())
       .then((b) => live && (b.success ? setState(b.data) : setError(b.error ?? 'The quotation could not be loaded.')))
-      .catch(() => live && setError('Could not reach Vivah OS — please check your connection.'));
+      .catch(() => live && setError('Could not connect — please check your connection.'));
     return () => {
       live = false;
     };
@@ -97,7 +97,7 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
       const onlyGstNumber = b.fieldErrors && Object.keys(b.fieldErrors).length === 1 && 'gst' in b.fieldErrors;
       setError(onlyGstNumber ? null : b.fieldErrors ? 'Please check the highlighted boxes.' : (b.error ?? 'Something went wrong. It was not saved — please try again.'));
     } catch {
-      setError('Could not reach Vivah OS. It was not saved — please check your connection.');
+      setError('Could not connect. It was not saved — please check your connection.');
     }
     setBusy(false);
     return null;

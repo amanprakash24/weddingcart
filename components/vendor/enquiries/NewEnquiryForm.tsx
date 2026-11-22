@@ -44,7 +44,7 @@ export default function NewEnquiryForm() {
       setErrors(body.fieldErrors ?? {});
       setError(body.fieldErrors ? null : (body.error ?? 'Something went wrong. Your enquiry was not saved — please try again.'));
     } catch {
-      setError('Could not reach Vivah OS. Your enquiry was not saved — please check your connection and try again.');
+      setError('Could not connect. Your enquiry was not saved — please check your connection and try again.');
     }
     setBusy(false);
   }
