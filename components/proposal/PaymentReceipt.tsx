@@ -19,8 +19,70 @@ export interface ReceiptIssuer {
   gstin: string | null;
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+export function Label({ children }: { children: React.ReactNode }) {
   return <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-[#9A7B4F]">{children}</p>;
+}
+
+// The A4 page every printed customer document uses (receipt, invoice, quotation): only it prints while it is rendered.
+export function PrintPage({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <section aria-label={label} className="receipt-print hidden text-[#2A1F1B] print:block">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 0; }
+          html, body { background: #fff !important; }
+          .receipt-print { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
+      <div className="mx-auto flex min-h-[285mm] w-[210mm] flex-col px-[16mm] pb-[12mm] pt-[14mm]">{children}</div>
+    </section>
+  );
+}
+
+// Gold rule + the issuer's letterhead + the document's title, number and date.
+export function Letterhead({ issuer, title, facts }: { issuer: ReceiptIssuer; title: string; facts: [string, string][] }) {
+  return (
+    <>
+      <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-[#8B1A4A] via-[#C5A46D] to-[#8B1A4A]" />
+      <header className="mt-6 flex items-start justify-between gap-8">
+        <div className="min-w-0">
+          {issuer.isPlatform ? (
+            // eslint-disable-next-line @next/next/no-img-element -- static logo in /public, printed as-is
+            <img src="/logo-horizontal.png" alt="Shaadi Shopping" className="h-16 w-auto" />
+          ) : (
+            <div className="flex items-center gap-3">
+              {issuer.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element -- the business's own logo, an address stored by our own upload route
+                <img src={issuer.logoUrl} alt="" className="h-14 w-14 rounded-lg object-contain" />
+              )}
+              <p className="text-2xl leading-tight text-[#2A1F1B]" style={serif}>
+                {issuer.name}
+              </p>
+            </div>
+          )}
+          <p className="mt-3 text-[11px] leading-relaxed text-[#6B5B4D]">
+            {issuer.phone && <>Phone {issuer.phone}</>}
+            {issuer.phone && issuer.gstin && <> · </>}
+            {issuer.gstin && <>GSTIN {issuer.gstin}</>}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[22px] tracking-[0.12em] text-[#8B1A4A]" style={serif}>
+            {title}
+          </p>
+          <dl className="mt-3 grid grid-cols-[auto_auto] justify-end gap-x-4 gap-y-1 text-[11px]">
+            {facts.map(([k, v]) => (
+              <div key={k} className="contents">
+                <dt className="text-[#9A8676]">{k}</dt>
+                <dd className="font-semibold tabular-nums">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </header>
+      <div className="mt-6 h-px w-full bg-[#E8DCC8]" />
+    </>
+  );
 }
 
 export default function PaymentReceipt({
@@ -44,55 +106,8 @@ export default function PaymentReceipt({
   const paidTillDate = history.reduce((sum, r) => sum + r.amount, 0);
   const balance = Math.max(0, total - paidTillDate);
   return (
-    <section aria-label="Payment receipt" className="receipt-print hidden text-[#2A1F1B] print:block">
-      <style>{`
-        @media print {
-          @page { size: A4; margin: 0; }
-          html, body { background: #fff !important; }
-          .receipt-print { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
-      `}</style>
-      <div className="mx-auto flex min-h-[285mm] w-[210mm] flex-col px-[16mm] pb-[12mm] pt-[14mm]">
-        {/* Gold rule */}
-        <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-[#8B1A4A] via-[#C5A46D] to-[#8B1A4A]" />
-
-        {/* Letterhead */}
-        <header className="mt-6 flex items-start justify-between gap-8">
-          <div className="min-w-0">
-            {issuer.isPlatform ? (
-              // eslint-disable-next-line @next/next/no-img-element -- static logo in /public, printed as-is
-              <img src="/logo-horizontal.png" alt="Shaadi Shopping" className="h-16 w-auto" />
-            ) : (
-              <div className="flex items-center gap-3">
-                {issuer.logoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- the business's own logo, an address stored by our own upload route
-                  <img src={issuer.logoUrl} alt="" className="h-14 w-14 rounded-lg object-contain" />
-                )}
-                <p className="text-2xl leading-tight text-[#2A1F1B]" style={serif}>
-                  {issuer.name}
-                </p>
-              </div>
-            )}
-            <p className="mt-3 text-[11px] leading-relaxed text-[#6B5B4D]">
-              {issuer.phone && <>Phone {issuer.phone}</>}
-              {issuer.phone && issuer.gstin && <> · </>}
-              {issuer.gstin && <>GSTIN {issuer.gstin}</>}
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-[22px] tracking-[0.12em] text-[#8B1A4A]" style={serif}>
-              PAYMENT RECEIPT
-            </p>
-            <dl className="mt-3 grid grid-cols-[auto_auto] justify-end gap-x-4 gap-y-1 text-[11px]">
-              <dt className="text-[#9A8676]">Receipt no.</dt>
-              <dd className="font-semibold tabular-nums">{receipt.number}</dd>
-              <dt className="text-[#9A8676]">Date</dt>
-              <dd className="font-semibold">{formatDate(receipt.paidAt)}</dd>
-            </dl>
-          </div>
-        </header>
-
-        <div className="mt-6 h-px w-full bg-[#E8DCC8]" />
+    <PrintPage label="Payment receipt">
+        <Letterhead issuer={issuer} title="PAYMENT RECEIPT" facts={[['Receipt no.', receipt.number], ['Date', formatDate(receipt.paidAt)]]} />
 
         {/* Who paid, for what */}
         <div className="mt-6 grid grid-cols-2 gap-8">
@@ -223,7 +238,6 @@ export default function PaymentReceipt({
             {issuer.phone && <> For any questions, call {issuer.phone}.</>}
           </p>
         </div>
-      </div>
-    </section>
+    </PrintPage>
   );
 }
