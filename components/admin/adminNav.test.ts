@@ -60,6 +60,14 @@ describe('founder-only screens', () => {
     const shell = readFileSync(join(root, 'components', 'admin', 'AdminShell.tsx'), 'utf8');
     expect(shell).toContain("role === 'super_admin' ? [...MORE, OUR_TEAM, COUPLE_SIGN_IN, SETUP] : MORE");
   });
+
+  test('Invoices (every invoice in the company, with amounts) is shown to the founder only — desktop and phone', () => {
+    const shell = readFileSync(join(root, 'components', 'admin', 'AdminShell.tsx'), 'utf8');
+    expect(shell).toContain("role === 'super_admin' ? PRIMARY : PRIMARY.filter((item) => item.key !== 'invoices')");
+    // Neither the sidebar nor the phone sheet renders PRIMARY directly any more.
+    expect(shell).not.toMatch(/\{PRIMARY\.(map|filter)\(/);
+    expect(PHONE_BAR.map((item) => item.key)).not.toContain('invoices');
+  });
 });
 
 describe('no dead links', () => {

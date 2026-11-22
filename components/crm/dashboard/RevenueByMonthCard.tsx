@@ -20,7 +20,7 @@ function formatMonthLabel(month: string): string {
   return `${MONTH_NAMES[Number(monthNum) - 1]} ${year}`;
 }
 
-export default function RevenueByMonthCard({ revenueByMonth }: { revenueByMonth: FounderDashboard['revenueByMonth'] }) {
+export default function RevenueByMonthCard({ revenueByMonth }: { revenueByMonth: NonNullable<FounderDashboard['revenueByMonth']> }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 className="text-sm font-semibold text-gray-900 mb-2">Revenue by Month</h2>

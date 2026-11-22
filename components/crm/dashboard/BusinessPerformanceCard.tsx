@@ -17,7 +17,7 @@ function Row({ label, value }: { label: string; value: string }) {
 // DRAFT invoices are excluded (not committed revenue yet), so these can
 // legitimately read ₹0 while a real invoice sits unsent, per the Sprint 5.4
 // plan's Revenue/Commission split.
-export default function BusinessPerformanceCard({ revenue }: { revenue: FounderDashboard['revenue'] }) {
+export default function BusinessPerformanceCard({ revenue }: { revenue: NonNullable<FounderDashboard['revenue']> }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5">
       <h2 className="text-sm font-semibold text-gray-900 mb-2">Business Performance</h2>
