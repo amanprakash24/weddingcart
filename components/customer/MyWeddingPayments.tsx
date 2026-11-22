@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle2, CreditCard, Download } from 'lucide-react';
 import type { ClientPortalEvent } from '@/services/clientPortal.service';
 import type { CustomerReceipt } from '@/lib/payments/customerPayment';
@@ -85,13 +86,16 @@ export default function MyWeddingPayments({ event, expert, onReceipt }: { event:
               ) : (
                 <span aria-disabled className="flex min-h-11 items-center justify-center rounded-xl bg-[var(--primary)]/40 text-sm font-bold text-white">Pay by UPI</span>
               )}
-              <p className="text-xs text-[var(--color-text-muted)]">To {m.payTo.payee} · {m.payTo.upiId}. After paying, tell us on WhatsApp so we can confirm it. It shows here as paid once we have checked it.</p>
+              <p className="text-xs text-[var(--color-text-muted)]">To {m.payTo.payee} · {m.payTo.upiId}. After paying, send us the payment details below. It shows here as paid once we have checked it with the bank.</p>
             </div>
           ) : (
             <p className="mt-2 text-xs text-[var(--color-text-muted)]">Ask {expert} how to pay.</p>
           )}
         </div>
       )}
+
+      {/* "I have paid" (22 Nov 2026): sent from here, signed in — never through the open link once the wedding exists */}
+      {(m.canClaim || m.claims.length > 0) && <ClaimBox event={event} />}
 
       {/* Payments received */}
       <h3 className="mt-6 text-sm font-bold uppercase tracking-[0.12em] text-[var(--color-primary-text)]">Payments received</h3>
@@ -114,5 +118,91 @@ export default function MyWeddingPayments({ event, expert, onReceipt }: { event:
         </ul>
       )}
     </section>
+  );
+}
+
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+const dayShort = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
+const claimField = 'min-h-11 w-full rounded-xl border border-[var(--color-border-default)] bg-white px-3 text-base';
+
+// "I have paid": the couple sends the UTR (and, if they like, a screenshot) for staff to match with the bank. A claim is never money.
+function ClaimBox({ event }: { event: ClientPortalEvent }) {
+  const router = useRouter();
+  const m = event.money;
+  const [amount, setAmount] = useState(m.plan.next ? String(m.plan.next.amount) : '');
+  const [utr, setUtr] = useState('');
+  const [paidOn, setPaidOn] = useState('');
+  const [proof, setProof] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const value = Number(amount.replace(/[,\s₹]/g, ''));
+  const amountOk = Number.isInteger(value) && value > 0 && value <= m.due;
+  const ok = amountOk && utr.trim().length > 0;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy || !ok) return;
+    setBusy(true);
+    setError(null);
+    const fd = new FormData();
+    fd.append('amount', String(value));
+    fd.append('utr', utr.trim());
+    if (paidOn) fd.append('paidOn', paidOn);
+    if (proof) fd.append('proof', proof);
+    try {
+      const res = await fetch(`/api/customer/weddings/${event.id}/payment-claims`, { method: 'POST', body: fd });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.error || 'Could not send. Please try again.');
+      setSent(true);
+      setUtr('');
+      setPaidOn('');
+      setProof(null);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--color-primary-text)]">I have paid</h3>
+      {sent && <p role="status" className="mt-2 rounded-xl bg-[#DCF3E5] px-3 py-2 text-sm text-[#14532D]">Thank you — we have your payment details. We check them with the bank and your receipt appears here.</p>}
+      {m.canClaim ? (
+        <form onSubmit={submit} className="mt-2 grid gap-3 rounded-2xl border border-white/70 bg-white/60 p-4 sm:grid-cols-2">
+          <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">Amount paid ₹
+            <input aria-label="Amount paid" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className={claimField} />
+          </label>
+          <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">UTR / transaction reference
+            <input aria-label="UTR or transaction reference" value={utr} onChange={(e) => setUtr(e.target.value)} placeholder="12 digits, e.g. 412345678901" autoComplete="off" className={`${claimField} font-mono`} />
+          </label>
+          <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">Date paid <span className="text-xs text-[var(--color-text-muted)]">(today if blank)</span>
+            <input aria-label="Date paid" type="date" max={today()} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} className={claimField} />
+          </label>
+          <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">Screenshot <span className="text-xs text-[var(--color-text-muted)]">(optional — photo or PDF, under 5 MB)</span>
+            <input aria-label="Payment screenshot" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" onChange={(e) => setProof(e.target.files?.[0] ?? null)} className="text-sm" />
+          </label>
+          {amount && !amountOk && <p className="text-sm text-[#78350F] sm:col-span-2">Enter whole rupees, up to {inr(m.due)}.</p>}
+          {error && <p role="alert" className="text-sm text-[#B42318] sm:col-span-2">{error}</p>}
+          <div className="sm:col-span-2">
+            <button type="submit" disabled={busy || !ok} className="min-h-11 rounded-xl bg-[var(--primary)] px-5 text-sm font-bold text-white disabled:opacity-40">{busy ? 'Sending…' : 'Send payment details'}</button>
+          </div>
+        </form>
+      ) : (
+        m.due > 0 && <p className="mt-2 text-sm text-[var(--color-text-secondary)]">We are still checking the payments you sent. Please wait for us, or call us.</p>
+      )}
+      {m.claims.length > 0 && (
+        <ul className="mt-3 space-y-2">
+          {m.claims.map((c) => (
+            <li key={c.id} className={`rounded-xl px-3.5 py-2.5 text-sm ${c.status === 'PENDING' ? 'bg-[#FEF3C7] text-[#78350F]' : 'bg-[#FDE8E7] text-[#B42318]'}`}>
+              <b className="tabular-nums">{inr(c.amount)}</b> · UTR {c.utr} · {c.status === 'PENDING' ? 'being checked' : 'could not be matched'} <span className="opacity-80">· sent {dayShort(c.submittedAt)}</span>
+              {c.rejectReason && <span className="block text-xs">{c.rejectReason}. Please check the UTR and send it again, or call us.</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
