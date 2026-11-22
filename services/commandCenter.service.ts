@@ -75,15 +75,22 @@ export interface CommandCenter {
     upcoming: number;
     items: { id: string; title: string; dueAt: string | null; priority: string; weddingId: string | null }[];
   };
+  // Company-wide money: null unless the caller may see company financials (lib/auth/financialAccess.ts). The
+  // `today.paymentsDue` count above stays for everyone — it is a work count, not an amount.
   finance: {
     outstanding: number;
     duePayments: { id: string; clientName: string; invoiceNumber: string; amount: number; dueAt: string | null }[];
     recentPayments: { id: string; clientName: string; amount: number; method: string; paidAt: string }[];
-  };
+  } | null;
+}
+
+export interface CommandCenterOptions {
+  // false = do not read or return company-wide money (the `finance` block is null). Defaults to true.
+  includeFinancials?: boolean;
 }
 
 export const commandCenterService = {
-  async getDashboard(now = new Date()): Promise<CommandCenter> {
+  async getDashboard(now = new Date(), { includeFinancials = true }: CommandCenterOptions = {}): Promise<CommandCenter> {
     const today = startOfDay(now);
     const tomorrow = addDays(today, 1);
     const nextWeek = addDays(today, 8);
@@ -149,15 +156,17 @@ export const commandCenterService = {
         take: 12,
         select: { id: true, title: true, dueAt: true, priority: true, weddingId: true },
       }),
-      prisma.invoice.findMany({
-        where: { status: { not: 'DRAFT' } },
-        select: {
-          total: true,
-          amountPaid: true,
-          weddingId: true,
-          payments: { where: { status: 'SUCCESS' }, select: { amount: true } },
-        },
-      }),
+      includeFinancials
+        ? prisma.invoice.findMany({
+            where: { status: { not: 'DRAFT' } },
+            select: {
+              total: true,
+              amountPaid: true,
+              weddingId: true,
+              payments: { where: { status: 'SUCCESS' }, select: { amount: true } },
+            },
+          })
+        : Promise.resolve([]),
       prisma.invoice.findMany({
         where: { status: { notIn: ['DRAFT', 'PAID'] } },
         orderBy: { createdAt: 'asc' },
@@ -172,12 +181,14 @@ export const commandCenterService = {
           paymentLinks: { where: { status: 'CREATED' }, orderBy: { expiresAt: 'asc' }, take: 1, select: { expiresAt: true } },
         },
       }),
-      prisma.payment.findMany({
-        where: { status: 'SUCCESS' },
-        orderBy: { paidAt: 'desc' },
-        take: 8,
-        include: { invoice: { select: { clientName: true } } },
-      }),
+      includeFinancials
+        ? prisma.payment.findMany({
+            where: { status: 'SUCCESS' },
+            orderBy: { paidAt: 'desc' },
+            take: 8,
+            include: { invoice: { select: { clientName: true } } },
+          })
+        : Promise.resolve([]),
     ]);
 
     const stages = [
@@ -221,7 +232,7 @@ export const commandCenterService = {
         upcoming,
         items: taskItems.map((task) => ({ ...task, dueAt: task.dueAt ? dateValue(task.dueAt) : null })),
       },
-      finance: {
+      finance: !includeFinancials ? null : {
         outstanding: invoices.reduce((sum, invoice) => sum + Math.max(0, invoice.total - paidAmount(invoice)), 0),
         duePayments: dueInvoices
           .filter((invoice) => invoice.total > paidAmount(invoice))

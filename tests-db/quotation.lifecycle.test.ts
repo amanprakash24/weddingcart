@@ -3,6 +3,9 @@ import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { dbDescribe, inDays, loadApp, type App } from './helpers/app';
 import { createFixtures, type Fixtures } from './helpers/fixtures';
 
+// Always upcoming: 120 days from today (UTC). A fixed date turned "upcoming" checks red the day after it passed (20 Nov 2026).
+const WEDDING_DATE = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
 // Lifecycle rules that depend on real database state — time passing, stage moves, linked rows — proven against the
 // real services and schema. See tests-db/quotation.concurrency.test.ts for the races.
 
@@ -113,7 +116,7 @@ dbDescribe('quotation lifecycle (real database)', () => {
 
   test('a booking uses the QUOTE prices (with the discount), the source date, and a vendor line takes the vendor\'s real name', async () => {
     const [vendor] = await fx.vendors(1);
-    const c = await fx.consultation({ weddingDate: '2026-11-20', guestCount: 500 });
+    const c = await fx.consultation({ weddingDate: WEDDING_DATE, guestCount: 500 });
     const accepted = await fx.acceptedQuote(c.id, {
       items: [fx.line('Catering per plate', 800, 500, vendor.id), fx.line('Custom stage', 40000, 1, undefined, 'Decorators')],
       discount: 10000,
@@ -122,7 +125,7 @@ dbDescribe('quotation lifecycle (real database)', () => {
     const booking = await app.quotationService.createBooking(accepted.id, {}, null);
 
     expect(booking.total).toBe(430000); // 400000 + 40000 − 10000 — the QUOTE total, not the sum of the lines
-    expect(booking.weddingDate?.toISOString().slice(0, 10)).toBe('2026-11-20');
+    expect(booking.weddingDate?.toISOString().slice(0, 10)).toBe(WEDDING_DATE);
     expect(booking.guestCount).toBe(500);
     const catering = booking.items.find((i) => i.packageName === 'Catering per plate');
     expect([catering?.price, catering?.quantity, catering?.vendorName]).toEqual([800, 500, vendor.name]);

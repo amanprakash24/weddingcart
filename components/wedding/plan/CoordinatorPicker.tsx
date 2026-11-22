@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useWorkspaceMoney } from '@/components/wedding/workspace/MoneyContext';
 
 export interface StaffMember {
   id: string;
@@ -21,6 +22,7 @@ export default function CoordinatorPicker({
   const [value, setValue] = useState(current ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { assign } = useWorkspaceMoney();
 
   const save = async () => {
     setBusy(true);
@@ -34,6 +36,16 @@ export default function CoordinatorPicker({
       setBusy(false);
     }
   };
+
+  // The coordinator sees and works the wedding's money, so only the founder chooses them (the API refuses everyone else too).
+  if (!assign) {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs text-gray-500">Only the founder chooses the coordinator.</p>
+        {onDone && <button type="button" onClick={onDone} className="min-h-10 rounded-lg px-3 py-2 text-sm text-gray-500 hover:bg-gray-100">Close</button>}
+      </div>
+    );
+  }
 
   if (staff.length === 0) return <p className="text-xs text-gray-500">Loading the team…</p>;
 

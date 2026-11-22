@@ -53,6 +53,11 @@ describe('dashboardStatValue', () => {
     expect(dashboardStatValue(state, 'vendors')).toEqual({ kind: 'value', value: 87 });
   });
 
+  test('revenue withheld (null — no company-financials access) shows as unavailable, never as ₹0', () => {
+    const state: StatsState = { status: 'success', data: { ...fakeStats, revenue: null } };
+    expect(dashboardStatValue(state, 'revenue')).toEqual({ kind: 'unavailable' });
+  });
+
   test('keeps showing the last known-good value when a later refresh fails, instead of blanking it', () => {
     const state: StatsState = { status: 'error', lastGood: fakeStats };
     expect(dashboardStatValue(state, 'bookings')).toEqual({ kind: 'value', value: 8 });
