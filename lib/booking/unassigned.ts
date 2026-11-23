@@ -46,12 +46,19 @@ export function quotedPriceFromTask(description: string | null | undefined): num
 }
 
 // The activity-log line and the follow-up task for an item that cannot become a VendorBooking yet.
-export function planVendorlessItem(item: ConvertibleItem): { summary: string; taskTitle: string; taskDescription: string } {
+// `share` is the line's share of the agreed amount (lib/booking/allocate.ts) when the quotation took a discount off the whole; the
+// amount to allocate is that share — the full line price is only mentioned. The "= ₹X." in the description is read back as the
+// quoted price (quotedPriceFromTask), so it is always the amount actually available.
+export function planVendorlessItem(item: ConvertibleItem, share: number = agreedPriceFor(item)): { summary: string; taskTitle: string; taskDescription: string } {
+  const full = agreedPriceFor(item);
+  const discounted = share !== full;
   if (isUnassignedItem(item)) {
     return {
-      summary: `No vendor assigned yet for "${item.packageName}" (${item.vendorCategory}) — ${inr(agreedPriceFor(item))} to allocate`,
+      summary: `No vendor assigned yet for "${item.packageName}" (${item.vendorCategory}) — ${inr(share)} to allocate${discounted ? ` (${inr(full)} before the discount)` : ''}`,
       taskTitle: `Assign a vendor for "${item.packageName}"`,
-      taskDescription: `Quoted as a custom line (${item.vendorCategory}): ${item.quantity} × ${inr(item.price)} = ${inr(agreedPriceFor(item))}. Choose the vendor and add the vendor booking.`,
+      taskDescription: discounted
+        ? `Quoted as a custom line (${item.vendorCategory}): ${item.quantity} × ${inr(item.price)} (${inr(full)} before the discount); its share of the agreed total = ${inr(share)}. Choose the vendor and add the vendor booking.`
+        : `Quoted as a custom line (${item.vendorCategory}): ${item.quantity} × ${inr(item.price)} = ${inr(full)}. Choose the vendor and add the vendor booking.`,
     };
   }
   // Legacy case, wording unchanged: a real vendor that has since been removed.

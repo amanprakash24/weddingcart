@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { ConflictError, NotFoundError } from '@/lib/errors';
 import { Role } from '@/lib/auth/roles';
-import { coupleMobile } from '@/lib/customer/weddingLink';
+import { COUPLE_SIGN_IN_TASK, coupleMobile } from '@/lib/customer/weddingLink';
 import { coupleWeddingSummaries } from '@/lib/customer/coupleEntry';
 import { normalizeMobile } from '@/lib/auth/vendorCode';
 import { hashLoginCode, newLoginCode, vendorLoginCodeService } from '@/services/vendorLoginCode.service';
@@ -72,9 +72,11 @@ export function createCoupleLoginService(deps: CoupleLoginDeps = defaultDeps()) 
   const loginFor = (mobile: string) => deps.db.user.findUnique({ where: { phone: mobile }, select: loginSelect }) as Promise<Login | null>;
 
   // Link this wedding to the couple's login, once. Re-pointing a wedding already linked to someone else is refused.
-  async function link(db: Pick<typeof prisma, 'wedding'>, weddingId: string, userId: string, mobile: string) {
+  async function link(db: Pick<typeof prisma, 'wedding' | 'task'>, weddingId: string, userId: string, mobile: string) {
     const { count } = await db.wedding.updateMany({ where: { id: weddingId, OR: [{ customerId: null }, { customerId: userId }] }, data: { customerId: userId, customerPhone: mobile } });
     if (count === 0) throw new ConflictError('This wedding is already linked to another sign-in. Please ask Shaadi Shopping.');
+    // the "give the couple their code" task from the wedding's creation is done now (lib/customer/weddingLink.ts)
+    await db.task?.updateMany?.({ where: { weddingId, title: COUPLE_SIGN_IN_TASK, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { status: 'DONE' } });
   }
 
   return {

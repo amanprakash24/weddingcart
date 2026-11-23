@@ -59,9 +59,11 @@ export default function CustomerLinkBox({ quotation, customerName, eventDate, on
         <span className="text-xs text-gray-500">
           {quotation.customerViewedAt
             ? `Opened by the couple on ${formatQuoteDate(quotation.customerViewedAt)}`
-            : quotation.hasCustomerLink
-              ? 'Link active · not opened yet'
-              : 'No link yet'}
+            : quotation.linkOnEarlierVersion
+              ? 'The couple’s link (made for an earlier version) now shows this one'
+              : quotation.hasCustomerLink
+                ? 'Link active · not opened yet'
+                : 'No link yet'}
         </span>
       </div>
 

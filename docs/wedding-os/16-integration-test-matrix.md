@@ -26,7 +26,8 @@ Enquiry → Consultation → Quotation → Acceptance → Booking → Wedding �
 
 | # | Start | Action | Expected | Actual | Records | Permission | Notification | Evidence | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| 1.1 | Booking confirmed, wedding created | Couple opens their proposal link | A way into My Wedding | No mention of My Wedding on the link | — | public link | none | WED-2026-0002, 22 Nov | 🚧 (PR E) |
+| 1.1 | WED-2026-0002 booked, couple can sign in (local copy) | Couple opens their proposal link | A way into My Wedding | "Your wedding is booked · Everything now continues in My Wedding" + **Open My Wedding** | read only | public link | none | browser l1-booked (desktop and phone) | ✅ |
+| 1.1a | Booked, couple has no sign-in yet | Couple opens the link; staff open the wedding | Couple: "your code is on its way" + Ask for my sign-in code (WhatsApp to the owning business); staff: a HIGH task "Give the couple their My Wedding sign-in code" | As expected; the task closes itself when the code is given (coupleLogin.give) | `tasks` +1 at conversion → DONE | staff | none (WhatsApp by the couple) | db `one.link.test.ts` | ✅ |
 | 1.2 | Wedding exists, couple has no login | Staff give a sign-in code | Couple signs in and sees the wedding | Works, but only from the wedding page's sign-in card, by hand | `users.loginCodeHash` | staff | WhatsApp text copied by hand | live use | 🟡 |
 | 1.3 | Couple signed in with the code they were given | Opens My Wedding | One "choose your own code" prompt | Two prompts (top and bottom) → fixed, one prompt | — | CUSTOMER | — | PR A screenshots | ✅ |
 
@@ -34,7 +35,9 @@ Enquiry → Consultation → Quotation → Acceptance → Booking → Wedding �
 
 | # | Start | Action | Expected | Actual | Records | Permission | Notification | Evidence | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| 2.1 | Quotation revised | Couple opens the old link | Same link shows the new version | Old link dies; staff must send a new link | `quotations.customerTokenHash` | public link | none | code: `quotation.service.ts` revise | 🚧 (PR E) |
+| 2.1 | Couple has a link; staff revise the quotation | Couple opens the same link (new version still a draft → sent) | Draft: "your proposal is being updated"; sent: the SAME link shows the new version; accepting accepts the new one | As expected; old superseded link QTN-0001 on the local copy now opens QTN-0002 (v2) | `customerTokenHash` stays on the original | public link | none | db `one.link.test.ts`; browser l1-old | ✅ |
+| 2.1a | Venue sends a revision while the couple's link is live | Venue presses Send | No second link; venue told the couple's link already shows it | `linkPath` absent; "…already shows this new version" | none | venue member | none | db `venue.quotations.test.ts` | ✅ |
+| 2.1b | Any | Staff "Create a new link" / "Turn off link" | The new link retires every older one for this couple; off = no link anywhere for this couple | As expected | `customerTokenHash` cleared across the subject | staff | none | db | ✅ |
 | 2.2 | Accepted quotation | Couple opens My Wedding → Documents | Quotation viewable and downloadable | Quotation QTN-202611-0005 prints on one A4 page, all 9 lines, discount and terms | read only | CUSTOMER (own wedding) | — | PR A: p1-print2.pdf | ✅ |
 
 ## 3. Payments and financial records

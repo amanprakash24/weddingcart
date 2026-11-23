@@ -7,6 +7,7 @@ import { runInScope } from '@/lib/ownership/scope';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { upiLink, upiPayeeFrom, upiPayeeOf } from '@/lib/payments/upi';
 import { groupReceipts, type CustomerReceipt } from '@/lib/payments/customerPayment';
+import { coupleMoneyService } from '@/services/coupleMoney.service';
 import { paymentPlan, type PaymentPlan } from '@/lib/customer/paymentPlan';
 import { indiaToday } from '@/lib/money/schedule';
 import { SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
@@ -86,6 +87,11 @@ export interface ClientPortalEvent {
     payTo: { upiId: string; payee: string; link: string | null } | null;
     plan: PaymentPlan;
     receipts: CustomerReceipt[]; // each payment received, oldest first (payments made together share one receipt)
+    // "I have paid" from My Wedding (22 Nov 2026): the claims waiting to be checked or that could not be matched, and whether another
+    // can be sent. A claim is never counted as money until staff verify it.
+    claims: { id: string; amount: number; utr: string; submittedAt: string; status: 'PENDING' | 'REJECTED'; rejectReason: string | null }[];
+    canClaim: boolean;
+    inReview: number;
   };
   // The accepted quotation the wedding was booked on (read-only, for Documents). Null when the wedding did not come from one.
   quotation: {
@@ -129,6 +135,10 @@ export const clientPortalService = {
           })
         ).map((i) => ({ label: i.label, amount: i.amount, dueDate: i.dueDate.toISOString().slice(0, 10) }))
       : [];
+    const claims = await coupleMoneyService.claims(weddingId).catch((err) => {
+      console.error(`My Wedding payment claims for ${weddingId} could not be loaded —`, err instanceof Error ? err.message : err);
+      return { claims: [], canClaim: false, inReview: 0 };
+    });
     return [workspace].map((workspace) => {
       const { wedding, couple, events, tasks, timeline, finance, documents, activity, guests } = workspace;
       const services = events.flatMap((event) =>
@@ -268,6 +278,7 @@ export const clientPortalService = {
             payTo: payee && plan.due > 0 ? { upiId: payee.vpa, payee: payee.payee, link: next ? upiLink(payee, next, `${wedding.weddingNumber} payment`) : null } : null,
             plan,
             receipts,
+            ...claims,
           };
         })(),
         quotation: finance.agreement

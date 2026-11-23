@@ -45,6 +45,10 @@ async function ProposalPage({ params }: { params: Promise<{ token: string }> }) 
     return <Notice title="Please try again shortly">Too many requests from this connection. Please wait a few minutes and open the link again.</Notice>;
   }
   if (result.kind === 'invalid') {
+    // One link per couple (22 Nov 2026): the link still works while a new version of the proposal is being prepared.
+    if (await proposalService.beingUpdated(token)) {
+      return <Notice title="Your proposal is being updated">We are preparing an updated version for you. Open this same link again soon — it will show the new proposal as soon as it is ready.</Notice>;
+    }
     return <Notice title="This link is no longer valid">It may have been replaced by a newer proposal. Please contact us and we will send you the latest one.</Notice>;
   }
   return <ProposalClient token={token} initial={result.proposal} />;
