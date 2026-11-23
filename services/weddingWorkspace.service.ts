@@ -39,6 +39,15 @@ export interface WeddingWorkspaceEvent {
   venueAddress: string | null;
   city: string;
   budget: number | null;
+  // Couple-controlled functions (22 Nov 2026): a couple's own function, and whether it stands (WAITING = needs staff to confirm).
+  endTime: string | null;
+  description: string | null;
+  atBookedVenue: boolean;
+  venueSpaceId: string | null;
+  addedByCouple: boolean;
+  confirmation: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE';
+  confirmationNote: string | null;
+  updatedAt: Date; // the version staff decide on (a couple's later change makes their decision stale)
   tasks: { id: string; title: string; status: string; dueAt: Date | null }[];
   vendorBookings: {
     id: string;
@@ -352,6 +361,14 @@ export const weddingWorkspaceService = {
       venueAddress: event.venueAddress,
       city: event.city,
       budget: event.budget,
+      endTime: event.endTime,
+      description: event.description,
+      atBookedVenue: event.atBookedVenue,
+      venueSpaceId: event.venueSpaceId,
+      addedByCouple: event.addedByCouple,
+      confirmation: event.confirmation,
+      confirmationNote: event.confirmationNote,
+      updatedAt: event.updatedAt,
       tasks: tasks
         .filter((task) => task.weddingEventId === event.id)
         .map((task) => ({ id: task.id, title: task.title, status: task.status, dueAt: task.dueAt })),

@@ -29,7 +29,7 @@ export type OwnedModel = (typeof OWNED_MODELS)[number];
 export const CHILD_MODELS = [
   'ConsultationVendorSelection', 'BookingItem', 'InvoiceItem', 'QuotationItem', 'LeadInsight', 'Couple', 'WeddingEvent', 'Guest',
   'GuestFunctionResponse', 'VendorEnquiry', 'VendorBooking', 'TimelineMilestone', 'Document', 'Task', 'ActivityLog', 'ApprovalRequest',
-  'PaymentLink', 'Payout', 'PaymentSubmission', 'CoupleVendor', 'VendorQuoteRequest',
+  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment', 'CoupleVendor', 'VendorQuoteRequest',
 ] as const;
 
 export type ChildModel = (typeof CHILD_MODELS)[number];
@@ -76,6 +76,7 @@ export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
   PaymentSubmission: [link('quotation', 'Quotation')],
   CoupleVendor: [link('wedding', 'Wedding'), link('weddingEvent', 'WeddingEvent')],
   VendorQuoteRequest: [link('wedding', 'Wedding'), link('weddingEvent', 'WeddingEvent')],
+  PaymentInstalment: [link('agreement', 'CommercialAgreement')],
 };
 
 // Links from a record to another record of the SAME model (a quotation revision, a milestone dependency). Checked on writes like
@@ -119,4 +120,5 @@ export const OWNED_RELATIONS: Partial<Record<OwnedModel | ChildModel, string[]>>
   PaymentSubmission: ['quotation'],
   CoupleVendor: ['wedding'],
   VendorQuoteRequest: ['wedding'],
+  PaymentInstalment: ['agreement'],
 };

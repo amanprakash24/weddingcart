@@ -272,6 +272,8 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
             onRemoveService={removeService}
             onCalculatePayout={calculatePayout}
             onMarkPayoutPaid={markPayoutPaid}
+            functionDecisionBase={`${basePath}/functions`}
+            onRefresh={load}
           />
           <ServiceRequirements events={workspace.events} unassigned={view.vendors.filter((r) => r.state === 'unassigned')} />
           {/* Client OS → Vendors (22 Nov 2026): quotes the couple asked for, and the vendors they hired themselves */}

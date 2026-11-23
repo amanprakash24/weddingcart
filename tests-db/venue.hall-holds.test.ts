@@ -35,7 +35,7 @@ dbDescribe('hall holds stop other couples accepting (real database)', () => {
     const sent = await inV(() => quotes.send(enquiryId, user));
     const res = await inV(() => spaces.reserve(enquiryId, { spaceId: hall, date, shift }, user));
     if ('errors' in res) throw new Error(JSON.stringify(res.errors));
-    return { enquiryId, slotId: res.slots[0].id, token: sent.linkPath.slice('/proposal/'.length) };
+    return { enquiryId, slotId: res.slots[0].id, token: sent.linkPath!.slice('/proposal/'.length) };
   }
   const acceptOnLink = async (token: string) => runInScope(await scopeForProposalToken(token), () => proposalService.accept(token));
   const slotRow = (id: string) => runAsSystem('test read', () => app.prisma.venueSlot.findUniqueOrThrow({ where: { id } }));

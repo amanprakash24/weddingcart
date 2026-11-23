@@ -7,7 +7,9 @@ import { runInScope } from '@/lib/ownership/scope';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { upiLink, upiPayeeFrom, upiPayeeOf } from '@/lib/payments/upi';
 import { groupReceipts, type CustomerReceipt } from '@/lib/payments/customerPayment';
+import { coupleMoneyService } from '@/services/coupleMoney.service';
 import { paymentPlan, type PaymentPlan } from '@/lib/customer/paymentPlan';
+import { indiaToday } from '@/lib/money/schedule';
 import { SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import type { ReceiptIssuer } from '@/components/proposal/PaymentReceipt';
 
@@ -37,7 +39,24 @@ export interface ClientPortalEvent {
     location: string;
     status: string;
     services: { name: string; status: string; provider: string | null }[];
+    // Couple-controlled functions (22 Nov 2026)
+    type: string;
+    label: string | null;
+    day: string; // YYYY-MM-DD
+    endTime: string | null;
+    description: string | null;
+    place: 'BOOKED_VENUE' | 'ELSEWHERE';
+    venueSpaceId: string | null;
+    spaceName: string | null;
+    venueName: string | null;
+    venueAddress: string | null;
+    addedByCouple: boolean;
+    confirmation: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE';
+    confirmationNote: string | null;
   }[];
+  // What the couple can choose when they add a function: the booked venue's name (for "At <venue>") and its own halls (a venue's
+  // wedding only; Shaadi Shopping's weddings have none).
+  booking: { venueName: string | null; spaces: { id: string; name: string }[] };
   services: { name: string; functionName: string; status: string; provider: string | null }[];
   tasks: { id: string; title: string; status: string; dueAt: string | null }[];
   timeline: { id: string; label: string; status: string; dueDate: string | null }[];
@@ -85,6 +104,11 @@ export interface ClientPortalEvent {
     payTo: { upiId: string; payee: string; link: string | null } | null;
     plan: PaymentPlan;
     receipts: CustomerReceipt[]; // each payment received, oldest first (payments made together share one receipt)
+    // "I have paid" from My Wedding (22 Nov 2026): the claims waiting to be checked or that could not be matched, and whether another
+    // can be sent. A claim is never counted as money until staff verify it.
+    claims: { id: string; amount: number; utr: string; submittedAt: string; status: 'PENDING' | 'REJECTED'; rejectReason: string | null }[];
+    canClaim: boolean;
+    inReview: number;
   };
   // The accepted quotation the wedding was booked on (read-only, for Documents). Null when the wedding did not come from one.
   quotation: {
@@ -126,6 +150,27 @@ export const clientPortalService = {
       prisma.coupleVendor.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, category: true, phone: true, price: true, notes: true, weddingEventId: true } }),
       prisma.vendorQuoteRequest.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, include: { vendor: { select: { name: true, slug: true, category: { select: { name: true } } } } } }),
     ]);
+    // The venue's own halls (a venue's wedding): the couple may place a function in one (it then waits for the venue to confirm).
+    // VenueSpace is not an owned table, so it is filtered by the wedding's business explicitly.
+    const spaces =
+      businessId === PLATFORM_BUSINESS_ID
+        ? []
+        : await prisma.venueSpace.findMany({ where: { businessId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], select: { id: true, name: true, active: true } });
+    // The payment schedule (22 Nov 2026): the dated instalments staff set for the agreement's balance.
+    const agreementQuotationId = workspace.finance.agreement?.quotationId ?? null;
+    const instalments = agreementQuotationId
+      ? (
+          await prisma.paymentInstalment.findMany({
+            where: { agreement: { quotationId: agreementQuotationId } },
+            orderBy: { sortOrder: 'asc' },
+            select: { label: true, amount: true, dueDate: true },
+          })
+        ).map((i) => ({ label: i.label, amount: i.amount, dueDate: i.dueDate.toISOString().slice(0, 10) }))
+      : [];
+    const claims = await coupleMoneyService.claims(weddingId).catch((err) => {
+      console.error(`My Wedding payment claims for ${weddingId} could not be loaded —`, err instanceof Error ? err.message : err);
+      return { claims: [], canClaim: false, inReview: 0 };
+    });
     return [workspace].map((workspace) => {
       const { wedding, couple, events, tasks, timeline, finance, documents, activity, guests } = workspace;
       const services = events.flatMap((event) =>
@@ -195,7 +240,25 @@ export const clientPortalService = {
             status: booking.status,
             provider: booking.vendorName || null,
           })),
+          type: event.type,
+          label: event.label,
+          day: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(event.date), // the India date (old rows may be stored at IST midnight)
+          endTime: event.endTime,
+          description: event.description,
+          place: event.atBookedVenue || event.venueSpaceId ? ('BOOKED_VENUE' as const) : ('ELSEWHERE' as const),
+          venueSpaceId: event.venueSpaceId,
+          spaceName: spaces.find((s) => s.id === event.venueSpaceId)?.name ?? null,
+          venueName: event.venueName,
+          venueAddress: event.venueAddress,
+          addedByCouple: event.addedByCouple,
+          confirmation: event.confirmation,
+          confirmationNote: event.confirmationNote,
         })),
+        booking: {
+          // a venue's wedding is at that venue; on Shaadi Shopping's, the main "Wedding" function's place (if staff set one)
+          venueName: businessId !== PLATFORM_BUSINESS_ID ? (biz?.name ?? null) : (events.find((e) => e.type === 'WEDDING' && !e.addedByCouple)?.venueName ?? null),
+          spaces: spaces.filter((s) => s.active).map((s) => ({ id: s.id, name: s.name })),
+        },
         services,
         tasks: tasks
           .filter((task) => task.context === 'WEDDING_TASK')
@@ -252,6 +315,8 @@ export const clientPortalService = {
             // the frozen confirmation rule (e.g. 25 %); a wedding from before the rule keeps the quotation's own advance
             confirmationAmount: deal?.money?.confirmationAmount ?? deal?.advance ?? null,
             confirmationPercent: deal?.money?.confirmationPercent ?? null,
+            instalments,
+            today: indiaToday(),
           });
           const next = plan.next?.amount ?? null;
           const payee = isPlatform ? upiPayeeFrom({ SHAADI_UPI_ID: process.env.SHAADI_UPI_ID, SHAADI_UPI_NAME: process.env.SHAADI_UPI_NAME }) : biz ? upiPayeeOf(biz) : null;
@@ -263,6 +328,7 @@ export const clientPortalService = {
             payTo: payee && plan.due > 0 ? { upiId: payee.vpa, payee: payee.payee, link: next ? upiLink(payee, next, `${wedding.weddingNumber} payment`) : null } : null,
             plan,
             receipts,
+            ...claims,
           };
         })(),
         quotation: finance.agreement

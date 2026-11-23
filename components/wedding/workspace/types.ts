@@ -64,6 +64,14 @@ export interface WorkspaceWeddingEvent {
   budget: number | null;
   tasks: { id: string; title: string; status: string; dueAt: string | null }[];
   vendorBookings: WorkspaceVendorBooking[];
+  // Couple-controlled functions (22 Nov 2026)
+  endTime?: string | null;
+  description?: string | null;
+  atBookedVenue?: boolean;
+  addedByCouple?: boolean;
+  confirmation?: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE';
+  confirmationNote?: string | null;
+  updatedAt?: string;
 }
 
 export interface WorkspaceMilestone {

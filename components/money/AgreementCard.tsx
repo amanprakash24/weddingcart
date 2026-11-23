@@ -6,6 +6,7 @@ import type { AgreementMoneyView } from '@/lib/commercial/view';
 import { dateWords } from '@/lib/wedding/controlRoom';
 import { isoFromDateInput } from '@/lib/wedding/planTasks';
 import PaymentSubmissions from '@/components/money/PaymentSubmissions';
+import PaymentScheduleEditor from '@/components/money/PaymentScheduleEditor';
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const METHODS: { value: string; label: string }[] = [
@@ -112,6 +113,9 @@ export default function AgreementCard({ money, onRecordPayment, onRefresh, actio
 
       {/* Roadmap 1.3: the couple's "I have paid" claims, verified here before they count. */}
       <PaymentSubmissions quotationId={money.quotationId} onChanged={onRefresh} />
+
+      {/* 22 Nov 2026: the balance split into dated instalments (re-read whenever money arrives). */}
+      {money.exists && <PaymentScheduleEditor quotationId={money.quotationId} refreshKey={money.received} />}
 
       {money.payments.length > 0 && (
         <div className="mt-4 overflow-x-auto">

@@ -10,6 +10,7 @@ import { UnassignedRow, useAction, type AssignInput } from '@/components/wedding
 import VendorPicker, { type VendorHit } from '@/components/wedding/plan/VendorPicker';
 import FunctionForm, { draftFromEvent, emptyDraft, type FunctionPayload } from './FunctionForm';
 import { useWorkspaceMoney } from '@/components/wedding/workspace/MoneyContext';
+import CoupleFunctionReview from './CoupleFunctionReview';
 
 type Booking = WorkspaceWeddingEvent['vendorBookings'][number];
 
@@ -50,6 +51,9 @@ export interface FunctionsHandlers {
   onRemoveService: (taskId: string) => Promise<void>;
   onCalculatePayout: (vendorBookingId: string) => Promise<void>;
   onMarkPayoutPaid: (payoutId: string) => Promise<void>;
+  // Couple-controlled functions (22 Nov 2026): where staff confirm a couple's function, and how the panel reloads after.
+  functionDecisionBase?: string;
+  onRefresh?: () => Promise<unknown> | void;
 }
 
 // The wedding's functions, each with its date, place, budget and the services (vendors) it needs — and the actions to run them:
@@ -101,6 +105,7 @@ function FunctionCard({ event, unassigned, ...h }: { event: WorkspaceWeddingEven
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-gray-900">{functionLabel(event)}</h3>
             <p className="mt-0.5 text-xs text-gray-500">{[dateWords(event.date), event.startTime, place].filter(Boolean).join(' · ')}</p>
+            {h.functionDecisionBase && <CoupleFunctionReview fn={event} decisionUrl={`${h.functionDecisionBase}/${event.id}/decision`} onDecided={() => h.onRefresh?.()} />}
             {vendorMoney && (event.budget !== null || spend.booked > 0) && (
               <p className="mt-0.5 text-xs text-gray-500">
                 {event.budget !== null ? `Budget ${money(event.budget)} · ` : ''}Booked {money(spend.booked)}

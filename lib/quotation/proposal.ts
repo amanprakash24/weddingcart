@@ -208,6 +208,9 @@ export interface CustomerProposal {
   // "Your hall" (17 Nov 2026): the hall, date and shift a venue's own quotation reserves, and where it stands (lib/quotation/
   // proposalHalls.ts). Empty on Shaadi Shopping's links and when no hall was chosen. Never names another couple.
   halls: ProposalHall[];
+  // One link per couple (22 Nov 2026): once the booking became a wedding, everything continues in My Wedding. hasCoupleLogin = the
+  // couple can already sign in (their mobile + code are set); otherwise they ask for their code. null = no wedding yet.
+  myWedding: { hasCoupleLogin: boolean } | null;
 }
 
 export function toAddable(offerings: Offering[]): CustomerProposal['addable'] {
@@ -329,5 +332,6 @@ export function toCustomerProposal(
     addable: [], // proposal.service fills it for a venue's own open proposal
     yourBooking: null, // proposal.service fills it for a business's own accepted proposal, once the booking is made
     halls: [], // proposal.service fills it for a venue's own proposal whose enquiry has a hall chosen
+    myWedding: null, // proposal.service fills it once the booking became a wedding
   };
 }

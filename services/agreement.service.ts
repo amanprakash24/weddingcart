@@ -52,7 +52,7 @@ async function customerFor(tx: Tx, q: { leadId: string | null; enquiryId: string
   return { name: subject.name, phone: subject.phone, city: null as string | null, customerId: null as string | null };
 }
 
-async function logMoney(tx: Tx, q: { leadId: string | null; enquiryId: string | null; consultationId: string | null }, weddingId: string | null, summary: string, type: ActivityType, actorId: string | null) {
+export async function logMoney(tx: Tx, q: { leadId: string | null; enquiryId: string | null; consultationId: string | null }, weddingId: string | null, summary: string, type: ActivityType, actorId: string | null) {
   await activityLogRepository.create(
     {
       type,
