@@ -171,7 +171,7 @@ function ClaimBox({ event }: { event: ClientPortalEvent }) {
       <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--color-primary-text)]">I have paid</h3>
       {sent && <p role="status" className="mt-2 rounded-xl bg-[#DCF3E5] px-3 py-2 text-sm text-[#14532D]">Thank you — we have your payment details. We check them with the bank and your receipt appears here.</p>}
       {m.canClaim ? (
-        <form onSubmit={submit} className="mt-2 grid gap-3 rounded-2xl border border-white/70 bg-white/60 p-4 sm:grid-cols-2">
+        <form onSubmit={submit} className="mt-2 grid grid-cols-[minmax(0,1fr)] gap-3 rounded-2xl border border-white/70 bg-white/60 p-4 sm:grid-cols-2">
           <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">Amount paid ₹
             <input aria-label="Amount paid" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} className={claimField} />
           </label>
@@ -182,7 +182,7 @@ function ClaimBox({ event }: { event: ClientPortalEvent }) {
             <input aria-label="Date paid" type="date" max={today()} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} className={claimField} />
           </label>
           <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">Screenshot <span className="text-xs text-[var(--color-text-muted)]">(optional — photo or PDF, under 5 MB)</span>
-            <input aria-label="Payment screenshot" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" onChange={(e) => setProof(e.target.files?.[0] ?? null)} className="text-sm" />
+            <input aria-label="Payment screenshot" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf" onChange={(e) => setProof(e.target.files?.[0] ?? null)} className="w-full min-w-0 text-sm" />
           </label>
           {amount && !amountOk && <p className="text-sm text-[#78350F] sm:col-span-2">Enter whole rupees, up to {inr(m.due)}.</p>}
           {error && <p role="alert" className="text-sm text-[#B42318] sm:col-span-2">{error}</p>}
