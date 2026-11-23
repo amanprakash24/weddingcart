@@ -78,11 +78,26 @@ dbDescribe('Couple-controlled functions (real database)', () => {
     expect(await snapshot()).toBe(before);
   });
 
-  test('the couple cannot add the Wedding itself, nor change or remove what staff set', async () => {
-    expect((await errorOf(asCouple(weddingId, couple, () => svc.add(weddingId, { type: 'WEDDING', date: inDays(40), place: 'BOOKED_VENUE' }, couple))))?.message).toContain('set by your booking');
+  test('a second Wedding is refused; the couple’s edit of the Wedding is only a request until staff confirm', async () => {
+    expect((await errorOf(asCouple(weddingId, couple, () => svc.add(weddingId, { type: 'WEDDING', date: inDays(40), place: 'BOOKED_VENUE' }, couple))))?.message).toContain('already on the schedule');
     const main = await app.prisma.weddingEvent.findFirstOrThrow({ where: { weddingId, type: 'WEDDING' } });
-    expect((await errorOf(asCouple(weddingId, couple, () => svc.update(weddingId, main.id, { type: 'RECEPTION', date: inDays(40), place: 'ELSEWHERE', venueName: 'x' }, couple))))?.message).toContain('set by your planner');
-    expect((await errorOf(asCouple(weddingId, couple, () => svc.remove(weddingId, main.id, couple))))?.message).toContain('set by your planner');
+    expect((await errorOf(asCouple(weddingId, couple, () => svc.update(weddingId, main.id, { type: 'RECEPTION', date: inDays(40), place: 'ELSEWHERE', venueName: 'x' }, couple))))?.message).toContain('cannot be changed');
+    expect((await errorOf(asCouple(weddingId, couple, () => svc.remove(weddingId, main.id, couple))))?.message).toContain('part of your booking');
+    const before = await app.prisma.wedding.findUniqueOrThrow({ where: { id: weddingId }, select: { primaryDate: true } });
+    const asked = await asCouple(weddingId, couple, () => svc.update(weddingId, main.id, { type: 'WEDDING', date: inDays(41), startTime: '19:00', place: 'ELSEWHERE', venueName: 'New place' }, couple));
+    expect(asked.confirmation).toBe('WAITING');
+    expect(asked.date.getTime()).toBe(main.date.getTime()); // nothing moved yet
+    expect((await app.prisma.wedding.findUniqueOrThrow({ where: { id: weddingId }, select: { primaryDate: true } })).primaryDate.getTime()).toBe(before.primaryDate.getTime());
+    const refused = await svc.decide(weddingId, main.id, { decision: 'NOT_POSSIBLE', note: 'Vendors are fixed', seenUpdatedAt: asked.updatedAt.toISOString() }, null);
+    expect(refused).toMatchObject({ confirmation: 'CONFIRMED', pendingChange: null, confirmationNote: 'Vendors are fixed' });
+    expect(refused.date.getTime()).toBe(main.date.getTime());
+    const again = await asCouple(weddingId, couple, () => svc.update(weddingId, main.id, { type: 'WEDDING', date: inDays(41), startTime: '19:00', place: 'ELSEWHERE', venueName: 'New place' }, couple));
+    const applied = await svc.decide(weddingId, main.id, { decision: 'CONFIRM', seenUpdatedAt: again.updatedAt.toISOString() }, null);
+    expect(applied).toMatchObject({ confirmation: 'CONFIRMED', pendingChange: null, startTime: '19:00', venueName: 'New place' });
+    expect((await app.prisma.wedding.findUniqueOrThrow({ where: { id: weddingId }, select: { primaryDate: true } })).primaryDate.toISOString().slice(0, 10)).toBe(inDays(41));
+    // put it back for the tests after this one
+    await app.prisma.weddingEvent.update({ where: { id: main.id }, data: { date: main.date, startTime: main.startTime, venueName: main.venueName, confirmedAt: null, confirmedById: null } });
+    await app.prisma.wedding.update({ where: { id: weddingId }, data: { primaryDate: before.primaryDate } });
   });
 
   test('someone else’s wedding is simply not found', async () => {

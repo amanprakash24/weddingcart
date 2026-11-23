@@ -29,7 +29,7 @@ export type OwnedModel = (typeof OWNED_MODELS)[number];
 export const CHILD_MODELS = [
   'ConsultationVendorSelection', 'BookingItem', 'InvoiceItem', 'QuotationItem', 'LeadInsight', 'Couple', 'WeddingEvent', 'Guest',
   'GuestFunctionResponse', 'VendorEnquiry', 'VendorBooking', 'TimelineMilestone', 'Document', 'Task', 'ActivityLog', 'ApprovalRequest',
-  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment', 'CoupleVendor', 'VendorQuoteRequest', 'WeddingMember',
+  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment', 'CoupleVendor', 'VendorQuoteRequest', 'VendorQuoteFunction', 'WeddingMember',
 ] as const;
 
 export type ChildModel = (typeof CHILD_MODELS)[number];
@@ -76,6 +76,7 @@ export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
   PaymentSubmission: [link('quotation', 'Quotation')],
   CoupleVendor: [link('wedding', 'Wedding'), link('weddingEvent', 'WeddingEvent')],
   VendorQuoteRequest: [link('wedding', 'Wedding'), link('weddingEvent', 'WeddingEvent')],
+  VendorQuoteFunction: [link('request', 'VendorQuoteRequest'), link('weddingEvent', 'WeddingEvent')],
   PaymentInstalment: [link('agreement', 'CommercialAgreement')],
   WeddingMember: [link('wedding', 'Wedding')],
 };

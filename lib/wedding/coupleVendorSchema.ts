@@ -14,8 +14,11 @@ export const ownVendorBody = z.object({
 export const quoteRequestBody = z.object({
   vendorId: z.string().max(64),
   weddingEventId: z.string().max(64).nullish(),
+  weddingEventIds: z.array(z.string().max(64)).max(20).optional(), // none = the whole wedding
   note: z.string().max(1000).nullish(),
 });
+
+export const quoteFunctionsBody = z.object({ weddingEventIds: z.array(z.string().max(64)).max(20) });
 
 export const quoteAnswerBody = z.object({
   status: z.enum(QUOTE_STATUSES),

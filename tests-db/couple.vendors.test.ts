@@ -11,6 +11,7 @@ dbDescribe('Couple vendors and quote requests (real database)', () => {
   let fx: Fixtures;
   let svc: typeof import('@/services/coupleVendors.service').coupleVendorsService;
   let asCouple: typeof import('@/lib/customer/coupleEntry').asCoupleWedding;
+  let fnSvc: typeof import('@/services/coupleFunctions.service').coupleFunctionsService;
   const users: string[] = [];
   let couple = '';
   let stranger = '';
@@ -30,6 +31,7 @@ dbDescribe('Couple vendors and quote requests (real database)', () => {
     await fx.purge();
     svc = (await import('@/services/coupleVendors.service')).coupleVendorsService;
     asCouple = (await import('@/lib/customer/coupleEntry')).asCoupleWedding;
+    fnSvc = (await import('@/services/coupleFunctions.service')).coupleFunctionsService;
     for (const name of ['couple', 'stranger', 'coordinator']) users.push((await app.prisma.user.create({ data: { name: `DBTEST ${name} ${fx.runId}`, phone: `96${String(Date.now()).slice(-7)}${users.length}` } })).id);
     [couple, stranger, coordinator] = users;
     const vendors = await fx.vendors(3);
@@ -134,6 +136,29 @@ dbDescribe('Couple vendors and quote requests (real database)', () => {
     const vendorName = (await app.prisma.vendor.findUniqueOrThrow({ where: { id: vendorB } })).name;
     const open = await app.prisma.task.count({ where: { weddingId, title: `Couple asked for a quote: ${vendorName}`, status: { in: ['PENDING', 'IN_PROGRESS'] } } });
     expect(open).toBe(0);
+  });
+
+  test('one enquiry can cover several functions and stays an enquiry until a real booking exists', async () => {
+    const haldi = await asCouple(weddingId, couple, () => fnSvc.add(weddingId, { type: 'HALDI', date: '2027-01-18', place: 'ELSEWHERE', venueName: 'Home' }, couple));
+    const main = await app.prisma.weddingEvent.findFirstOrThrow({ where: { weddingId, type: 'WEDDING' } });
+    const before = await vendorBookings();
+    const old = await app.prisma.vendorQuoteRequest.findFirst({ where: { weddingId, vendorId: vendorA } });
+    if (old) await app.prisma.vendorQuoteRequest.delete({ where: { id: old.id } });
+    const r = await asCouple(weddingId, couple, () => svc.requestQuote(weddingId, { vendorId: vendorA, weddingEventIds: [haldi.id, main.id, haldi.id] }, couple));
+    expect(r.status).toBe('REQUESTED');
+    const links = () => app.prisma.vendorQuoteFunction.findMany({ where: { requestId: r.id } }).then((x) => x.map((l) => l.weddingEventId).sort());
+    expect(await links()).toEqual([haldi.id, main.id].sort());
+    expect(await vendorBookings()).toBe(before); // an enquiry never makes a booking
+    const other = await app.prisma.weddingEvent.findFirst({ where: { weddingId: { not: weddingId } }, select: { id: true } });
+    if (other) expect((await errorOf(asCouple(weddingId, couple, () => svc.setRequestFunctions(weddingId, r.id, [other.id], couple))))?.message).toContain('your functions');
+    const changed = await asCouple(weddingId, couple, () => svc.setRequestFunctions(weddingId, r.id, [haldi.id], couple));
+    expect(await links()).toEqual([haldi.id]);
+    expect((await errorOf(svc.answer(weddingId, r.id, { status: 'BOOKED', seenUpdatedAt: changed.updatedAt.toISOString() }, null)))?.message).toContain('not a booking');
+    expect((await app.prisma.vendorQuoteRequest.findUniqueOrThrow({ where: { id: r.id } })).status).toBe('REQUESTED');
+    const [event] = await app.clientPortalService.getEventsForClient(couple);
+    expect(event.quoteRequests.find((q) => q.id === r.id)?.functionIds).toEqual([haldi.id]);
+    await app.prisma.vendorQuoteRequest.delete({ where: { id: r.id } });
+    await app.prisma.weddingEvent.delete({ where: { id: haldi.id } });
   });
 
   test('removing an own vendor', async () => {

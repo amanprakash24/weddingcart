@@ -21,6 +21,7 @@ import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking 
 import { NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { unassignedServiceFromTask } from '@/lib/booking/unassigned';
+import type { PendingFunctionChange } from '@/lib/wedding/coupleFunctions';
 import { functionDeleteBlocker, functionProblem, normalizeFunction, primaryDateFor, FUNCTION_TYPE_LABELS, type FunctionFields, type FunctionType } from '@/lib/wedding/functions';
 import { ActivityType, type TaskStatus, type WeddingStatus, type VendorBookingStatus, type InvoiceStatus, type PaymentStatus, type PaymentLinkStatus, type PayoutStatus } from '@/generated/prisma/enums';
 import type { Wedding, Task, ActivityLog, Document, TimelineMilestone, Prisma } from '@/generated/prisma/client';
@@ -47,6 +48,7 @@ export interface WeddingWorkspaceEvent {
   addedByCouple: boolean;
   confirmation: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE';
   confirmationNote: string | null;
+  pendingChange: PendingFunctionChange | null;
   updatedAt: Date; // the version staff decide on (a couple's later change makes their decision stale)
   tasks: { id: string; title: string; status: string; dueAt: Date | null }[];
   vendorBookings: {
@@ -368,6 +370,7 @@ export const weddingWorkspaceService = {
       addedByCouple: event.addedByCouple,
       confirmation: event.confirmation,
       confirmationNote: event.confirmationNote,
+      pendingChange: (event.pendingChange ?? null) as unknown as PendingFunctionChange | null,
       updatedAt: event.updatedAt,
       tasks: tasks
         .filter((task) => task.weddingEventId === event.id)

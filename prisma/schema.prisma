@@ -1482,6 +1482,7 @@ model WeddingEvent {
   confirmationNote String? // staff's reason when it is not possible
   confirmedById    String?
   confirmedAt      DateTime?
+  pendingChange    Json? // a couple's requested edit of a planner-set function; applied only when staff confirm (23 Nov 2026)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
@@ -1491,6 +1492,7 @@ model WeddingEvent {
   guestResponses GuestFunctionResponse[]
   coupleVendors  CoupleVendor[]
   quoteRequests  VendorQuoteRequest[]
+  quoteFunctions VendorQuoteFunction[]
 
   // Production-hardening audit (2026-09-17) — every Wedding Workspace page
   // load queries this by weddingId, ordered by date; Postgres doesn't
@@ -2724,10 +2726,24 @@ model VendorQuoteRequest {
   handledAt      DateTime?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+  functions      VendorQuoteFunction[] // the functions this enquiry is for; none = the whole wedding (23 Nov 2026)
 
   @@unique([weddingId, vendorId])
   @@index([status])
   @@map("vendor_quote_requests")
+}
+
+// One function a vendor enquiry is for (23 Nov 2026): one vendor can be asked about Haldi and Reception together.
+model VendorQuoteFunction {
+  id             String             @id @default(uuid())
+  requestId      String
+  request        VendorQuoteRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  weddingEventId String
+  weddingEvent   WeddingEvent       @relation(fields: [weddingEventId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, weddingEventId])
+  @@index([weddingEventId])
+  @@map("vendor_quote_functions")
 }
 
 // Family access (23 Nov 2026, Client OS): what a family member may do on a couple's wedding. The couple (Wedding.customerId) is the

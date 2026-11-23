@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import type { PendingFunctionChange } from '@/lib/wedding/coupleFunctions';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import { effectiveScope } from '@/lib/ownership/scope';
 import { can } from '@/lib/auth/permissions';
@@ -48,7 +49,7 @@ export interface VenueWeddingDetail extends VenueWeddingListItem {
   quotationNumber: string | null;
   needsClosing: boolean; // the last day has passed and it is not marked completed
   // addedByCouple … updatedAt: the couple's own functions from My Wedding (22 Nov 2026) — one in this venue waits for the team to confirm.
-  functionList: { id: string; type: FunctionType; name: string; date: string; startTime: string | null; place: string | null; endTime: string | null; description: string | null; atBookedVenue: boolean; addedByCouple: boolean; confirmation: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE'; confirmationNote: string | null; updatedAt: string }[];
+  functionList: { pendingChange?: PendingFunctionChange | null; id: string; type: FunctionType; name: string; date: string; startTime: string | null; place: string | null; endTime: string | null; description: string | null; atBookedVenue: boolean; addedByCouple: boolean; confirmation: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE'; confirmationNote: string | null; updatedAt: string }[];
   // This member may change the functions and the to-do list: they may work on weddings, and the wedding is not finished or cancelled.
   canEdit: boolean;
   // What was agreed: the accepted quotation's lines, as they were accepted.
@@ -99,7 +100,7 @@ const LIST_SELECT = {
   guestCount: true,
   customerPhone: true,
   sourceBooking: { select: { name: true, phone: true, consultationId: true, quotationId: true } },
-  events: { select: { id: true, type: true, label: true, date: true, startTime: true, venueName: true, endTime: true, description: true, atBookedVenue: true, addedByCouple: true, confirmation: true, confirmationNote: true, updatedAt: true, venueSpace: { select: { name: true } } }, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] },
+  events: { select: { pendingChange: true, id: true, type: true, label: true, date: true, startTime: true, venueName: true, endTime: true, description: true, atBookedVenue: true, addedByCouple: true, confirmation: true, confirmationNote: true, updatedAt: true, venueSpace: { select: { name: true } } }, orderBy: [{ date: 'asc' }, { createdAt: 'asc' }] },
 } satisfies Prisma.WeddingSelect;
 type Row = Prisma.WeddingGetPayload<{ select: typeof LIST_SELECT }>;
 
@@ -175,6 +176,7 @@ export function createVenueWeddingService(deps: VenueWeddingDeps = defaultDeps()
           addedByCouple: e.addedByCouple,
           confirmation: e.confirmation,
           confirmationNote: e.confirmationNote,
+          pendingChange: (e.pendingChange ?? null) as unknown as PendingFunctionChange | null,
           updatedAt: e.updatedAt.toISOString(),
         })),
         canEdit,

@@ -6,6 +6,7 @@ import { ExternalLink, Pencil, Plus, Search, Star, Trash2 } from 'lucide-react';
 import type { ClientPortalEvent } from '@/services/clientPortal.service';
 import { ownVendorProblem, QUOTE_STATUS_WORDS, type OwnVendorInput } from '@/lib/wedding/coupleVendors';
 import { serviceStatus, whatsappTo } from '@/lib/customer/myWedding';
+import { functionDisplayName } from '@/lib/wedding/coupleFunctions';
 
 // My Wedding → Vendors (22 Nov 2026): booked through the planner, the couple's own outside vendors (clearly not partners), finding
 // vendors listed on Shaadi Shopping with "Ask for a quote", and what happened to each request.
@@ -31,8 +32,24 @@ export default function CoupleVendors({ event }: { event: ClientPortalEvent }) {
   const [categories, setCategories] = useState<{ slug: string; name: string }[] | null>(null);
   const [category, setCategory] = useState('');
   const [results, setResults] = useState<{ city: string; inCity: boolean; vendors: Listed[] } | null>(null);
-  const [asking, setAsking] = useState<{ vendor: Listed; note: string; fn: string } | null>(null);
-  const fnName = (id: string | null) => event.functions.find((f) => f.id === id)?.name ?? null;
+  const [asking, setAsking] = useState<{ vendor: Listed; note: string; fns: string[] } | null>(null);
+  const [relinking, setRelinking] = useState<{ id: string; fns: string[] } | null>(null);
+  const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  const fnPicker = (selected: string[], onChange: (next: string[]) => void) => (
+    <fieldset className="grid gap-1">
+      <legend className="text-sm text-[var(--color-text-secondary)]">For which functions? <span className="text-xs text-[var(--color-text-muted)]">(none = the whole wedding)</span></legend>
+      <div className="flex flex-wrap gap-1.5">
+        {event.functions.map((f) => (
+          <label key={f.id} className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-semibold ${selected.includes(f.id) ? 'border-[var(--primary)] bg-[var(--color-primary-subtle-bg)] text-[var(--color-primary-text)]' : 'border-[var(--color-border-default)] bg-white text-[var(--color-text-secondary)]'}`}>
+            <input type="checkbox" className="h-4 w-4" checked={selected.includes(f.id)} onChange={() => onChange(toggle(selected, f.id))} />{fnLabel(f)}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+  // "Mehndi", or the couple's own name for it (never the stored MEHNDI)
+  const fnLabel = (f: { type: string; label: string | null }) => functionDisplayName(f);
+  const fnName = (id: string | null) => { const f = event.functions.find((x) => x.id === id); return f ? fnLabel(f) : null; };
   const base = `/api/customer/weddings/${event.id}`;
 
   const call = async (url: string, method: string, body?: unknown) => {
@@ -99,6 +116,17 @@ export default function CoupleVendors({ event }: { event: ClientPortalEvent }) {
       {error && <p role="alert" className="mt-3 text-sm text-[#B42318]">{error}</p>}
 
       {/* Booked through the planner */}
+      {/* Who plans the wedding (23 Nov 2026). Shown from the wedding's business; not a vendor booking, price or commission. */}
+      {event.business.isShaadiShopping && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--color-primary-border,#DDD6FE)] bg-[var(--color-primary-subtle-bg)] px-3.5 py-3">
+          <div className="min-w-0">
+            <p className="font-semibold">Shaadi Shopping <span className="font-normal text-[var(--color-text-muted)]">· Wedding planning &amp; coordination</span></p>
+            <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">{event.functions.length ? `All functions: ${event.functions.map(fnLabel).join(', ')}` : 'Your whole wedding'}</p>
+          </div>
+          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-[var(--color-primary-text)]">Your planner</span>
+        </div>
+      )}
+
       <h3 className="mt-4 text-sm font-bold uppercase tracking-[0.12em] text-[var(--color-primary-text)]">Booked through {event.business.isShaadiShopping ? 'Shaadi Shopping' : event.business.name}</h3>
       {event.services.length === 0 ? (
         <p className="mt-2 text-sm text-[var(--color-text-secondary)]">The vendors for each function appear here once they are booked.</p>
@@ -152,7 +180,7 @@ export default function CoupleVendors({ event }: { event: ClientPortalEvent }) {
           <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">For which function <span className="text-xs text-[var(--color-text-muted)]">(optional)</span>
             <select aria-label="For which function" value={v.weddingEventId ?? ''} onChange={(e) => setForm({ ...form, v: { ...v, weddingEventId: e.target.value } })} className={field}>
               <option value="">All / not sure</option>
-              {event.functions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              {event.functions.map((f) => <option key={f.id} value={f.id}>{fnLabel(f)}</option>)}
             </select>
           </label>
           <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">Notes <span className="text-xs text-[var(--color-text-muted)]">(optional)</span>
@@ -213,7 +241,7 @@ export default function CoupleVendors({ event }: { event: ClientPortalEvent }) {
                       {r && r.status !== 'CLOSED' && r.status !== 'NOT_AVAILABLE' ? (
                         <span className={`inline-flex items-center rounded-full px-2.5 text-xs font-semibold ${REQUEST_TONE[r.status]}`}>{QUOTE_STATUS_WORDS[r.status]}</span>
                       ) : event.canAskForQuotes ? (
-                        <button type="button" onClick={() => setAsking({ vendor: l, note: '', fn: '' })} className="min-h-11 rounded-xl bg-[var(--primary)] px-3 text-sm font-bold text-white">Ask for a quote</button>
+                        <button type="button" onClick={() => setAsking({ vendor: l, note: '', fns: [] })} className="min-h-11 rounded-xl bg-[var(--primary)] px-3 text-sm font-bold text-white">Ask for a quote</button>
                       ) : (
                         <a href={whatsappTo('+917646028228', `Hi, we are planning our wedding ${event.weddingNumber} and would like a quote from ${l.name} (${l.category.name}).`)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-xl bg-[#DCF3E5] px-3 text-sm font-bold text-[#14532D]">Ask Shaadi Shopping</a>
                       )}
@@ -222,14 +250,11 @@ export default function CoupleVendors({ event }: { event: ClientPortalEvent }) {
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
-                          void act(() => call(`${base}/quote-requests`, 'POST', { vendorId: l.id, weddingEventId: asking.fn || null, note: asking.note || null }), `Asked. Your expert will get back to you about ${l.name}.`).then((ok) => ok && setAsking(null));
+                          void act(() => call(`${base}/quote-requests`, 'POST', { vendorId: l.id, weddingEventIds: asking.fns, note: asking.note || null }), `Enquiry sent to your expert about ${l.name}. It is not booked yet.`).then((ok) => ok && setAsking(null));
                         }}
                         className="mt-2 grid gap-2"
                       >
-                        <select aria-label="Quote for which function" value={asking.fn} onChange={(e) => setAsking({ ...asking, fn: e.target.value })} className={field}>
-                          <option value="">For the whole wedding</option>
-                          {event.functions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                        </select>
+                        {fnPicker(asking.fns, (fns) => setAsking({ ...asking, fns }))}
                         <input aria-label="Note for the quote" value={asking.note} maxLength={500} onChange={(e) => setAsking({ ...asking, note: e.target.value })} placeholder="Anything they should know (optional)" className={field} />
                         <div className="flex gap-2">
                           <button type="submit" disabled={busy} className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white disabled:opacity-40">{busy ? 'Sending…' : 'Send request'}</button>
@@ -248,15 +273,27 @@ export default function CoupleVendors({ event }: { event: ClientPortalEvent }) {
       {/* Quote requests */}
       {event.quoteRequests.length > 0 && (
         <>
-          <h3 className="mt-6 text-sm font-bold uppercase tracking-[0.12em] text-[var(--color-primary-text)]">Quotes you asked for</h3>
+          <h3 className="mt-6 text-sm font-bold uppercase tracking-[0.12em] text-[var(--color-primary-text)]">Your vendor enquiries</h3>
           <ul className="mt-2 divide-y divide-white/70 rounded-2xl border border-white/70 bg-white/55">
             {event.quoteRequests.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3">
                 <div className="min-w-0">
-                  <p className="font-semibold">{r.vendorName} <span className="font-normal text-[var(--color-text-muted)]">· {r.category}{fnName(r.functionId) ? ` · ${fnName(r.functionId)}` : ''}</span></p>
+                  <p className="font-semibold">{r.vendorName} <span className="font-normal text-[var(--color-text-muted)]">· {r.category} · {r.functionIds.length ? r.functionIds.map(fnName).filter(Boolean).join(', ') : 'Whole wedding'}</span></p>
                   <span className={`mt-0.5 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${REQUEST_TONE[r.status]}`}>{QUOTE_STATUS_WORDS[r.status]}</span>
                   {r.staffNote && <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{r.staffNote}</p>}
                 </div>
+                {open && (r.status === 'REQUESTED' || r.status === 'QUOTED') && relinking?.id !== r.id && (
+                  <button type="button" onClick={() => setRelinking({ id: r.id, fns: r.functionIds })} className="min-h-11 rounded-lg px-3 text-sm font-semibold text-[var(--color-primary-text)]">Change functions</button>
+                )}
+                {relinking?.id === r.id && (
+                  <div className="grid w-full gap-2">
+                    {fnPicker(relinking.fns, (fns) => setRelinking({ id: r.id, fns }))}
+                    <div className="flex gap-2">
+                      <button type="button" disabled={busy} onClick={() => void act(() => call(`${base}/quote-requests/${r.id}`, 'PATCH', { weddingEventIds: relinking.fns }), 'Functions updated. It is still an enquiry.').then((ok) => ok && setRelinking(null))} className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white disabled:opacity-40">Save</button>
+                      <button type="button" onClick={() => setRelinking(null)} className="min-h-11 rounded-xl px-3 text-sm font-semibold text-[var(--color-text-secondary)]">Cancel</button>
+                    </div>
+                  </div>
+                )}
                 {open && (r.status === 'REQUESTED' || r.status === 'QUOTED') && (
                   <button type="button" disabled={busy} onClick={() => void act(() => call(`${base}/quote-requests/${r.id}`, 'DELETE'), 'Request closed.')} className="min-h-11 rounded-lg px-3 text-sm font-semibold text-[var(--color-text-secondary)]">No longer needed</button>
                 )}
