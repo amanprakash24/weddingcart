@@ -4,6 +4,7 @@ import { runAsSystem, runInScope, type Scope } from '@/lib/ownership/scope';
 import { dbDescribe, loadApp, type App } from './helpers/app';
 import { createFixtures, type Fixtures } from './helpers/fixtures';
 import { kindsForCategory } from '@/lib/venue/offering';
+import { FUNCTION_TYPES } from '@/lib/wedding/functions';
 
 // "What we offer" — the business's ONE price list, by kind — on a real database, through the real services and two real vendor
 // logins. Venue A lists a hall (any function), food and decoration; the list feeds its quotation form, a line keeps its function,
@@ -197,7 +198,7 @@ dbDescribe('what a venue offers, and functions on its quotations (real database)
     const token = (await inA(() => quotes.send(enquiryId, users[0]))).linkPath!.slice('/proposal/'.length);
     const asCouple = async <T>(fn: () => Promise<T>) => runInScope(await scopeForProposalToken(token), fn);
     const page = await asCouple(() => proposalService.view(token));
-    expect(page?.addable).toHaveLength(7);
+    expect(page?.addable).toHaveLength(FUNCTION_TYPES.length);
     expect(page?.addable.find((g) => g.function === 'MEHNDI')?.items.map((o) => o.name)).toEqual(['DJ']);
     expect(page?.addable.find((g) => g.function === 'HALDI')?.items.map((o) => o.name)).toEqual(['Haldi decoration (marigold)', 'DJ']);
     await asCouple(() => proposalService.requestEvent(token, { function: 'MEHNDI', offeringIds: [djId] }));

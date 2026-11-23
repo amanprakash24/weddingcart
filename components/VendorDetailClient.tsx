@@ -725,8 +725,8 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Event Type</label>
                   <select value={enquiryForm.eventType} onChange={(e) => setEnquiryForm({ ...enquiryForm, eventType: e.target.value })} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:border-amber-400 transition-colors">
-                    {['Wedding', 'Sangeet', 'Mehendi', 'Reception', 'Engagement', 'Birthday', 'Other'].map((t) => (
-                      <option key={t} value={t.toLowerCase()}>{t}</option>
+                    {['Wedding', 'Tilak', 'Janeu', 'Sangeet', 'Mehendi', 'Reception', 'Engagement', 'Anniversary', 'Griha Pravesh (Housewarming)', 'Birthday', 'Other'].map((t) => (
+                      <option key={t} value={t === 'Griha Pravesh (Housewarming)' ? 'griha_pravesh' : t.toLowerCase()}>{t}</option>
                     ))}
                   </select>
                 </div>

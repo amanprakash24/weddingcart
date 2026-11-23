@@ -1,6 +1,7 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
 import { functionOfLabel, groupByKind, groupOfferings, kindsForCategory, offeringPriceWords, validateOffering } from './offering';
+import { FUNCTION_TYPES } from '@/lib/wedding/functions';
 
 describe('validateOffering', () => {
   test('a kind, what is offered and a starting price — the function is optional', () => {
@@ -54,7 +55,7 @@ describe('showing the price list', () => {
 
   test('an item for any function is offered under every function', () => {
     const groups = groupOfferings([o('HALDI', 'Haldi decoration'), o(null, 'Banquet hall')]);
-    expect(groups).toHaveLength(7); // every function, because the hall can be booked for any of them
+    expect(groups).toHaveLength(FUNCTION_TYPES.length); // every function, because the hall can be booked for any of them
     expect(groups.find((g) => g.label === 'Haldi')?.items.map((i) => i.name)).toEqual(['Haldi decoration', 'Banquet hall']);
     expect(groups.find((g) => g.label === 'Reception')?.items.map((i) => i.name)).toEqual(['Banquet hall']);
   });

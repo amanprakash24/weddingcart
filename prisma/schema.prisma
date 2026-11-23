@@ -1450,6 +1450,10 @@ enum WeddingEventType {
   WEDDING
   RECEPTION
   OTHER
+  TILAK // 23 Nov 2026
+  JANEU
+  ANNIVERSARY
+  GRIHA_PRAVESH // housewarming
 }
 
 model WeddingEvent {

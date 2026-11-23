@@ -2,6 +2,7 @@
 import { describe, test, expect, mock, beforeEach } from 'bun:test';
 import { ConflictError, ValidationError } from '@/lib/errors';
 import { hashCustomerToken, newCustomerToken } from '@/lib/quotation/proposal';
+import { FUNCTION_TYPES } from '@/lib/wedding/functions';
 
 // All dependencies are passed in as fakes (createProposalService) — no shared module is mocked, so nothing leaks into
 // other test files, and no real quotation, booking or activity is ever created. Only '@/lib/prisma' is stubbed because
@@ -541,7 +542,7 @@ describe('requestEvent', () => {
 
   test('an item for any function can be ticked for whichever function is asked for', async () => {
     row.businessId = 'venue-3';
-    expect((await proposalService.view(TOKEN))?.addable).toHaveLength(7);
+    expect((await proposalService.view(TOKEN))?.addable).toHaveLength(FUNCTION_TYPES.length);
     await proposalService.requestEvent(TOKEN, { function: 'SANGEET', offeringIds: ['o-any', 'o-lawn'] });
     expect(row.changesRequestNote).toContain('Please add Sangeet: Car with driver (from ₹5,000).');
   });

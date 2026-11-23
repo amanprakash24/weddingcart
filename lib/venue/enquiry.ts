@@ -28,6 +28,8 @@ export const EVENT_KINDS = [
   { id: 'engagement', label: 'Engagement' },
   { id: 'birthday', label: 'Birthday' },
   { id: 'anniversary', label: 'Anniversary' },
+  { id: 'griha_pravesh', label: 'Griha Pravesh (Housewarming)' },
+  { id: 'janeu', label: 'Janeu' },
   { id: 'corporate', label: 'Corporate event' },
   { id: 'other', label: 'Other event' },
 ] as const;
@@ -37,12 +39,14 @@ export const eventLabel = (id: string | null | undefined): string => EVENT_KINDS
 // The functions of a wedding (asked only for a wedding). The values are the database's WeddingEventType.
 export const WEDDING_FUNCTIONS = [
   { id: 'ENGAGEMENT', label: 'Engagement' },
+  { id: 'TILAK', label: 'Tilak' },
+  { id: 'JANEU', label: 'Janeu' },
   { id: 'HALDI', label: 'Haldi' },
   { id: 'MEHNDI', label: 'Mehndi' },
   { id: 'SANGEET', label: 'Sangeet' },
   { id: 'WEDDING', label: 'Wedding' },
   { id: 'RECEPTION', label: 'Reception' },
-] as const;
+] as const; // Anniversary and Griha Pravesh are events of their own (EVENT_KINDS), not parts of a wedding
 export type WeddingFunction = (typeof WEDDING_FUNCTIONS)[number]['id'];
 export const functionLabel = (id: string): string => WEDDING_FUNCTIONS.find((f) => f.id === id)?.label ?? id;
 

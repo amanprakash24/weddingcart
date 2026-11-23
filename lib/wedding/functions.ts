@@ -1,15 +1,20 @@
-// Rules for a wedding's functions (Engagement, Haldi, Mehndi, Sangeet, Wedding, Reception, …) — pure, so the service and the tests share them.
+// Rules for a wedding's functions (Engagement, Tilak, Janeu, Haldi, Mehndi, Sangeet, Wedding, Reception, Anniversary, Griha Pravesh, …) — pure, so the service and the tests share them.
 
-export const FUNCTION_TYPES = ['ENGAGEMENT', 'HALDI', 'MEHNDI', 'SANGEET', 'WEDDING', 'RECEPTION', 'OTHER'] as const;
+// In the order a wedding runs (Tilak, Janeu, Anniversary and Griha Pravesh added 23 Nov 2026); Other last.
+export const FUNCTION_TYPES = ['ENGAGEMENT', 'TILAK', 'JANEU', 'HALDI', 'MEHNDI', 'SANGEET', 'WEDDING', 'RECEPTION', 'ANNIVERSARY', 'GRIHA_PRAVESH', 'OTHER'] as const;
 export type FunctionType = (typeof FUNCTION_TYPES)[number];
 
 export const FUNCTION_TYPE_LABELS: Record<FunctionType, string> = {
   ENGAGEMENT: 'Engagement',
+  TILAK: 'Tilak',
+  JANEU: 'Janeu',
   HALDI: 'Haldi',
   MEHNDI: 'Mehndi',
   SANGEET: 'Sangeet',
   WEDDING: 'Wedding',
   RECEPTION: 'Reception',
+  ANNIVERSARY: 'Anniversary',
+  GRIHA_PRAVESH: 'Griha Pravesh (Housewarming)',
   OTHER: 'Other',
 };
 
