@@ -13,6 +13,7 @@ import { useCart } from '@/context/CartContext';
 import { getShaadiPhone } from '@/lib/shaadiPhone';
 import { checkEnquiryForm, isTenDigitPhone, submitEnquiry } from '@/lib/enquiry/publicEnquiry';
 import { ONLINE_RATING_LABEL, VERIFIED_REVIEWS_LABEL, type PublicReview } from '@/lib/reviews/reviewView';
+import { descriptionBlocks, startingPrice as startingPriceOf } from '@/lib/vendor/listing';
 
 function whatsappUrl(vendorId: string, vendorName: string) {
   const number = `91${getShaadiPhone(vendorId)}`;
@@ -136,9 +137,13 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
   const hasPerPlate = vendor.packages.some(
     (p) => p.isPerPlate === true || p.features.some((f) => f.toLowerCase().includes('per plate'))
   );
-  const startingPrice = hasPerPlate
-    ? vendor.priceMin
-    : Math.min(...vendor.packages.map((p) => p.price));
+  const startingPrice = startingPriceOf(vendor.priceMin, vendor.packages.map((p) => p.price), hasPerPlate);
+  // Only facts this vendor really has: a new listing shows no row of dashes and zeros.
+  const quickStats = [
+    { icon: Star, label: ONLINE_RATING_LABEL, value: vendor.reviewCount > 0 ? `${vendor.rating}/5 (${vendor.reviewCount})` : null },
+    { icon: Users, label: 'Couple reviews', value: verified?.summary ? `${verified.summary.average}/5 (${verified.summary.count})` : null },
+    { icon: ShoppingCart, label: 'Packages', value: vendor.packages.length ? vendor.packages.length.toString() : null },
+  ].filter((s) => s.value);
 
   return (
     <div className="pt-16">
@@ -242,12 +247,8 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
           {/* LEFT: Details */}
           <div className="lg:col-span-2 space-y-8">
             {/* Quick stats */}
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { icon: Star, label: ONLINE_RATING_LABEL, value: vendor.reviewCount > 0 ? `${vendor.rating}/5 (${vendor.reviewCount})` : '—' },
-                { icon: Users, label: 'Couple reviews', value: verified?.summary ? `${verified.summary.average}/5 (${verified.summary.count})` : '—' },
-                { icon: ShoppingCart, label: 'Packages', value: vendor.packages.length.toString() },
-              ].map(({ icon: Icon, label, value }) => (
+            {quickStats.length > 0 && <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${quickStats.length}, minmax(0, 1fr))` }}>
+              {quickStats.map(({ icon: Icon, label, value }) => (
                 <div key={label} className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
                   <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-2">
                     <Icon className="w-5 h-5 text-amber-600" />
@@ -256,12 +257,16 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
                   <p className="text-gray-500 text-xs">{label}</p>
                 </div>
               ))}
-            </div>
+            </div>}
 
             {/* Description */}
             <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
               <h2 className="text-xl font-bold text-gray-900 mb-3 font-playfair">About {vendor.name}</h2>
-              <p className="text-gray-600 leading-relaxed">{vendor.description}</p>
+              <div className="space-y-3">
+                {descriptionBlocks(vendor.description).map((b, i) => b.kind === 'heading'
+                  ? <h3 key={i} className="pt-2 font-semibold text-gray-900">{b.text}</h3>
+                  : <p key={i} className="text-gray-600 leading-relaxed">{b.text}</p>)}
+              </div>
               {vendor.address && (
                 <p className="text-gray-500 text-sm mt-3 flex items-start gap-1.5">
                   <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
@@ -332,7 +337,7 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
             )}
 
             {/* Packages */}
-            {(() => {
+            {vendor.packages.length > 0 && (() => {
               const isPerPlate = (pkg: Package) =>
                 pkg.isPerPlate === true || pkg.features.some((f) => f.toLowerCase().includes('per plate'));
 
@@ -485,10 +490,12 @@ export default function VendorDetailClient({ id, verified = null }: Props) {
                   <span className="text-xl font-semibold text-gray-600">₹{(vendor.priceMax).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center justify-between">
-                    <span>Packages available</span>
-                    <span className="font-semibold text-gray-900">{vendor.packages.length}</span>
-                  </div>
+                  {vendor.packages.length > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span>Packages available</span>
+                      <span className="font-semibold text-gray-900">{vendor.packages.length}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span>Location</span>
                     <span className="font-semibold text-gray-900">{vendor.city}</span>

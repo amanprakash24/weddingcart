@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { plainDescription } from '@/lib/vendor/listing';
 import { notFound, permanentRedirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import VendorDetailClient from '@/components/VendorDetailClient';
@@ -131,7 +132,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const place = locality ? `${locality}, ${vendor.city}` : vendor.city;
 
   const title = `${vendor.name} — ${displayLabel} in ${place}`;
-  const description = `Book ${vendor.name}, a top ${displayLabel.toLowerCase()} in ${place}. ${vendor.description.slice(0, 140)}... Packages starting from ₹${vendor.priceMin.toLocaleString('en-IN')}.`;
+  const description = `Book ${vendor.name}, a top ${displayLabel.toLowerCase()} in ${place}. ${plainDescription(vendor.description).slice(0, 140)}... Packages starting from ₹${vendor.priceMin.toLocaleString('en-IN')}.`;
   const url = `${BASE_URL}/vendors/${id}`;
 
   const localityKeywords = locality
@@ -188,7 +189,7 @@ export default async function VendorDetailPage({ params }: { params: Promise<{ i
         '@context': 'https://schema.org',
         '@type': vendor.category === 'venue' ? ['LocalBusiness', 'EventVenue'] : 'LocalBusiness',
         name: vendor.name,
-        description: vendor.description,
+        description: plainDescription(vendor.description),
         image: vendor.image,
         url: `${BASE_URL}/vendors/${id}`,
         address: {
