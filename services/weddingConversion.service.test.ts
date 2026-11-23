@@ -225,7 +225,9 @@ describe('convertBookingToWedding — the failure mode found in production-integ
     expect(weddingCreateMock).toHaveBeenCalledTimes(1);
     expect(weddingEventCreateMock).toHaveBeenCalledTimes(1);
     expect(vendorBookingCreateMock).toHaveBeenCalledTimes(1);
-    expect(taskCreateMock).toHaveBeenCalledTimes(1);
+    // the vendor's confirmation task, and — the couple has no sign-in yet — "give the couple their My Wedding sign-in code" (22 Nov 2026)
+    expect(taskCreateMock).toHaveBeenCalledTimes(2);
+    expect(taskCreateMock.mock.calls.map((c) => (c as unknown as [{ data: { title: string } }])[0]?.data?.title ?? (c as unknown as [{ title: string }])[0]?.title)).toContain('Give the couple their My Wedding sign-in code');
   });
 
   test('the couple mobile is stored on the wedding, and their existing CUSTOMER login is linked (MASTER-GAP-ANALYSIS §2.4.1)', async () => {

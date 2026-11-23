@@ -89,6 +89,7 @@ export interface WorkspaceQuotation {
   notes: string | null;
   // Proposal link (08-quotation.md §15). Only whether a link exists — the link itself is shown once, when created.
   hasCustomerLink: boolean;
+  linkOnEarlierVersion?: boolean; // the couple's link was made for an earlier version and now shows this one (22 Nov 2026)
   customerTokenCreatedAt: string | null;
   customerViewedAt: string | null;
   changesRequestedAt: string | null;

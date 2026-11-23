@@ -376,7 +376,15 @@ export default function EnquiryQuotation({ enquiryId, closed, onChanged }: { enq
                 <button type="button" onClick={copy} className={secondary}>{copied ? 'Copied' : 'Copy link'}</button>
               </div>
             ) : (
-              <button type="button" disabled={busy} onClick={() => call('/link')} className={secondary}>{q.hasLink ? 'Make a new link (the old one stops working)' : `Make a link for ${first}`}</button>
+              <>
+                {/* One link per couple (22 Nov 2026): a revision keeps the link the couple already has. */}
+                {q.linkOnEarlierVersion && (
+                  <p className="rounded-lg bg-[var(--color-success-bg,#ECFDF3)] p-3 text-sm text-[var(--color-success-text,#14532D)]">
+                    {first}’s link already shows this new version — there is no new link to send. Just tell {first} it has been updated.
+                  </p>
+                )}
+                <button type="button" disabled={busy} onClick={() => call('/link')} className={secondary}>{q.hasLink ? 'Make a new link (the old one stops working)' : `Make a link for ${first}`}</button>
+              </>
             )}
             <button type="button" disabled={busy} onClick={revise} className={q.stage === 'CHANGES' ? primary : secondary}>Change the quotation</button>
           </>

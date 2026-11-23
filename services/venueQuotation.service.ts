@@ -53,6 +53,8 @@ export interface VenueQuotationView {
   changesNote: string | null; // what the couple asked to change
   acceptedAt: string | null;
   hasLink: boolean;
+  // the couple's link was made for an earlier version and already shows this one (22 Nov 2026: one link per couple)
+  linkOnEarlierVersion: boolean;
   // After the couple accepts: the booking and its money. null = not made yet (the wedding date is needed).
   booking: VenueBookingMoney | null;
   // true when the booking exists but this member may not see its money (lib/auth/permissions.ts: view_financials) — `booking` is
@@ -109,7 +111,8 @@ export interface VenueQuotationState {
 export type SaveResult = VenueQuotationState | { errors: VenueQuoteErrors };
 export type PayResult = VenueQuotationState | { errors: VenuePaymentErrors };
 // The couple's link is shown ONCE, when it is made — only its hash is stored (services/quotation.service.ts).
-export type LinkResult = VenueQuotationState & { linkPath: string };
+// linkPath: a NEW link to share (shown once). Absent when the couple's existing link already shows this version (one link per couple).
+export type LinkResult = VenueQuotationState & { linkPath?: string };
 
 export interface VenueQuotationDeps {
   db: {
@@ -208,6 +211,7 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
       changesNote: stage === 'CHANGES' ? q.changesRequestNote : null,
       acceptedAt: q.acceptedAt?.toISOString() ?? null,
       hasLink: q.hasCustomerLink,
+      linkOnEarlierVersion: q.linkOnEarlierVersion,
       moneyHidden: !!agreement && !seesMoney,
       wedding: wedding ? { id: wedding.id, number: wedding.weddingNumber } : null,
       canCreateWedding: !!agreement && agreement.bookingConfirmed && !wedding && can(effectiveScope(), 'weddings'),
@@ -303,6 +307,10 @@ export function createVenueQuotationService(deps: VenueQuotationDeps = defaultDe
     async send(enquiryId: string, actorId: string | null): Promise<LinkResult> {
       const q = await requireCurrent(enquiryId, 'send');
       await deps.quotations.send(q.id, actorId);
+      // One link per couple (22 Nov 2026): a revision sent while the couple's link is still live keeps that link — it now shows this
+      // version. A first send (or after the link was turned off) makes the link.
+      const after = await state(enquiryId);
+      if (after.quotation?.linkOnEarlierVersion) return after;
       const { token } = await deps.quotations.issueCustomerLink(q.id, actorId);
       return { ...(await state(enquiryId)), linkPath: `/proposal/${token}` };
     },
