@@ -7,6 +7,7 @@ import { vendorRepository } from '@/repositories/vendor.repository';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, DuplicateError } from '@/lib/errors';
 import { slugify } from '@/lib/slug';
+import { listingPhotos } from '@/lib/vendor/listing';
 import { ADMIN_ROLES, Role } from '@/lib/auth/roles';
 import { hashLoginCode, newLoginCode } from '@/services/vendorLoginCode.service';
 import type { ApplicationStatus, Prisma, WeddingEventType } from '@/generated/prisma/client';
@@ -74,8 +75,8 @@ async function approveVendorApplication(app: VendorApplicationWithCategory, tx: 
     // vendor starts unrated, matching the original Mongo behavior exactly.
     rating: 0,
     reviewCount: 0,
-    image: app.coverImage || DEFAULT_IMAGE,
-    images: app.coverImage ? [app.coverImage] : [DEFAULT_IMAGE],
+    // The photos the vendor uploaded (23 Nov 2026): the form fills portfolioImages, so reading only coverImage published a stock picture.
+    ...listingPhotos(app.coverImage, app.portfolioImages, DEFAULT_IMAGE),
     description: app.description || `${app.businessName} — a verified ShaadiShopping vendor.`,
     features,
     // The registration's tour video becomes the listing's video (the admin watched it before approving).
