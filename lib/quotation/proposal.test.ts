@@ -17,6 +17,7 @@ import {
   type ProposalQuotationInput,
   type ProposalVendorInput,
 } from './proposal';
+import { FUNCTION_TYPES } from '@/lib/wedding/functions';
 
 const NOW = new Date('2026-10-01T10:00:00Z');
 const FUTURE = new Date('2026-10-20T00:00:00Z');
@@ -271,7 +272,7 @@ describe('Add an event', () => {
       { id: 'hall', kind: 'RENTAL', function: null, name: 'Banquet hall', description: 'AC, 500 guests', price: 150000, perPlate: false, active: true, diet: null, menu: null },
       { id: 'h1', kind: 'DECORATION', function: 'HALDI', name: 'Haldi decoration', description: null, price: 25000, perPlate: false, active: true, diet: null, menu: null },
     ]);
-    expect(groups).toHaveLength(7);
+    expect(groups).toHaveLength(FUNCTION_TYPES.length);
     expect(groups.find((g) => g.function === 'HALDI')?.items.map((i) => i.id)).toEqual(['h1', 'hall']);
     expect(groups.find((g) => g.function === 'SANGEET')?.items).toEqual([{ id: 'hall', name: 'Banquet hall', price: '₹1,50,000' }]);
   });
