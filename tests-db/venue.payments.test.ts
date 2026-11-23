@@ -232,8 +232,10 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   test('the couple’s link shows their wedding and what was received — no reference numbers, and nothing of another couple', async () => {
     const couple = await coupleView();
     expect(couple?.yourBooking).toMatchObject({ confirmed: true, total: 200000, received: 200000, outstanding: 0, toConfirm: 0 });
-    expect(couple?.yourBooking?.payments.map((p) => [p.amount, p.method])).toEqual(expect.arrayContaining([[20000, 'UPI'], [40000, 'Cash'], [100000, 'Bank transfer'], [40000, 'Cheque']]));
-    expect(couple?.yourBooking?.payments).toHaveLength(4);
+    // Payments behind sign-in (22 Nov 2026, decision 10 Nov Q2): once the booking became a wedding, the open link no longer lists the
+    // individual payments — they are in My Wedding, signed in. The booking's standing stays.
+    expect(couple?.yourBooking?.payments).toEqual([]);
+    expect(couple?.myWedding).toEqual({ hasCoupleLogin: expect.any(Boolean) });
     expect(couple?.yourBooking?.wedding).toMatchObject({ date: later(60), state: 'UPCOMING', daysToGo: 60, functions: ['Haldi', 'Wedding'] });
     expect(couple?.yourBooking?.wedding?.number).toMatch(new RegExp(`^${prefix}-WED-\\d{4}-0001$`));
     const text = JSON.stringify(couple);
@@ -570,9 +572,11 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     const anitaDay = calA.days.find((d) => d.date === later(120))?.bookings.find((x) => x.name === 'Anita Verma');
     expect(anitaDay).toMatchObject({ confirmed: true, wedding: { id: expect.any(String) } });
     expect((await inB(() => calendar.get())).days.flatMap((d) => d.bookings).some((x) => ['Anita Verma', 'Rahul Kumar', 'Asha Verma'].includes(x.name))).toBe(false);
-    // The couple's link: confirmed, with their receipt; and the venue's wedding carries their name.
+    // The couple's link: the booking became a wedding, so payments and receipts are now in My Wedding (signed in), not on the open
+    // link (22 Nov 2026); the venue's wedding carries their name.
     const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
-    expect(view?.payments).toMatchObject({ bookingConfirmed: true, received: 30000, inReview: 0, outstanding: 70000, receipts: [{ amount: 30000, method: 'UPI', reference: null }] });
+    expect(view?.payments).toBeNull();
+    expect(view?.myWedding).toEqual({ hasCoupleLogin: expect.any(Boolean) });
     expect(view?.yourBooking).toMatchObject({ confirmed: true, received: 30000, wedding: { date: later(120) } });
     expect((await inA(() => weddings.list())).some((w) => w.customerName === 'Anita Verma')).toBe(true);
     // Still nothing for another venue or Shaadi Shopping.

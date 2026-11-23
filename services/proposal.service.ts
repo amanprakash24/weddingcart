@@ -253,6 +253,13 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
         console.error(`proposal my-wedding for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
       }
     }
+    // Payments, receipts and UTRs are the couple's private records (decision 10 Nov, Q2): once the booking became a wedding they live
+    // in My Wedding behind the couple's mobile + code — the open link no longer carries them (22 Nov 2026). Before that, the link is
+    // where the booking amount is paid, so it keeps them.
+    if (view.myWedding) {
+      view.payments = null;
+      if (view.yourBooking) view.yourBooking = { ...view.yourBooking, payments: [] };
+    }
     return view;
   }
 
@@ -391,6 +398,10 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     const state = proposalState(q, new Date());
     if (state === 'INVALID') throw new ProposalNotFoundError();
     if (state !== 'ACCEPTED') throw new ConflictError('Please accept the quotation before paying');
+    // once the wedding exists, payment details are sent from My Wedding (signed in), never through the open link
+    if (q.booking?.id && deps.weddingAccess && (await deps.weddingAccess(q.booking.id))) {
+      throw new ConflictError('Your wedding is booked — please send your payment details from My Wedding');
+    }
     const brand = await deps.brand(q.businessId);
     if (brand.isPlatform) {
       await deps.payments.submit(q, raw, proof);
