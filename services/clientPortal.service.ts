@@ -7,7 +7,9 @@ import { runInScope } from '@/lib/ownership/scope';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { upiLink, upiPayeeFrom, upiPayeeOf } from '@/lib/payments/upi';
 import { groupReceipts, type CustomerReceipt } from '@/lib/payments/customerPayment';
+import { coupleMoneyService } from '@/services/coupleMoney.service';
 import { paymentPlan, type PaymentPlan } from '@/lib/customer/paymentPlan';
+import { indiaToday } from '@/lib/money/schedule';
 import { SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 import type { ReceiptIssuer } from '@/components/proposal/PaymentReceipt';
 
@@ -102,6 +104,11 @@ export interface ClientPortalEvent {
     payTo: { upiId: string; payee: string; link: string | null } | null;
     plan: PaymentPlan;
     receipts: CustomerReceipt[]; // each payment received, oldest first (payments made together share one receipt)
+    // "I have paid" from My Wedding (22 Nov 2026): the claims waiting to be checked or that could not be matched, and whether another
+    // can be sent. A claim is never counted as money until staff verify it.
+    claims: { id: string; amount: number; utr: string; submittedAt: string; status: 'PENDING' | 'REJECTED'; rejectReason: string | null }[];
+    canClaim: boolean;
+    inReview: number;
   };
   // The accepted quotation the wedding was booked on (read-only, for Documents). Null when the wedding did not come from one.
   quotation: {
@@ -140,6 +147,21 @@ export const clientPortalService = {
       businessId === PLATFORM_BUSINESS_ID
         ? []
         : await prisma.venueSpace.findMany({ where: { businessId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], select: { id: true, name: true, active: true } });
+    // The payment schedule (22 Nov 2026): the dated instalments staff set for the agreement's balance.
+    const agreementQuotationId = workspace.finance.agreement?.quotationId ?? null;
+    const instalments = agreementQuotationId
+      ? (
+          await prisma.paymentInstalment.findMany({
+            where: { agreement: { quotationId: agreementQuotationId } },
+            orderBy: { sortOrder: 'asc' },
+            select: { label: true, amount: true, dueDate: true },
+          })
+        ).map((i) => ({ label: i.label, amount: i.amount, dueDate: i.dueDate.toISOString().slice(0, 10) }))
+      : [];
+    const claims = await coupleMoneyService.claims(weddingId).catch((err) => {
+      console.error(`My Wedding payment claims for ${weddingId} could not be loaded —`, err instanceof Error ? err.message : err);
+      return { claims: [], canClaim: false, inReview: 0 };
+    });
     return [workspace].map((workspace) => {
       const { wedding, couple, events, tasks, timeline, finance, documents, activity, guests } = workspace;
       const services = events.flatMap((event) =>
@@ -284,6 +306,8 @@ export const clientPortalService = {
             // the frozen confirmation rule (e.g. 25 %); a wedding from before the rule keeps the quotation's own advance
             confirmationAmount: deal?.money?.confirmationAmount ?? deal?.advance ?? null,
             confirmationPercent: deal?.money?.confirmationPercent ?? null,
+            instalments,
+            today: indiaToday(),
           });
           const next = plan.next?.amount ?? null;
           const payee = isPlatform ? upiPayeeFrom({ SHAADI_UPI_ID: process.env.SHAADI_UPI_ID, SHAADI_UPI_NAME: process.env.SHAADI_UPI_NAME }) : biz ? upiPayeeOf(biz) : null;
@@ -295,6 +319,7 @@ export const clientPortalService = {
             payTo: payee && plan.due > 0 ? { upiId: payee.vpa, payee: payee.payee, link: next ? upiLink(payee, next, `${wedding.weddingNumber} payment`) : null } : null,
             plan,
             receipts,
+            ...claims,
           };
         })(),
         quotation: finance.agreement

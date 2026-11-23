@@ -2069,6 +2069,11 @@ model CommercialAgreement {
   confirmedAt          DateTime?
   createdAt            DateTime  @default(now())
 
+  // Payment schedule (22 Nov 2026): the balance after the booking amount, split into dated instalments by staff. Saved as a whole;
+  // scheduleVersion goes up on every save so an edit made on an out-of-date screen is refused instead of overwriting a newer one.
+  scheduleVersion      Int       @default(0)
+  instalments          PaymentInstalment[]
+
   // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
   // removes the default and every query is scoped by the logged-in business.
   businessId String   @default("shaadi-shopping")
@@ -2076,6 +2081,25 @@ model CommercialAgreement {
 
   @@index([businessId])
   @@map("commercial_agreements")
+}
+
+// One dated instalment of an agreement's balance (22 Nov 2026). The booking amount (CommercialAgreement.confirmationAmount) is not an
+// instalment — it is fixed by the agreement. Together the instalments always add up to exactly agreementTotal − confirmationAmount
+// (checked on every save, services/paymentSchedule.service.ts). Payments are matched to instalments in date order when shown;
+// nothing is stored per instalment about payments. Belongs to its business through the agreement (a child record).
+model PaymentInstalment {
+  id          String              @id @default(uuid())
+  agreementId String
+  agreement   CommercialAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  sortOrder   Int
+  label       String
+  amount      Int
+  dueDate     DateTime            @db.Date
+  createdById String?
+  createdAt   DateTime            @default(now())
+
+  @@unique([agreementId, sortOrder])
+  @@map("payment_instalments")
 }
 
 model PaymentLink {

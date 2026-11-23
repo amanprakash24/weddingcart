@@ -79,10 +79,19 @@ export interface ProposalDeps {
   // "Your hall": a venue's own enquiry's halls, in the couple's words. Runs inside the business's scope (the link's), so only that
   // business's halls are read; another couple's name is dropped by toProposalHalls.
   halls: (enquiryId: string) => Promise<ProposalHall[]>;
+  // One link per couple (22 Nov 2026): the version that revises this one (null = none). Optional so older test fakes still fit.
+  findSuccessor?: (id: string) => Promise<{ id: string; status: string } | null>;
+  // After booking: the wedding the booking became, and whether the couple can already sign in to My Wedding.
+  weddingAccess?: (bookingId: string) => Promise<{ hasCoupleLogin: boolean } | null>;
 }
 
 const defaultDeps = (): ProposalDeps => ({
   db: prisma,
+  findSuccessor: (id) => prisma.quotation.findFirst({ where: { supersedesId: id }, select: { id: true, status: true } }),
+  weddingAccess: async (bookingId) => {
+    const w = await prisma.wedding.findFirst({ where: { sourceBookingId: bookingId }, select: { customerId: true } });
+    return w ? { hasCoupleLogin: w.customerId !== null } : null;
+  },
   findByTokenHash: quotationRepository.findByCustomerTokenHash,
   findById: quotationRepository.findById,
   expireOverdue,
@@ -117,13 +126,29 @@ const defaultDeps = (): ProposalDeps => ({
 
 export function createProposalService(deps: ProposalDeps = defaultDeps()) {
   // Token → the quotation it belongs to, after applying the lazy expiry. null for anything that is not a live link.
+  // One link per couple (22 Nov 2026): the link follows revisions forward to the newest version that has been SENT (or accepted /
+  // expired). A newer version still being drafted is skipped — the couple keeps seeing the last one sent (now superseded, so the page
+  // says the proposal is being updated: beingUpdated).
+  async function newestSent(found: QuotationWithItems): Promise<QuotationWithItems> {
+    let q = found;
+    for (let n = 0; deps.findSuccessor && n < 50; n++) {
+      const next = await deps.findSuccessor(q.id);
+      if (!next || next.status === 'DRAFT') break;
+      const full = await deps.findById(next.id);
+      if (!full) break;
+      q = full;
+    }
+    return q;
+  }
+
   async function resolve(token: unknown): Promise<QuotationWithItems | null> {
     if (!isWellFormedToken(token)) return null;
     const hash = hashCustomerToken(token);
     const found = await deps.findByTokenHash(hash);
     if (!found) return null;
-    await deps.expireOverdue({ id: found.id });
-    return deps.findByTokenHash(hash);
+    const current = await newestSent(found);
+    await deps.expireOverdue({ id: current.id });
+    return deps.findById(current.id);
   }
 
   // The Payments view of a business's OWN link: its own payee, and receipts without the reference numbers — on its own bookings
@@ -220,6 +245,21 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
       }
     }
     view.halls = await hallsRead;
+    // The way into My Wedding once the booking became a wedding (never hides the proposal if it fails).
+    if (q.status === 'ACCEPTED' && q.booking?.id && deps.weddingAccess) {
+      try {
+        view.myWedding = await deps.weddingAccess(q.booking.id);
+      } catch (err) {
+        console.error(`proposal my-wedding for ${q.quotationNumber} could not be loaded —`, err instanceof Error ? err.message : err);
+      }
+    }
+    // Payments, receipts and UTRs are the couple's private records (decision 10 Nov, Q2): once the booking became a wedding they live
+    // in My Wedding behind the couple's mobile + code — the open link no longer carries them (22 Nov 2026). Before that, the link is
+    // where the booking amount is paid, so it keeps them.
+    if (view.myWedding) {
+      view.payments = null;
+      if (view.yourBooking) view.yourBooking = { ...view.yourBooking, payments: [] };
+    }
     return view;
   }
 
@@ -255,6 +295,18 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
   // opened, customerViewedAt is set and one PROPOSAL_VIEWED entry is added to the CRM timeline (decision D6).
   // trackView is false for link-preview bots (WhatsApp etc. fetch the page when staff paste the link) — those
   // must not count as the couple opening it.
+  // A live link whose version was replaced by one still being drafted: the page says "your proposal is being updated" instead of
+  // "this link is no longer valid". Says nothing else about the quotation.
+  async beingUpdated(token: unknown): Promise<boolean> {
+    if (!isWellFormedToken(token)) return false;
+    const found = await deps.findByTokenHash(hashCustomerToken(token));
+    if (!found || !deps.findSuccessor) return false;
+    const q = await newestSent(found);
+    if (q.status !== 'SUPERSEDED') return false;
+    const next = await deps.findSuccessor(q.id);
+    return next?.status === 'DRAFT';
+  },
+
   async view(token: unknown, options: { trackView?: boolean } = {}): Promise<CustomerProposal | null> {
     const q = await resolve(token);
     if (!q) return null;
@@ -346,6 +398,10 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     const state = proposalState(q, new Date());
     if (state === 'INVALID') throw new ProposalNotFoundError();
     if (state !== 'ACCEPTED') throw new ConflictError('Please accept the quotation before paying');
+    // once the wedding exists, payment details are sent from My Wedding (signed in), never through the open link
+    if (q.booking?.id && deps.weddingAccess && (await deps.weddingAccess(q.booking.id))) {
+      throw new ConflictError('Your wedding is booked — please send your payment details from My Wedding');
+    }
     const brand = await deps.brand(q.businessId);
     if (brand.isPlatform) {
       await deps.payments.submit(q, raw, proof);

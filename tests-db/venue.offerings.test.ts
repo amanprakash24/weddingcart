@@ -153,7 +153,7 @@ dbDescribe('what a venue offers, and functions on its quotations (real database)
     expect(saved.quotation?.items.map((i) => i.function)).toEqual(['HALDI', 'RECEPTION', 'RECEPTION']);
     expect(saved.quotation?.total).toBe(498000);
 
-    const token = (await inA(() => quotes.send(enquiryId, users[0]))).linkPath.slice('/proposal/'.length);
+    const token = (await inA(() => quotes.send(enquiryId, users[0]))).linkPath!.slice('/proposal/'.length);
     const page = await runInScope(await scopeForProposalToken(token), () => proposalService.view(token));
     expect(page?.items.map((i) => [i.functionLabel, i.description])).toEqual([['Haldi', 'Haldi decoration (marigold)'], ['Reception', 'Banquet hall'], ['Reception', 'Veg plate (per plate)']]);
 
@@ -194,7 +194,7 @@ dbDescribe('what a venue offers, and functions on its quotations (real database)
     await inA(() => offerings.setActive(djId, true));
     const enquiryId = ((await inA(() => enquiries.create({ name: 'Neha Verma', phone: '98765 43213', channel: 'PHONE' }, users[0]))) as { id: string }).id;
     await inA(() => quotes.save(enquiryId, { items: [{ description: 'Hall', quantity: '1', unitPrice: '1000' }], validUntil: later(7) }, users[0]));
-    const token = (await inA(() => quotes.send(enquiryId, users[0]))).linkPath.slice('/proposal/'.length);
+    const token = (await inA(() => quotes.send(enquiryId, users[0]))).linkPath!.slice('/proposal/'.length);
     const asCouple = async <T>(fn: () => Promise<T>) => runInScope(await scopeForProposalToken(token), fn);
     const page = await asCouple(() => proposalService.view(token));
     expect(page?.addable).toHaveLength(7);

@@ -31,7 +31,10 @@ dbDescribe('a venue’s own quotations (real database)', () => {
   const inA = <T>(fn: () => Promise<T>) => runInScope(scopeA, fn);
   const inB = <T>(fn: () => Promise<T>) => runInScope(scopeB, fn);
   const later = (days: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(Date.now() + days * 86_400_000));
-  const tokenOf = (linkPath: string) => linkPath.slice('/proposal/'.length);
+  const tokenOf = (linkPath: string | undefined) => {
+    if (!linkPath) throw new Error('expected a new link');
+    return linkPath.slice('/proposal/'.length);
+  };
   // What the couple's browser does: the link runs as the business that owns the quotation (lib/quotation/proposalEntry.ts).
   const asCouple = async <T>(token: string, fn: () => Promise<T>) => runInScope(await scopeForProposalToken(token), fn);
   const nextKind = async (id: string) => (await inA(() => enquiries.get(id))).next.kind;
@@ -148,15 +151,20 @@ dbDescribe('a venue’s own quotations (real database)', () => {
     expect(await nextKind(enquiryId)).toBe('QUOTE_CHANGES');
   });
 
-  test('revise: a new draft with the next number; the old link stops working; the new one is sent', async () => {
+  // One link per couple (22 Nov 2026; this test used to check that a revision KILLED the couple's link): the couple keeps their link.
+  // While the new version is a draft it says "being updated"; once sent, the SAME link shows it and no new link is made.
+  test('revise: a new draft with the next number; the couple’s link says “being updated”, then shows the new version once sent', async () => {
     const draft = await inA(() => quotes.revise(enquiryId, users[0]));
     expect(draft.quotation).toMatchObject({ stage: 'DRAFT', revision: 2, total: 200000, hasLink: false, changesNote: null });
     expect(draft.quotation?.number).toMatch(new RegExp(`^${prefix}-QTN-\\d{6}-0002$`));
     expect(await asCouple(firstToken, () => proposalService.view(firstToken))).toBeNull();
+    expect(await asCouple(firstToken, () => proposalService.beingUpdated(firstToken))).toBe(true);
     await inA(() => quotes.save(enquiryId, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '200000' }, { description: 'Lawn', quantity: '1', unitPrice: '50000' }], validUntil: later(7) }, users[0]));
     const sent = await inA(() => quotes.send(enquiryId, users[0]));
-    secondToken = tokenOf(sent.linkPath);
-    expect(sent.quotation).toMatchObject({ stage: 'SENT', total: 250000, toConfirm: 75000 });
+    expect(sent.linkPath).toBeUndefined(); // no second link to share
+    expect(sent.quotation).toMatchObject({ stage: 'SENT', total: 250000, toConfirm: 75000, hasLink: true, linkOnEarlierVersion: true });
+    expect(await asCouple(firstToken, () => proposalService.view(firstToken))).toMatchObject({ total: 250000 });
+    secondToken = firstToken;
   });
 
   test('a fresh link replaces the one before it', async () => {
@@ -230,7 +238,7 @@ dbDescribe('a venue’s own quotations (real database)', () => {
     expect(row).toEqual({ gstEnabled: true, gstAmount: 26500, total: 346500, items: [{ gstRateBp: 1800 }, { gstRateBp: 500 }, { gstRateBp: null }] });
 
     // The couple's page: the venue's GST number, and the GST on each line.
-    const token = (await inB(() => quotes.send(id, users[1]))).linkPath.slice('/proposal/'.length);
+    const token = (await inB(() => quotes.send(id, users[1]))).linkPath!.slice('/proposal/'.length);
     const asCouple = async <T>(fn: () => Promise<T>) => runInScope(await scopeForProposalToken(token), fn);
     const page = await asCouple(() => proposalService.view(token));
     expect(page?.brand.gstin).toBe('27AAPFU0939F1ZV');

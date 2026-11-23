@@ -77,7 +77,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     await inA(() => quotes.save(enquiryId, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '150000', function: 'WEDDING' }, { description: 'Haldi decoration', quantity: '2', unitPrice: '25000', function: 'HALDI' }], validUntil: later(7) }, users[0]));
     const sent = await inA(() => quotes.send(enquiryId, users[0]));
     quotationId = sent.quotation!.id;
-    const token = sent.linkPath.slice('/proposal/'.length);
+    const token = sent.linkPath!.slice('/proposal/'.length);
     coupleToken = token;
     await runInScope(await scopeForProposalToken(token), () => proposalService.accept(token));
   });
@@ -178,8 +178,9 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
       { description: 'Haldi decoration', quantity: 2, unitPrice: 25000, lineTotal: 50000, function: 'Haldi' },
     ]);
     expect(w.agreedTotals).toEqual({ discount: 0, gst: 0, total: 200000 });
-    // The business provides its own lines: no vendor booking, no "assign a vendor" task.
-    expect(w.tasks).toEqual([]);
+    // The business provides its own lines: no vendor booking, no "assign a vendor" task. The one to-do is giving the couple their
+    // My Wedding sign-in code (22 Nov 2026) — they have no sign-in yet.
+    expect(w.tasks.map((t) => t.title)).toEqual(['Give the couple their My Wedding sign-in code']);
     expect(await runAsSystem('test check', () => app.prisma.vendorBooking.count({ where: { weddingEvent: { weddingId: item.id } } }))).toBe(0);
     // Every record of the wedding belongs to venue A; the agreement's invoice and its payments moved to the wedding untouched.
     const owned = await runAsSystem('test check', () => app.prisma.invoice.findMany({ where: { quotationId }, select: { weddingId: true, businessId: true } }));
@@ -231,8 +232,10 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   test('the couple’s link shows their wedding and what was received — no reference numbers, and nothing of another couple', async () => {
     const couple = await coupleView();
     expect(couple?.yourBooking).toMatchObject({ confirmed: true, total: 200000, received: 200000, outstanding: 0, toConfirm: 0 });
-    expect(couple?.yourBooking?.payments.map((p) => [p.amount, p.method])).toEqual(expect.arrayContaining([[20000, 'UPI'], [40000, 'Cash'], [100000, 'Bank transfer'], [40000, 'Cheque']]));
-    expect(couple?.yourBooking?.payments).toHaveLength(4);
+    // Payments behind sign-in (22 Nov 2026, decision 10 Nov Q2): once the booking became a wedding, the open link no longer lists the
+    // individual payments — they are in My Wedding, signed in. The booking's standing stays.
+    expect(couple?.yourBooking?.payments).toEqual([]);
+    expect(couple?.myWedding).toEqual({ hasCoupleLogin: expect.any(Boolean) });
     expect(couple?.yourBooking?.wedding).toMatchObject({ date: later(60), state: 'UPCOMING', daysToGo: 60, functions: ['Haldi', 'Wedding'] });
     expect(couple?.yourBooking?.wedding?.number).toMatch(new RegExp(`^${prefix}-WED-\\d{4}-0001$`));
     const text = JSON.stringify(couple);
@@ -242,7 +245,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
   test('a payment needs the booking: an accepted quotation without a wedding date is booked first', async () => {
     const id = ((await inA(() => enquiries.create({ name: 'Priya Singh', phone: '98765 43211', channel: 'WALK_IN' }, users[0]))) as { id: string }).id;
     await inA(() => quotes.save(id, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '100000' }], validUntil: later(7) }, users[0]));
-    const token = (await inA(() => quotes.send(id, users[0]))).linkPath.slice('/proposal/'.length);
+    const token = (await inA(() => quotes.send(id, users[0]))).linkPath!.slice('/proposal/'.length);
     expect((await outcome(inA(() => quotes.pay(id, { amount: '1000', method: 'CASH' }, users[0]))))?.name).toBe('ConflictError'); // not accepted yet
     await runInScope(await scopeForProposalToken(token), () => proposalService.accept(token));
     expect((await outcome(inA(() => quotes.pay(id, { amount: '1000', method: 'CASH' }, users[0]))))?.message).toContain('Make the booking first');
@@ -291,6 +294,8 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
 
   test('the to-do list: add, tick, untick, take off — and it stays the venue’s own', async () => {
     const [rahul] = (await inA(() => weddings.list())).filter((w) => w.customerName === 'Rahul Kumar');
+    // the sign-in to-do from the wedding's creation is taken off first, so this test sees only its own to-do
+    for (const t of (await inA(() => weddings.get(rahul.id))).tasks) await inA(() => weddings.setTask(rahul.id, t.id, { remove: true }));
     expect(await inA(() => weddings.addTask(rahul.id, { title: ' ' }, users[0]))).toEqual({ errors: { title: expect.any(String) } });
     const one = (await inA(() => weddings.addTask(rahul.id, { title: 'Confirm the generator', dueOn: later(50) }, users[0]))) as Awaited<ReturnType<typeof weddings.get>>;
     expect(one.tasks).toEqual([{ id: expect.any(String), title: 'Confirm the generator', done: false, dueAt: expect.any(String), dueOn: later(50), assignee: null }]);
@@ -450,7 +455,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     expect((await inA(() => sameDate.forEnquiry(id, later(61)))).bookings).toEqual([]);
     // It is a warning only: the quotation is still made, sent and accepted — and the first couple's enquiry now shows the second.
     await inA(() => quotes.save(id, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '100000' }], validUntil: later(7) }, users[0]));
-    const token = (await inA(() => quotes.send(id, users[0]))).linkPath.slice('/proposal/'.length);
+    const token = (await inA(() => quotes.send(id, users[0]))).linkPath!.slice('/proposal/'.length);
     await runInScope(await scopeForProposalToken(token), () => proposalService.accept(token));
     expect((await inA(() => sameDate.forEnquiry(enquiryId))).bookings).toEqual([{ name: 'Asha Verma', confirmed: false, enquiryId: id, wedding: null }]);
   });
@@ -478,7 +483,7 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     await inA(() => quotes.save(claimEnquiry, { items: [{ description: 'Hall hire', quantity: '1', unitPrice: '100000' }], validUntil: later(7) }, users[0]));
     const sent = await inA(() => quotes.send(claimEnquiry, users[0]));
     claimQuotation = sent.quotation!.id;
-    claimToken = sent.linkPath.slice('/proposal/'.length);
+    claimToken = sent.linkPath!.slice('/proposal/'.length);
     await claimLink(() => proposalService.accept(claimToken)); // no wedding date yet, so no booking
     expect((await claimLink(() => proposalService.view(claimToken, { trackView: false })))?.payments).toBeNull();
     expect((await outcome(claimLink(() => proposalService.submitPayment(claimToken, { amount: '30000', utr: '412345678901' }, null))))?.message).toContain('Please contact');
@@ -567,9 +572,11 @@ dbDescribe('payments on a venue’s own booking (real database)', () => {
     const anitaDay = calA.days.find((d) => d.date === later(120))?.bookings.find((x) => x.name === 'Anita Verma');
     expect(anitaDay).toMatchObject({ confirmed: true, wedding: { id: expect.any(String) } });
     expect((await inB(() => calendar.get())).days.flatMap((d) => d.bookings).some((x) => ['Anita Verma', 'Rahul Kumar', 'Asha Verma'].includes(x.name))).toBe(false);
-    // The couple's link: confirmed, with their receipt; and the venue's wedding carries their name.
+    // The couple's link: the booking became a wedding, so payments and receipts are now in My Wedding (signed in), not on the open
+    // link (22 Nov 2026); the venue's wedding carries their name.
     const view = await claimLink(() => proposalService.view(claimToken, { trackView: false }));
-    expect(view?.payments).toMatchObject({ bookingConfirmed: true, received: 30000, inReview: 0, outstanding: 70000, receipts: [{ amount: 30000, method: 'UPI', reference: null }] });
+    expect(view?.payments).toBeNull();
+    expect(view?.myWedding).toEqual({ hasCoupleLogin: expect.any(Boolean) });
     expect(view?.yourBooking).toMatchObject({ confirmed: true, received: 30000, wedding: { date: later(120) } });
     expect((await inA(() => weddings.list())).some((w) => w.customerName === 'Anita Verma')).toBe(true);
     // Still nothing for another venue or Shaadi Shopping.

@@ -663,6 +663,36 @@ export default function ProposalClient({
           </div>
         )}
 
+        {/* One link per couple (22 Nov 2026): once the booking became a wedding, everything continues in My Wedding. */}
+        {p.myWedding && (
+          <section aria-label="My Wedding" className="rounded-2xl border border-[#C5A46D]/50 bg-gradient-to-br from-[#2A0614] to-[#4A0B25] p-5 text-white print:hidden sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#E8C98A]">Your wedding is booked</p>
+            <p className="mt-2 text-lg" style={serif}>
+              Everything now continues in My Wedding
+            </p>
+            <p className="mt-1 text-sm text-white/80">Your functions, guests and invitations, payments and receipts, and documents — in one place.</p>
+            {p.myWedding.hasCoupleLogin ? (
+              <a href="/my-wedding" className="mt-4 inline-flex min-h-12 items-center rounded-full bg-[#E8C98A] px-6 text-sm font-bold text-[#2A0614]">
+                Open My Wedding
+              </a>
+            ) : (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-white/85">{contact.name} will send you a sign-in code on WhatsApp for your mobile number.</p>
+                {contact.phone && (
+                  <a
+                    href={contact.phone.whatsApp(`Namaste, our booking ${p.number} is confirmed. Please send us our My Wedding sign-in code.`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-12 items-center rounded-full bg-[#1F7A4D] px-6 text-sm font-bold text-white"
+                  >
+                    Ask for my sign-in code
+                  </a>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
         {(tab === 'proposal' || tab === 'quotation') && <YourHallPanel halls={halls} venue={contact.name} canAccept={canAccept} />}
 
         {tab === 'proposal' ? (
