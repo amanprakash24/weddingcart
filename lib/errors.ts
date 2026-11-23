@@ -81,6 +81,15 @@ export class ConflictError extends Error {
   }
 }
 
+// The caller is who they say they are, but this action is not theirs to take (e.g. a family member without the permission —
+// lib/customer/familyAccess.ts). Maps to 403.
+export class ForbiddenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ForbiddenError';
+  }
+}
+
 // Wraps a repository call, translating known Prisma error codes into the
 // typed domain errors above. Unrecognized errors are rethrown as-is.
 export async function withPrismaErrors<T>(entity: string, fn: () => Promise<T>): Promise<T> {
@@ -141,6 +150,9 @@ export function handleApiError(err: unknown): NextResponse {
   }
   if (err instanceof ConflictError) {
     return NextResponse.json({ success: false, error: err.message }, { status: 409 });
+  }
+  if (err instanceof ForbiddenError) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 403 });
   }
   if (err instanceof ConversionLockedError) {
     return NextResponse.json({ success: false, error: err.message }, { status: 409 });

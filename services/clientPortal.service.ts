@@ -3,6 +3,7 @@ import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { approvalService } from '@/services/approval.service';
 import { customerActivityText } from '@/lib/customer/activityText';
 import { coupleWeddings, weddingScope } from '@/lib/customer/coupleEntry';
+import { can, guestForViewer, type CoupleRole } from '@/lib/customer/familyAccess';
 import { runInScope } from '@/lib/ownership/scope';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { upiLink, upiPayeeFrom, upiPayeeOf } from '@/lib/payments/upi';
@@ -131,13 +132,37 @@ export interface ClientPortalEvent {
   ownVendors: { id: string; name: string; category: string; phone: string | null; price: number | null; notes: string | null; weddingEventId: string | null }[];
   quoteRequests: { id: string; vendorName: string; vendorSlug: string; category: string; functionId: string | null; note: string | null; status: 'REQUESTED' | 'QUOTED' | 'NOT_AVAILABLE' | 'BOOKED' | 'CLOSED'; staffNote: string | null; createdAt: string }[];
   canAskForQuotes: boolean;
+  // Family access (23 Nov 2026): who is looking. OWNER = the couple; otherwise a family member's role. What a role may not see is
+  // removed on the server (forRole below) — the screens only hide buttons.
+  access: { role: CoupleRole; relation: string | null; canMoney: boolean; canPlan: boolean; canFamily: boolean };
+}
+
+// Removes what this role may not see. Without the money permission: no payments, receipts, claims, invoices, quotation, documents,
+// budget, vendor prices, or quote answers (they carry prices). Approvals are already the couple's only (listed by Wedding.customerId).
+export function forRole(event: ClientPortalEvent, role: CoupleRole, relation: string | null): ClientPortalEvent {
+  const access = { role, relation, canMoney: can(role, 'money'), canPlan: can(role, 'plan'), canFamily: can(role, 'family') };
+  // a family member who can only see the plan: guests without phone, email or RSVP link
+  if (!access.canPlan) event = { ...event, guests: event.guests.map(guestForViewer) };
+  if (access.canMoney) return { ...event, access };
+  return {
+    ...event,
+    access,
+    budget: null,
+    finance: { total: 0, paid: 0, pending: 0, nextPayment: null, invoices: [], payments: [] },
+    money: { agreed: 0, received: 0, due: 0, next: null, payTo: null, plan: { agreed: 0, received: 0, due: 0, scheduled: false, steps: [], next: null }, receipts: [], claims: [], canClaim: false, inReview: 0 },
+    quotation: null,
+    documents: [],
+    approvals: [],
+    ownVendors: event.ownVendors.map((v) => ({ ...v, price: null })),
+    quoteRequests: event.quoteRequests.map((r) => ({ ...r, staffNote: null })),
+  };
 }
 
 export const clientPortalService = {
   async getEventsForClient(userId: string): Promise<ClientPortalEvent[]> {
     // The couple's weddings, each read AS ITS OWN BUSINESS — Shaadi Shopping's, or a venue's on Vivah OS (lib/customer/coupleEntry.ts).
     const owned = await coupleWeddings(userId);
-    return Promise.all(owned.map((w) => runInScope(weddingScope(w.businessId), () => this.buildEvent(w.id, w.businessId, userId))));
+    return Promise.all(owned.map(async (w) => forRole(await runInScope(weddingScope(w.businessId), () => this.buildEvent(w.id, w.businessId, userId)), w.role, w.relation)));
   },
 
   async buildEvent(weddingId: string, businessId: string, userId: string): Promise<ClientPortalEvent> {
@@ -349,6 +374,7 @@ export const clientPortalService = {
         ownVendors,
         quoteRequests: quoteRequests.map((r) => ({ id: r.id, vendorName: r.vendor.name, vendorSlug: r.vendor.slug, category: r.vendor.category.name, functionId: r.weddingEventId, note: r.note, status: r.status, staffNote: r.staffNote, createdAt: r.createdAt.toISOString() })),
         canAskForQuotes: businessId === PLATFORM_BUSINESS_ID,
+        access: { role: 'OWNER' as const, relation: null, canMoney: true, canPlan: true, canFamily: true }, // set per person by forRole
       };
     })[0];
   },

@@ -13,7 +13,7 @@ async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ i
   try {
     const { id, requestId } = await params;
     const userId = session.user.id;
-    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleVendorsService.closeRequest(id, requestId, userId)) });
+    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleVendorsService.closeRequest(id, requestId, userId), 'plan') });
   } catch (error) {
     return handleApiError(error);
   }

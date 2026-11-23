@@ -16,8 +16,8 @@ async function handleGET(req: NextRequest, { params }: { params: Promise<{ id: s
     const userId = session.user.id;
     const category = req.nextUrl.searchParams.get('category')?.trim().slice(0, 60) ?? '';
     const data = category
-      ? await asCoupleWedding(id, userId, () => coupleVendorsService.searchListed(id, category))
-      : await asCoupleWedding(id, userId, () => coupleVendorsService.categories());
+      ? await asCoupleWedding(id, userId, () => coupleVendorsService.searchListed(id, category), 'plan')
+      : await asCoupleWedding(id, userId, () => coupleVendorsService.categories(), 'plan');
     return NextResponse.json({ success: true, data });
   } catch (error) {
     return handleApiError(error);

@@ -139,6 +139,7 @@ model User {
   // table; these are the many places Wedding OS entities reference a user.
   weddingsAsCustomer        Wedding[]           @relation("WeddingCustomer")
   weddingsAsCoordinator     Wedding[]           @relation("WeddingCoordinator")
+  weddingMemberships        WeddingMember[] // family members of a couple's wedding (23 Nov 2026)
   paymentsRecorded          Payment[]           @relation("PaymentRecordedBy")
   paymentSubmissionsReviewed PaymentSubmission[] @relation("PaymentSubmissionReviewedBy")
   reviewsModerated           Review[]            @relation("ReviewModeratedBy")
@@ -1403,6 +1404,7 @@ model Wedding {
   approvals          ApprovalRequest[]   @relation("ApprovalWedding")
   guests             Guest[]
   coupleVendors      CoupleVendor[] // vendors the couple found themselves (22 Nov 2026)
+  members            WeddingMember[] // family members the couple invited (23 Nov 2026)
   quoteRequests      VendorQuoteRequest[] // "Ask for a quote" from My Wedding (22 Nov 2026)
 
   @@index([customerPhone])
@@ -2722,4 +2724,31 @@ model VendorQuoteRequest {
   @@unique([weddingId, vendorId])
   @@index([status])
   @@map("vendor_quote_requests")
+}
+
+// Family access (23 Nov 2026, Client OS): what a family member may do on a couple's wedding. The couple (Wedding.customerId) is the
+// owner and the only one who adds or removes family. lib/customer/familyAccess.ts holds the rules.
+enum FamilyRole {
+  FULL // everything the couple sees and does, payments included (a partner, a parent who pays) — but not managing family
+  PLANNING // functions, guests and vendors; no money (payments, receipts, invoices, prices)
+  VIEW // sees the plan (functions, guests, vendors); changes nothing; no money
+}
+
+// A family member of a couple's wedding, signed in with their own mobile + code. A child record of the wedding (ownership).
+model WeddingMember {
+  id        String     @id @default(uuid())
+  weddingId String
+  wedding   Wedding    @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  relation  String? // "Bride's father", "Sister" …
+  role      FamilyRole
+  addedById String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([weddingId, userId])
+  @@index([userId])
+  @@map("wedding_members")
 }

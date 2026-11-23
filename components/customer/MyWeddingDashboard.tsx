@@ -8,7 +8,9 @@ import CoupleVendors from '@/components/customer/CoupleVendors';
 import CoupleFunctions from '@/components/customer/CoupleFunctions';
 import type { CustomerReceipt } from '@/lib/payments/customerPayment';
 import { signOut } from 'next-auth/react';
-import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, KeyRound, LogOut, MapPin, Phone, ShoppingBag, Users } from 'lucide-react';
+import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, KeyRound, LogOut, MapPin, Phone, ShoppingBag, UserPlus, Users } from 'lucide-react';
+import CoupleFamily from '@/components/customer/CoupleFamily';
+import { FAMILY_ROLE_WORDS } from '@/lib/customer/familyAccess';
 import type { ClientPortalEvent } from '@/services/clientPortal.service';
 import GuestRsvp from '@/components/wedding/workspace/GuestRsvp';
 import VivahOsLogo from '@/components/vivah-os/VivahOsLogo';
@@ -184,6 +186,9 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
   const waiting = guests.length - coming - declined;
   const answeredPct = guests.length ? Math.round(((coming + declined) / guests.length) * 100) : 0;
   const open = (approvals[event.id] ?? []).filter((a) => a.status === 'PENDING_CLIENT' || a.status === 'CHANGES_REQUESTED');
+  // Family access (23 Nov 2026): what this person may see. The server already removed what they may not; this only hides sections.
+  const access = event.access;
+  const menu = MENU.filter((x) => access.canMoney || (x.id !== 'payments' && x.id !== 'documents'));
 
   return (
     <div className={`${theme} pb-28 lg:pb-10 print:min-h-0 print:bg-white print:p-0`}>
@@ -192,7 +197,7 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
       <div className="mx-auto flex max-w-[1360px] flex-wrap items-start gap-6 px-4 py-5 sm:px-6 print:hidden">
         {/* Side menu — stays in place while the page scrolls (desktop) */}
         <nav aria-label="My wedding" className="os-glass-dark sticky top-20 hidden max-h-[calc(100vh-6rem)] w-[240px] shrink-0 overflow-y-auto rounded-[22px] border border-white/10 bg-[var(--color-bg-inverse)] p-3 lg:block">
-          {MENU.map(({ id, label, icon: Icon }) => (
+          {[...menu, ...(access.canFamily ? [{ id: 'family', label: 'Family', short: 'Family', icon: UserPlus }] : [])].map(({ id, label, icon: Icon }) => (
             <a key={id} href={`#${id}`} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 text-[15px] text-[#CBD5E1] hover:bg-white/[0.08] hover:text-white">
               <Icon className="h-[18px] w-[18px]" aria-hidden /> {label}
               {id === 'overview' && open.length > 0 && <span className="ml-auto rounded-full bg-[var(--color-accent-pink)] px-2 text-xs font-bold text-[#111827]">{open.length}</span>}
@@ -205,6 +210,11 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
 
         <main id="overview" className="min-w-0 flex-[999_1_640px] space-y-5 scroll-mt-4">
           {remind && <CodeReminder onChoose={chooseCode} />}
+          {access.role !== 'OWNER' && (
+            <p role="status" className="rounded-[18px] border border-white/70 bg-white/70 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+              You are viewing {names}’s wedding as family{access.relation ? ` (${access.relation})` : ''} · <b>{FAMILY_ROLE_WORDS[access.role].label}</b> — {FAMILY_ROLE_WORDS[access.role].explains}
+            </p>
+          )}
           {events.length > 1 && (
             <label className="flex flex-wrap items-center gap-2 text-sm font-semibold">
               Your weddings
@@ -239,16 +249,16 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
           <section aria-label="Where things stand" className="os-glass grid grid-cols-2 overflow-hidden rounded-[22px] border bg-white sm:grid-cols-4">
             <div className="border-b border-r border-white/70 p-4 sm:border-b-0"><p className="flex items-center gap-2 text-[15px] font-bold text-[#15803D]"><CheckCircle2 className="h-4 w-4" aria-hidden />{weddingStatusWords(event.status)}</p><p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Wedding ID {event.weddingNumber}</p></div>
             <div className="border-b border-white/70 p-4 sm:border-b-0 sm:border-r"><p className="text-xs text-[var(--color-text-muted)]">Wedding day</p><p className="os-display text-[1.7rem] font-semibold leading-tight">{days > 1 ? <>{days} <span className="text-base font-normal text-[var(--color-text-muted)]">days to go</span></> : daysToGoWords(days)}</p></div>
-            <div className="border-r border-white/70 p-4"><p className="text-xs text-[var(--color-text-muted)]">Paid so far</p><p className="text-lg font-bold">{rupeesShort(m.received)} <span className="text-sm font-medium text-[var(--color-text-muted)]">of {rupeesShort(m.agreed)}</span></p></div>
+            {access.canMoney ? <div className="border-r border-white/70 p-4"><p className="text-xs text-[var(--color-text-muted)]">Paid so far</p><p className="text-lg font-bold">{rupeesShort(m.received)} <span className="text-sm font-medium text-[var(--color-text-muted)]">of {rupeesShort(m.agreed)}</span></p></div> : <div className="border-r border-white/70 p-4"><p className="text-xs text-[var(--color-text-muted)]">Functions</p><p className="text-lg font-bold">{event.functions.length}</p></div>}
             <div className="p-4"><p className="text-xs text-[var(--color-text-muted)]">{event.business.isShaadiShopping ? 'Your Wedding Expert' : 'Your venue'}</p><p className="text-lg font-bold">{expert}</p></div>
           </section>
 
           {/* Three cards */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className={`grid gap-4 ${access.canMoney ? 'md:grid-cols-3' : ''}`}>
             <section aria-labelledby="c-guests" className={`${card} flex flex-col gap-3`}>
               <h2 id="c-guests" className="flex items-center gap-2 text-[17px] font-bold"><Users className="h-5 w-5 text-[var(--color-primary-text)]" aria-hidden />Guests</h2>
               {guests.length === 0 ? (
-                <p className="text-sm text-[var(--color-text-secondary)]">No guests added yet. Add them below and send each one their own invite link.</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">{access.canPlan ? 'No guests added yet. Add them below and send each one their own invite link.' : 'No guests added yet.'}</p>
               ) : (
                 <>
                   <p><span className="os-display text-[2.2rem] font-semibold leading-none">{guests.length}</span> <span className="text-sm text-[var(--color-text-muted)]">invited · {answeredPct}% answered</span></p>
@@ -262,7 +272,7 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
               <a href="#guests" className="mt-auto inline-flex min-h-11 items-center self-start text-sm font-bold text-[var(--color-primary-text)]">Guests &amp; RSVP →</a>
             </section>
 
-            <section aria-labelledby="c-pay" className={`${card} flex flex-col gap-3`}>
+            {access.canMoney && <section aria-labelledby="c-pay" className={`${card} flex flex-col gap-3`}>
               <h2 id="c-pay" className="flex items-center gap-2 text-[17px] font-bold"><CreditCard className="h-5 w-5 text-[#15803D]" aria-hidden />Payments</h2>
               {m.agreed === 0 ? (
                 <p className="text-sm text-[var(--color-text-secondary)]">Your payments appear here once your quotation is accepted.</p>
@@ -277,12 +287,12 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
                 </>
               )}
               <a href="#payments" className="mt-auto inline-flex min-h-11 items-center self-start text-sm font-bold text-[var(--color-primary-text)]">Payments &amp; receipts →</a>
-            </section>
+            </section>}
 
-            <section aria-labelledby="c-wait" className={`${card} flex flex-col gap-3`}>
+            {access.canMoney && <section aria-labelledby="c-wait" className={`${card} flex flex-col gap-3`}>
               <h2 id="c-wait" className="flex items-center gap-2 text-[17px] font-bold"><CheckCircle2 className="h-5 w-5 text-[var(--color-primary-text)]" aria-hidden />Waiting for you</h2>
               <Approvals approvals={approvals[event.id] ?? []} onDecision={decide} />
-            </section>
+            </section>}
           </div>
 
           {/* Functions + contact */}
@@ -304,7 +314,7 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
           </div>
 
           {/* Payments: plan, every payment and its receipt, pay by UPI (22 Nov 2026) */}
-          <MyWeddingPayments event={event} expert={expert} onReceipt={(r) => setPrinting({ kind: 'receipt', receipt: r })} />
+          {access.canMoney && <MyWeddingPayments event={event} expert={expert} onReceipt={(r) => setPrinting({ kind: 'receipt', receipt: r })} />}
 
           {/* Vendors */}
           <CoupleVendors event={event} />
@@ -312,11 +322,14 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
           {/* Guests & RSVP (the existing guest list — step 2 redesigns it) */}
           <section id="guests" aria-labelledby="c-guestlist" className="scroll-mt-4">
             <h2 id="c-guestlist" className="sr-only">Guests and RSVP</h2>
-            <GuestRsvp weddingId={event.id} events={event.functions.map((f) => ({ id: f.id, type: f.name, label: f.name, date: f.date }))} initialGuests={event.guests} clientMode />
+            <GuestRsvp weddingId={event.id} events={event.functions.map((f) => ({ id: f.id, type: f.name, label: f.name, date: f.date }))} initialGuests={event.guests} clientMode readOnly={!access.canPlan} />
           </section>
 
           {/* Documents */}
-          <section id="documents" aria-labelledby="c-docs" className={`${card} scroll-mt-4`}>
+          {/* Family access (23 Nov 2026): the couple adds family members and chooses what each can do */}
+          {access.canFamily && <CoupleFamily weddingId={event.id} coupleNames={names} />}
+
+          {access.canMoney && <section id="documents" aria-labelledby="c-docs" className={`${card} scroll-mt-4`}>
             <h2 id="c-docs" className="text-[17px] font-bold">Documents</h2>
             {!event.quotation && event.finance.invoices.length === 0 && event.documents.length === 0 ? (
               <p className="mt-3 text-sm text-[var(--color-text-secondary)]">Your quotation, invoices and documents appear here.</p>
@@ -375,15 +388,15 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
                 ))}
               </ul>
             )}
-          </section>
+          </section>}
 
           {codeBox}
         </main>
       </div>
 
       {/* Phone: bottom tabs */}
-      <nav aria-label="My wedding" className="os-glass-bar fixed inset-x-3 z-40 grid grid-cols-6 rounded-[28px] px-1 lg:hidden print:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}>
-        {MENU.map(({ id, short, icon: Icon }) => (
+      <nav aria-label="My wedding" className="os-glass-bar fixed inset-x-3 z-40 grid rounded-[28px] px-1 lg:hidden print:hidden" style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)', gridTemplateColumns: `repeat(${menu.length}, minmax(0, 1fr))` }}>
+        {menu.map(({ id, short, icon: Icon }) => (
           <a key={id} href={`#${id}`} className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-[var(--color-text-secondary)]">
             <Icon className="h-[21px] w-[21px]" aria-hidden /><span className="max-w-full truncate">{short}</span>
           </a>

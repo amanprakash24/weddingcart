@@ -49,7 +49,8 @@ const field = 'flex flex-col gap-1.5 text-xs font-semibold text-[#6E4F4A]';
 const input = 'min-h-[42px] w-full rounded-xl border border-[#EBCFC7] bg-white px-3 text-sm font-normal text-[#3A2224] outline-none focus-visible:ring-2 focus-visible:ring-[#D9466F]';
 const chip = 'inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold';
 
-export default function GuestRsvp({ weddingId, events, initialGuests, clientMode = false }: { weddingId: string; events: EventOption[]; initialGuests: Guest[]; clientMode?: boolean }) {
+// readOnly (23 Nov 2026, family access): a family member who can only see the plan — no adding, editing or removing guests.
+export default function GuestRsvp({ weddingId, events, initialGuests, clientMode = false, readOnly = false }: { weddingId: string; events: EventOption[]; initialGuests: Guest[]; clientMode?: boolean; readOnly?: boolean }) {
   const [guests, setGuests] = useState(initialGuests);
   const [side, setSide] = useState<'all' | Side>('all');
   const [query, setQuery] = useState('');
@@ -189,7 +190,7 @@ export default function GuestRsvp({ weddingId, events, initialGuests, clientMode
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#A2683A]">Guests &amp; RSVP</p>
           <h2 id="guests-title" className="mt-1 font-[family-name:var(--font-playfair)] text-3xl font-semibold text-[#7A2236]">Guests</h2>
         </div>
-        <button type="button" className={gold} onClick={() => open('new')}>Add a guest</button>
+        {!readOnly && <button type="button" className={gold} onClick={() => open('new')}>Add a guest</button>}
       </div>
 
       <div role="tablist" aria-label="Whose guests" className={`${card} mt-4 inline-flex gap-1 rounded-full p-1`}>
@@ -264,7 +265,7 @@ export default function GuestRsvp({ weddingId, events, initialGuests, clientMode
                           {g.isVip && <span className={`${chip} bg-[#FBE5D3] text-[#8C5A1E]`}>VIP</span>}
                           {s && <span className={`${chip} ${s.cls}`}>{s.word}</span>}
                         </p>
-                        <p className="text-xs text-[#8A6B66]">{g.phone || 'No number yet'}{g.accompanyingGuests ? ` · +${g.accompanyingGuests} with them` : ''}</p>
+                        <p className="text-xs text-[#8A6B66]">{readOnly ? 'Guest' : g.phone || 'No number yet'}{g.accompanyingGuests ? ` · +${g.accompanyingGuests} with them` : ''}</p>
                         {pair && <p className="text-xs text-[#6E4F4A]">Comes with {pair.name}</p>}
                       </div>
                       <div className="min-w-0 text-[13px]">
@@ -279,11 +280,11 @@ export default function GuestRsvp({ weddingId, events, initialGuests, clientMode
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
                         <label className="sr-only" htmlFor={`rsvp-${g.id}`}>RSVP for {g.name}</label>
-                        <select id={`rsvp-${g.id}`} value={answerOf(g.rsvpStatus)} onChange={(e) => quickStatus(g, e.target.value as Answer)} className={`min-h-[34px] rounded-full border-0 px-2 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#D9466F] ${a.cls}`}>
+                        <select id={`rsvp-${g.id}`} value={answerOf(g.rsvpStatus)} disabled={readOnly} onChange={(e) => quickStatus(g, e.target.value as Answer)} className={`min-h-[34px] rounded-full border-0 px-2 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#D9466F] ${a.cls}`}>
                           {(Object.keys(ANSWER) as Answer[]).map((k) => <option key={k} value={k}>{ANSWER[k].word}</option>)}
                         </select>
-                        <button type="button" onClick={() => copyLink(g)} className={`${ghost} min-h-[34px] px-3 text-xs`} aria-label={`Copy ${g.name}'s RSVP link`}>{copied === g.id ? 'Copied' : 'Copy link'}</button>
-                        <button type="button" onClick={() => open(g)} className={`${rose} min-h-[34px] px-3 text-xs`}>Edit</button>
+                        {!readOnly && <button type="button" onClick={() => copyLink(g)} className={`${ghost} min-h-[34px] px-3 text-xs`} aria-label={`Copy ${g.name}'s RSVP link`}>{copied === g.id ? 'Copied' : 'Copy link'}</button>}
+                        {!readOnly && <button type="button" onClick={() => open(g)} className={`${rose} min-h-[34px] px-3 text-xs`}>Edit</button>}
                       </div>
                     </li>
                   );
