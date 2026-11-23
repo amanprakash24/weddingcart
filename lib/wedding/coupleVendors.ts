@@ -10,8 +10,8 @@ export const QUOTE_STATUSES = ['REQUESTED', 'QUOTED', 'NOT_AVAILABLE', 'BOOKED',
 export type QuoteStatus = (typeof QUOTE_STATUSES)[number];
 
 export const QUOTE_STATUS_WORDS: Record<QuoteStatus, string> = {
-  REQUESTED: 'Asked — your expert will get back to you',
-  QUOTED: 'Price shared',
+  REQUESTED: 'Enquiry sent · not booked yet',
+  QUOTED: 'Price shared · not booked yet',
   NOT_AVAILABLE: 'Not available',
   BOOKED: 'Booked',
   CLOSED: 'Closed',

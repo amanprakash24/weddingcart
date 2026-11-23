@@ -87,7 +87,10 @@ Booking → Payment schedule → Payment → Receipt → Invoice → Balance →
 | 5.5 | Not available | Couple asks again / closes a request | Starts again with a fresh task / closed with its task cancelled | As expected | — | CUSTOMER | — | db | ✅ |
 | 5.6 | Any | No session / couple on the staff list / couple on another wedding's search | Refused | 401 / 401 / 404 | none | — | — | API on local copy | ✅ |
 | 5.7 | A venue's own wedding | Couple tries Ask for a quote | Sent to Shaadi Shopping on WhatsApp instead (the venue's wedding is not ours to quote) | Button becomes "Ask Shaadi Shopping"; service refuses a request | — | — | — | code + db rule; not browser-tested | 🟡 |
-| 5.8 | Quote accepted by the couple | Staff book the vendor | VendorBooking with partner terms, then "Mark booked" | Booking is the existing "Add service" flow; "Mark booked" is manual (not linked to the VendorBooking yet) | — | — | — | — | 🟡 |
+| 5.8 | Quote accepted by the couple | Staff book the vendor | VendorBooking with partner terms, then "Mark booked" | Booking is the existing "Add service" flow; "Mark booked" is refused until a live VendorBooking for that vendor exists on the wedding (23 Nov) | request BOOKED | ADMIN | — | API on local copy, db | ✅ local · ⬜ live |
+| 5.9 | Wedding with several functions | Couple sends one enquiry for Haldi + Wedding, then changes the functions | One request linked to each function; shows "Enquiry sent · not booked yet"; no VendorBooking | As expected, desktop + 375px | `vendor_quote_requests` +1, `vendor_quote_functions` | CUSTOMER (plan) | task for coordinator | browser (local copy), db | ✅ local · ⬜ live |
+| 5.10 | Couple edits the Wedding or a planner-set function | Saves a change; staff confirm or say not possible | Nothing moves until confirmed; confirm applies it (and the wedding date for the Wedding); not possible leaves it unchanged | As expected; staff decision through the API, staff screen not clicked | `wedding_events.pendingChange`, `activity_logs` | CUSTOMER → ADMIN | none | browser + API (local copy), db | ✅ local · ⬜ live |
+| 5.11 | A Shaadi Shopping wedding | Couple opens Vendors | "Shaadi Shopping · Wedding planning & coordination" across all functions; no booking, price or commission | As expected | read only | CUSTOMER | — | browser (local copy) | ✅ local · ⬜ live |
 
 ## 6. Guest management and invitations
 

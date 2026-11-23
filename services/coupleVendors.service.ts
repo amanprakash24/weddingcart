@@ -28,6 +28,20 @@ async function checkFunction(tx: Tx, weddingId: string, eventId: string | null |
   return e.id;
 }
 
+// The functions an enquiry is for: each once, each one of this wedding's.
+async function checkFunctions(tx: Tx, weddingId: string, ids: readonly string[]) {
+  const unique = [...new Set(ids)];
+  if (!unique.length) return [];
+  const found = await tx.weddingEvent.findMany({ where: { id: { in: unique }, weddingId }, select: { id: true } });
+  if (found.length !== unique.length) throw new ValidationError('Choose one of your functions');
+  return unique;
+}
+
+async function setFunctions(tx: Tx, requestId: string, ids: readonly string[]) {
+  await tx.vendorQuoteFunction.deleteMany({ where: { requestId } });
+  if (ids.length) await tx.vendorQuoteFunction.createMany({ data: ids.map((weddingEventId) => ({ requestId, weddingEventId })) });
+}
+
 function ownFields(input: OwnVendorInput) {
   const problem = ownVendorProblem(input);
   if (problem) throw new ValidationError(problem);
@@ -105,7 +119,7 @@ export const coupleVendorsService = {
 
   // Shaadi Shopping's weddings only (a venue's couple is pointed to Shaadi Shopping instead). Idempotent: asking twice — or two taps at
   // once — leaves one request; a closed or "not available" one starts again. Opens a task for the coordinator.
-  async requestQuote(weddingId: string, input: { vendorId: string; weddingEventId?: string | null; note?: string | null }, coupleUserId: string) {
+  async requestQuote(weddingId: string, input: { vendorId: string; weddingEventId?: string | null; weddingEventIds?: string[]; note?: string | null }, coupleUserId: string) {
     const note = input.note?.trim() || null;
     if (note && note.length > 500) throw new ValidationError('Keep the note under 500 characters');
     const run = () =>
@@ -114,7 +128,8 @@ export const coupleVendorsService = {
         if (w.businessId !== PLATFORM_BUSINESS_ID) throw new ValidationError('Ask Shaadi Shopping on WhatsApp for vendors for your wedding');
         const vendor = await tx.vendor.findFirst({ where: { id: input.vendorId, status: 'PUBLISHED' }, select: { id: true, name: true, category: { select: { name: true } } } });
         if (!vendor) throw new ValidationError('That vendor is not listed any more');
-        const weddingEventId = await checkFunction(tx, weddingId, input.weddingEventId);
+        const functionIds = await checkFunctions(tx, weddingId, input.weddingEventIds ?? (input.weddingEventId ? [input.weddingEventId] : []));
+        const weddingEventId = functionIds[0] ?? null;
         const existing = await tx.vendorQuoteRequest.findUnique({ where: { weddingId_vendorId: { weddingId, vendorId: vendor.id } } });
         const outcome = askAgainOutcome((existing?.status as QuoteStatus | undefined) ?? null);
         if (outcome === 'KEEP') return existing!;
@@ -122,6 +137,7 @@ export const coupleVendorsService = {
           outcome === 'CREATE'
             ? await tx.vendorQuoteRequest.create({ data: { weddingId, vendorId: vendor.id, weddingEventId, note, requestedById: coupleUserId } })
             : await tx.vendorQuoteRequest.update({ where: { id: existing!.id }, data: { status: 'REQUESTED', weddingEventId, note, staffNote: null, handledById: null, handledAt: null, requestedById: coupleUserId } });
+        await setFunctions(tx, request.id, functionIds);
         await tx.task.create({
           data: {
             context: 'WEDDING_TASK',
@@ -146,6 +162,22 @@ export const coupleVendorsService = {
       }
       throw e;
     }
+  },
+
+  // The couple changes which functions a live enquiry is for. A booked or closed one stays as it is.
+  async setRequestFunctions(weddingId: string, requestId: string, ids: string[], coupleUserId: string) {
+    return prisma.$transaction(async (tx) => {
+      await openWedding(tx, weddingId);
+      await tx.$queryRaw`SELECT "id" FROM "vendor_quote_requests" WHERE "id" = ${requestId} FOR UPDATE`;
+      const r = await tx.vendorQuoteRequest.findFirst({ where: { id: requestId, weddingId }, include: { vendor: { select: { name: true } } } });
+      if (!r) throw new NotFoundError('VendorQuoteRequest', requestId);
+      if (r.status !== 'REQUESTED' && r.status !== 'QUOTED') throw new ValidationError('Only an open enquiry can be changed — ask your expert');
+      const functionIds = await checkFunctions(tx, weddingId, ids);
+      await setFunctions(tx, requestId, functionIds);
+      const updated = await tx.vendorQuoteRequest.update({ where: { id: requestId }, data: { weddingEventId: functionIds[0] ?? null } });
+      await log(tx, weddingId, `The couple changed which functions their enquiry to ${r.vendor.name} is for`, coupleUserId);
+      return updated;
+    });
   },
 
   async closeRequest(weddingId: string, requestId: string, coupleUserId: string) {
@@ -174,6 +206,11 @@ export const coupleVendorsService = {
       if (r.updatedAt.toISOString() !== new Date(input.seenUpdatedAt).toISOString()) throw new ConflictError('This request changed since you opened it — look at it again');
       const problem = staffMoveProblem(r.status as QuoteStatus, input.status, input.staffNote);
       if (problem) throw new ValidationError(problem);
+      // "Booked" must be true: the vendor needs a live booking on this wedding first.
+      if (input.status === 'BOOKED') {
+        const live = await tx.vendorBooking.count({ where: { vendorId: r.vendorId, weddingEvent: { weddingId }, status: { notIn: ['DECLINED', 'CANCELLED'] } } });
+        if (!live) throw new ValidationError('Add this vendor to the wedding with “Add service” first — an enquiry is not a booking');
+      }
       const updated = await tx.vendorQuoteRequest.update({
         where: { id: requestId },
         data: { status: input.status, staffNote: input.staffNote?.trim() || r.staffNote, handledById: actorId, handledAt: new Date() },
@@ -189,7 +226,7 @@ export const coupleVendorsService = {
   async forStaff(weddingId: string) {
     const [own, requests] = await Promise.all([
       prisma.coupleVendor.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, include: { weddingEvent: { select: { type: true, label: true } } } }),
-      prisma.vendorQuoteRequest.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, include: { vendor: { select: { name: true, slug: true, category: { select: { name: true } } } }, weddingEvent: { select: { type: true, label: true } } } }),
+      prisma.vendorQuoteRequest.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, include: { functions: { select: { weddingEvent: { select: { type: true, label: true } } } }, vendor: { select: { name: true, slug: true, category: { select: { name: true } } } }, weddingEvent: { select: { type: true, label: true } } } }),
     ]);
     return { own, requests };
   },

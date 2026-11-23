@@ -8,7 +8,7 @@ import { coupleFunctionBody } from '@/lib/wedding/coupleFunctionSchema';
 import { coupleFunctionsService } from '@/services/coupleFunctions.service';
 
 // PATCH / DELETE /api/customer/weddings/[id]/functions/[functionId]: the couple changes or removes one of THEIR OWN functions.
-// A function set by the planner or the venue is refused. Editing one at the booked venue sends it back for confirmation.
+// Editing a function set by the planner or the venue is a request: nothing moves until staff confirm it.
 type Ctx = { params: Promise<{ id: string; functionId: string }> };
 
 async function handlePATCH(req: NextRequest, { params }: Ctx) {

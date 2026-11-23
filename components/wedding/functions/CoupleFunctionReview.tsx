@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { FUNCTION_TYPE_LABELS, type FunctionType } from '@/lib/wedding/functions';
+import type { PendingFunctionChange } from '@/lib/wedding/coupleFunctions';
 
 // A couple's own function on the staff side (22 Nov 2026): who added it, and — when it uses the booked venue — Confirm / Not possible.
 // Used by Shaadi Shopping's wedding workspace and by a venue's own wedding page (each passes its own decision route).
@@ -15,6 +17,7 @@ export interface ReviewableFunction {
   description?: string | null;
   atBookedVenue?: boolean;
   updatedAt?: string;
+  pendingChange?: PendingFunctionChange | null;
 }
 
 export default function CoupleFunctionReview({ fn, decisionUrl, onDecided }: { fn: ReviewableFunction; decisionUrl: string; onDecided: () => Promise<unknown> | void }) {
@@ -48,15 +51,16 @@ export default function CoupleFunctionReview({ fn, decisionUrl, onDecided }: { f
   return (
     <div className={`mt-2 rounded-lg px-3 py-2 text-sm ${waiting ? 'bg-amber-50 text-amber-900' : fn.confirmation === 'NOT_POSSIBLE' ? 'bg-red-50 text-red-800' : 'bg-gray-50 text-gray-700'}`}>
       <p>
-        <b>Added by the couple</b>
-        {waiting && ' · at the booked venue — waiting for your confirmation'}
+        <b>{fn.pendingChange ? 'The couple asked to change this' : 'Added by the couple'}</b>
+        {fn.pendingChange && ` → ${fn.pendingChange.label || FUNCTION_TYPE_LABELS[fn.pendingChange.type as FunctionType]} on ${fn.pendingChange.date}${fn.pendingChange.startTime ? ` at ${fn.pendingChange.startTime}` : ''}${fn.pendingChange.endTime ? `–${fn.pendingChange.endTime}` : ''} · ${fn.pendingChange.atBookedVenue ? 'at the booked venue' : fn.pendingChange.venueName || 'place not set'}`}
+        {waiting && !fn.pendingChange && ' · waiting for your confirmation'}
         {fn.confirmation === 'NOT_POSSIBLE' && ` · you said not possible: ${fn.confirmationNote ?? ''}`}
         {fn.endTime && ` · until ${fn.endTime}`}
       </p>
       {fn.description && <p className="mt-0.5 text-xs opacity-80">{fn.description}</p>}
       {waiting && (
         <>
-          <p className="mt-1 text-xs opacity-80">Confirming does not book the hall or change the price — check availability first.</p>
+          <p className="mt-1 text-xs opacity-80">{fn.pendingChange ? 'Confirming applies this change to the schedule (and the wedding date, if this is the Wedding). It does not move vendors, halls or the price — check them first.' : 'Confirming does not book the hall or change the price — check availability first.'}</p>
           {!reasonOpen ? (
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" disabled={busy} onClick={() => decide('CONFIRM')} className="min-h-9 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Confirm'}</button>

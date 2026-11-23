@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalendarPlus, Clock, MapPin, Pencil, Trash2 } from 'lucide-react';
 import type { ClientPortalEvent } from '@/services/clientPortal.service';
-import { COUPLE_FUNCTION_TYPES, coupleFunctionProblem, needsConfirmation, type CoupleFunctionInput } from '@/lib/wedding/coupleFunctions';
+import { changeNeedsApproval, COUPLE_FUNCTION_TYPES, coupleFunctionProblem, coupleMayChange, needsConfirmation, type CoupleFunctionInput } from '@/lib/wedding/coupleFunctions';
 import { FUNCTION_TYPE_LABELS } from '@/lib/wedding/functions';
 import { serviceStatus } from '@/lib/customer/myWedding';
 
@@ -27,7 +27,7 @@ const name = (f: { type: string; label: string | null }) => f.label?.trim() || F
 const empty = (): CoupleFunctionInput => ({ type: 'MEHNDI', name: '', date: '', startTime: '', endTime: '', place: 'ELSEWHERE', venueSpaceId: '', venueName: '', venueAddress: '', description: '' });
 
 function Status({ f }: { f: Fn }) {
-  if (f.confirmation === 'WAITING') return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${tone.wait}`}>Waiting for confirmation</span>;
+  if (f.confirmation === 'WAITING') return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${tone.wait}`}>{f.pendingChange ? 'Change waiting for confirmation' : 'Waiting for confirmation'}</span>;
   if (f.confirmation === 'NOT_POSSIBLE') return <span className="rounded-full bg-[#FDE8E7] px-2.5 py-0.5 text-xs font-semibold text-[#B42318]">Not possible</span>;
   return f.addedByCouple ? <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${tone.good}`}>Confirmed</span> : null;
 }
@@ -46,6 +46,11 @@ export default function CoupleFunctions({ event, plannerName }: { event: ClientP
   const startEdit = (f: Fn) => {
     setNotice(null);
     setError(null);
+    const p = f.pendingChange;
+    if (p) {
+      setEditing({ id: f.id, form: { type: p.type, name: p.label ?? '', date: p.date, startTime: p.startTime ?? '', endTime: p.endTime ?? '', place: p.atBookedVenue ? 'BOOKED_VENUE' : 'ELSEWHERE', venueSpaceId: p.venueSpaceId ?? '', venueName: p.venueName ?? '', venueAddress: p.venueAddress ?? '', description: p.description ?? '' } });
+      return;
+    }
     setEditing({ id: f.id, form: { type: f.type, name: f.label ?? '', date: f.day, startTime: f.startTime ?? '', endTime: f.endTime ?? '', place: f.place, venueSpaceId: f.venueSpaceId ?? '', venueName: f.venueName ?? '', venueAddress: f.venueAddress ?? '', description: f.description ?? '' } });
   };
   const set = (patch: Partial<CoupleFunctionInput>) => setEditing((cur) => (cur ? { ...cur, form: { ...cur.form, ...patch } } : cur));
@@ -55,6 +60,7 @@ export default function CoupleFunctions({ event, plannerName }: { event: ClientP
     setBusy(true);
     setError(null);
     try {
+      const editedFn = method === 'PATCH' ? event.functions.find((x) => x.id === id) : undefined;
       const url = `/api/customer/weddings/${event.id}/functions${id ? `/${id}` : ''}`;
       const res = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
       const json = await res.json().catch(() => null);
@@ -63,7 +69,9 @@ export default function CoupleFunctions({ event, plannerName }: { event: ClientP
       setNotice(
         method === 'DELETE'
           ? 'Function removed.'
-          : body && needsConfirmation(body)
+          : editedFn && changeNeedsApproval(editedFn)
+            ? `Request sent. Nothing changes until ${plannerName} confirms it.`
+            : body && needsConfirmation(body)
             ? `Saved. It shows as “waiting for confirmation” until ${plannerName} confirms it with the venue.`
             : 'Saved — it is on your schedule.'
       );
@@ -76,6 +84,8 @@ export default function CoupleFunctions({ event, plannerName }: { event: ClientP
   };
 
   const f = editing?.form;
+  const editingFn = editing?.id ? event.functions.find((x) => x.id === editing.id) : undefined;
+  const hasWedding = event.functions.some((x) => x.type === 'WEDDING');
   const problem = f ? coupleFunctionProblem({ ...f, startTime: f.startTime || null, endTime: f.endTime || null }, today()) : null;
 
   return (
@@ -96,10 +106,11 @@ export default function CoupleFunctions({ event, plannerName }: { event: ClientP
           className="mt-4 grid gap-3 rounded-2xl border border-white/70 bg-white/60 p-4"
         >
           <p className="font-semibold">{editing.id ? 'Change this function' : 'Add a function'}</p>
+          {editingFn && changeNeedsApproval(editingFn) && <p className="rounded-xl bg-[#FEF3C7] px-3 py-2 text-sm text-[#78350F]">This is part of your booking. Your change goes to {plannerName} and nothing moves until they confirm it.</p>}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">What is it?
               <select aria-label="Function" value={f.type} onChange={(e) => set({ type: e.target.value })} className={field}>
-                {COUPLE_FUNCTION_TYPES.map((t) => <option key={t} value={t}>{FUNCTION_TYPE_LABELS[t]}</option>)}
+                {COUPLE_FUNCTION_TYPES.filter((t) => (t === 'WEDDING' ? f.type === 'WEDDING' || (!editing.id && !hasWedding) : f.type !== 'WEDDING' || !editing.id)).map((t) => <option key={t} value={t}>{FUNCTION_TYPE_LABELS[t]}</option>)}
               </select>
             </label>
             <label className="grid gap-1 text-sm text-[var(--color-text-secondary)]">Name {f.type !== 'OTHER' && <span className="text-xs text-[var(--color-text-muted)]">(optional)</span>}
@@ -181,6 +192,8 @@ export default function CoupleFunctions({ event, plannerName }: { event: ClientP
                   <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" aria-hidden />{fn.place === 'BOOKED_VENUE' ? `${venue ?? 'Booked venue'}${fn.spaceName ? ` · ${fn.spaceName}` : ''}` : [fn.venueName, fn.venueAddress].filter(Boolean).join(', ') || fn.location}</span>
                 </span>
                 {fn.description && <span className="mt-1 block text-sm text-[var(--color-text-secondary)]">{fn.description}</span>}
+                {fn.pendingChange && <span className="mt-1 block rounded-lg bg-[#FEF3C7] px-2 py-1 text-sm text-[#78350F]">You asked to change this to {fn.pendingChange.label || FUNCTION_TYPE_LABELS[fn.pendingChange.type as keyof typeof FUNCTION_TYPE_LABELS]} on {dayNum(fn.pendingChange.date)} {monthShort(fn.pendingChange.date)}{fn.pendingChange.startTime ? `, ${time12(fn.pendingChange.startTime)}` : ''}. The details above stay until it is confirmed.</span>}
+                {fn.confirmation === 'CONFIRMED' && fn.confirmationNote && <span className="mt-1 block text-sm text-[#B42318]">Your last change was not possible: {fn.confirmationNote}</span>}
                 {fn.confirmation === 'NOT_POSSIBLE' && fn.confirmationNote && <span className="mt-1 block text-sm text-[#B42318]">{fn.confirmationNote} — change the date or place, or remove it.</span>}
                 {fn.services.length > 0 && (
                   <span className="mt-1.5 flex flex-wrap gap-1.5">
@@ -190,17 +203,17 @@ export default function CoupleFunctions({ event, plannerName }: { event: ClientP
                     })}
                   </span>
                 )}
-                {fn.addedByCouple && open && !editing && (
+                {open && !editing && (
                   <span className="mt-1.5 flex gap-1">
                     <button type="button" onClick={() => startEdit(fn)} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-[var(--color-primary-text)]"><Pencil className="h-4 w-4" aria-hidden />Change</button>
-                    <button
+                    {coupleMayChange(fn) && <button
                       type="button"
                       disabled={busy}
                       onClick={() => { if (window.confirm(`Remove ${name(fn)}?`)) void send('DELETE', fn.id); }}
                       className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-[#B42318]"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />Remove
-                    </button>
+                    </button>}
                   </span>
                 )}
               </span>

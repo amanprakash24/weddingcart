@@ -4,6 +4,7 @@ import { approvalService } from '@/services/approval.service';
 import { customerActivityText } from '@/lib/customer/activityText';
 import { coupleWeddings, weddingScope } from '@/lib/customer/coupleEntry';
 import { can, guestForViewer, type CoupleRole } from '@/lib/customer/familyAccess';
+import type { PendingFunctionChange } from '@/lib/wedding/coupleFunctions';
 import { runInScope } from '@/lib/ownership/scope';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { upiLink, upiPayeeFrom, upiPayeeOf } from '@/lib/payments/upi';
@@ -54,6 +55,7 @@ export interface ClientPortalEvent {
     addedByCouple: boolean;
     confirmation: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE';
     confirmationNote: string | null;
+    pendingChange: PendingFunctionChange | null; // what the couple asked to change; the row above is still what stands
   }[];
   // What the couple can choose when they add a function: the booked venue's name (for "At <venue>") and its own halls (a venue's
   // wedding only; Shaadi Shopping's weddings have none).
@@ -130,7 +132,7 @@ export interface ClientPortalEvent {
   // Client OS → Vendors (22 Nov 2026): vendors the couple hired themselves (never partners), the quotes they asked Shaadi Shopping for,
   // and whether they can ask (Shaadi Shopping's weddings; a venue's couple is pointed to Shaadi Shopping on WhatsApp instead).
   ownVendors: { id: string; name: string; category: string; phone: string | null; price: number | null; notes: string | null; weddingEventId: string | null }[];
-  quoteRequests: { id: string; vendorName: string; vendorSlug: string; category: string; functionId: string | null; note: string | null; status: 'REQUESTED' | 'QUOTED' | 'NOT_AVAILABLE' | 'BOOKED' | 'CLOSED'; staffNote: string | null; createdAt: string }[];
+  quoteRequests: { id: string; vendorName: string; vendorSlug: string; category: string; functionId: string | null; functionIds: string[]; note: string | null; status: 'REQUESTED' | 'QUOTED' | 'NOT_AVAILABLE' | 'BOOKED' | 'CLOSED'; staffNote: string | null; createdAt: string }[];
   canAskForQuotes: boolean;
   // Family access (23 Nov 2026): who is looking. OWNER = the couple; otherwise a family member's role. What a role may not see is
   // removed on the server (forRole below) — the screens only hide buttons.
@@ -173,7 +175,7 @@ export const clientPortalService = {
     ]);
     const [ownVendors, quoteRequests] = await Promise.all([
       prisma.coupleVendor.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, category: true, phone: true, price: true, notes: true, weddingEventId: true } }),
-      prisma.vendorQuoteRequest.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, include: { vendor: { select: { name: true, slug: true, category: { select: { name: true } } } } } }),
+      prisma.vendorQuoteRequest.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, include: { functions: { select: { weddingEventId: true } }, vendor: { select: { name: true, slug: true, category: { select: { name: true } } } } } }),
     ]);
     // The venue's own halls (a venue's wedding): the couple may place a function in one (it then waits for the venue to confirm).
     // VenueSpace is not an owned table, so it is filtered by the wedding's business explicitly.
@@ -278,6 +280,7 @@ export const clientPortalService = {
           addedByCouple: event.addedByCouple,
           confirmation: event.confirmation,
           confirmationNote: event.confirmationNote,
+          pendingChange: event.pendingChange,
         })),
         booking: {
           // a venue's wedding is at that venue; on Shaadi Shopping's, the main "Wedding" function's place (if staff set one)
@@ -372,7 +375,7 @@ export const clientPortalService = {
           : null,
         issuer,
         ownVendors,
-        quoteRequests: quoteRequests.map((r) => ({ id: r.id, vendorName: r.vendor.name, vendorSlug: r.vendor.slug, category: r.vendor.category.name, functionId: r.weddingEventId, note: r.note, status: r.status, staffNote: r.staffNote, createdAt: r.createdAt.toISOString() })),
+        quoteRequests: quoteRequests.map((r) => ({ id: r.id, vendorName: r.vendor.name, vendorSlug: r.vendor.slug, category: r.vendor.category.name, functionId: r.weddingEventId, functionIds: r.functions.map((x) => x.weddingEventId), note: r.note, status: r.status, staffNote: r.staffNote, createdAt: r.createdAt.toISOString() })),
         canAskForQuotes: businessId === PLATFORM_BUSINESS_ID,
         access: { role: 'OWNER' as const, relation: null, canMoney: true, canPlan: true, canFamily: true }, // set per person by forRole
       };

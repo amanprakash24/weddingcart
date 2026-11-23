@@ -7,7 +7,7 @@ import { QUOTE_STATUS_WORDS, type QuoteStatus } from '@/lib/wedding/coupleVendor
 // them here; book the vendor the normal way with "Add service") and the vendors the couple hired themselves — shown for coordination,
 // clearly NOT partners: no commission, no payout, not verified by us.
 
-interface Req { id: string; status: QuoteStatus; note: string | null; staffNote: string | null; updatedAt: string; vendor: { name: string; slug: string; category: { name: string } }; weddingEvent: { type: string; label: string | null } | null }
+interface Req { id: string; status: QuoteStatus; note: string | null; staffNote: string | null; updatedAt: string; vendor: { name: string; slug: string; category: { name: string } }; weddingEvent: { type: string; label: string | null } | null; functions?: { weddingEvent: { type: string; label: string | null } }[] }
 interface Own { id: string; name: string; category: string; phone: string | null; price: number | null; notes: string | null; weddingEvent: { type: string; label: string | null } | null }
 
 const btn = 'min-h-9 rounded-lg px-3 py-1.5 text-sm font-semibold disabled:opacity-40';
@@ -43,7 +43,7 @@ function RequestRow({ weddingId, r, onDone }: { weddingId: string; r: Req; onDon
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900">
-            {r.vendor.name} <span className="font-normal text-gray-500">· {r.vendor.category.name}{fnWords(r.weddingEvent) ? ` · ${fnWords(r.weddingEvent)}` : ''}</span>{' '}
+            {r.vendor.name} <span className="font-normal text-gray-500">· {r.vendor.category.name}{r.functions?.length ? ` · ${r.functions.map((x) => fnWords(x.weddingEvent)).join(', ')}` : ' · whole wedding'}</span>{' '}
             <a href={`/vendors/${r.vendor.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-rose-600">listing</a>
           </p>
           {r.note && <p className="text-xs text-gray-600">The couple wrote: “{r.note}”</p>}

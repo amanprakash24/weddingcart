@@ -71,6 +71,7 @@ export interface WorkspaceWeddingEvent {
   addedByCouple?: boolean;
   confirmation?: 'CONFIRMED' | 'WAITING' | 'NOT_POSSIBLE';
   confirmationNote?: string | null;
+  pendingChange?: import('@/lib/wedding/coupleFunctions').PendingFunctionChange | null;
   updatedAt?: string;
 }
 

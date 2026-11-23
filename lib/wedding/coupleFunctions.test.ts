@@ -1,3 +1,4 @@
+import { changeNeedsApproval, typeChangeProblem } from './coupleFunctions';
 import { describe, expect, it } from 'bun:test';
 import { coupleFunctionFields, coupleFunctionProblem, coupleMayChange, functionDisplayName, needsConfirmation, type CoupleFunctionInput } from './coupleFunctions';
 
@@ -10,8 +11,13 @@ describe('coupleFunctionProblem', () => {
     expect(coupleFunctionProblem(haldiAtHome, TODAY)).toBeNull();
     expect(coupleFunctionProblem(sangeetAtVenue, TODAY)).toBeNull();
   });
-  it('never lets a couple add the Wedding itself', () => {
-    expect(coupleFunctionProblem({ ...haldiAtHome, type: 'WEDDING' }, TODAY)).toContain('set by your booking');
+  it('a Wedding can be edited by the couple and always needs staff', () => {
+    expect(coupleFunctionProblem({ ...haldiAtHome, type: 'WEDDING' }, TODAY)).toBeNull();
+    expect(needsConfirmation({ type: 'WEDDING', place: 'ELSEWHERE' })).toBe(true);
+    expect(changeNeedsApproval({ addedByCouple: false, type: 'HALDI', confirmation: 'CONFIRMED' })).toBe(true);
+    expect(changeNeedsApproval({ addedByCouple: true, type: 'HALDI', confirmation: 'CONFIRMED' })).toBe(false);
+    expect(typeChangeProblem('WEDDING', 'RECEPTION')).not.toBeNull();
+    expect(typeChangeProblem('MEHNDI', 'SANGEET')).toBeNull();
   });
   it('refuses unknown types, an unnamed Other, past and impossible dates', () => {
     expect(coupleFunctionProblem({ ...haldiAtHome, type: 'PARTY' }, TODAY)).toBe('Choose what kind of function it is');
@@ -36,7 +42,7 @@ describe('coupleFunctionProblem', () => {
 describe('needsConfirmation and stored fields', () => {
   it('at the booked venue (or a venue space) waits for staff; elsewhere stands at once', () => {
     expect(needsConfirmation(sangeetAtVenue)).toBe(true);
-    expect(needsConfirmation({ place: 'ELSEWHERE' })).toBe(false); // a hall chosen with 'elsewhere' is dropped, so it never waits
+    expect(needsConfirmation({ type: 'HALDI', place: 'ELSEWHERE' })).toBe(false); // a hall chosen with 'elsewhere' is dropped, so it never waits
     expect(needsConfirmation(haldiAtHome)).toBe(false);
     expect(coupleFunctionFields(sangeetAtVenue).confirmation).toBe('WAITING');
     expect(coupleFunctionFields(haldiAtHome).confirmation).toBe('CONFIRMED');
