@@ -22,7 +22,8 @@ const emptyForm = (): Form => ({ id: null, v: { name: '', category: '', phone: '
 
 export default function CoupleVendors({ event }: { event: ClientPortalEvent }) {
   const router = useRouter();
-  const open = event.status !== 'COMPLETED' && event.status !== 'CANCELLED';
+  // editable: the wedding is still being planned, and this person may change the plan (family access, 23 Nov 2026)
+  const open = event.access.canPlan && event.status !== 'COMPLETED' && event.status !== 'CANCELLED';
   const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

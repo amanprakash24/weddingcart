@@ -17,7 +17,7 @@ async function handlePATCH(req: NextRequest, { params }: Ctx) {
     const body = ownVendorBody.parse(await req.json());
     const { id, vendorId } = await params;
     const userId = session.user.id;
-    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleVendorsService.updateOwn(id, vendorId, body, userId)) });
+    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleVendorsService.updateOwn(id, vendorId, body, userId), 'plan') });
   } catch (error) {
     return handleApiError(error);
   }
@@ -29,7 +29,7 @@ async function handleDELETE(_req: NextRequest, { params }: Ctx) {
   try {
     const { id, vendorId } = await params;
     const userId = session.user.id;
-    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleVendorsService.removeOwn(id, vendorId, userId)) });
+    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleVendorsService.removeOwn(id, vendorId, userId), 'plan') });
   } catch (error) {
     return handleApiError(error);
   }

@@ -39,7 +39,8 @@ export default function CoupleFunctions({ event, plannerName }: { event: ClientP
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const venue = event.booking.venueName;
-  const open = event.status !== 'COMPLETED' && event.status !== 'CANCELLED';
+  // editable: the wedding is still being planned, and this person may change the plan (family access, 23 Nov 2026)
+  const open = event.access.canPlan && event.status !== 'COMPLETED' && event.status !== 'CANCELLED';
 
   const startAdd = () => { setNotice(null); setError(null); setEditing({ id: null, form: empty() }); };
   const startEdit = (f: Fn) => {

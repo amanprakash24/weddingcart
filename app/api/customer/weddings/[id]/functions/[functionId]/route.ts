@@ -18,7 +18,7 @@ async function handlePATCH(req: NextRequest, { params }: Ctx) {
     const body = coupleFunctionBody.parse(await req.json());
     const { id, functionId } = await params;
     const userId = session.user.id;
-    const updated = await asCoupleWedding(id, userId, () => coupleFunctionsService.update(id, functionId, body, userId));
+    const updated = await asCoupleWedding(id, userId, () => coupleFunctionsService.update(id, functionId, body, userId), 'plan');
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     return handleApiError(error);
@@ -31,7 +31,7 @@ async function handleDELETE(_req: NextRequest, { params }: Ctx) {
   try {
     const { id, functionId } = await params;
     const userId = session.user.id;
-    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleFunctionsService.remove(id, functionId, userId)) });
+    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleFunctionsService.remove(id, functionId, userId), 'plan') });
   } catch (error) {
     return handleApiError(error);
   }

@@ -5,6 +5,7 @@ import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
+import { can, guestForViewer } from '@/lib/customer/familyAccess';
 import { guestInputSchema } from '@/lib/guest/guestInput';
 
 // The shared guest rules (lib/guest/guestInput.ts): optional details may be null.
@@ -16,7 +17,7 @@ async function handleGET(_req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params;
     const userId = session.user.id;
-    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => guestService.listForClient(id, userId)) });
+    return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, async (who) => { const guests = await guestService.listForClient(id, userId); return can(who.role, 'plan') ? guests : guests.map(guestForViewer); }, 'view') });
   } catch (error) { return handleApiError(error); }
 }
 
@@ -30,7 +31,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
     const created = await asCoupleWedding(id, userId, async () => {
       await guestService.listForClient(id, userId);
       return guestService.create(id, body);
-    });
+    }, 'plan');
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) { return handleApiError(error); }
 }

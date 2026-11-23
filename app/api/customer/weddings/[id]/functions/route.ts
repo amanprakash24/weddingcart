@@ -16,7 +16,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
     const body = coupleFunctionBody.parse(await req.json());
     const { id } = await params;
     const userId = session.user.id;
-    const created = await asCoupleWedding(id, userId, () => coupleFunctionsService.add(id, body, userId));
+    const created = await asCoupleWedding(id, userId, () => coupleFunctionsService.add(id, body, userId), 'plan');
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error) {
     return handleApiError(error);

@@ -20,7 +20,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     const updated = await asCoupleWedding(id, userId, async () => {
       await guestService.listForClient(id, userId);
       return guestService.update(id, guestId, body);
-    });
+    }, 'plan');
     return NextResponse.json({ success: true, data: updated });
   } catch (error) { return handleApiError(error); }
 }
@@ -34,7 +34,7 @@ async function handleDELETE(_req: Request, { params }: { params: Promise<{ id: s
     await asCoupleWedding(id, userId, async () => {
       await guestService.listForClient(id, userId);
       await guestService.remove(id, guestId);
-    });
+    }, 'plan');
     return NextResponse.json({ success: true });
   } catch (error) { return handleApiError(error); }
 }

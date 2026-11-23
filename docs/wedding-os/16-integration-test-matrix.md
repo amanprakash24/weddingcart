@@ -98,7 +98,22 @@ Booking → Payment schedule → Payment → Receipt → Invoice → Balance →
 
 ## 7. Travel and accommodation — 🚧 not built
 
-## 8. Family access — 🚧 not built (one couple login per wedding)
+## 8. Family access and permissions (23 Nov 2026, branch feat/family-access)
+
+Roles: the couple (OWNER, Wedding.customerId) · Full access · Helps with planning · Can see the plan. Rules in `lib/customer/familyAccess.ts`; every couple route names the permission it needs (`asCoupleWedding(…, need)`, default = couple only); what a role may not see is removed on the server (`forRole` in clientPortal.service).
+
+| # | Start | Action | Expected | Actual | Records | Permission | Notification | Evidence | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| 8.1 | Couple signed in | Adds a family member with a new number | Member listed; a 6-digit code shown once with a WhatsApp message; history line | As expected; wa.me link to that number carries the code | `wedding_members` +1, `users` +1 (CUSTOMER, code given), `login_code_events` GIVEN, `activity_logs` | OWNER only | WhatsApp by hand | browser (local copy), db | ✅ local · ⬜ live |
+| 8.2 | Same | Adds own number / a staff number / the same person twice | Refused with a clear message; staff account untouched | 400 / 409 / 409 | none | OWNER | — | API on local copy, db | ✅ |
+| 8.3 | Number already has its own couple sign-in | Couple adds it | Linked, no new code; their code unchanged | As expected | `wedding_members` +1 | OWNER | — | db | ✅ |
+| 8.4 | Full access member signs in | Opens My Wedding | Everything incl. payments; no Family section; "viewing as family" banner | As expected, desktop + phone | read | FULL | — | browser | ✅ |
+| 8.5 | Helps with planning member | Opens My Wedding; tries "I have paid" | Functions/guests/vendors editable; no payments, documents or prices in the page data; claim refused | No money in the page JSON; claim 403 | none | PLANNING | — | browser, API, db | ✅ |
+| 8.6 | Can see the plan member | Opens My Wedding; tries to add a guest / vendor, delete a function, search vendors | Read only; guests without phone, email or RSVP link; all writes refused | 403 on each; record counts unchanged | none | VIEW | — | browser, API, db | ✅ |
+| 8.7 | Any family member | Tries to add family | Refused | 403 | none | not OWNER | — | API | ✅ |
+| 8.8 | Couple on a phone | Changes a role; removes a member | Takes effect at once; removed member gets "not found"; their sign-in stays | As expected; history lines | `wedding_members` updated/deleted, `activity_logs` | OWNER | — | browser 375px, db | ✅ |
+| 8.9 | Family member | "Forgot your code?" / choose own code | Same as the couple's sign-in | Not browser-tested for family | — | — | WhatsApp | — | 🟡 |
+| 8.10 | Approvals | Family member opens an approval | Couple only (approvals are listed by Wedding.customerId) | Hidden for every family role | — | OWNER | — | code + db | ✅ |
 
 ---
 

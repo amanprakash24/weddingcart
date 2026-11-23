@@ -181,7 +181,8 @@ export const guestService = {
 };
 
 async function assertOwnedWedding(weddingId: string, userId: string) {
-  const wedding = await prisma.wedding.findFirst({ where: { id: weddingId, customerId: userId }, select: { id: true } });
+  // the couple, or a family member (23 Nov 2026) — what they may do was already checked by the route (asCoupleWedding)
+  const wedding = await prisma.wedding.findFirst({ where: { id: weddingId, OR: [{ customerId: userId }, { members: { some: { userId } } }] }, select: { id: true } });
   if (!wedding) throw new NotFoundError('Wedding', weddingId);
   return wedding;
 }

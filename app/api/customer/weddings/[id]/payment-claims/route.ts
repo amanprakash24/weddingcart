@@ -22,7 +22,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
     const proof = file instanceof File && file.size > 0 ? { bytes: Buffer.from(await file.arrayBuffer()), type: file.type, size: file.size } : null;
     const text = (k: string) => (typeof form.get(k) === 'string' ? (form.get(k) as string) : undefined);
     const { id } = await params;
-    const data = await asCoupleWedding(id, session.user.id, () => coupleMoneyService.submitClaim(id, { amount: text('amount'), utr: text('utr'), paidOn: text('paidOn'), note: text('note') }, proof));
+    const data = await asCoupleWedding(id, session.user.id, () => coupleMoneyService.submitClaim(id, { amount: text('amount'), utr: text('utr'), paidOn: text('paidOn'), note: text('note') }, proof), 'money');
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
