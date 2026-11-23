@@ -65,7 +65,16 @@ Booking → Payment schedule → Payment → Receipt → Invoice → Balance →
 
 | # | Start | Action | Expected | Actual | Records | Permission | Notification | Evidence | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| 4.1 | Wedding exists | Couple adds a function | Saved; "Waiting for confirmation" if at the venue; booking, price and hall unchanged | No add or edit for the couple | — | — | — | API list: `app/api/customer/*` | 🚧 (PR C) |
+| 4.1 | WED-2026-0002 (local copy) | Couple adds "Haldi at home", 28 Nov 10:00–13:00, somewhere else, with notes | Stands at once; on the couple's schedule and the staff Functions tab | "Confirmed · Added by you"; staff see "Added by the couple · until 13:00 · Family only" | `wedding_events` +1 (`addedByCouple`, CONFIRMED), `activity_logs` (couple as actor) | CUSTOMER (own wedding) | none | local copy: f3 run | ✅ |
+| 4.2 | Same | Couple adds Sangeet at the booked venue, 19:00–01:00 | "Waiting for confirmation" at once; booking, price, vendor bookings and wedding date unchanged | Waiting; shows "7 pm – 1 am (next day)"; db test: snapshot of booking, agreement, vendor bookings and primaryDate identical before and after | `wedding_events` (WAITING) | CUSTOMER | none | db: `couple.functions.test.ts`; browser f3 | ✅ |
+| 4.3 | Sangeet waiting | Staff (founder) press Confirm on the wedding's Functions tab | Confirmed for staff and couple; who and when recorded | Staff box gone; couple sees "Confirmed" | `confirmation` CONFIRMED, `confirmedById`/`At`, `activity_logs` | ADMIN | none | browser f3 | ✅ |
+| 4.4 | Confirmed venue function | Couple changes its time | Back to "waiting" (it touches the booking again) | WAITING, `confirmedById` cleared | — | CUSTOMER | — | db test | ✅ |
+| 4.5 | Waiting | Staff say "Not possible" without and with a reason; couple then moves it elsewhere | Reason required; couple reads it; moving it away from the venue stands at once and clears the reason | As expected | — | ADMIN / CUSTOMER | — | db test | ✅ |
+| 4.6 | Staff opened a waiting function; couple changes it meanwhile | Staff confirm the old view | Refused (409) — no one confirms what they didn't see | ConflictError; the panel reloads | none | — | — | db test | ✅ |
+| 4.7 | Any | Couple tries to add a "Wedding", or change or remove a staff-set function | Refused | 400 "set by your booking"; "set by your planner" | none | CUSTOMER | — | API + db test | ✅ |
+| 4.8 | Any | No session / staff session on the couple route / couple on another wedding / couple on the staff decision route / a hall of another business | Refused | 401 / 401 / 404 / 401 / 400 | none | — | — | API on local copy, db test | ✅ |
+| 4.9 | Guests replied to a couple's function | Couple removes it | Refused, replies kept | "Guests have already replied…" | none | CUSTOMER | — | db test | ✅ |
+| 4.10 | Venue's own wedding | Venue team confirms a couple's function in its hall | Same flow through `/api/vendor-os/…/decision` (permission "weddings") | Route and UI built; not browser-tested (no venue wedding with a couple login in the local copy) | — | venue member | — | — | 🟡 |
 
 ## 5. Vendors and services
 

@@ -10,6 +10,7 @@ import { WEDDING_PLAN_LIMITS } from '@/lib/venue/weddingPlan';
 import { GENERAL_NOTE, NOTE_MAX, noteWhen, workGivenMessage } from '@/lib/venue/myWork';
 import Textarea from '@/components/ui/Textarea';
 import { whatsappTo } from '@/lib/venue/enquiry';
+import CoupleFunctionReview from '@/components/wedding/functions/CoupleFunctionReview';
 import type { VenueWeddingDetail } from '@/services/venueWedding.service';
 import { weddingDateWords } from './YourWeddings';
 
@@ -108,6 +109,16 @@ export function WeddingFunctions({ w, onSaved }: { w: VenueWeddingDetail; onSave
               <div className="min-w-0">
                 <p className="text-base font-medium text-[var(--color-text-primary)]">{f.name}</p>
                 <p className="text-sm text-[var(--color-text-secondary)]">{[weddingDateWords(f.date), f.startTime, f.place].filter(Boolean).join(' · ')}</p>
+                {/* the couple's own function (22 Nov 2026): one in this venue waits for the team to confirm */}
+                <CoupleFunctionReview
+                  fn={f}
+                  decisionUrl={`/api/vendor-os/weddings/${w.id}/functions/${f.id}/decision`}
+                  onDecided={async () => {
+                    const res = await fetch(`/api/vendor-os/weddings/${w.id}`, { cache: 'no-store' });
+                    const body = await res.json().catch(() => null);
+                    if (res.ok && body?.success) onSaved(body.data);
+                  }}
+                />
               </div>
               {w.canEdit && (
                 <button type="button" aria-label={`Change ${f.name}`} disabled={editing !== null} onClick={() => start(f.id, formOf(f))} className={icon}>

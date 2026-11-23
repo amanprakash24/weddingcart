@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import PaymentReceipt from '@/components/proposal/PaymentReceipt';
 import ClientDocumentPrint, { type PrintableDocument } from '@/components/customer/ClientDocumentPrint';
 import MyWeddingPayments from '@/components/customer/MyWeddingPayments';
+import CoupleFunctions from '@/components/customer/CoupleFunctions';
 import type { CustomerReceipt } from '@/lib/payments/customerPayment';
 import { signOut } from 'next-auth/react';
 import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, KeyRound, LogOut, MapPin, Phone, ShoppingBag, Users } from 'lucide-react';
@@ -22,7 +23,6 @@ import { contactPhone, dateRangeWords, daysToGo, daysToGoWords, rupeesShort, ser
 
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const dayWords = (iso: string) => new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
-const weekday = (iso: string) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
 const card = 'os-glass rounded-[22px] border bg-white p-5 sm:p-6';
 const tone = { good: 'bg-[#DCF3E5] text-[#14532D]', wait: 'bg-[#FEF3C7] text-[#78350F]', off: 'bg-white/70 text-[#374151]' } as const;
 const theme = `os-theme ${osFontClasses} relative isolate min-h-screen`;
@@ -287,32 +287,8 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
 
           {/* Functions + contact */}
           <div className="flex flex-wrap gap-4">
-            <section id="functions" aria-labelledby="c-fn" className={`${card} min-w-0 flex-[999_1_460px] scroll-mt-4`}>
-              <h2 id="c-fn" className="text-[17px] font-bold">Your functions</h2>
-              {event.functions.length === 0 ? (
-                <p className="mt-3 text-sm text-[var(--color-text-secondary)]">Your functions appear here as the plan is made.</p>
-              ) : (
-                <ol className="mt-3 divide-y divide-white/70">
-                  {event.functions.map((f) => (
-                    <li key={f.id} className="grid grid-cols-[64px_minmax(0,1fr)] items-start gap-3.5 py-3 sm:grid-cols-[76px_minmax(0,1fr)]">
-                      <span className="rounded-xl bg-[var(--color-primary-subtle-bg)] py-1.5 text-center"><b className="block text-lg">{new Intl.DateTimeFormat('en-IN', { day: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(f.date))}</b><span className="text-xs text-[var(--color-text-muted)]">{new Intl.DateTimeFormat('en-IN', { month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(f.date))} · {weekday(f.date)}</span></span>
-                      <span className="min-w-0">
-                        <b className="block text-base capitalize">{f.name.toLowerCase()}</b>
-                        <span className="text-sm text-[var(--color-text-muted)]">{[f.startTime, f.location].filter(Boolean).join(' · ')}</span>
-                        {f.services.length > 0 && (
-                          <span className="mt-1.5 flex flex-wrap gap-1.5">
-                            {f.services.map((s, i) => {
-                              const st = serviceStatus(s.status);
-                              return <span key={i} className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${tone[st.tone]}`}>{s.name}: {st.words}</span>;
-                            })}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
+            {/* Functions: the schedule, and the couple adding / editing their own (22 Nov 2026) */}
+            <CoupleFunctions event={event} plannerName={expert} />
 
             <aside aria-labelledby="c-expert" className="flex min-w-0 flex-[1_1_280px] flex-col gap-4">
               <section className="os-glass-dark rounded-[22px] border border-white/10 bg-[var(--color-bg-inverse)] p-5 text-white sm:p-6">
