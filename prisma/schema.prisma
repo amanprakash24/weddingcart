@@ -420,6 +420,7 @@ model Vendor {
   partnerAgreements PartnerAgreement[]
   availability      VendorAvailability[]
   reviews           Review[]
+  quoteRequests     VendorQuoteRequest[] // couples asking this listed vendor for a quote (22 Nov 2026)
   paymentDetails    VendorPaymentDetails?
   quotationItems    QuotationItem[]
   consultationSelections ConsultationVendorSelection[]
@@ -1401,6 +1402,8 @@ model Wedding {
   aiConversations    AiConversation[]
   approvals          ApprovalRequest[]   @relation("ApprovalWedding")
   guests             Guest[]
+  coupleVendors      CoupleVendor[] // vendors the couple found themselves (22 Nov 2026)
+  quoteRequests      VendorQuoteRequest[] // "Ask for a quote" from My Wedding (22 Nov 2026)
 
   @@index([customerPhone])
   // Record ownership (docs/wedding-os/15-record-ownership.md). Phase A: every row belongs to Shaadi Shopping by default; Phase B
@@ -1480,6 +1483,8 @@ model WeddingEvent {
   tasks          Task[]
   approvals      ApprovalRequest[]
   guestResponses GuestFunctionResponse[]
+  coupleVendors  CoupleVendor[]
+  quoteRequests  VendorQuoteRequest[]
 
   // Production-hardening audit (2026-09-17) — every Wedding Workspace page
   // load queries this by weddingId, ordered by date; Postgres doesn't
@@ -2662,4 +2667,59 @@ model VenueSlot {
   @@index([businessId, date])
   @@index([consultationId])
   @@map("venue_slots")
+}
+
+// A vendor the couple found and hired themselves (22 Nov 2026, Client OS → Vendors). Kept apart from VendorBooking on purpose: it is
+// NOT a Shaadi Shopping partner, carries no commission, is never verified by us and never becomes a payout. The couple adds, edits and
+// removes it; staff can see it so the day can be coordinated. Belongs to its business through the wedding (a child record).
+model CoupleVendor {
+  id             String        @id @default(uuid())
+  weddingId      String
+  wedding        Wedding       @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  weddingEventId String? // the function it is for (optional)
+  weddingEvent   WeddingEvent? @relation(fields: [weddingEventId], references: [id], onDelete: SetNull)
+  name           String
+  category       String // "Photographer", "Mehndi artist" …
+  phone          String?
+  price          Int? // what the couple agreed with them — their own record, not ours
+  notes          String?
+  createdById    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([weddingId])
+  @@map("couple_vendors")
+}
+
+enum QuoteRequestStatus {
+  REQUESTED // the couple asked; Shaadi Shopping has not answered yet
+  QUOTED // Shaadi Shopping shared a price with the couple
+  NOT_AVAILABLE // the vendor cannot do it (staff note says why)
+  BOOKED // it became a vendor booking on the wedding
+  CLOSED // the couple or staff closed it
+}
+
+// "Ask for a quote" (22 Nov 2026): the couple asks Shaadi Shopping for a listed vendor's price for their wedding. Shaadi Shopping
+// coordinates it (checks the vendor, shares the price, books it as a VendorBooking — commission applies there, as for any partner).
+// One request per vendor per wedding: asking again shows the same request. Belongs to its business through the wedding.
+model VendorQuoteRequest {
+  id             String             @id @default(uuid())
+  weddingId      String
+  wedding        Wedding            @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  vendorId       String
+  vendor         Vendor             @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  weddingEventId String?
+  weddingEvent   WeddingEvent?      @relation(fields: [weddingEventId], references: [id], onDelete: SetNull)
+  note           String? // from the couple
+  status         QuoteRequestStatus @default(REQUESTED)
+  staffNote      String? // what the couple reads back (the price, or why not)
+  requestedById  String?
+  handledById    String?
+  handledAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([weddingId, vendorId])
+  @@index([status])
+  @@map("vendor_quote_requests")
 }

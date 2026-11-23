@@ -80,7 +80,14 @@ Booking → Payment schedule → Payment → Receipt → Invoice → Balance →
 
 | # | Start | Action | Expected | Actual | Records | Permission | Notification | Evidence | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| 5.1 | Wedding exists | Couple finds a vendor or adds their own | Marketplace and outside vendors clearly told apart; Ask for a Quote | Read-only list | — | — | — | — | 🚧 (PR D) |
+| 5.1 | WED-2026-0002 (local copy) | Couple adds their own photographer (mobile, price, notes) | Saved as the couple's own record, labelled not a partner; no vendor booking, payout or commission | "Added by you · not a Shaadi Shopping partner"; staff see "not our partners, no commission, not verified"; db: vendor booking count unchanged | `couple_vendors` +1, `activity_logs` (couple) | CUSTOMER | none | browser v2; db `couple.vendors.test.ts` | ✅ |
+| 5.2 | Same | Couple picks "Photo & Video" under Find on Shaadi Shopping | Listed (PUBLISHED) vendors, the wedding's city first; never the owner's phone or email | The Instastudio, Patna, from ₹20,000; API response has no owner fields; a draft vendor never appears | read only | CUSTOMER | — | browser v2, API, db | ✅ |
+| 5.3 | Same | Ask for a quote with a note | One request; a HIGH task for the coordinator; couple sees "Asked" | As expected; asking again (and two taps at once) → still 1 request and 1 task | `vendor_quote_requests` +1, `tasks` +1, `activity_logs` | CUSTOMER | none (task only) | browser v2; db | ✅ |
+| 5.4 | Request waiting | Founder shares a price on the wedding page | Couple reads the price; the coordinator's task is done; a stale view is refused | "Price shared · ₹45,000 for both days…"; task DONE; 409 on a stale view | request QUOTED, task DONE | ADMIN | none | browser v2; db | ✅ |
+| 5.5 | Not available | Couple asks again / closes a request | Starts again with a fresh task / closed with its task cancelled | As expected | — | CUSTOMER | — | db | ✅ |
+| 5.6 | Any | No session / couple on the staff list / couple on another wedding's search | Refused | 401 / 401 / 404 | none | — | — | API on local copy | ✅ |
+| 5.7 | A venue's own wedding | Couple tries Ask for a quote | Sent to Shaadi Shopping on WhatsApp instead (the venue's wedding is not ours to quote) | Button becomes "Ask Shaadi Shopping"; service refuses a request | — | — | — | code + db rule; not browser-tested | 🟡 |
+| 5.8 | Quote accepted by the couple | Staff book the vendor | VendorBooking with partner terms, then "Mark booked" | Booking is the existing "Add service" flow; "Mark booked" is manual (not linked to the VendorBooking yet) | — | — | — | — | 🟡 |
 
 ## 6. Guest management and invitations
 

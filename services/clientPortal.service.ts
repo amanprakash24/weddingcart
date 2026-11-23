@@ -126,6 +126,11 @@ export interface ClientPortalEvent {
   // Whose letterhead the couple's receipts, invoices and quotation print on: Shaadi Shopping's on its weddings, the venue's own on
   // a venue's (never Shaadi Shopping's branding on a venue's documents).
   issuer: ReceiptIssuer;
+  // Client OS → Vendors (22 Nov 2026): vendors the couple hired themselves (never partners), the quotes they asked Shaadi Shopping for,
+  // and whether they can ask (Shaadi Shopping's weddings; a venue's couple is pointed to Shaadi Shopping on WhatsApp instead).
+  ownVendors: { id: string; name: string; category: string; phone: string | null; price: number | null; notes: string | null; weddingEventId: string | null }[];
+  quoteRequests: { id: string; vendorName: string; vendorSlug: string; category: string; functionId: string | null; note: string | null; status: 'REQUESTED' | 'QUOTED' | 'NOT_AVAILABLE' | 'BOOKED' | 'CLOSED'; staffNote: string | null; createdAt: string }[];
+  canAskForQuotes: boolean;
 }
 
 export const clientPortalService = {
@@ -140,6 +145,10 @@ export const clientPortalService = {
       weddingWorkspaceService.getWorkspace(weddingId),
       approvalService.listForClient(userId),
       prisma.business.findUnique({ where: { id: businessId }, select: { name: true, contactPhone: true, upiId: true, upiName: true, logoUrl: true, gstin: true } }),
+    ]);
+    const [ownVendors, quoteRequests] = await Promise.all([
+      prisma.coupleVendor.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, category: true, phone: true, price: true, notes: true, weddingEventId: true } }),
+      prisma.vendorQuoteRequest.findMany({ where: { weddingId }, orderBy: { createdAt: 'asc' }, include: { vendor: { select: { name: true, slug: true, category: { select: { name: true } } } } } }),
     ]);
     // The venue's own halls (a venue's wedding): the couple may place a function in one (it then waits for the venue to confirm).
     // VenueSpace is not an owned table, so it is filtered by the wedding's business explicitly.
@@ -337,6 +346,9 @@ export const clientPortalService = {
             }
           : null,
         issuer,
+        ownVendors,
+        quoteRequests: quoteRequests.map((r) => ({ id: r.id, vendorName: r.vendor.name, vendorSlug: r.vendor.slug, category: r.vendor.category.name, functionId: r.weddingEventId, note: r.note, status: r.status, staffNote: r.staffNote, createdAt: r.createdAt.toISOString() })),
+        canAskForQuotes: businessId === PLATFORM_BUSINESS_ID,
       };
     })[0];
   },

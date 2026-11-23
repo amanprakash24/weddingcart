@@ -29,7 +29,7 @@ export type OwnedModel = (typeof OWNED_MODELS)[number];
 export const CHILD_MODELS = [
   'ConsultationVendorSelection', 'BookingItem', 'InvoiceItem', 'QuotationItem', 'LeadInsight', 'Couple', 'WeddingEvent', 'Guest',
   'GuestFunctionResponse', 'VendorEnquiry', 'VendorBooking', 'TimelineMilestone', 'Document', 'Task', 'ActivityLog', 'ApprovalRequest',
-  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment',
+  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment', 'CoupleVendor', 'VendorQuoteRequest',
 ] as const;
 
 export type ChildModel = (typeof CHILD_MODELS)[number];
@@ -74,6 +74,8 @@ export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
   Payout: [link('vendorBooking', 'VendorBooking')],
   // The couple's "I have paid" claims (Roadmap 1.3) belong to the business whose quotation they are on.
   PaymentSubmission: [link('quotation', 'Quotation')],
+  CoupleVendor: [link('wedding', 'Wedding'), link('weddingEvent', 'WeddingEvent')],
+  VendorQuoteRequest: [link('wedding', 'Wedding'), link('weddingEvent', 'WeddingEvent')],
   PaymentInstalment: [link('agreement', 'CommercialAgreement')],
 };
 
@@ -116,5 +118,7 @@ export const OWNED_RELATIONS: Partial<Record<OwnedModel | ChildModel, string[]>>
   ApprovalRequest: ['wedding'],
   PaymentLink: ['invoice'],
   PaymentSubmission: ['quotation'],
+  CoupleVendor: ['wedding'],
+  VendorQuoteRequest: ['wedding'],
   PaymentInstalment: ['agreement'],
 };
