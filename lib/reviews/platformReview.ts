@@ -37,11 +37,11 @@ export const isBot = (input: PlatformReviewInput) => text(input.website) !== '';
 
 // The cleaned review, or the first problem in words the person can act on.
 export function checkPlatformReview(input: PlatformReviewInput): { ok: true; value: CleanPlatformReview } | { ok: false; error: string } {
+  const rating = Number(input.rating);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { ok: false, error: 'Please choose 1 to 5 stars' };
   const authorName = text(input.authorName);
   if (authorName.length < 2) return { ok: false, error: 'Please add your name' };
   if (authorName.length > NAME_MAX) return { ok: false, error: `Keep your name under ${NAME_MAX} characters` };
-  const rating = Number(input.rating);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { ok: false, error: 'Please choose 1 to 5 stars' };
   const comment = typeof input.comment === 'string' ? input.comment.trim() : '';
   if (comment.length > COMMENT_MAX) return { ok: false, error: `Keep your review under ${COMMENT_MAX} characters` };
   const phone = mobile(input.phone);

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Copy, Download, Star } from 'lucide-react';
 import { publicName, REVIEW_PAGE_URL } from '@/lib/reviews/platformReview';
-import { SHAADI_PHONE } from '@/lib/shaadiContact';
+import { SHAADI_PHONE_DISPLAY } from '@/lib/shaadiContact';
 
 // Admin → Reviews (24 Nov 2026): the review link + QR to share, and reviews of Shaadi Shopping waiting to be published.
 // Publishing shows the first name + initial, stars and words on /review; the mobile and wedding ID stay here.
@@ -71,7 +71,7 @@ export default function ReviewsAdminClient() {
             {qr && <a href={qr} download="shaadi-shopping-review-qr.png" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-300 px-3 text-sm font-semibold"><Download className="h-4 w-4" aria-hidden />Download QR (PNG)</a>}
             <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-lg bg-[#1F7A4D] px-3 text-sm font-semibold text-white">Share on WhatsApp</a>
           </div>
-          <p className="text-xs text-gray-500">Reviews appear on the page only after you publish them. Questions from families go to {SHAADI_PHONE}.</p>
+          <p className="text-xs text-gray-500">Reviews appear on the page only after you publish them. Questions from families go to {SHAADI_PHONE_DISPLAY}.</p>
         </div>
       </section>
 
