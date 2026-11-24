@@ -16,6 +16,7 @@ import CoupleCard from './CoupleCard';
 import CoupleSignInCard from '@/components/vivah-os/CoupleSignInCard';
 import FunctionsPanel from '@/components/wedding/functions/FunctionsPanel';
 import CoupleVendorRequests from '@/components/wedding/functions/CoupleVendorRequests';
+import CouplePlanPanel from '@/components/wedding/functions/CouplePlanPanel';
 import type { FunctionPayload } from '@/components/wedding/functions/FunctionForm';
 import TimelineMilestones from './TimelineMilestones';
 import Documents from './Documents';
@@ -278,6 +279,8 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
           <ServiceRequirements events={workspace.events} unassigned={view.vendors.filter((r) => r.state === 'unassigned')} />
           {/* Client OS → Vendors (22 Nov 2026): quotes the couple asked for, and the vendors they hired themselves */}
           <CoupleVendorRequests weddingId={id} />
+          {/* Client OS → Checklist & Budget (25 Nov 2026): the couple's own, read-only here */}
+          <CouplePlanPanel weddingId={id} />
         </div>
       )}
 

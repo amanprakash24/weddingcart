@@ -1406,6 +1406,10 @@ model Wedding {
   guests             Guest[]
   coupleVendors      CoupleVendor[] // vendors the couple found themselves (22 Nov 2026)
   members            WeddingMember[] // family members the couple invited (23 Nov 2026)
+  checklistItems     CoupleChecklistItem[] // the couple's own checklist (25 Nov 2026)
+  budgetCategories   CoupleBudgetCategory[] // the couple's planned budget per category (25 Nov 2026)
+  expenses           CoupleExpense[] // the couple's own expenses (25 Nov 2026)
+  coupleBudget       Int? // the couple's own total budget (25 Nov 2026) — not totalBudget, which is the team's planning figure
   quoteRequests      VendorQuoteRequest[] // "Ask for a quote" from My Wedding (22 Nov 2026)
 
   @@index([customerPhone])
@@ -1494,6 +1498,7 @@ model WeddingEvent {
   coupleVendors  CoupleVendor[]
   quoteRequests  VendorQuoteRequest[]
   quoteFunctions VendorQuoteFunction[]
+  checklistItems CoupleChecklistItem[]
 
   // Production-hardening audit (2026-09-17) — every Wedding Workspace page
   // load queries this by weddingId, ordered by date; Postgres doesn't
@@ -2792,4 +2797,64 @@ model PlatformReview {
 
   @@index([status, createdAt])
   @@map("platform_reviews")
+}
+
+// The couple's checklist in My Wedding (25 Nov 2026). Starts from a ready-made list dated back from the wedding (templateKey keeps it
+// from being added twice); the couple ticks, edits, removes and adds their own. Separate from Task (the team's own work). Read-only
+// to staff. Rules: lib/wedding/checklist.ts.
+model CoupleChecklistItem {
+  id             String        @id @default(uuid())
+  weddingId      String
+  wedding        Wedding       @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  title          String
+  notes          String?
+  dueDate        DateTime? // a date (UTC midnight); null = no date
+  weddingEventId String? // the function it is for (optional)
+  weddingEvent   WeddingEvent? @relation(fields: [weddingEventId], references: [id], onDelete: SetNull)
+  templateKey    String? // the ready-made item it came from; null = written by the couple
+  hidden         Boolean       @default(false) // a ready-made item the couple removed (kept so it is not added again)
+  done           Boolean       @default(false)
+  doneAt         DateTime?
+  doneById       String?
+  sortOrder      Int           @default(0)
+  createdById    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([weddingId, templateKey])
+  @@index([weddingId, done])
+  @@map("couple_checklist_items")
+}
+
+// The couple's planned amount for one budget category (25 Nov 2026). Rules: lib/wedding/coupleBudget.ts.
+model CoupleBudgetCategory {
+  id        String   @id @default(uuid())
+  weddingId String
+  wedding   Wedding  @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  category  String // one of COUPLE_BUDGET_CATEGORIES
+  planned   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([weddingId, category])
+  @@map("couple_budget_categories")
+}
+
+// Something the couple spends on themselves (outfits, jewellery, gifts …) — their own record, never an invoice or a payment of ours.
+model CoupleExpense {
+  id          String    @id @default(uuid())
+  weddingId   String
+  wedding     Wedding   @relation(fields: [weddingId], references: [id], onDelete: Cascade)
+  category    String // one of COUPLE_BUDGET_CATEGORIES
+  title       String
+  amount      Int // the whole cost
+  paid        Int       @default(0) // how much of it they have paid
+  spentOn     DateTime? // optional date
+  notes       String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([weddingId])
+  @@map("couple_expenses")
 }
