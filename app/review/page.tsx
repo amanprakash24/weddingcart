@@ -27,7 +27,11 @@ function Stars({ value, size = 'h-4 w-4' }: { value: number; size?: string }) {
 }
 
 export default async function ReviewPage() {
-  const { summary, reviews } = await platformReviewService.published();
+  // If reviews cannot be read (the database is briefly unreachable), the form still works and the list fills on the next refresh.
+  const { summary, reviews } = await platformReviewService.published().catch((err) => {
+    console.error('review page: could not read published reviews', err);
+    return { summary: null, reviews: [] };
+  });
   return (
     <main className="bg-[#FBF7F1] pt-16 text-[#221714]">
       <section className="relative isolate overflow-hidden bg-[#2A0F18]">
