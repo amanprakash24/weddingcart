@@ -41,7 +41,7 @@ describe('Growth Partner — public page rules', () => {
   test('no couples-only interruptions on the sign-up page; the navbar opens transparent over the photo hero', () => {
     // The popup asks one rule where it may open (lib/proposalPath.ts), and that rule keeps it off this page.
     expect(read('components/LeadCapturePopup.tsx')).toContain('isCouplePromptPath(pathname)');
-    expect(read('lib/proposalPath.ts')).toContain("pathname.startsWith('/growth-partner')");
+    expect(read('lib/proposalPath.ts')).toContain("return pathname === '/';"); // homepage only (24 Nov 2026)
     expect(read('components/ContactBanner.tsx')).toContain("pathname.startsWith('/growth-partner')");
     expect(read('components/Navbar.tsx')).toContain("pathname === '/growth-partner'");
   });

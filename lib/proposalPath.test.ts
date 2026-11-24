@@ -11,9 +11,10 @@ describe('isProposalPath', () => {
 });
 
 describe('isCouplePromptPath', () => {
-  test('the consultation popup is for couples: public pages yes; team, Vendor OS, a proposal and sign-up forms no', async () => {
+  test('the consultation popup opens on the homepage only', async () => {
     const { isCouplePromptPath } = await import('./proposalPath');
-    for (const p of ['/', '/venues/patna', '/vendors', '/vendors/swayamvar-hall-patna', '/plan', '/cities/patna/venue', '/administration-tips']) expect(isCouplePromptPath(p)).toBe(true);
+    expect(isCouplePromptPath('/')).toBe(true);
+    for (const p of ['/review', '/vendor-onboarding', '/venues/patna', '/vendors', '/vendors/swayamvar-hall-patna', '/plan', '/cities/patna/venue', '/blog']) expect(isCouplePromptPath(p)).toBe(false);
     for (const p of ['/admin', '/admin/crm', '/vendor', '/vendor/enquiries', '/vendor/login', '/workspace', `/proposal/${'x'.repeat(43)}`, '/growth-partner', '/vendor-onboarding', null, undefined]) expect(isCouplePromptPath(p)).toBe(false);
   });
 });

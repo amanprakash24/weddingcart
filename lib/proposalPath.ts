@@ -4,16 +4,14 @@ export function isProposalPath(pathname: string | null | undefined): boolean {
   return pathname === '/proposal' || !!pathname?.startsWith('/proposal/');
 }
 
-// Vendor OS (/vendor, /vendor/…) has its own shell, so the marketplace chrome (navbar, footer, contact banner, cart, popup) stays out
-// of it. Exact on purpose: the PUBLIC pages /vendors/… and /vendor-onboarding also start with "/vendor" and must keep the site chrome.
-// Where the "free wedding consultation" popup must NOT open: it is a prompt for couples. Not for the team (admin), a business at
-// work (Vendor OS), a couple reading their private proposal, or someone signing up to work with us — a Growth Partner, or a business
-// filling in the registration form (/vendor-onboarding), whose form the popup used to cover after ten seconds.
+// Where the "free wedding consultation" popup may open: the homepage only (24 Nov 2026, the founder's decision). It used to open on
+// every public page and covered forms people came to fill in — a review from the QR (/review), a vendor's registration, a listing.
 export function isCouplePromptPath(pathname: string | null | undefined): boolean {
-  if (!pathname) return false;
-  return !(pathname === '/admin' || pathname.startsWith('/admin/') || isVendorOsPath(pathname) || isProposalPath(pathname) || pathname.startsWith('/growth-partner') || pathname === '/vendor-onboarding' || pathname.startsWith('/vendor-onboarding/'));
+  return pathname === '/';
 }
 
+// Vendor OS (/vendor, /vendor/…) has its own shell, so the marketplace chrome (navbar, footer, contact banner, cart, popup) stays out
+// of it. Exact on purpose: the PUBLIC pages /vendors/… and /vendor-onboarding also start with "/vendor" and must keep the site chrome.
 // Also My Wedding (/my-wedding, 28 Oct 2026) and its sign-in page (/customer/login) — the couple's side of Vivah OS has its own shell too.
 // And a venue's own enquiry page (/enquire/<slug>, 11 Nov 2026): the venue's brand, powered by Vivah OS — no Shaadi Shopping chrome or popup.
 export function isVendorOsPath(pathname: string | null | undefined): boolean {
