@@ -140,6 +140,7 @@ model User {
   weddingsAsCustomer        Wedding[]           @relation("WeddingCustomer")
   weddingsAsCoordinator     Wedding[]           @relation("WeddingCoordinator")
   weddingMemberships        WeddingMember[] // family members of a couple's wedding (23 Nov 2026)
+  platformReviewsModerated  PlatformReview[] @relation("PlatformReviewModeratedBy")
   paymentsRecorded          Payment[]           @relation("PaymentRecordedBy")
   paymentSubmissionsReviewed PaymentSubmission[] @relation("PaymentSubmissionReviewedBy")
   reviewsModerated           Review[]            @relation("ReviewModeratedBy")
@@ -2771,4 +2772,24 @@ model WeddingMember {
   @@unique([weddingId, userId])
   @@index([userId])
   @@map("wedding_members")
+}
+
+// A review of Shaadi Shopping itself (24 Nov 2026), from the public /review page (link or QR). Anyone may send one; it is PENDING
+// and shown nowhere until staff publish it. The mobile and wedding ID are for staff to check it is genuine — never shown publicly.
+model PlatformReview {
+  id            String       @id @default(uuid())
+  authorName    String
+  rating        Int // 1-5
+  comment       String?
+  phone         String? // 10-digit mobile, optional, staff only
+  weddingNumber String? // e.g. WED-2026-0002, optional, staff only
+  status        ReviewStatus @default(PENDING)
+  moderatedAt   DateTime?
+  moderatedById String?
+  moderatedBy   User?        @relation("PlatformReviewModeratedBy", fields: [moderatedById], references: [id])
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status, createdAt])
+  @@map("platform_reviews")
 }
