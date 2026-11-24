@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import { averageRating, checkPlatformReview, publicName, type PlatformReviewInput } from '@/lib/reviews/platformReview';
+import { checkNextEvent, consultationFromNextEvent, type NextEventInput } from '@/lib/reviews/nextEvent';
 
 // Reviews of Shaadi Shopping itself (24 Nov 2026). Sent from the public /review page; PENDING until staff publish them. Only a
 // published review's first name + initial, stars, words and month are ever shown publicly — never the mobile or wedding ID.
@@ -45,5 +46,17 @@ export const platformReviewService = {
     const found = await prisma.platformReview.findUnique({ where: { id }, select: { id: true } });
     if (!found) throw new NotFoundError('PlatformReview', id);
     return prisma.platformReview.update({ where: { id }, data: { status, moderatedAt: new Date(), moderatedById: actorId } });
+  },
+};
+
+// "This is not goodbye" (24 Nov 2026): a family's next celebration, or a relative/friend they refer, becomes a Shaadi Shopping
+// consultation in the CRM for the team to call — the same place as the "Begin your journey" form. Run in Shaadi Shopping's scope.
+export const reviewFollowUpService = {
+  async submit(input: NextEventInput): Promise<{ id: string }> {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    const checked = checkNextEvent(input, today);
+    if (!checked.ok) throw new ValidationError(checked.error);
+    const row = await prisma.consultation.create({ data: consultationFromNextEvent(checked.value), select: { id: true } });
+    return { id: row.id };
   },
 };
