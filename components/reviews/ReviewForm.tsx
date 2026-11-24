@@ -20,6 +20,7 @@ export default function ReviewForm() {
       <div role="status" className="mt-6 rounded-2xl bg-[#F3EBDD] p-5 text-[#4D3E36]">
         <p className="text-lg font-semibold text-[#7A1238]">Thank you, {f.authorName.split(' ')[0]}!</p>
         <p className="mt-1 text-sm">Your review has reached our team. It will appear on this page once they have read it.</p>
+        <a href="#next" className="mt-3 inline-flex min-h-11 items-center font-semibold text-[#7A1238] underline underline-offset-4">This is not goodbye — plan your next celebration with us ↓</a>
       </div>
     );
   }
