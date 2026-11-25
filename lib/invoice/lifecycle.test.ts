@@ -1,6 +1,6 @@
 /// <reference types="bun-types" />
 import { describe, test, expect } from 'bun:test';
-import { agreementFigures, balanceOf, checkBalanceInvoice, checkManualPayment, deriveInvoiceStatus, planBalanceInvoice } from './lifecycle';
+import { agreementFigures, balanceOf, checkBalanceInvoice, checkCreditNote, checkManualPayment, checkVoid, deriveInvoiceStatus, invoiceMoney, planBalanceInvoice } from './lifecycle';
 
 describe('deriveInvoiceStatus', () => {
   const base = { total: 50_000 };
@@ -74,5 +74,39 @@ describe('the invoices of an accepted agreement', () => {
     const plan = planBalanceInvoice({ quotation: { quotationNumber: 'ABC-QTN-202610-0001', total: 170_500, advanceAmount: 42_625, gstAmount: 20_500, sellerGstin: '10ABCDE1234F1Z5' }, wedding: { primaryDate: null, weddingType: null }, client: { name: 'Rahul', phone: '900' } });
     expect(plan.invoice).toMatchObject({ subtotal: 112_500, gstEnabled: true, gstAmount: 15_375, total: 127_875, sellerGstin: '10ABCDE1234F1Z5' });
     expect(plan.invoice.notes).toContain('Includes GST ₹15,375 (GSTIN 10ABCDE1234F1Z5)');
+  });
+});
+
+describe('credit notes and void (PR 7)', () => {
+  const inv = { total: 11800, credited: 0, gstAmount: 1800, voided: false, issued: true, hasWedding: true };
+  test('outstanding = total − paid − credited; credits past what was paid show a refund owed; a void counts for nothing', () => {
+    expect(invoiceMoney({ total: 10000, paid: 4000, credited: 1000 })).toEqual({ net: 9000, outstanding: 5000, refundOwed: 0 });
+    expect(invoiceMoney({ total: 10000, paid: 10000, credited: 2500 })).toEqual({ net: 7500, outstanding: 0, refundOwed: 2500 });
+    expect(invoiceMoney({ total: 10000, paid: 0, voided: true })).toEqual({ net: 0, outstanding: 0, refundOwed: 0 });
+    expect(balanceOf(10000, 4000, 1000)).toBe(5000);
+  });
+  test('a credit settles the invoice together with payments', () => {
+    expect(deriveInvoiceStatus({ current: 'PARTIALLY_PAID', total: 10000, paid: 8000, credited: 2000, issued: true })).toBe('PAID');
+    expect(deriveInvoiceStatus({ current: 'SENT', total: 10000, paid: 0, credited: 2000, issued: true })).toBe('SENT');
+    expect(checkManualPayment({ amount: 6000, total: 10000, paid: 4000, credited: 1000, method: 'UPI' })).toContain('more than the balance');
+    expect(checkManualPayment({ amount: 5000, total: 10000, paid: 4000, credited: 1000, method: 'UPI' })).toBeNull();
+    expect(checkManualPayment({ amount: 1, total: 10000, paid: 0, method: 'UPI', voided: true })).toContain('cancelled');
+  });
+  test('a credit note: whole rupees, never above what is left, a reason, GST in proportion', () => {
+    expect(checkCreditNote({ amount: '5,900', reason: 'Sangeet dropped' }, inv)).toEqual({ ok: true, value: { amount: 5900, gstAmount: 900, reason: 'Sangeet dropped' } });
+    expect(checkCreditNote({ amount: 11801, reason: 'xyz' }, inv)).toMatchObject({ ok: false });
+    expect(checkCreditNote({ amount: 2000, reason: 'xyz' }, { ...inv, credited: 10000 })).toMatchObject({ ok: false, error: expect.stringContaining('₹1,800') });
+    expect(checkCreditNote({ amount: 100, reason: ' ' }, inv)).toMatchObject({ ok: false });
+    expect(checkCreditNote({ amount: 100, reason: 'xyz' }, { ...inv, issued: false })).toMatchObject({ ok: false });
+    expect(checkCreditNote({ amount: 100, reason: 'xyz' }, { ...inv, voided: true })).toMatchObject({ ok: false });
+    expect(checkCreditNote({ amount: 100, reason: 'xyz' }, { ...inv, hasWedding: false })).toMatchObject({ ok: false });
+  });
+  test('void: only an unpaid, uncredited invoice outside the agreement', () => {
+    const v = { kind: 'OTHER', paid: 0, credited: 0, voided: false, hasWedding: true };
+    expect(checkVoid({ reason: 'Raised twice' }, v)).toEqual({ ok: true, value: { reason: 'Raised twice' } });
+    expect(checkVoid({ reason: 'Raised twice' }, { ...v, kind: 'BALANCE' })).toMatchObject({ ok: false, error: expect.stringContaining('credit note') });
+    expect(checkVoid({ reason: 'Raised twice' }, { ...v, paid: 1 })).toMatchObject({ ok: false });
+    expect(checkVoid({ reason: 'Raised twice' }, { ...v, credited: 1 })).toMatchObject({ ok: false });
+    expect(checkVoid({ reason: '' }, v)).toMatchObject({ ok: false });
   });
 });

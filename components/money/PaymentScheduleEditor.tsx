@@ -101,6 +101,11 @@ export default function PaymentScheduleEditor({ quotationId, refreshKey }: { quo
 
       {!rows && (
         <>
+          {view.instalments.length > 0 && view.instalments.reduce((s, i) => s + i.amount, 0) !== view.balance && (
+            <p role="alert" className="mt-2 rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
+              The balance is now {inr(view.balance)} (a credit note changed it) but these dates add up to {inr(view.instalments.reduce((s, i) => s + i.amount, 0))}. Press Set payment dates to fix them.
+            </p>
+          )}
           {view.instalments.length === 0 ? (
             <p className="mt-2 text-sm text-amber-800">No dates set for the balance of {inr(view.balance)}. The couple is told “dates will be shared by your expert”.</p>
           ) : (

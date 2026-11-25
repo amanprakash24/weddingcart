@@ -3,7 +3,8 @@ import type { Prisma, Wedding } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
 import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
-import { balanceOf, checkBalanceInvoice, checkManualPayment, deriveInvoiceStatus, planBalanceInvoice, type ManualPaymentMethod } from '@/lib/invoice/lifecycle';
+import { balanceOf, checkBalanceInvoice, checkCreditNote, checkManualPayment, checkVoid, deriveInvoiceStatus, planBalanceInvoice, type ManualPaymentMethod } from '@/lib/invoice/lifecycle';
+import { generateCreditNoteNumber } from '@/services/documentNumber.service';
 import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { invoiceRepository } from '@/repositories/invoice.repository';
 import { generateInvoiceNumber } from '@/services/documentNumber.service';
@@ -53,12 +54,13 @@ export async function settleInvoiceStatus(tx: Tx, invoiceId: string, opts: { iss
   const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, include: { payments: true } });
   if (!invoice) throw new NotFoundError('Invoice', invoiceId);
   const paid = paidOf(invoice);
-  const status = deriveInvoiceStatus({ current: invoice.status, total: invoice.total, paid, issued: Boolean(opts.issue) || invoice.issuedAt !== null });
+  if (invoice.voidedAt) return { status: invoice.status, paid, balance: 0, invoice }; // a cancelled invoice is frozen
+  const status = deriveInvoiceStatus({ current: invoice.status, total: invoice.total, paid, credited: invoice.creditedAmount, issued: Boolean(opts.issue) || invoice.issuedAt !== null });
   const issuedAt = invoice.issuedAt ?? (status !== 'DRAFT' ? new Date() : null);
   if (status !== invoice.status || issuedAt?.getTime() !== invoice.issuedAt?.getTime()) {
     await invoiceRepository.update(invoiceId, { status, issuedAt }, tx);
   }
-  return { status, paid, balance: balanceOf(invoice.total, paid), invoice };
+  return { status, paid, balance: balanceOf(invoice.total, paid, invoice.creditedAmount), invoice };
 }
 
 export const invoiceWorkflowService = {
@@ -163,7 +165,7 @@ export const invoiceWorkflowService = {
         throw new ConflictError('This invoice belongs to the booking agreement — record the payment against the agreement');
       }
       const paid = paidOf(invoice);
-      const blocked = checkManualPayment({ amount: input.amount, total: invoice.total, paid, method: input.method });
+      const blocked = checkManualPayment({ amount: input.amount, total: invoice.total, paid, method: input.method, credited: invoice.creditedAmount, voided: invoice.voidedAt !== null });
       if (blocked) throw new ValidationError(blocked);
 
       const payment = await tx.payment.create({
@@ -174,20 +176,71 @@ export const invoiceWorkflowService = {
       await activityLogRepository.create(
         {
           type: ActivityType.PAYMENT_RECEIVED,
-          summary: `Payment recorded: ${rupees(input.amount)} by ${METHOD_LABEL[input.method]} on ${invoice.invoiceNumber}${reference ? ` (ref ${reference})` : ''} — balance ${rupees(balanceOf(invoice.total, newPaid))}`,
+          summary: `Payment recorded: ${rupees(input.amount)} by ${METHOD_LABEL[input.method]} on ${invoice.invoiceNumber}${reference ? ` (ref ${reference})` : ''} — balance ${rupees(balanceOf(invoice.total, newPaid, invoice.creditedAmount))}`,
           wedding: { connect: { id: weddingId } },
           performedBy: actorId ? { connect: { id: actorId } } : undefined,
         },
         tx
       );
-      return { payment, status, balance: balanceOf(invoice.total, newPaid) };
+      return { payment, status, balance: balanceOf(invoice.total, newPaid, invoice.creditedAmount) };
+    });
+  },
+
+  // Money design v1, PR 7 — a credit note against a couple's issued invoice. The invoice is never edited: the database adds the credit
+  // to its creditedAmount (trigger) and refuses credits above the total. Full money access on the wedding (the route checks).
+  async issueCreditNote(weddingId: string, invoiceId: string, input: { amount: unknown; reason: unknown }, actorId: string | null) {
+    return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${invoiceId} FOR UPDATE`;
+      const invoice = await loadWeddingInvoice(tx, weddingId, invoiceId);
+      const paid = paidOf(invoice);
+      const c = checkCreditNote(input, { total: invoice.total, credited: invoice.creditedAmount, gstAmount: invoice.gstAmount, voided: invoice.voidedAt !== null, issued: invoice.status !== 'DRAFT' || invoice.issuedAt !== null, hasWedding: invoice.weddingId !== null });
+      if (!c.ok) throw new ValidationError(c.error);
+      await auditAs(tx, actorId, c.value.reason);
+      const creditNote = await tx.creditNote.create({ data: { number: await generateCreditNoteNumber(tx), invoice: { connect: { id: invoiceId } }, amount: c.value.amount, gstAmount: c.value.gstAmount, reason: c.value.reason, issuedById: actorId } });
+      const { status } = await settleInvoiceStatus(tx, invoiceId);
+      const credited = invoice.creditedAmount + c.value.amount;
+      const refundOwed = Math.max(0, paid + credited - invoice.total);
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: `Credit note ${creditNote.number} for ${rupees(c.value.amount)} on ${invoice.invoiceNumber}: ${c.value.reason}${refundOwed > 0 ? ` — ${rupees(refundOwed)} is now owed back to the couple` : ` — balance ${rupees(balanceOf(invoice.total, paid, credited))}`}`,
+          wedding: { connect: { id: weddingId } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+      return { creditNote, status, refundOwed };
+    });
+  },
+
+  // Money design v1, PR 7 — cancel (void) an invoice the couple never paid. It stays on record, frozen, and counts for nothing; its open
+  // payment links are closed. The agreement's advance and balance invoices are corrected with a credit note instead.
+  async voidInvoice(weddingId: string, invoiceId: string, input: { reason: unknown }, actorId: string | null) {
+    return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${invoiceId} FOR UPDATE`;
+      const invoice = await loadWeddingInvoice(tx, weddingId, invoiceId);
+      const c = checkVoid(input, { kind: invoice.kind, paid: paidOf(invoice) + (invoice.weddingId ? 0 : invoice.amountPaid), credited: invoice.creditedAmount, voided: invoice.voidedAt !== null, hasWedding: invoice.weddingId !== null });
+      if (!c.ok) throw new ValidationError(c.error);
+      await auditAs(tx, actorId, `invoice cancelled: ${c.value.reason}`);
+      await tx.paymentLink.updateMany({ where: { invoiceId, status: 'CREATED' }, data: { status: 'CANCELLED' } });
+      const updated = await tx.invoice.update({ where: { id: invoiceId }, data: { voidedAt: new Date(), voidedById: actorId, voidReason: c.value.reason } });
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: `Invoice ${invoice.invoiceNumber} (${rupees(invoice.total)}) cancelled: ${c.value.reason}`,
+          wedding: { connect: { id: weddingId } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+      return { invoice: updated };
     });
   },
 };
 
 // ---------- the old, standalone Invoices screen ----------
 
-const last10 = (phone: string) => phone.replace(/D/g, '').slice(-10);
+const last10 = (phone: string) => phone.replace(/\D/g, '').slice(-10);
 
 // Open weddings (not cancelled) belonging to the customer with this phone number, found through the booking or the lead /
 // enquiry / consultation the wedding came from.

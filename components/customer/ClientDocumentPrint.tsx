@@ -10,7 +10,7 @@ const formatDate = (iso: string) =>
   new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date(iso));
 
 export interface PrintableDocument {
-  title: 'TAX INVOICE' | 'INVOICE' | 'QUOTATION';
+  title: 'TAX INVOICE' | 'INVOICE' | 'QUOTATION' | 'CREDIT NOTE';
   number: string;
   date: string | null;
   subject: string; // "Booking amount", "Balance", "Accepted quotation, version 2" …
@@ -22,20 +22,25 @@ export interface PrintableDocument {
   gstin: string | null; // printed whenever there is a GST line
   paid: number | null; // invoices only
   terms: string | null; // quotations only
+  credited?: number; // invoices: credit notes against it (PR 7) — they lower the balance, they are not money received
+  against?: string | null; // credit notes: the invoice number it credits
 }
 
 export default function ClientDocumentPrint({ doc, issuer, coupleName, weddingNumber, weddingDate }: { doc: PrintableDocument; issuer: ReceiptIssuer; coupleName: string; weddingNumber: string; weddingDate: string }) {
   const showUnit = doc.lines.some((l) => l.unitPrice !== null);
-  const facts: [string, string][] = [[doc.title === 'QUOTATION' ? 'Quotation no.' : 'Invoice no.', doc.number]];
+  const isCredit = doc.title === 'CREDIT NOTE';
+  const facts: [string, string][] = [[doc.title === 'QUOTATION' ? 'Quotation no.' : isCredit ? 'Credit note no.' : 'Invoice no.', doc.number]];
   if (doc.date) facts.push(['Date', formatDate(doc.date)]);
-  const balance = doc.paid !== null ? Math.max(0, doc.total - doc.paid) : null;
+  if (isCredit && doc.against) facts.push(['Against invoice', doc.against]);
+  const credited = doc.credited ?? 0;
+  const balance = doc.paid !== null ? Math.max(0, doc.total - doc.paid - credited) : null;
   return (
-    <PrintPage label={doc.title === 'QUOTATION' ? 'Quotation' : 'Invoice'}>
+    <PrintPage label={doc.title === 'QUOTATION' ? 'Quotation' : isCredit ? 'Credit note' : 'Invoice'}>
       <Letterhead issuer={{ ...issuer, gstin: doc.gstAmount > 0 ? (doc.gstin ?? issuer.gstin) : issuer.gstin }} title={doc.title} facts={facts} />
 
       <div className="mt-6 grid grid-cols-2 gap-8">
         <div>
-          <Label>{doc.title === 'QUOTATION' ? 'Prepared for' : 'Billed to'}</Label>
+          <Label>{doc.title === 'QUOTATION' ? 'Prepared for' : isCredit ? 'Credited to' : 'Billed to'}</Label>
           <p className="mt-1.5 text-lg" style={{ fontFamily: 'var(--font-playfair), serif' }}>
             {coupleName}
           </p>
@@ -90,7 +95,7 @@ export default function ClientDocumentPrint({ doc, issuer, coupleName, weddingNu
           </div>
         )}
         <div className="flex justify-between border-t border-[#E3D2B4] pt-2 text-[13px] font-semibold">
-          <dt>Total</dt>
+          <dt>{isCredit ? 'Credit total' : 'Total'}</dt>
           <dd>{rupees(doc.total)}</dd>
         </div>
         {doc.paid !== null && balance !== null && (
@@ -99,9 +104,15 @@ export default function ClientDocumentPrint({ doc, issuer, coupleName, weddingNu
               <dt className="text-[#6B5B4D]">Received</dt>
               <dd className="text-[#1F7A4D]">{rupees(doc.paid)}</dd>
             </div>
+            {credited > 0 && (
+              <div className="flex justify-between">
+                <dt className="text-[#6B5B4D]">Credit notes</dt>
+                <dd>− {rupees(credited)}</dd>
+              </div>
+            )}
             <div className="flex justify-between rounded-lg bg-[#2A1F1B] px-3 py-1.5 text-white">
               <dt>{balance > 0 ? 'Balance due' : 'Status'}</dt>
-              <dd className="font-semibold">{balance > 0 ? rupees(balance) : 'Paid in full'}</dd>
+              <dd className="font-semibold">{balance > 0 ? rupees(balance) : credited > 0 ? 'Settled' : 'Paid in full'}</dd>
             </div>
           </>
         )}

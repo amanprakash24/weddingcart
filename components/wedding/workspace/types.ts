@@ -132,6 +132,12 @@ export interface WorkspaceInvoice {
   total: number;
   amountPaid: number;
   outstanding: number;
+  // PR 7: credit notes and the cancelled state
+  creditedAmount: number;
+  refundOwed: number;
+  creditNotes: { id: string; number: string; amount: number; gstAmount: number; reason: string; issuedAt: string }[];
+  voidedAt: string | null;
+  voidReason: string | null;
   createdAt: string;
   kind: InvoiceKind;
   quotationId: string | null;
@@ -145,7 +151,7 @@ export interface WorkspaceInvoice {
 export interface WorkspaceFinance {
   budget: { planned: number | null; committed: number; variance: number | null };
   invoices: WorkspaceInvoice[];
-  totals: { invoicedTotal: number; collected: number; outstanding: number };
+  totals: { invoicedTotal: number; collected: number; outstanding: number; credited: number; refundOwed: number };
   // The accepted quotation the wedding was booked on — what was agreed. Null when the wedding did not come from one.
   agreement: {
     quotationId: string;

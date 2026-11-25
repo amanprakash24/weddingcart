@@ -381,7 +381,8 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
                     gstAmount: inv.gstAmount,
                     total: inv.total,
                     gstin: inv.sellerGstin,
-                    paid: inv.total - inv.pending,
+                    paid: inv.paid,
+                    credited: inv.credited,
                     terms: null,
                   };
                   return (
@@ -391,6 +392,19 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
                         {inv.paymentUrl && inv.pending > 0 && <a href={inv.paymentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center font-bold text-[var(--color-primary-text)]">Pay</a>}
                         <button type="button" onClick={() => setPrinting({ kind: 'doc', doc })} className="inline-flex min-h-11 items-center font-bold text-[var(--color-primary-text)]">View / download</button>
                       </span>
+                      {inv.creditNotes.length > 0 && (
+                        <ul className="w-full space-y-1 border-t border-white/70 pt-1.5 text-xs text-[var(--color-text-secondary)]">
+                          {inv.creditNotes.map((c) => {
+                            const credit: PrintableDocument = { title: 'CREDIT NOTE', number: c.number, date: c.issuedAt, subject: `Credit against invoice ${inv.number}`, lines: [{ description: c.reason, quantity: 1, unitPrice: null, amount: c.amount - c.gstAmount }], subtotal: c.amount - c.gstAmount, discount: 0, gstAmount: c.gstAmount, total: c.amount, gstin: inv.sellerGstin, paid: null, terms: null, against: inv.number };
+                            return (
+                              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2">
+                                <span>Credit note {c.number} · − {inr(c.amount)} · {c.reason}</span>
+                                <button type="button" onClick={() => setPrinting({ kind: 'doc', doc: credit })} className="inline-flex min-h-11 items-center font-bold text-[var(--color-primary-text)]">View / download</button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
                     </li>
                   );
                 })}

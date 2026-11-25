@@ -3,8 +3,10 @@
 //   DRAFT ──issue / payment link──▶ SENT ──part payment──▶ PARTIALLY_PAID ──rest──▶ PAID
 //
 // Status is never guessed: it is DERIVED from what actually happened — was it issued, and how much has been received. That is
-// what fixes the invoice that stayed DRAFT forever after its payment link went out. (No void/cancel exists in the schema, so none
-// is invented here.)
+// what fixes the invoice that stayed DRAFT forever after its payment link went out.
+//
+// Money design v1, PR 7: a credit note lowers what is owed (outstanding = total − paid − credited) and an invoice the couple never
+// paid can be cancelled (voided) — then it counts for nothing. Neither edits the invoice's own figures.
 import { balanceInvoiceGst } from './gstShare';
 
 export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID';
@@ -12,26 +14,37 @@ export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_PAID' | 'PAID';
 // The status an invoice should have, given whether it has been issued and how much has been received.
 // - money received always means it was issued;
 // - never moves backwards from what has already happened.
-export function deriveInvoiceStatus(input: { current: InvoiceStatus; total: number; paid: number; issued: boolean }): InvoiceStatus {
+// - a credit note counts towards settling it (credited); a fully settled invoice is PAID.
+export function deriveInvoiceStatus(input: { current: InvoiceStatus; total: number; paid: number; issued: boolean; credited?: number }): InvoiceStatus {
   const { current, total, paid, issued } = input;
+  const credited = input.credited ?? 0;
   if (current === 'PAID') return 'PAID';
-  if (total > 0 && paid >= total) return 'PAID';
+  if (total > 0 && paid + credited >= total && (paid > 0 || credited > 0)) return 'PAID';
   if (paid > 0 || current === 'PARTIALLY_PAID') return 'PARTIALLY_PAID';
   if (issued || current === 'SENT') return 'SENT';
   return 'DRAFT';
 }
 
-export const balanceOf = (total: number, paid: number): number => Math.max(0, total - paid);
+export const balanceOf = (total: number, paid: number, credited = 0): number => Math.max(0, total - paid - credited);
+
+// What is still owed on an invoice, and what is owed back to the couple when credits and payments together pass the total.
+// A cancelled invoice owes nothing either way.
+export function invoiceMoney(i: { total: number; paid: number; credited?: number; voided?: boolean }): { net: number; outstanding: number; refundOwed: number } {
+  if (i.voided) return { net: 0, outstanding: 0, refundOwed: 0 };
+  const credited = i.credited ?? 0;
+  return { net: i.total - credited, outstanding: Math.max(0, i.total - i.paid - credited), refundOwed: Math.max(0, i.paid + credited - i.total) };
+}
 
 export type ManualPaymentMethod = 'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE';
 export const MANUAL_PAYMENT_METHODS: readonly ManualPaymentMethod[] = ['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE'];
 
 // Why a manual payment cannot be recorded (null = fine). The amount must be a whole number of rupees and must not exceed what
 // is still owed — recording more than the balance would push the ledger past the agreed total.
-export function checkManualPayment(input: { amount: number; total: number; paid: number; method: string }): string | null {
+export function checkManualPayment(input: { amount: number; total: number; paid: number; method: string; credited?: number; voided?: boolean }): string | null {
+  if (input.voided) return 'This invoice is cancelled — it cannot take a payment';
   if (!(MANUAL_PAYMENT_METHODS as readonly string[]).includes(input.method)) return 'Choose how the payment was received';
   if (!Number.isInteger(input.amount) || input.amount <= 0) return 'Enter the amount received in whole rupees';
-  const balance = balanceOf(input.total, input.paid);
+  const balance = balanceOf(input.total, input.paid, input.credited ?? 0);
   if (balance <= 0) return 'This invoice is already fully paid';
   if (input.amount > balance) return `The amount is more than the balance due (₹${balance.toLocaleString('en-IN')})`;
   return null;
@@ -93,4 +106,44 @@ export function planBalanceInvoice(input: {
     },
     items: [{ description: `Balance — ${quotation.quotationNumber}`, amount: balance, quantity: 1 as const }],
   };
+}
+
+// ---------- credit notes and void (money design v1, PR 7) ----------
+
+// A credit note: whole rupees, never more than what is left to credit, with a reason (the couple sees it). Its GST share follows the
+// invoice's own GST in proportion, so the taxable value and the tax both go down together.
+export function checkCreditNote(
+  input: { amount: unknown; reason: unknown },
+  inv: { total: number; credited: number; gstAmount: number; voided: boolean; issued: boolean; hasWedding: boolean }
+): { ok: true; value: { amount: number; gstAmount: number; reason: string } } | { ok: false; error: string } {
+  if (!inv.hasWedding) return { ok: false, error: 'Credit notes are only for a wedding’s invoices' };
+  if (inv.voided) return { ok: false, error: 'This invoice is cancelled — there is nothing to credit' };
+  if (!inv.issued) return { ok: false, error: 'This invoice is not issued yet — change it instead of crediting it' };
+  const amount = typeof input.amount === 'number' ? input.amount : Number(String(input.amount ?? '').replace(/[,\s₹]/g, ''));
+  if (!Number.isInteger(amount) || amount <= 0) return { ok: false, error: 'Enter the credit in whole rupees' };
+  const left = inv.total - inv.credited;
+  if (left <= 0) return { ok: false, error: 'This invoice is already fully credited' };
+  if (amount > left) return { ok: false, error: `The credit is more than what is left to credit on this invoice (${inr(left)})` };
+  const reason = typeof input.reason === 'string' ? input.reason.replace(/\s+/g, ' ').trim() : '';
+  if (reason.length < 3) return { ok: false, error: 'Say why the couple is credited — it is printed on the credit note' };
+  if (reason.length > 300) return { ok: false, error: 'Keep the reason under 300 characters' };
+  const gstAmount = inv.total > 0 && inv.gstAmount > 0 ? Math.round((amount * inv.gstAmount) / inv.total) : 0;
+  return { ok: true, value: { amount, gstAmount: Math.min(gstAmount, amount), reason } };
+}
+
+// Cancelling an invoice: only one the couple never paid and that has no credit notes. The advance and balance invoices of an
+// agreement are corrected with a credit note instead (they carry the 25% confirmation and the balance rules).
+export function checkVoid(
+  input: { reason: unknown },
+  inv: { kind: string; paid: number; credited: number; voided: boolean; hasWedding: boolean }
+): { ok: true; value: { reason: string } } | { ok: false; error: string } {
+  if (!inv.hasWedding) return { ok: false, error: 'Only a wedding’s invoices can be cancelled here' };
+  if (inv.voided) return { ok: false, error: 'This invoice is already cancelled' };
+  if (inv.kind === 'ADVANCE' || inv.kind === 'BALANCE') return { ok: false, error: 'The advance and balance invoices of the agreement are not cancelled — issue a credit note instead' };
+  if (inv.paid > 0) return { ok: false, error: 'This invoice has payments — issue a credit note instead' };
+  if (inv.credited > 0) return { ok: false, error: 'This invoice has credit notes — it cannot be cancelled' };
+  const reason = typeof input.reason === 'string' ? input.reason.replace(/\s+/g, ' ').trim() : '';
+  if (reason.length < 3) return { ok: false, error: 'Say why the invoice is cancelled' };
+  if (reason.length > 300) return { ok: false, error: 'Keep the reason under 300 characters' };
+  return { ok: true, value: { reason } };
 }

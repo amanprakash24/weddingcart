@@ -32,7 +32,7 @@ const SELECT = {
   booking: { select: { status: true, weddingDate: true, wedding: { select: { id: true, status: true, primaryDate: true } } } },
   invoices: {
     where: { kind: { in: ['ADVANCE', 'BALANCE'] } },
-    select: { id: true, invoiceNumber: true, kind: true, status: true, total: true, weddingId: true, payments: { select: { id: true, amount: true, method: true, status: true, paidAt: true } } },
+    select: { id: true, invoiceNumber: true, kind: true, status: true, total: true, weddingId: true, creditedAmount: true, payments: { select: { id: true, amount: true, method: true, status: true, paidAt: true } } },
   },
   _count: { select: { paymentSubmissions: { where: { status: 'PENDING' } } } },
 } satisfies Prisma.QuotationSelect;

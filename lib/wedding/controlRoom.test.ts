@@ -16,7 +16,7 @@ const fn = (id: string, type: string, label: string | null, date: string, vendor
 });
 const invoice = (over: Partial<WorkspaceInvoice> & Pick<WorkspaceInvoice, 'id' | 'kind' | 'status' | 'total' | 'amountPaid'>): WorkspaceInvoice => ({
   invoiceNumber: `INV-${over.id}`, clientName: 'Rahul & Priya Sharma', subtotal: over.total, discount: 0, gstEnabled: false, gstAmount: 0, outstanding: over.total - over.amountPaid,
-  createdAt: day(-10), quotationId: 'q1', bookingId: 'b1', issuedAt: over.status === 'DRAFT' ? null : day(-9), items: [], payments: [], paymentLinks: [], ...over,
+  creditedAmount: 0, refundOwed: 0, creditNotes: [], voidedAt: null, voidReason: null, createdAt: day(-10), quotationId: 'q1', bookingId: 'b1', issuedAt: over.status === 'DRAFT' ? null : day(-9), items: [], payments: [], paymentLinks: [], ...over,
 });
 const agreement = { quotationId: 'q1', quotationNumber: 'QTN-202609-0003', revision: 3, bookingId: 'b1', acceptedAt: day(-12), subtotal: 115500, discount: 5500, gstEnabled: false, gstAmount: 0, total: 110000, advance: 50000, balance: 60000, terms: 'T&C', lines: [], hasBalanceInvoice: false };
 
@@ -34,7 +34,7 @@ function ws(over: Partial<WeddingWorkspace> = {}): WeddingWorkspace {
     finance: {
       budget: { planned: null, committed: 0, variance: null },
       invoices: [invoice({ id: 'a', kind: 'ADVANCE', status: 'SENT', total: 50000, amountPaid: 0 })],
-      totals: { invoicedTotal: 50000, collected: 0, outstanding: 50000 },
+      totals: { invoicedTotal: 50000, collected: 0, outstanding: 50000, credited: 0, refundOwed: 0 },
       agreement,
     },
     guests: [], insights: [],
@@ -124,7 +124,7 @@ describe('next action reuses the merged engine — and the locked money wording'
   test('a part-paid advance → "Advance payment of ₹30,000 pending"', () => {
     const w = ws();
     w.finance.invoices = [invoice({ id: 'a', kind: 'ADVANCE', status: 'PARTIALLY_PAID', total: 50000, amountPaid: 20000 })];
-    w.finance.totals = { invoicedTotal: 50000, collected: 20000, outstanding: 30000 };
+    w.finance.totals = { invoicedTotal: 50000, collected: 20000, outstanding: 30000, credited: 0, refundOwed: 0 };
     expect(buildControlRoom(w, NOW).next.title).toBe('Advance payment of ₹30,000 pending');
   });
 
@@ -136,7 +136,7 @@ describe('next action reuses the merged engine — and the locked money wording'
   });
 
   test('missing coordinator, then missing information, then a task, then on track', () => {
-    const settled = () => { const w = ws(); w.finance.invoices = [invoice({ id: 'a', kind: 'ADVANCE', status: 'PAID', total: 50000, amountPaid: 50000 })]; w.finance.totals = { invoicedTotal: 50000, collected: 50000, outstanding: 0 }; return w; };
+    const settled = () => { const w = ws(); w.finance.invoices = [invoice({ id: 'a', kind: 'ADVANCE', status: 'PAID', total: 50000, amountPaid: 50000 })]; w.finance.totals = { invoicedTotal: 50000, collected: 50000, outstanding: 0, credited: 0, refundOwed: 0 }; return w; };
     const noCoordinator = settled(); noCoordinator.wedding.coordinatorName = null;
     expect(buildControlRoom(noCoordinator, NOW).next.kind).toBe('MISSING_COORDINATOR');
     expect(buildControlRoom(settled(), NOW).next.kind).toBe('ON_TRACK');
@@ -186,7 +186,7 @@ describe('money — from the accepted agreement and its invoices, never hard-cod
   test('a part-paid advance is called out as partial, not as "received"', () => {
     const w = ws();
     w.finance.invoices = [invoice({ id: 'a', kind: 'ADVANCE', status: 'PARTIALLY_PAID', total: 50000, amountPaid: 20000 })];
-    w.finance.totals = { invoicedTotal: 50000, collected: 20000, outstanding: 30000 };
+    w.finance.totals = { invoicedTotal: 50000, collected: 20000, outstanding: 30000, credited: 0, refundOwed: 0 };
     const m = buildMoney(w);
     expect(m).toMatchObject({ received: 20000, advanceStatus: 'partial', advanceReceived: 20000, advancePending: 30000, balance: 60000, stillToCome: 90000 });
     expect(m.headline).toBe('₹30,000 of the ₹50,000 advance is still pending');
@@ -198,14 +198,14 @@ describe('money — from the accepted agreement and its invoices, never hard-cod
       invoice({ id: 'a', kind: 'ADVANCE', status: 'PAID', total: 50000, amountPaid: 50000 }),
       invoice({ id: 'b', kind: 'BALANCE', status: 'PARTIALLY_PAID', total: 60000, amountPaid: 25000 }),
     ];
-    w.finance.totals = { invoicedTotal: 110000, collected: 75000, outstanding: 35000 };
+    w.finance.totals = { invoicedTotal: 110000, collected: 75000, outstanding: 35000, credited: 0, refundOwed: 0 };
     expect(buildMoney(w)).toMatchObject({ advanceStatus: 'paid', received: 75000, balance: 35000, stillToCome: 35000 });
   });
 
   test('an advance invoice that is still a draft, and an advance nobody has invoiced, read differently', () => {
     const draft = ws(); draft.finance.invoices = [invoice({ id: 'a', kind: 'ADVANCE', status: 'DRAFT', total: 50000, amountPaid: 0 })];
     expect(buildMoney(draft)).toMatchObject({ advanceStatus: 'notSent' });
-    const none = ws(); none.finance.invoices = []; none.finance.totals = { invoicedTotal: 0, collected: 0, outstanding: 0 };
+    const none = ws(); none.finance.invoices = []; none.finance.totals = { invoicedTotal: 0, collected: 0, outstanding: 0, credited: 0, refundOwed: 0 };
     expect(buildMoney(none)).toMatchObject({ advanceStatus: 'notInvoiced', advancePending: 50000 });
   });
 
@@ -213,12 +213,12 @@ describe('money — from the accepted agreement and its invoices, never hard-cod
     const w = ws();
     w.finance.agreement = null;
     w.finance.invoices = [invoice({ id: 'x', kind: 'OTHER', status: 'SENT', total: 30000, amountPaid: 10000, quotationId: null, bookingId: null })];
-    w.finance.totals = { invoicedTotal: 30000, collected: 10000, outstanding: 20000 };
+    w.finance.totals = { invoicedTotal: 30000, collected: 10000, outstanding: 20000, credited: 0, refundOwed: 0 };
     expect(buildMoney(w)).toMatchObject({ mode: 'invoices', total: 30000, advance: null, received: 10000, balance: null });
   });
 
   test('no invoices and no agreement: an honest empty state, not zeros', () => {
-    const w = ws(); w.finance.agreement = null; w.finance.invoices = []; w.finance.totals = { invoicedTotal: 0, collected: 0, outstanding: 0 };
+    const w = ws(); w.finance.agreement = null; w.finance.invoices = []; w.finance.totals = { invoicedTotal: 0, collected: 0, outstanding: 0, credited: 0, refundOwed: 0 };
     const m = buildMoney(w);
     expect(m.mode).toBe('none');
     expect(m.headline).toContain('nothing has been billed');

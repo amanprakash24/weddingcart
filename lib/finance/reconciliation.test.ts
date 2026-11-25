@@ -74,3 +74,22 @@ describe('audit log', () => {
     expect(auditChecks([], 30)[0].status).toBe('ok');
   });
 });
+
+describe('credit notes and cancelled invoices (PR 7)', () => {
+  const base = { number: 'INV-T', status: 'PAID', total: 10000, storedAmountPaid: 0, isWeddingInvoice: true };
+  const byId = (checks: ReturnType<typeof invoiceChecks>) => Object.fromEntries(checks.map((c) => [c.id, c]));
+  test('a credit settles the invoice with the payments; credits must match their notes; a refund owed is a warning', () => {
+    expect(expectedInvoiceStatus(10000, 8000, 'PARTIALLY_PAID', 2000)).toBe('PAID');
+    const ok = byId(invoiceChecks([{ ...base, storedAmountPaid: 8000, successfulPayments: 8000, credited: 2000, creditNotesTotal: 2000 }]));
+    expect(ok['invoice-status'].items).toEqual([]);
+    expect(ok['invoice-credits'].items).toEqual([]);
+    const off = byId(invoiceChecks([{ ...base, storedAmountPaid: 10000, successfulPayments: 10000, credited: 1500, creditNotesTotal: 1000 }]));
+    expect(off['invoice-credits'].status).toBe('error');
+    expect(off['invoice-overpaid'].items[0].detail).toContain('₹1,500 is owed back');
+  });
+  test('a cancelled invoice skips the status check and must have no payment', () => {
+    const v = byId(invoiceChecks([{ ...base, status: 'SENT', successfulPayments: 500, voided: true }]));
+    expect(v['invoice-void'].status).toBe('error');
+    expect(v['invoice-status'].items).toEqual([]);
+  });
+});

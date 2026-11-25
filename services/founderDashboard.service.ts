@@ -103,18 +103,19 @@ export async function getRevenue(): Promise<RevenueSummary> {
   const now = new Date();
   const [invoices, monthAgg, paymentsTodayAgg] = await Promise.all([
     prisma.invoice.findMany({
-      where: { status: { not: 'DRAFT' } },
+      where: { status: { not: 'DRAFT' }, voidedAt: null }, // a cancelled invoice counts for nothing (PR 7)
       select: {
         status: true,
         total: true,
         amountPaid: true,
+        creditedAmount: true,
         weddingId: true,
         payments: { where: { status: 'SUCCESS' }, select: { amount: true } },
       },
     }),
     prisma.invoice.aggregate({
-      where: { status: { not: 'DRAFT' }, createdAt: { gte: startOfMonth(now) } },
-      _sum: { total: true },
+      where: { status: { not: 'DRAFT' }, voidedAt: null, createdAt: { gte: startOfMonth(now) } },
+      _sum: { total: true, creditedAmount: true },
       _count: true,
     }),
     prisma.payment.aggregate({ where: { paidAt: { gte: startOfDay(now) }, status: 'SUCCESS' }, _sum: { amount: true } }),
@@ -125,13 +126,13 @@ export async function getRevenue(): Promise<RevenueSummary> {
 
   const nonPaidInvoices = invoices.filter((inv) => inv.status !== 'PAID');
   const outstandingTotal = nonPaidInvoices.reduce((sum, inv) => sum + inv.total, 0);
-  const outstandingPaid = nonPaidInvoices.reduce((sum, inv) => sum + paid(inv), 0);
+  const outstandingPaid = nonPaidInvoices.reduce((sum, inv) => sum + paid(inv) + inv.creditedAmount, 0); // credit notes lower what is due
   const totalCollected = invoices.reduce((sum, inv) => sum + paid(inv), 0);
 
   return {
     outstanding: outstandingTotal - outstandingPaid,
     totalCollected,
-    invoicedThisMonth: { count: monthAgg._count, total: monthAgg._sum.total ?? 0 },
+    invoicedThisMonth: { count: monthAgg._count, total: (monthAgg._sum.total ?? 0) - (monthAgg._sum.creditedAmount ?? 0) },
     paymentsToday: paymentsTodayAgg._sum.amount ?? 0,
   };
 }

@@ -34,6 +34,13 @@ export interface PaymentScheduleView {
   steps: ScheduledStep[]; // booking amount + instalments, with what is paid of each (money goes to the booking amount first)
 }
 
+// Credit notes on the agreement's invoices (money design v1, PR 7): the advance invoice's lower the booking amount, the balance
+// invoice's lower what the instalments must add up to.
+async function creditsFor(client: Tx | typeof prisma, quotationId: string): Promise<{ advance: number; balance: number }> {
+  const rows = await client.invoice.findMany({ where: { quotationId, kind: { in: ['ADVANCE', 'BALANCE'] } }, select: { kind: true, creditedAmount: true } });
+  return { advance: rows.filter((r) => r.kind === 'ADVANCE').reduce((s, r) => s + r.creditedAmount, 0), balance: rows.filter((r) => r.kind === 'BALANCE').reduce((s, r) => s + r.creditedAmount, 0) };
+}
+
 async function receivedFor(client: Tx | typeof prisma, quotationId: string): Promise<number> {
   // the same money the agreement counts: successful payments on its advance / balance invoices
   const payments = await client.payment.findMany({ where: { status: 'SUCCESS', invoice: { quotationId, kind: { in: ['ADVANCE', 'BALANCE'] } } }, select: { amount: true } });
@@ -50,15 +57,16 @@ export const paymentScheduleService = {
     });
     if (!agreement) return { exists: false, version: 0, agreementTotal: 0, confirmationAmount: 0, balance: 0, received: 0, instalments: [], steps: [] };
     const received = await receivedFor(prisma, quotationId);
+    const credits = await creditsFor(prisma, quotationId);
     const instalments = agreement.instalments.map((i) => ({ label: i.label, amount: i.amount, dueDate: ymd(i.dueDate) }));
-    const booking = Math.min(agreement.confirmationAmount, agreement.agreementTotal);
+    const booking = Math.max(0, Math.min(agreement.confirmationAmount, agreement.agreementTotal) - credits.advance);
     const steps = allocate([...(booking > 0 ? [{ label: 'Booking amount', amount: booking, dueDate: null }] : []), ...instalments], received, indiaToday(now));
     return {
       exists: true,
       version: agreement.scheduleVersion,
       agreementTotal: agreement.agreementTotal,
       confirmationAmount: agreement.confirmationAmount,
-      balance: scheduleBalance(agreement.agreementTotal, agreement.confirmationAmount),
+      balance: Math.max(0, scheduleBalance(agreement.agreementTotal, agreement.confirmationAmount) - credits.balance),
       received,
       instalments,
       steps,
@@ -80,7 +88,7 @@ export const paymentScheduleService = {
         throw new ConflictError('Someone else changed this payment schedule while you were editing it. Reload to see their version, then make your change again.');
       }
       const items = input.instalments.map((i) => ({ label: i.label.trim(), amount: i.amount, dueDate: i.dueDate }));
-      const balance = scheduleBalance(agreement.agreementTotal, agreement.confirmationAmount);
+      const balance = Math.max(0, scheduleBalance(agreement.agreementTotal, agreement.confirmationAmount) - (await creditsFor(tx, quotationId)).balance);
       const problems = validateSchedule(items, balance);
       if (problems.length > 0) throw new ValidationError(problems.map((p) => p.message).join('. '));
 

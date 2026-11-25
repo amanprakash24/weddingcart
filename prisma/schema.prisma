@@ -950,6 +950,15 @@ model Invoice {
   booking     Booking?    @relation(fields: [bookingId], references: [id])
   issuedAt    DateTime? // when it was issued to the customer (DRAFT → SENT)
 
+  // Money design v1, PR 7 (25 Nov 2026). creditedAmount = the sum of this invoice's credit notes, kept by the database (trigger) —
+  // never written by the app. Outstanding = total − successful payments − creditedAmount. A void cancels an invoice the couple
+  // never paid; a voided invoice is frozen (database rule) and counts for nothing.
+  creditedAmount Int          @default(0)
+  creditNotes    CreditNote[]
+  voidedAt       DateTime?
+  voidedById     String?
+  voidReason     String?
+
   // Production-hardening audit (2026-09-17) — every Wedding Workspace page
   // load queries this by weddingId, ordered by createdAt; Postgres doesn't
   // auto-index FK columns. Found during this pass — not in the original
@@ -2992,4 +3001,22 @@ model WorkOrderAdjustment {
 
   @@index([workOrderId])
   @@map("work_order_adjustments")
+}
+
+// A credit note against a couple's invoice (money design v1, PR 7, 25 Nov 2026): the invoice is never edited — what the couple owes
+// goes down by the credit. Numbered CN-YYYYMM-NNNN. Never changed (database rule); all credits on an invoice never above its total.
+// gstAmount is the GST share of the credit (in proportion to the invoice's own GST); amount includes it.
+model CreditNote {
+  id          String   @id @default(uuid())
+  number      String   @unique
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount      Int
+  gstAmount   Int      @default(0)
+  reason      String
+  issuedAt    DateTime @default(now())
+  issuedById  String?
+
+  @@index([invoiceId])
+  @@map("credit_notes")
 }

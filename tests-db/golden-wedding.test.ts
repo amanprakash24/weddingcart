@@ -214,7 +214,7 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
 
   test('12 · One source of truth for the numbers: ₹5,00,000 agreed, ₹2,25,000 received, ₹2,75,000 pending', async () => {
     const { finance } = await app.weddingWorkspaceService.getWorkspace(weddingId);
-    expect(finance.totals).toEqual({ invoicedTotal: 500000, collected: 225000, outstanding: 275000 });
+    expect(finance.totals).toEqual({ invoicedTotal: 500000, collected: 225000, outstanding: 275000, credited: 0, refundOwed: 0 });
     const advance = finance.invoices.find((i) => i.id === advanceInvoiceId);
     expect([advance?.amountPaid, advance?.outstanding]).toEqual([125000, 0]);
     expect(finance.agreement?.money).toMatchObject({ received: 225000, outstanding: 275000, bookingConfirmed: true, confirmationAmount: 125000 });

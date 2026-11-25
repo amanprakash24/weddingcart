@@ -163,6 +163,7 @@ export async function loadAgreementMoney(quotationId: string, now: Date = new Da
       subtotal: i.subtotal,
       gstAmount: i.gstEnabled ? i.gstAmount : 0,
       sellerGstin: i.sellerGstin,
+      creditedAmount: i.creditedAmount,
       payments: i.payments.map((p) => ({ id: p.id, amount: p.amount, method: p.method, status: p.status, paidAt: p.paidAt, reference: p.reference, recordedByName: p.recordedById ? (names.get(p.recordedById) ?? null) : null, receiptId: p.receiptId })),
     })),
     bookingConfirmed,
@@ -215,7 +216,7 @@ export async function recordAgreementPayment(quotationId: string, input: RecordA
     const advance = invoices.find((i) => i.kind === 'ADVANCE');
     let balance = invoices.find((i) => i.kind === 'BALANCE');
 
-    const plan = planPaymentSplit({ amount: input.amount, agreementTotal: agreement.agreementTotal, confirmationAmount: agreement.confirmationAmount, advancePaid: paidOn(advance), balancePaid: paidOn(balance) });
+    const plan = planPaymentSplit({ amount: input.amount, agreementTotal: agreement.agreementTotal, confirmationAmount: agreement.confirmationAmount, advancePaid: paidOn(advance), balancePaid: paidOn(balance), advanceCredited: advance?.creditedAmount ?? 0, balanceCredited: balance?.creditedAmount ?? 0 });
     if (!plan.ok) throw new ValidationError(plan.error);
 
     if (reference) {

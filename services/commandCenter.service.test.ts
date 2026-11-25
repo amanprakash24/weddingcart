@@ -34,6 +34,7 @@ function makeInvoiceFindMany(fixtures: FixtureInvoice[]) {
       invoiceNumber: inv.invoiceNumber,
       total: inv.total,
       amountPaid: inv.amountPaid,
+      creditedAmount: 0,
       weddingId: inv.weddingId,
       payments: inv.payments.filter((p) => p.status === 'SUCCESS').map((p) => ({ amount: p.amount })),
       paymentLinks: [] as { expiresAt: Date }[],

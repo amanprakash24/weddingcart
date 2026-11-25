@@ -19,7 +19,7 @@ export const reconciliationService = {
   async report(now: Date = new Date()): Promise<ReconciliationReport> {
     const since = new Date(now.getTime() - AUDIT_DAYS * 86_400_000);
     const [invoices, agreements, assignments, unattributed, auditEvents] = await Promise.all([
-      prisma.invoice.findMany({ select: { invoiceNumber: true, status: true, total: true, amountPaid: true, weddingId: true, payments: { where: { status: 'SUCCESS' }, select: { amount: true } } } }),
+      prisma.invoice.findMany({ select: { invoiceNumber: true, status: true, total: true, amountPaid: true, weddingId: true, creditedAmount: true, voidedAt: true, creditNotes: { select: { amount: true } }, payments: { where: { status: 'SUCCESS' }, select: { amount: true } } } }),
       prisma.commercialAgreement.findMany({
         select: {
           agreementTotal: true,
@@ -36,7 +36,7 @@ export const reconciliationService = {
     ]);
     const sum = (ps: { amount: number }[]) => ps.reduce((s, p) => s + p.amount, 0);
     const checks: Check[] = [
-      ...invoiceChecks(invoices.map((i) => ({ number: i.invoiceNumber, status: i.status, total: i.total, storedAmountPaid: i.amountPaid, successfulPayments: sum(i.payments), isWeddingInvoice: i.weddingId !== null }))),
+      ...invoiceChecks(invoices.map((i) => ({ number: i.invoiceNumber, status: i.status, total: i.total, storedAmountPaid: i.amountPaid, successfulPayments: sum(i.payments), isWeddingInvoice: i.weddingId !== null, credited: i.creditedAmount, creditNotesTotal: sum(i.creditNotes), voided: i.voidedAt !== null }))),
       ...agreementChecks(agreements.map((a) => ({ quotationNumber: a.quotation.quotationNumber, agreementTotal: a.agreementTotal, invoiceTotals: a.quotation.invoices.map((i) => i.total), received: a.quotation.invoices.reduce((s, i) => s + sum(i.payments), 0) }))),
       ...vendorChecks(assignments),
       ...auditChecks(unattributed.map((u) => ({ tableName: u.tableName, count: u._count._all })), AUDIT_DAYS),

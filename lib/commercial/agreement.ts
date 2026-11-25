@@ -102,11 +102,13 @@ export function planPaymentSplit(input: {
   confirmationAmount: number;
   advancePaid: number;
   balancePaid: number;
+  advanceCredited?: number; // PR 7: credit notes on the advance / balance invoice
+  balanceCredited?: number;
 }): { ok: true; splits: PaymentSplit[] } | { ok: false; error: string } {
   const { amount, agreementTotal, confirmationAmount } = input;
   if (!Number.isInteger(amount) || amount <= 0) return { ok: false, error: 'Enter the amount received in whole rupees' };
-  const advanceDue = Math.max(0, confirmationAmount - input.advancePaid);
-  const balanceDue = Math.max(0, agreementTotal - confirmationAmount - input.balancePaid);
+  const advanceDue = Math.max(0, confirmationAmount - input.advancePaid - (input.advanceCredited ?? 0));
+  const balanceDue = Math.max(0, agreementTotal - confirmationAmount - input.balancePaid - (input.balanceCredited ?? 0));
   const owed = advanceDue + balanceDue;
   if (owed <= 0) return { ok: false, error: 'This agreement is already fully paid' };
   if (amount > owed) return { ok: false, error: `The amount is more than the balance due (₹${owed.toLocaleString('en-IN')})` };

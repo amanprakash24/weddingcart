@@ -23,6 +23,7 @@ function makeInvoiceFindMany(fixtures: FixtureInvoice[]) {
       status: inv.status,
       total: inv.total,
       amountPaid: inv.amountPaid,
+      creditedAmount: 0,
       weddingId: inv.weddingId,
       payments: inv.payments.filter((p) => p.status === 'SUCCESS').map((p) => ({ amount: p.amount })),
     }));

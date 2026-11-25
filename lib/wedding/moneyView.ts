@@ -58,7 +58,7 @@ export function weddingMoneyView<W extends WeddingWorkspace>(
 
   const finance =
     access === 'none'
-      ? { budget: { planned: ws.finance.budget.planned, committed: 0, variance: null }, invoices: [], totals: { invoicedTotal: 0, collected: 0, outstanding: 0 }, agreement: null }
+      ? { budget: { planned: ws.finance.budget.planned, committed: 0, variance: null }, invoices: [], totals: { invoicedTotal: 0, collected: 0, outstanding: 0, credited: 0, refundOwed: 0 }, agreement: null }
       : vendorMoney
         ? ws.finance
         : { ...ws.finance, budget: { planned: ws.finance.budget.planned, committed: 0, variance: null } };
