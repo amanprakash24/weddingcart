@@ -75,11 +75,11 @@ function ServiceCard({ service, isVenue, onAdvanceVenueStatus, advancing, onAnsw
         </div>
       )}
 
-      {/* IMPORTANT: this is the vendor's own agreed price for this one service — never the wedding's
-          invoice, budget, amount paid, or outstanding balance. That data isn't in this query at all. */}
+      {/* IMPORTANT: this is the vendor's OWN amount for this one service (what they are paid, after our commission — the commission
+          itself and the couple's price never reach this screen; 25 Nov 2026). Never the wedding's invoice, budget or balance. */}
       {service.agreedAmount !== null && (
         <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-2">
-          <span className="text-xs text-[var(--color-text-muted)]">Agreed amount</span>
+          <span className="text-xs text-[var(--color-text-muted)]">Your amount</span>
           <span className="text-sm font-semibold tabular-nums text-[var(--color-text-primary)]">₹{service.agreedAmount.toLocaleString('en-IN')}</span>
         </div>
       )}

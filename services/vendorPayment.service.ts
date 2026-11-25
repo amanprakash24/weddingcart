@@ -9,9 +9,11 @@ import {
   checkVoidReason,
   methodLabel,
   moneyTotals,
+  vendorTotals,
   type AssignmentMoney,
   type MoneyTotals,
   type PaymentInput,
+  type VendorTotals,
 } from '@/lib/vendor/vendorMoney';
 
 // Payments Shaadi Shopping makes to its vendors, and the vendor-wise money both dashboards show (25 Nov 2026). The arithmetic is in
@@ -149,6 +151,37 @@ function groupByVendor(works: WorkView[], loaded: Loaded[]): VendorGroup[] {
   return [...groups.values()].sort((a, b) => b.totals.workValue - a.totals.workValue || a.vendorName.localeCompare(b.vendorName));
 }
 
+// What a vendor sees of one work: an explicit allow-list, so a field added to WorkView later never reaches a vendor by accident.
+export interface VendorWorkView {
+  id: string;
+  weddingNumber: string;
+  coupleName: string | null;
+  functionName: string;
+  functionDate: string;
+  workStatus: AssignmentMoney['workStatus'];
+  owed: boolean;
+  payable: number | null;
+  paid: number;
+  remaining: number | null;
+  payments: { id: string; amount: number; paidOn: string; methodLabel: string; reference: string | null }[];
+}
+
+function vendorWorkView(w: WorkView): VendorWorkView {
+  return {
+    id: w.id,
+    weddingNumber: w.weddingNumber,
+    coupleName: w.coupleName,
+    functionName: w.functionName,
+    functionDate: w.functionDate,
+    workStatus: w.money.workStatus,
+    owed: w.money.owed,
+    payable: w.money.payable,
+    paid: w.money.paid,
+    remaining: w.money.owed ? w.money.remaining : w.money.paid > 0 ? -w.money.paid : 0,
+    payments: w.payments.filter((p) => !p.voided).map((p) => ({ id: p.id, amount: p.amount, paidOn: p.paidOn, methodLabel: p.methodLabel, reference: p.reference })),
+  };
+}
+
 // A commission the viewer may not see: removed, with net kept (the same rule as payouts — lib/auth/moneyAccess.ts).
 function hideCommission(m: AssignmentMoney): AssignmentMoney {
   return { ...m, commission: null, commissionRate: null };
@@ -167,11 +200,13 @@ export const vendorPaymentService = {
   },
 
   // The vendor's own view: every Shaadi Shopping work of theirs, across weddings. Only for people who may see the vendor's money.
-  async forVendor(vendorId: string): Promise<{ totals: MoneyTotals; works: WorkView[] }> {
+  // Built for the vendor's eyes (money design rule 1, 25 Nov 2026): their payable amount, what they received and what is left —
+  // never the couple's price, our commission or margin, staff notes or voided entries. Nothing else leaves the server.
+  async forVendor(vendorId: string): Promise<{ totals: VendorTotals; works: VendorWorkView[] }> {
     const loaded = await loadAssignments({ vendorId });
     const rates = await ratesFor(loaded.map((a) => a.vendor.categoryId));
     const works = loaded.map((a) => workView(a, rates));
-    return { totals: moneyTotals(works.map((w) => w.money), loaded.map((a) => ({ id: a.id, status: a.status, agreedPrice: a.agreedPrice }))), works };
+    return { totals: vendorTotals(works.map((w) => w.money)), works: works.map(vendorWorkView) };
   },
 
   // Founder dashboard, all weddings: what is still owed to vendors for confirmed work, on how many works, what has gone out as

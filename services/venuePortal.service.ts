@@ -4,6 +4,7 @@ import { VenueBookingStatus, AvailabilityStatus } from '@/generated/prisma/enums
 import { canTransitionVenueBooking } from '@/lib/wedding/lifecycle';
 import { checkBookingResponse } from '@/lib/vendor/bookingResponse';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
+import { vendorPaymentService } from '@/services/vendorPayment.service';
 
 // A vendor can set at most this many dates in one request — generous enough for
 // "block the next 3 months" in one go, small enough to keep the transaction bounded.
@@ -31,8 +32,9 @@ async function vendorById(vendorId: string) {
   return vendor;
 }
 
-// `seesMoney` false (a member without view_financials): the agreed price is left out here, on the server — never sent and hidden.
-function bookingView(seesMoney: boolean, booking: {
+// `amount` is the vendor's OWN payable amount (lib/vendor/vendorMoney.ts `payable`) — never the couple's price (agreedPrice) or our
+// commission (money design rule 1, 25 Nov 2026). null for a member without view_financials, left out here on the server.
+function bookingView(payable: number | null, booking: {
   id: string; status: string; venueStatus: VenueBookingStatus; agreedPrice: number; respondedAt: Date | null;
   weddingEvent: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; venueAddress: string | null; city: string; wedding: { id: string; weddingNumber: string; weddingType: string | null; guestCount: number | null; customer: { name: string | null } | null; events: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; city: string }[] } };
   vendorPackage: { name: string; description: string } | null;
@@ -42,7 +44,7 @@ function bookingView(seesMoney: boolean, booking: {
     id: booking.id,
     bookingStatus: booking.status,
     venueStatus: booking.venueStatus,
-    amount: seesMoney ? booking.agreedPrice : null,
+    amount: payable,
     // Already fetched (no `select` narrows this query, so every VendorBooking scalar column is returned by
     // default) — just wasn't exposed until the Vendor -> Today screen needed a real "recent activity" source.
     respondedAt: booking.respondedAt?.toISOString() ?? null,
@@ -65,38 +67,6 @@ function bookingView(seesMoney: boolean, booking: {
   };
 }
 
-// Vendor OS §23 (docs/wedding-os/11-vivah-os-ux-architecture.md) — the vendor-scoped payout read the
-// §14 audit identified as missing. Reuses bookingView/bookingInclude for the wedding/event context
-// instead of a second query shape, same discipline as everything else in this file.
-function payoutView(payout: {
-  id: string;
-  grossAmount: number;
-  commissionRate: number;
-  commissionAmount: number;
-  netAmount: number;
-  status: string;
-  paidAt: Date | null;
-  createdAt: Date;
-  vendorBooking: Parameters<typeof bookingView>[1];
-}) {
-  const booking = bookingView(true, payout.vendorBooking);
-  return {
-    id: payout.id,
-    bookingId: booking.id,
-    weddingName: booking.event.name,
-    weddingReference: booking.event.reference,
-    function: booking.event.function,
-    eventDate: booking.event.date,
-    grossAmount: payout.grossAmount,
-    commissionRate: payout.commissionRate,
-    commissionAmount: payout.commissionAmount,
-    netAmount: payout.netAmount,
-    status: payout.status,
-    paidAt: payout.paidAt?.toISOString() ?? null,
-    createdAt: payout.createdAt.toISOString(),
-  };
-}
-
 const bookingInclude = {
   weddingEvent: {
     include: {
@@ -114,13 +84,14 @@ const bookingInclude = {
 } as const;
 
 export const venuePortalService = {
-  // What Shaadi Shopping shares with one vendor. `seesMoney` false: no agreed prices, no approval amounts, and the payouts are
-  // not read at all.
+  // What Shaadi Shopping shares with one vendor. Money (money design rule 1, 25 Nov 2026): each work's OWN payable amount, for members
+  // with view_financials only — never the couple's price, commission, approval amounts (the couple's), payouts' commission, or a
+  // document filed as QUOTATION (it can be the couple's quotation).
   async getDashboard(vendorId: string, { seesMoney }: { seesMoney: boolean }) {
     const profile = { vendorId, vendor: await vendorById(vendorId) };
     const bookings = await prisma.vendorBooking.findMany({ where: { vendorId: profile.vendorId }, include: bookingInclude, orderBy: { weddingEvent: { date: 'asc' } } });
     const bookingIds = bookings.map((booking) => booking.id);
-    const documents = bookingIds.length ? await prisma.document.findMany({ where: { vendorBookingId: { in: bookingIds }, category: { in: ['VENUE_AGREEMENT', 'FLOOR_PLAN', 'MENU', 'QUOTATION'] }, visibility: 'CUSTOMER_VISIBLE' }, select: { id: true, fileName: true, url: true, category: true, vendorBookingId: true, createdAt: true }, orderBy: { createdAt: 'desc' } }) : [];
+    const documents = bookingIds.length ? await prisma.document.findMany({ where: { vendorBookingId: { in: bookingIds }, category: { in: ['VENUE_AGREEMENT', 'FLOOR_PLAN', 'MENU'] }, visibility: 'CUSTOMER_VISIBLE' }, select: { id: true, fileName: true, url: true, category: true, vendorBookingId: true, createdAt: true }, orderBy: { createdAt: 'desc' } }) : [];
     const eventIds = bookings.map((booking) => booking.weddingEventId);
     const packageIds = bookings.map((booking) => booking.vendorPackageId).filter((id): id is string => Boolean(id));
     const approvals = eventIds.length ? await prisma.approvalRequest.findMany({
@@ -129,14 +100,13 @@ export const venuePortalService = {
       orderBy: { createdAt: 'desc' },
     }) : [];
     const availability = await prisma.vendorAvailability.findMany({ where: { vendorId: profile.vendorId, date: { gte: new Date() } }, select: { date: true, status: true, note: true }, orderBy: { date: 'asc' }, take: 90 });
-    const payouts = seesMoney ? await prisma.payout.findMany({ where: { vendorId: profile.vendorId }, include: { vendorBooking: { include: bookingInclude } }, orderBy: { createdAt: 'desc' } }) : [];
+    const payable = seesMoney ? new Map((await vendorPaymentService.forVendor(profile.vendorId)).works.map((w) => [w.id, w.payable] as const)) : null;
     return {
       vendor: profile.vendor,
-      bookings: bookings.map((booking) => bookingView(seesMoney, booking)),
+      bookings: bookings.map((booking) => bookingView(payable?.get(booking.id) ?? null, booking)),
       documents: documents.map((document) => ({ ...document, createdAt: document.createdAt.toISOString() })),
       availability: availability.map((item) => ({ ...item, date: item.date.toISOString() })),
-      approvals: approvals.map((approval) => ({ ...approval, amount: seesMoney ? approval.amount : null, title: approval.title || 'Client approval', weddingEventId: approval.weddingEventId })),
-      payouts: payouts.map(payoutView),
+      approvals: approvals.map((approval) => ({ ...approval, amount: null, title: approval.title || 'Client approval', weddingEventId: approval.weddingEventId })),
     };
   },
 
@@ -148,7 +118,8 @@ export const venuePortalService = {
       throw new InvalidTransitionError(`Cannot move venue status from ${booking.venueStatus} to ${venueStatus}`);
     }
 
-    return prisma.vendorBooking.update({ where: { id: bookingId }, data: { venueStatus } });
+    // Only what the vendor's screen needs back — never the whole row, which carries the couple's price (agreedPrice; 25 Nov 2026).
+    return prisma.vendorBooking.update({ where: { id: bookingId }, data: { venueStatus }, select: { id: true, status: true, venueStatus: true } });
   },
 
   // The vendor answers Shaadi Shopping's booking request (12 Oct 2026, lib/vendor/bookingResponse.ts): Confirm, or Can't do it

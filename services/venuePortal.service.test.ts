@@ -249,6 +249,11 @@ describe('venuePortalService.getDashboard — one vendor, and money only for tho
       weddingEvent: { id: 'we-1', type: 'WEDDING', label: 'Reception', date: new Date('2026-12-01T00:00:00Z'), startTime: null, venueName: null, venueAddress: null, city: 'Patna', wedding: { id: 'w-1', weddingNumber: 'WED-2026-0001', weddingType: null, guestCount: 300, customer: { name: 'Asha' }, events: [] } },
       vendorPackage: null,
       tasks: [],
+      // what services/vendorPayment.service.ts forVendor reads (the vendor's payable amount, 25 Nov 2026)
+      vendorId: 'vendor-1',
+      vendor: { id: 'vendor-1', name: 'Test Vendor', categoryId: 'cat-1', category: { name: 'Caterer' } },
+      payouts: [],
+      vendorPayments: [],
     };
     const payoutFind = mock(async () => [{ id: 'p-1', grossAmount: 25000, commissionRate: 10, commissionAmount: 2500, netAmount: 22500, status: 'PENDING', paidAt: null, createdAt: new Date('2026-12-02T00:00:00Z'), vendorBooking: booking }]);
     const bookingFind = mock(async (_args: { where: { vendorId: string } }) => [booking]);
@@ -260,27 +265,33 @@ describe('venuePortalService.getDashboard — one vendor, and money only for tho
       approvalRequest: { findMany: mock(async () => [{ id: 'a-1', subjectType: 'VENDOR_BOOKING', title: null, status: 'PENDING', amount: 25000, weddingEventId: 'we-1' }]) },
       vendorAvailability: { findMany: mock(async () => []) },
       payout: { findMany: payoutFind },
+      commissionRate: { findFirst: mock(async () => ({ id: 'r-1', categoryId: 'cat-1', rate: 10, effectiveFrom: new Date('2026-08-01T00:00:00Z') })) },
     };
     return { prismaMock, payoutFind, bookingFind };
   }
 
-  test('with money: the agreed price, approval amounts and payouts — read by the vendor’s id, not through the owner link', async () => {
-    const { prismaMock, bookingFind } = makeDashboardMock();
+  // 25 Nov 2026 (money design rule 1): a vendor sees only its OWN amount — ₹25,000 is the couple's price share, 10% is our commission;
+  // the vendor gets ₹22,500 and is never sent ₹25,000, ₹2,500, the rate, approval amounts (the couple's) or payout rows.
+  test('with money: only the vendor’s own amount (after commission) — read by the vendor’s id, not through the owner link', async () => {
+    const { prismaMock, bookingFind, payoutFind } = makeDashboardMock();
     const d = await (await loadServiceWith(prismaMock)).getDashboard('vendor-1', { seesMoney: true });
     expect(bookingFind.mock.calls[0][0].where).toEqual({ vendorId: 'vendor-1' });
     expect(prismaMock.vendorProfile.findUnique).not.toHaveBeenCalled();
-    expect(d.bookings[0]).toMatchObject({ amount: 25000, event: { name: 'Asha' } });
-    expect(d.approvals[0].amount).toBe(25000);
-    expect(d.payouts).toHaveLength(1);
+    expect(d.bookings[0]).toMatchObject({ amount: 22500, event: { name: 'Asha' } });
+    expect(d.approvals[0].amount).toBeNull();
+    expect('payouts' in d).toBe(false);
+    expect(payoutFind).not.toHaveBeenCalled();
+    const sent = JSON.stringify(d);
+    for (const secret of ['25000', 'commission', 'agreedPrice', 'Rate']) expect(sent).not.toContain(secret);
   });
 
-  test('without money: the work is all there, but no amount leaves the server and the payouts are never read', async () => {
-    const { prismaMock, payoutFind } = makeDashboardMock();
+  test('without money: the work is all there, but no amount leaves the server', async () => {
+    const { prismaMock, payoutFind, bookingFind } = makeDashboardMock();
     const d = await (await loadServiceWith(prismaMock)).getDashboard('vendor-1', { seesMoney: false });
     expect(d.bookings[0]).toMatchObject({ amount: null, bookingStatus: 'PENDING_VENDOR_CONFIRMATION', event: { name: 'Asha', function: 'Reception' } });
     expect(d.approvals[0].amount).toBeNull();
-    expect(d.payouts).toEqual([]);
     expect(payoutFind).not.toHaveBeenCalled();
+    expect(bookingFind).toHaveBeenCalledTimes(1); // the money calculation is not even run
     for (const money of ['25000', '22500', '2500']) expect(JSON.stringify(d)).not.toContain(money);
   });
 

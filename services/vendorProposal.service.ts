@@ -118,7 +118,10 @@ export function createVendorProposalService(deps: VendorProposalDeps = defaultDe
     async listForVendor(vendorId: string, { seesMoney }: { seesMoney: boolean } = { seesMoney: true }): Promise<VendorProposalSummary[]> {
       const rows = await deps.findMany({ where: vendorVisibleWhere(vendorId), select: vendorProposalSelect(vendorId), orderBy: { acceptedAt: 'desc' }, take: MAX_LIST });
       const proposals = await Promise.all(rows.map(async (row) => project(row, vendorId, await facts(row))));
-      return proposals.filter((p) => p.lines.length > 0).map((p) => toVendorProposalSummary(seesMoney ? p : withoutMoney(p)));
+      // The couple's prices are never a vendor's business (25 Nov 2026, money design rule 1): the quotation's amounts are taken out for
+      // everyone, with or without the money permission. A vendor's own amount is on its assignment and work order.
+      void seesMoney;
+      return proposals.filter((p) => p.lines.length > 0).map((p) => toVendorProposalSummary(withoutMoney(p)));
     },
 
     // One proposal. Anything the vendor may not see → VendorProposalNotFoundError (same for every reason).
@@ -127,7 +130,8 @@ export function createVendorProposalService(deps: VendorProposalDeps = defaultDe
       const row = await deps.findFirst({ where: vendorVisibleWhere(vendorId, quotationId), select: vendorProposalSelect(vendorId) });
       const proposal = row ? project(row, vendorId, await facts(row)) : null;
       if (!proposal || proposal.lines.length === 0) throw new VendorProposalNotFoundError();
-      return seesMoney ? proposal : withoutMoney(proposal);
+      void seesMoney; // never the couple's prices — see listForVendor
+      return withoutMoney(proposal);
     },
   };
 }

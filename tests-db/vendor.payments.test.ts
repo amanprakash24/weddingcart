@@ -56,7 +56,8 @@ dbDescribe('Vendor payments and money (real database)', () => {
     expect(totals).toMatchObject({ workValue: 100000, commission: 10000, net: 90000, paid: 0, remaining: 90000 });
     expect(vendors[0].works[0].money).toMatchObject({ workStatus: 'NOT_STARTED', commissionIsEstimate: true });
     const mine = await svc.forVendor(vendorId);
-    expect(mine.works.find((w) => w.id === vbId)?.money).toMatchObject({ remaining: 90000 }); // the vendor sees the same numbers
+    expect(mine.works.find((w) => w.id === vbId)).toMatchObject({ payable: 90000, remaining: 90000 }); // the vendor sees the same numbers
+    expect(JSON.stringify(mine)).not.toMatch(/100000|commission|agreedPrice|workValue/); // never the couple's price or our commission (25 Nov 2026)
     const hidden = await svc.forWedding(weddingId, { seesCommission: false });
     expect(hidden.totals.commission).toBeNull();
     expect(hidden.vendors[0].works[0].money.commission).toBeNull();

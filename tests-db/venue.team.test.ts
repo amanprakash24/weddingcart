@@ -152,10 +152,11 @@ dbDescribe('the Team screen (real database)', () => {
     expect(await businessSvc.working(users[1], businessIds[1])).toMatchObject({ vendorId: vendorIds[1], role: 'OWNER' });
     expect(await businessSvc.working(users[1], 'not-a-business-of-theirs')).toBeNull();
 
-    // The shared records are read by that vendor's id; without money nothing about payouts is read.
+    // The shared records are read by that vendor's id; payout rows are never part of them.
     const shared = await runInScope(PLATFORM_SCOPE, () => venuePortalService.getDashboard(vendorIds[0], { seesMoney: false }));
     expect(shared.vendor.id).toBe(vendorIds[0]);
-    expect(shared).toMatchObject({ bookings: [], payouts: [] });
+    expect(shared).toMatchObject({ bookings: [] });
+    expect('payouts' in shared).toBe(false); // payout rows (commission) are never sent to a vendor (25 Nov 2026)
     // The accepted proposals are read the same way — by the vendor's id (the real query runs; this venue has none).
     const { vendorProposalService } = await import('@/services/vendorProposal.service');
     expect(await runInScope(PLATFORM_SCOPE, () => vendorProposalService.listForVendor(vendorIds[0], { seesMoney: false }))).toEqual([]);
