@@ -42,6 +42,9 @@ export interface AssignmentMoney {
   net: number | null;
   paid: number;
   remaining: number | null;
+  // What the vendor is paid for this work whatever its status — the one amount a vendor ever sees (money design rule 1, 25 Nov 2026).
+  // A work still waiting for the vendor's yes shows what they would be paid; null: no commission rate set up.
+  payable: number | null;
 }
 
 export function workStatusOf(status: string, venueStatus: string): WorkStatus {
@@ -71,6 +74,35 @@ export function assignmentMoney(a: AssignmentFacts): AssignmentMoney {
     net,
     paid,
     remaining: net === null ? null : net - paid,
+    payable: fixed ? a.payout!.netAmount : commissionRate === null ? null : a.agreedPrice - Math.round((a.agreedPrice * commissionRate) / 100),
+  };
+}
+
+// ---- What a vendor (or venue working for Shaadi Shopping) may see: their own amount and payments, nothing else ----
+// Never the couple's price, the commission or the margin (money design rule 1). Built only from AssignmentMoney.payable / paid.
+
+export interface VendorTotals {
+  payable: number | null; // owed works: what they are paid in all (null: a rate is missing)
+  paid: number;
+  remaining: number | null;
+  awaitingPayable: number | null; // works waiting for their yes: what those would pay
+  works: number;
+  completed: number;
+}
+
+export function vendorTotals(rows: AssignmentMoney[]): VendorTotals {
+  const owed = rows.filter((r) => r.owed);
+  const waiting = rows.filter((r) => r.workStatus === 'AWAITING_VENDOR');
+  const sumOrNull = (list: AssignmentMoney[]) => (list.some((r) => r.payable === null) ? null : list.reduce((s, r) => s + (r.payable ?? 0), 0));
+  const payable = sumOrNull(owed);
+  const paid = rows.reduce((s, r) => s + r.paid, 0);
+  return {
+    payable,
+    paid,
+    remaining: payable === null ? null : payable - paid,
+    awaitingPayable: sumOrNull(waiting),
+    works: owed.length,
+    completed: owed.filter((r) => r.workStatus === 'COMPLETED').length,
   };
 }
 

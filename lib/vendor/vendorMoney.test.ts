@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { assignmentMoney, checkPayment, checkVoidReason, moneyTotals, workStatusOf, type AssignmentFacts } from './vendorMoney';
+import { assignmentMoney, checkPayment, checkVoidReason, moneyTotals, vendorTotals, workStatusOf, type AssignmentFacts } from './vendorMoney';
 
 const work = (over: Partial<AssignmentFacts> = {}): AssignmentFacts => ({
   id: 'w1',
@@ -15,7 +15,7 @@ const work = (over: Partial<AssignmentFacts> = {}): AssignmentFacts => ({
 describe('one work', () => {
   test('confirmed, nothing paid yet: owed, never ₹0 (the bug of 25 Nov 2026)', () => {
     expect(assignmentMoney(work())).toEqual({
-      id: 'w1', workStatus: 'NOT_STARTED', owed: true, workValue: 10000, commissionRate: 10, commission: 1000, commissionIsEstimate: true, net: 9000, paid: 0, remaining: 9000,
+      id: 'w1', workStatus: 'NOT_STARTED', owed: true, workValue: 10000, commissionRate: 10, commission: 1000, commissionIsEstimate: true, net: 9000, paid: 0, remaining: 9000, payable: 9000,
     });
   });
 
@@ -98,5 +98,21 @@ describe('recording a payment', () => {
   test('voiding needs a reason', () => {
     expect(checkVoidReason(' ')).toMatchObject({ ok: false });
     expect(checkVoidReason('Typed 50,000 instead of 5,000')).toEqual({ ok: true, value: 'Typed 50,000 instead of 5,000' });
+  });
+});
+
+describe('what a vendor may see (25 Nov 2026, money design rule 1)', () => {
+  test('payable: the vendor’s own amount whatever the status — waiting, confirmed, from a payout; unknown without a rate', () => {
+    expect(assignmentMoney(work({ status: 'PENDING_VENDOR_CONFIRMATION' })).payable).toBe(9000); // what they would be paid
+    expect(assignmentMoney(work()).payable).toBe(9000);
+    expect(assignmentMoney(work({ status: 'COMPLETED', agreedPrice: 75000, currentRate: 15, payout: { status: 'PAID', commissionRate: 10, commissionAmount: 7500, netAmount: 67500 } })).payable).toBe(67500);
+    expect(assignmentMoney(work({ currentRate: null })).payable).toBeNull();
+  });
+
+  test('vendor totals carry only payable, received and left — no work value, commission or client price', () => {
+    const rows = [work({ id: 'a', agreedPrice: 8000 }), work({ id: 'b', agreedPrice: 10000, payments: [{ amount: 3000, voided: false }] }), work({ id: 'c', status: 'PENDING_VENDOR_CONFIRMATION', agreedPrice: 5000 }), work({ id: 'd', status: 'CANCELLED', agreedPrice: 40000 })].map(assignmentMoney);
+    const t = vendorTotals(rows);
+    expect(t).toEqual({ payable: 16200, paid: 3000, remaining: 13200, awaitingPayable: 4500, works: 2, completed: 0 });
+    expect(Object.keys(t).sort()).toEqual(['awaitingPayable', 'completed', 'paid', 'payable', 'remaining', 'works']);
   });
 });

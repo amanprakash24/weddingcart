@@ -212,13 +212,14 @@ describe('vendor isolation', () => {
   test('10. vendor A sees only vendor A\'s lines, and a total from those lines only', async () => {
     const p = await service.getForVendor('vendor-A', uuid(1));
     expect(p.lines.map((l) => l.description)).toEqual(['Stage decoration', 'Mandap flowers']);
-    expect(p.total).toBe(80000 + 15000 * 2);
+    expect(p.total).toBeNull(); // 25 Nov 2026: never the couple's prices, even with the money permission
+    expect(p.lines.every((l) => l.unitPrice === null && l.lineTotal === null)).toBe(true);
   });
 
   test('vendor B on the same quotation sees only vendor B\'s line', async () => {
     const p = await service.getForVendor('vendor-B', uuid(1));
     expect(p.lines.map((l) => l.description)).toEqual(['Catering 350 plates']);
-    expect(p.total).toBe(900 * 350);
+    expect(p.total).toBeNull();
   });
 
   test('vendor A cannot open vendor B\'s quotation by guessing its id — same not-found as an id that does not exist', async () => {
@@ -301,7 +302,7 @@ describe('who may use it', () => {
   test('a member who may not see money gets the work, the couple and the place — and no amount at all (13 Oct 2026)', async () => {
     const full = await service.getForVendor('vendor-A', uuid(2));
     const p = await service.getForVendor('vendor-A', uuid(2), { seesMoney: false });
-    expect(full.total).toBeGreaterThan(0);
+    expect(full.total).toBeNull(); // with the money permission too (25 Nov 2026)
     expect(p).toMatchObject({ id: full.id, status: full.status, wedding: full.wedding, venue: full.venue, total: null });
     expect(p.lines.map((l) => [l.description, l.quantity, l.unitPrice, l.lineTotal])).toEqual(full.lines.map((l) => [l.description, l.quantity, null, null]));
     const list = await service.listForVendor('vendor-A', { seesMoney: false });

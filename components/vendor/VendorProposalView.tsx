@@ -5,7 +5,6 @@ import type { VendorProposal, VendorProposalSummary } from '@/lib/quotation/vend
 // was already reduced on the server to this vendor's own work (services/vendorProposal.service.ts); this file adds no
 // data of its own. Self-contained so it can move into the fuller Vendor OS layout later unchanged.
 
-const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const dateLabel = (value: string | null) => {
   if (!value) return null;
   const d = new Date(value);
@@ -52,7 +51,6 @@ export function VendorProposalList({ proposals }: { proposals: VendorProposalSum
                 </div>
                 <p className="mt-3 text-sm text-slate-700">
                   {p.lineCount} {p.lineCount === 1 ? 'item' : 'items'}
-                  {p.total !== null && <> · <span className="font-semibold">{rupees(p.total)}</span></>}
                   <span className="text-slate-400"> · {p.number} v{p.version}</span>
                 </p>
               </Link>
@@ -80,29 +78,23 @@ export function VendorProposalDetail({ proposal: p }: { proposal: VendorProposal
       <section className="rounded-2xl bg-white p-5 shadow-sm" aria-label="Your work">
         <h2 className="mb-3 text-lg font-bold text-slate-900">Your work</h2>
         <div role="table" className="text-sm">
-          <div role="row" className="hidden grid-cols-[1fr_140px_120px] border-b border-slate-100 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:grid">
+          {/* Scope and quantity only (25 Nov 2026): the couple's prices are never shown to a vendor. The vendor's own amount is on
+              their booking, under Services and Payments. */}
+          <div role="row" className="hidden grid-cols-[1fr_120px] border-b border-slate-100 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:grid">
             <span role="columnheader">Service</span>
-            <span role="columnheader" className="text-right">Qty × price</span>
-            <span role="columnheader" className="text-right">Amount</span>
+            <span role="columnheader" className="text-right">Quantity</span>
           </div>
           {p.lines.map((l, i) => (
-            <div key={i} role="row" className="grid grid-cols-[1fr_auto] gap-x-3 border-b border-slate-100 py-3 sm:grid-cols-[1fr_140px_120px]">
+            <div key={i} role="row" className="grid grid-cols-[1fr_auto] gap-x-3 border-b border-slate-100 py-3 sm:grid-cols-[1fr_120px]">
               <span role="cell">
                 <span className="font-medium text-slate-900">{l.description}</span>
                 <span className="block text-xs text-slate-500">{[l.category, l.functionLabel].filter(Boolean).join(' · ')}</span>
-                <span className="block text-xs text-slate-500 sm:hidden">{l.unitPrice === null ? `Quantity ${l.quantity}` : `${l.quantity} × ${rupees(l.unitPrice)}`}</span>
               </span>
-              <span role="cell" className="hidden text-right text-slate-600 sm:block">{l.unitPrice === null ? l.quantity : `${l.quantity} × ${rupees(l.unitPrice)}`}</span>
-              <span role="cell" className="text-right tabular-nums text-slate-900">{l.lineTotal === null ? '' : rupees(l.lineTotal)}</span>
+              <span role="cell" className="text-right text-slate-600">{l.quantity.toLocaleString('en-IN')}</span>
             </div>
           ))}
         </div>
-        {p.total !== null && (
-          <div className="mt-3 flex justify-between text-base font-bold text-slate-900">
-            <span>Agreed amount for your work</span>
-            <span className="tabular-nums">{rupees(p.total)}</span>
-          </div>
-        )}
+        <p className="mt-3 text-sm text-slate-600">Your amount for this work is on your booking, under Services and Payments.</p>
       </section>
 
       {p.venue.length > 0 && (
