@@ -2890,3 +2890,25 @@ model VendorPayment {
   @@index([vendorId])
   @@map("vendor_payments")
 }
+
+// Finance audit log (money design v1, PR 2, 25 Nov 2026) — written ONLY by database triggers on the money tables (migration
+// 20261125180000_finance_events): every insert, change or delete, with the row before and after. Append-only: the database refuses
+// an update, delete or truncate. Who did it: `app.actor_id` set inside the transaction (lib/finance/audit.ts); NULL = unattributed.
+// Read by the founder's reconciliation page only. Never written by the app.
+model FinanceEvent {
+  id         BigInt   @id @default(autoincrement())
+  at         DateTime @default(now())
+  tableName  String
+  rowId      String
+  action     String // INSERT / UPDATE / DELETE
+  actorId    String?
+  reason     String?
+  businessId String?
+  changed    String[] @default([])
+  before     Json?
+  after      Json?
+
+  @@index([at])
+  @@index([tableName, rowId])
+  @@map("finance_events")
+}

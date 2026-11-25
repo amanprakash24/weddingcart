@@ -1,3 +1,4 @@
+import { auditAs } from '@/lib/finance/audit';
 import { randomUUID } from 'node:crypto';
 import type { Booking, Prisma, CommercialAgreement } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
@@ -198,6 +199,7 @@ export async function recordAgreementPayment(quotationId: string, input: RecordA
   const key = input.idempotencyKey?.trim() || null;
 
   return prisma.$transaction(async (tx) => {
+    await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
     const agreement = await ensureAgreementInTx(tx, { quotationId, actorId });
     if (!agreement) throw new ConflictError('This agreement was made before the 25% rule — record the payment on its invoice instead');
     await tx.$queryRaw`SELECT "id" FROM "commercial_agreements" WHERE "id" = ${agreement.id} FOR UPDATE`;

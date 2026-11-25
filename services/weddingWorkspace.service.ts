@@ -1,3 +1,4 @@
+import { auditAs } from '@/lib/finance/audit';
 import { generateInvoiceNumber } from '@/services/documentNumber.service';
 import { prisma } from '@/lib/prisma';
 import { resolveUserNames } from '@/lib/users';
@@ -713,6 +714,7 @@ export const weddingWorkspaceService = {
     }
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, by?.actorId ?? null); // finance audit: who is acting (lib/finance/audit.ts)
       // Claim the change: only if the booking is still in the status read above (staff and the vendor may answer at once).
       const claimed = await tx.vendorBooking.updateMany({ where: { id: vendorBookingId, status: vendorBooking.status }, data: { status } });
       if (claimed.count === 0) throw new InvalidTransitionError('This booking was answered a moment ago — reload to see the answer');
@@ -804,6 +806,7 @@ export const weddingWorkspaceService = {
     if (!vendor) throw new NotFoundError('Vendor', input.vendorId);
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const vendorBooking = await createVendorBookingInTx(tx, weddingId, input, vendor.name, actorId);
       if (input.resolvesTaskId) {
         await tx.task.updateMany({ where: { id: input.resolvesTaskId, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { status: 'DONE', completedAt: new Date() } });
@@ -895,6 +898,7 @@ export const weddingWorkspaceService = {
     const wedding = await findWeddingOrThrow(weddingId);
     assertPlanningOpen(wedding);
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       await tx.$queryRaw`SELECT "id" FROM "wedding_events" WHERE "id" = ${eventId} FOR UPDATE`;
       const event = await tx.weddingEvent.findUnique({ where: { id: eventId } });
       if (!event || event.weddingId !== weddingId) throw new NotFoundError('WeddingEvent', eventId);
@@ -933,6 +937,7 @@ export const weddingWorkspaceService = {
     const { booking, vendor } = await loadBookingForChange(weddingId, vendorBookingId);
     if (!canTransitionVendorBooking(booking.status, 'CANCELLED')) throw new InvalidTransitionError(`Cannot cancel a vendor booking that is ${booking.status}`);
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, actorId, reason); // finance audit: who is acting (lib/finance/audit.ts)
       await cancelVendorBookingInTx(tx, weddingId, booking, vendor, reason.trim(), actorId, { needsNewVendor: true });
       return { id: booking.id };
     });
@@ -947,6 +952,7 @@ export const weddingWorkspaceService = {
     const next = await vendorRepository.findById(input.vendorId);
     if (!next) throw new NotFoundError('Vendor', input.vendorId);
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, actorId, input.reason ?? null); // finance audit: who is acting (lib/finance/audit.ts)
       await cancelVendorBookingInTx(tx, weddingId, booking, vendor, (input.reason ?? '').trim(), actorId, { needsNewVendor: false, replacedBy: next.name });
       return createVendorBookingInTx(tx, weddingId, { weddingEventId: booking.weddingEventId, vendorId: input.vendorId, agreedPrice: input.agreedPrice }, next.name, actorId, `Vendor booking added: ${next.name} (${inr(input.agreedPrice)}), replacing ${vendor.name}, pending confirmation`);
     });
@@ -959,6 +965,7 @@ export const weddingWorkspaceService = {
     if (!Number.isInteger(agreedPrice) || agreedPrice <= 0) throw new ValidationError('The agreed price should be a whole number of rupees');
     if (agreedPrice === booking.agreedPrice) return booking;
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const updated = await vendorBookingRepository.update(vendorBookingId, { agreedPrice }, tx);
       await activityLogRepository.create(
         {
@@ -1026,6 +1033,7 @@ export const weddingWorkspaceService = {
     const total = subtotal - input.discount + input.gstAmount;
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const invoiceNumber = await generateInvoiceNumber(tx);
       const invoice = await invoiceRepository.create(
         {
