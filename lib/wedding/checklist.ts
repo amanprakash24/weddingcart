@@ -64,6 +64,20 @@ export function checklistSeed(weddingDay: string, functionTypes: readonly string
   });
 }
 
+// When the wedding day moves: the new date for a ready-made item, or undefined when it stays as it is. The same rule as the seed
+// (a date already past → undated "earlier step"), but an item that is simply overdue on an unchanged wedding day stays overdue.
+// Not for items the couple dated themselves (customDate) or ticked — the caller leaves those alone.
+export function redatedDue(templateKey: string, weddingDay: string, today: string, stored: string | null): Date | null | undefined {
+  const t = CHECKLIST_TEMPLATE.find((x) => x.key === templateKey);
+  if (!t) return undefined;
+  const expected = new Date(utcDay(weddingDay).getTime() - t.daysBefore * DAY);
+  const expectedYmd = ymdOf(expected);
+  if (stored === expectedYmd) return undefined; // the wedding day has not moved
+  if (stored === null && expectedYmd < today) return undefined; // still an earlier step
+  const next = expectedYmd < today ? null : expected;
+  return (next ? expectedYmd : null) === stored ? undefined : next;
+}
+
 export const TITLE_MAX = 140;
 export const NOTES_MAX = 500;
 

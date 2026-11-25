@@ -2809,6 +2809,7 @@ model CoupleChecklistItem {
   title          String
   notes          String?
   dueDate        DateTime? // a date (UTC midnight); null = no date
+  customDate     Boolean       @default(false) // the couple chose this date; a ready-made item's date no longer follows the wedding day
   weddingEventId String? // the function it is for (optional)
   weddingEvent   WeddingEvent? @relation(fields: [weddingEventId], references: [id], onDelete: SetNull)
   templateKey    String? // the ready-made item it came from; null = written by the couple

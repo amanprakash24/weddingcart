@@ -1,7 +1,7 @@
 import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, ValidationError } from '@/lib/errors';
-import { checkChecklistItem, checklistSeed, type ChecklistItemInput } from '@/lib/wedding/checklist';
+import { checkChecklistItem, checklistSeed, redatedDue, type ChecklistItemInput } from '@/lib/wedding/checklist';
 import { categoryLabel, checkExpense, checkPlanned, checkTotal, type ExpenseInput } from '@/lib/wedding/coupleBudget';
 
 // The couple's checklist and budget (25 Nov 2026, Client OS). Couple calls run inside asCoupleWedding (the wedding is theirs or their
@@ -67,8 +67,17 @@ export const coupleChecklistService = {
   // one the couple removed stays removed (hidden, never added again).
   async list(weddingId: string): Promise<ChecklistItemView[]> {
     const w = await weddingDay(weddingId);
-    const seed = checklistSeed(ymd(w.primaryDate)!, w.events.map((e) => e.type), indiaToday());
+    const day = ymd(w.primaryDate)!;
+    const today = indiaToday();
+    const seed = checklistSeed(day, w.events.map((e) => e.type), today);
     await prisma.coupleChecklistItem.createMany({ data: seed.map((s) => ({ ...s, weddingId })), skipDuplicates: true });
+    // The wedding day moved: ready-made items follow it, unless the couple chose the date or already ticked the item.
+    const auto = await prisma.coupleChecklistItem.findMany({ where: { weddingId, templateKey: { not: null }, customDate: false, done: false }, select: { id: true, templateKey: true, dueDate: true } });
+    const moves = auto.flatMap((i) => {
+      const next = redatedDue(i.templateKey!, day, today, ymd(i.dueDate));
+      return next === undefined ? [] : [prisma.coupleChecklistItem.update({ where: { id: i.id }, data: { dueDate: next } })];
+    });
+    if (moves.length) await prisma.$transaction(moves);
     const items = await prisma.coupleChecklistItem.findMany({ where: { weddingId, hidden: false }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] });
     return items.map(view);
   },
@@ -87,10 +96,12 @@ export const coupleChecklistService = {
     const c = checkChecklistItem(input);
     if (!c.ok) throw new ValidationError(c.error);
     await openForChanges(weddingId);
-    await itemOf(weddingId, id);
+    const item = await itemOf(weddingId, id);
     const weddingEventId = await checkFunction(weddingId, c.value.weddingEventId);
     void actorId;
-    return view(await prisma.coupleChecklistItem.update({ where: { id }, data: { ...c.value, weddingEventId } }));
+    // A date the couple changed is theirs from now on (it no longer follows the wedding day).
+    const customDate = item.customDate || ymd(c.value.dueDate) !== ymd(item.dueDate);
+    return view(await prisma.coupleChecklistItem.update({ where: { id }, data: { ...c.value, weddingEventId, customDate } }));
   },
 
   async setDone(weddingId: string, id: string, done: boolean, actorId: string) {

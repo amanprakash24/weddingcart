@@ -102,7 +102,7 @@ export default function CoupleBudget({ event, bookedWith }: { event: ClientPorta
         </form>
       )}
       {s.categories.length === 0 ? (
-        <p className="mt-2 text-sm text-[var(--color-text-secondary)]">Plan how much to spend on outfits, jewellery, gifts and more.</p>
+        <p className="mt-2 text-sm text-[var(--color-text-secondary)]">Plan how much to spend on outfits, jewellery, gifts and more. What you book or spend shows under its category.</p>
       ) : (
         <ul className="mt-2 grid gap-2 sm:grid-cols-2">
           {s.categories.map((c) => {
@@ -111,6 +111,7 @@ export default function CoupleBudget({ event, bookedWith }: { event: ClientPorta
             return (
               <li key={c.category} className="rounded-2xl border border-white/70 bg-white/55 p-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-1"><b className="text-sm">{c.label}</b><span className={`text-sm ${overCat ? 'font-bold text-[#B42318]' : 'text-[var(--color-text-secondary)]'}`}>{inr(c.spent)}{c.planned !== null && ` of ${inr(c.planned)}`}</span></div>
+                {c.booked > 0 && <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{c.booked === c.spent ? 'Booked' : `Includes ${inr(c.booked)} booked`} with {bookedWith}</p>}
                 {c.planned !== null && <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/80"><div className={`h-full rounded-full ${overCat ? 'bg-[#B42318]' : 'bg-[var(--primary)]'}`} style={{ width: `${pct}%` }} /></div>}
               </li>
             );

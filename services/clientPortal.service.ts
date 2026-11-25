@@ -203,7 +203,11 @@ export const clientPortalService = {
       console.error(`My Wedding payment claims for ${weddingId} could not be loaded —`, err instanceof Error ? err.message : err);
       return { claims: [], canClaim: false, inReview: 0 };
     });
-    const budgetRecords = await coupleBudgetService.records(weddingId);
+    // The couple's own budget never takes My Wedding down: if it cannot be read, the Budget section is simply not shown.
+    const budgetRecords = await coupleBudgetService.records(weddingId).catch((err) => {
+      console.error(`My Wedding budget for ${weddingId} could not be loaded —`, err instanceof Error ? err.message : err);
+      return null;
+    });
     return [workspace].map((workspace) => {
       const { wedding, couple, events, tasks, timeline, finance, documents, activity, guests } = workspace;
       const services = events.flatMap((event) =>
@@ -388,10 +392,19 @@ export const clientPortalService = {
       };
     }).map((event) => ({
       ...event,
-      coupleBudget: {
-        records: budgetRecords,
-        summary: budgetSummary({ total: budgetRecords.total, planned: budgetRecords.planned, booked: { agreed: event.money.agreed, paid: event.money.received }, ownVendors: event.ownVendors, expenses: budgetRecords.expenses }),
-      },
+      coupleBudget: budgetRecords
+        ? {
+            records: budgetRecords,
+            summary: budgetSummary({
+              total: budgetRecords.total,
+              planned: budgetRecords.planned,
+              booked: { agreed: event.money.agreed, paid: event.money.received },
+              bookedLines: (workspace.finance.agreement?.lines ?? []).map((l) => ({ category: l.category, description: l.description, amount: l.quantity * l.unitPrice })),
+              ownVendors: event.ownVendors,
+              expenses: budgetRecords.expenses,
+            }),
+          }
+        : null,
     }))[0];
   },
 };

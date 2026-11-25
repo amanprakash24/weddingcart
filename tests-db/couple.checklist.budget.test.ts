@@ -61,6 +61,23 @@ dbDescribe('Couple checklist and budget (real database)', () => {
     if (other) expect((await errorOf(list.add(weddingId, { title: 'x', weddingEventId: other.id }, couple)))?.message).toContain('your functions');
   });
 
+  test('when the wedding day moves, ready-made dates follow; a date the couple chose stays', async () => {
+    const before = await list.list(weddingId);
+    const photo = before.find((i) => i.title.startsWith('Book the photographer'))!;
+    const decor = before.find((i) => i.title.startsWith('Book the decorator'))!;
+    await asCouple(weddingId, couple, () => list.update(weddingId, decor.id, { title: decor.title, dueDate: '2027-01-05' }, couple), 'plan');
+    const { primaryDate } = await app.prisma.wedding.findUniqueOrThrow({ where: { id: weddingId }, select: { primaryDate: true } });
+    try {
+      await app.prisma.wedding.update({ where: { id: weddingId }, data: { primaryDate: new Date('2027-09-20T00:00:00Z') } });
+      const after = await list.list(weddingId);
+      expect(after.find((i) => i.id === photo.id)?.dueDate).toBe('2027-05-03'); // 140 days before 20 Sep 2027
+      expect(after.find((i) => i.id === decor.id)?.dueDate).toBe('2027-01-05'); // theirs — not moved
+      expect(after.length).toBe(before.length);
+    } finally {
+      await app.prisma.wedding.update({ where: { id: weddingId }, data: { primaryDate } });
+    }
+  });
+
   test('budget: their own total, plan and expenses, against what is booked and paid with us', async () => {
     await asCouple(weddingId, couple, () => budget.setTotal(weddingId, '5,00,000', couple), 'money');
     await budget.setPlanned(weddingId, 'OUTFITS', 150000);
@@ -68,7 +85,10 @@ dbDescribe('Couple checklist and budget (real database)', () => {
     expect((await errorOf(budget.addExpense(weddingId, { category: 'OUTFITS', title: 'x', amount: 100, paid: 200 }, couple)))?.name).toBe('ValidationError');
     const [event] = await app.clientPortalService.getEventsForClient(couple);
     expect(event.coupleBudget?.summary).toMatchObject({ total: 500000, committed: 85500 + 85000, paid: 21375 + 20000, left: 500000 - 170500 });
-    expect(event.coupleBudget?.summary.categories).toEqual([{ category: 'OUTFITS', label: 'Outfits', planned: 150000, spent: 85000 }]);
+    expect(event.coupleBudget?.summary.categories).toEqual([
+      { category: 'DECOR', label: 'Decoration', planned: null, spent: 85500, booked: 85500 }, // the "Decoration package" booked with us
+      { category: 'OUTFITS', label: 'Outfits', planned: 150000, spent: 85000, booked: 0 },
+    ]);
     // nothing of ours changed
     expect(event.money.received).toBe(21375);
     expect(event.money.agreed).toBe(85500);

@@ -14,7 +14,8 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const p = await params;
     const userId = session.user.id;
-    const body = (await req.json().catch(() => null)) ?? {};
+    const raw: unknown = await req.json().catch(() => null);
+    const body: Record<string, unknown> = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
     return NextResponse.json({ success: true, data: await asCoupleWedding(p.id, userId, (): Promise<unknown> => ('category' in body ? coupleBudgetService.setPlanned(p.id, body.category, body.planned) : coupleBudgetService.setTotal(p.id, body.total, userId)), 'money') }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return handleApiError(error);
