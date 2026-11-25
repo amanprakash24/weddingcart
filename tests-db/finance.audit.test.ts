@@ -11,6 +11,7 @@ dbDescribe('Finance audit log and reconciliation (real database)', () => {
   let weddingId = '';
   let vbId = '';
   let actor = ''; // a real user: payments keep who recorded them (a foreign key)
+  let ownRateId: string | null = null;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
   const errorOf = async (p: Promise<unknown>) => (await p.then(() => null, (e: Error) => e)) as Error | null;
   const events = (table: string, rowId: string) => app.prisma.financeEvent.findMany({ where: { tableName: table, rowId }, orderBy: { id: 'asc' } });
@@ -21,6 +22,9 @@ dbDescribe('Finance audit log and reconciliation (real database)', () => {
     await fx.purge();
     actor = (await app.prisma.user.findFirstOrThrow({ select: { id: true }, orderBy: { createdAt: 'asc' } })).id;
     const [vendor] = await fx.vendors(1);
+    // A known commission rate of its own (removed afterwards), as tests-db/vendor.payments.test.ts does: CI's database has none.
+    const v = await app.prisma.vendor.findUniqueOrThrow({ where: { id: vendor.id }, select: { categoryId: true } });
+    ownRateId = (await app.prisma.commissionRate.create({ data: { categoryId: v.categoryId, rate: 10, effectiveFrom: new Date(Date.now() - 1000) } })).id;
     const c = await fx.consultation({ name: 'DBTEST finance audit', weddingDate: '2027-03-01', guestCount: 200 });
     const q = await fx.acceptedQuote(c.id, { items: [fx.line('Decoration package', 50000, 1, vendor.id)], advance: 12500 });
     const booking = await app.quotationService.createBooking(q.id, {}, null);
@@ -32,6 +36,7 @@ dbDescribe('Finance audit log and reconciliation (real database)', () => {
   afterAll(async () => {
     if (app && vbId) await app.prisma.vendorPayment.deleteMany({ where: { vendorBookingId: vbId } });
     if (fx) await fx.purge();
+    if (app && ownRateId) await app.prisma.commissionRate.delete({ where: { id: ownRateId } });
   });
 
   test('a payment recorded by a person is logged with who it was', async () => {
