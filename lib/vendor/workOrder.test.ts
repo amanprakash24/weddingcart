@@ -45,3 +45,14 @@ describe('setting the pricing model (founder)', () => {
     expect(checkPricing({ model: 'FIXED', vendorPrice: 110000, acceptNegativeMargin: true, reason: 'Only decorator free on the date' }, 100000)).toEqual({ ok: true, value: { pricingModel: 'FIXED', vendorPrice: 110000, note: 'negative margin accepted: Only decorator free on the date' } });
   });
 });
+
+describe('historical work orders (PR 5)', () => {
+  test('a work already settled by an older payout keeps the payout’s own figures, not today’s rate', () => {
+    const settled = facts({ status: 'COMPLETED', agreedPrice: 75000, currentRate: 12, payout: { status: 'PAID', commissionRate: 10, commissionAmount: 7500, netAmount: 67500 } });
+    expect(buildWorkOrder(settled, scope)).toMatchObject({ ok: true, value: { pricingModel: 'COMMISSION', vendorPayable: 67500, clientPrice: 75000, commissionRate: 10, commissionAmount: 7500, margin: 7500 } });
+  });
+  test('an older payout that no longer matches the agreed price is not issued — settled by hand first', () => {
+    const drifted = facts({ status: 'COMPLETED', agreedPrice: 80000, payout: { status: 'PAID', commissionRate: 10, commissionAmount: 7500, netAmount: 67500 } });
+    expect(buildWorkOrder(drifted, scope)).toMatchObject({ ok: false, reason: expect.stringContaining('older payout') });
+  });
+});
