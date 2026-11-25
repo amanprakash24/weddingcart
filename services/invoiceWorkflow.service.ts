@@ -92,9 +92,9 @@ export const invoiceWorkflowService = {
       const wedding = await tx.wedding.findUnique({ where: { id: weddingId } });
       if (!wedding) throw new NotFoundError('Wedding', weddingId);
       const agreement = await findAgreementForWedding(tx, wedding);
-      const existing = agreement ? await tx.invoice.findFirst({ where: { quotationId: agreement.quotation.id, kind: 'BALANCE' }, select: { id: true } }) : null;
+      const existing = agreement ? await tx.invoice.findFirst({ where: { quotationId: agreement.quotation.id, confirmationId: null, kind: 'BALANCE' }, select: { id: true } }) : null;
       // Money v1: an agreement's balance is measured from the confirmation amount it froze, not from the quotation's free-form advance.
-      const frozen = agreement ? await tx.commercialAgreement.findUnique({ where: { quotationId: agreement.quotation.id }, select: { confirmationAmount: true } }) : null;
+      const frozen = agreement ? await tx.commercialAgreement.findFirst({ where: { confirmationId: null, quotationId: agreement.quotation.id }, select: { confirmationAmount: true } }) : null;
       const blocked = checkBalanceInvoice({ quotation: agreement?.quotation ?? null, alreadyHasBalanceInvoice: existing !== null, advance: frozen?.confirmationAmount });
       if (blocked || !agreement) throw new ConflictError(blocked ?? 'This wedding has no accepted quotation to invoice from');
 
@@ -161,7 +161,7 @@ export const invoiceWorkflowService = {
       const invoice = await loadWeddingInvoice(tx, weddingId, invoiceId);
       // Money v1: an invoice of an agreement is paid through the agreement (services/agreement.service.ts), which applies the money to
       // the right invoice, starts the hold window and allows a payment above the 25%. Two ways of recording the same money would disagree.
-      if (invoice.quotationId && (await tx.commercialAgreement.findUnique({ where: { quotationId: invoice.quotationId }, select: { id: true } }))) {
+      if (invoice.quotationId && (await tx.commercialAgreement.findFirst({ where: { confirmationId: null, quotationId: invoice.quotationId }, select: { id: true } }))) {
         throw new ConflictError('This invoice belongs to the booking agreement — record the payment against the agreement');
       }
       const paid = paidOf(invoice);

@@ -121,7 +121,7 @@ dbDescribe('per-business numbers, rules and proposal links (real database)', () 
     await inVenue(0, async () => {
       await app.quotationService.accept(quotationId, { channel: 'WHATSAPP', note: 'db test' }, null);
       await app.quotationService.createBooking(quotationId, {}, null);
-      const agreement = await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId } });
+      const agreement = await app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId } });
       expect(agreement).toMatchObject({ agreementTotal: 200000, confirmationPercent: 30, confirmationAmount: 60000, holdWindowDays: 5 });
       const invoice = await app.prisma.invoice.findFirstOrThrow({ where: { quotationId }, select: { invoiceNumber: true } });
       expect(invoice.invoiceNumber).toMatch(new RegExp(`^${prefixA}-INV-\\d{6}-0001$`));
@@ -132,11 +132,11 @@ dbDescribe('per-business numbers, rules and proposal links (real database)', () 
     await inVenue(1, async () => {
       await app.quotationService.accept(first[1].quotationId, { channel: 'WHATSAPP', note: 'db test' }, null);
       await app.quotationService.createBooking(first[1].quotationId, {}, null);
-      expect(await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId: first[1].quotationId } })).toMatchObject({ confirmationPercent: 25, confirmationAmount: 50000, holdWindowDays: 7 });
+      expect(await app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId: first[1].quotationId } })).toMatchObject({ confirmationPercent: 25, confirmationAmount: 50000, holdWindowDays: 7 });
     });
     await app.quotationService.accept(platformQuotationId, { channel: 'WHATSAPP', note: 'db test' }, null);
     await app.quotationService.createBooking(platformQuotationId, {}, null);
-    const agreement = await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId: platformQuotationId } });
+    const agreement = await app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId: platformQuotationId } });
     expect(agreement).toMatchObject({ confirmationPercent: 25, holdWindowDays: 7 });
     const invoice = await app.prisma.invoice.findFirstOrThrow({ where: { quotationId: platformQuotationId }, select: { invoiceNumber: true } });
     expect(invoice.invoiceNumber).toMatch(/^INV-\d{6}-\d{4}$/);

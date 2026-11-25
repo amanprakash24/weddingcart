@@ -29,6 +29,15 @@ import { currentBusiness, rulesOf } from '@/lib/ownership/business';
 // received is always summed from Payment rows, and Date Held / Confirmed are derived from that.
 
 type Tx = Prisma.TransactionClient;
+
+// Which agreement (money design v1, PR 8). A plain quotation id is the quotation's whole-quotation agreement — every agreement made
+// before 25 Nov 2026 and every whole-quotation booking since; it has no confirmation. { quotationId, confirmationId } is the agreement
+// of one confirmation of chosen services. Its invoices carry the same confirmationId, so each agreement only ever sees its own money.
+export type AgreementKey = string | { quotationId: string; confirmationId: string | null };
+export interface AgreementRef { quotationId: string; confirmationId: string | null }
+export const refOf = (key: AgreementKey): AgreementRef => (typeof key === 'string' ? { quotationId: key, confirmationId: null } : key);
+// The invoices (advance and balance) of one agreement
+export const agreementInvoicesWhere = (ref: AgreementRef) => ({ quotationId: ref.quotationId, confirmationId: ref.confirmationId, kind: { in: ['ADVANCE' as const, 'BALANCE' as const] } });
 const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const METHOD_LABEL: Record<ManualPaymentMethod, string> = { CASH: 'cash', UPI: 'UPI', BANK_TRANSFER: 'bank transfer', CHEQUE: 'cheque' };
 
@@ -47,8 +56,12 @@ async function customerFor(tx: Tx, q: { leadId: string | null; enquiryId: string
   if (booking) return { name: booking.name, phone: booking.phone, city: booking.city, customerId: booking.customerId };
   const { sourceType, sourceId } = sourceOf(q);
   const select = { name: true, phone: true } as const;
+  // A website lead has only a phone number (no name column): it stands as the name, as on the lead page (fix found 26 Nov 2026 —
+  // selecting a lead's "name" threw, so a lead's quotation could not be paid against before a booking existed).
   const subject =
-    sourceType === 'LEAD' ? await tx.lead.findUnique({ where: { id: sourceId }, select }) : sourceType === 'ENQUIRY' ? await tx.enquiry.findUnique({ where: { id: sourceId }, select }) : await tx.consultation.findUnique({ where: { id: sourceId }, select });
+    sourceType === 'LEAD'
+      ? await tx.lead.findUnique({ where: { id: sourceId }, select: { phone: true } }).then((l) => (l ? { name: l.phone, phone: l.phone } : null))
+      : sourceType === 'ENQUIRY' ? await tx.enquiry.findUnique({ where: { id: sourceId }, select }) : await tx.consultation.findUnique({ where: { id: sourceId }, select });
   if (!subject) throw new NotFoundError(sourceType, sourceId);
   return { name: subject.name, phone: subject.phone, city: null as string | null, customerId: null as string | null };
 }
@@ -76,12 +89,12 @@ export async function ensureAgreementInTx(
 ): Promise<CommercialAgreement | null> {
   const { quotationId, actorId } = input;
   await lockQuotation(tx, quotationId);
-  const existing = await tx.commercialAgreement.findUnique({ where: { quotationId } });
+  const existing = await tx.commercialAgreement.findFirst({ where: { confirmationId: null, quotationId } });
   if (existing) {
     // A booking made later (or a retry) is attached to the agreement, and the booking's own id goes on its invoices.
     if (input.booking && !existing.bookingId) {
       await tx.commercialAgreement.update({ where: { id: existing.id }, data: { bookingId: input.booking.id } });
-      await tx.invoice.updateMany({ where: { quotationId, bookingId: null }, data: { bookingId: input.booking.id } });
+      await tx.invoice.updateMany({ where: { quotationId, confirmationId: null, bookingId: null }, data: { bookingId: input.booking.id } });
       return { ...existing, bookingId: input.booking.id };
     }
     return existing;
@@ -91,6 +104,9 @@ export async function ensureAgreementInTx(
   if (!quotation) throw new NotFoundError('Quotation', quotationId);
   if (quotation.status !== 'ACCEPTED') throw new ConflictError(`Quotation ${quotation.quotationNumber} is ${quotation.status.toLowerCase()} — only an accepted quotation has an agreement`);
   if (quotation.advanceInvoiceId) return null; // made under the old flow (at conversion) — leave it exactly as it was
+  // PR 8: a quotation whose services are confirmed one by one has an agreement per confirmation — never a whole-quotation one too
+  const confirmed = await tx.confirmation.count({ where: { quotationId, status: 'CONFIRMED' } });
+  if (confirmed > 0) throw new ConflictError(`Some services of quotation ${quotation.quotationNumber} are confirmed separately — record money against those confirmations`);
 
   const booking = input.booking ?? (await tx.booking.findFirst({ where: { quotationId } }));
   const customer = await customerFor(tx, quotation, booking);
@@ -131,8 +147,8 @@ export async function ensureAgreementInTx(
   return agreement;
 }
 
-async function receivedFor(tx: Tx | typeof prisma, quotationId: string): Promise<number> {
-  const payments = await tx.payment.findMany({ where: { status: 'SUCCESS', invoice: { quotationId, kind: { in: ['ADVANCE', 'BALANCE'] } } }, select: { amount: true } });
+async function receivedFor(tx: Tx | typeof prisma, key: AgreementKey): Promise<number> {
+  const payments = await tx.payment.findMany({ where: { status: 'SUCCESS', invoice: agreementInvoicesWhere(refOf(key)) }, select: { amount: true } });
   return payments.reduce((sum, p) => sum + p.amount, 0);
 }
 
@@ -140,20 +156,24 @@ async function receivedFor(tx: Tx | typeof prisma, quotationId: string): Promise
 
 // The Money card for a quotation's agreement, before or after the wedding exists. With no agreement yet it previews what would be
 // required from the accepted total.
-export async function loadAgreementMoney(quotationId: string, now: Date = new Date()): Promise<AgreementMoneyView> {
+export async function loadAgreementMoney(key: AgreementKey, now: Date = new Date()): Promise<AgreementMoneyView> {
+  const ref = refOf(key);
+  const { quotationId } = ref;
   const quotation = await prisma.quotation.findUnique({ where: { id: quotationId }, select: { id: true, quotationNumber: true, total: true, status: true } });
   if (!quotation) throw new NotFoundError('Quotation', quotationId);
-  const agreement = await prisma.commercialAgreement.findUnique({ where: { quotationId } });
-  const invoices = await prisma.invoice.findMany({ where: { quotationId, kind: { in: ['ADVANCE', 'BALANCE'] } }, include: { payments: { orderBy: { paidAt: 'asc' } } }, orderBy: { createdAt: 'asc' } });
+  const agreement = await prisma.commercialAgreement.findFirst({ where: { quotationId, confirmationId: ref.confirmationId } });
+  // a confirmation's agreement is always made with it, so its preview total is its own; the whole quotation's is the quotation's
+  const confirmation = ref.confirmationId ? await prisma.confirmation.findUnique({ where: { id: ref.confirmationId }, select: { total: true, number: true } }) : null;
+  const invoices = await prisma.invoice.findMany({ where: agreementInvoicesWhere(ref), include: { payments: { orderBy: { paidAt: 'asc' } } }, orderBy: { createdAt: 'asc' } });
   const names = await resolveUserNames(invoices.flatMap((i) => i.payments.map((p) => p.recordedById)));
-  const booking = agreement?.bookingId ? await prisma.booking.findUnique({ where: { id: agreement.bookingId }, select: { id: true, status: true } }) : await prisma.booking.findFirst({ where: { quotationId }, select: { id: true, status: true } });
+  const booking = agreement?.bookingId ? await prisma.booking.findUnique({ where: { id: agreement.bookingId }, select: { id: true, status: true } }) : ref.confirmationId ? null : await prisma.booking.findFirst({ where: { quotationId }, select: { id: true, status: true } });
   const weddingId = invoices.find((i) => i.weddingId)?.weddingId ?? null;
   const bookingConfirmed = weddingId !== null || agreement?.confirmedAt != null || booking?.status === 'CONFIRMED';
   return buildAgreementMoney({
     quotationId,
     quotationNumber: quotation.quotationNumber,
     agreement: agreement ? { ...agreement, bookingId: agreement.bookingId ?? booking?.id ?? null } : null,
-    previewTotal: quotation.total,
+    previewTotal: confirmation?.total ?? quotation.total,
     invoices: invoices.map((i) => ({
       id: i.id,
       invoiceNumber: i.invoiceNumber,
@@ -174,8 +194,9 @@ export async function loadAgreementMoney(quotationId: string, now: Date = new Da
 
 // The first payment starts the hold window; it never restarts. Used by every way money can arrive (recorded by staff, or a Razorpay
 // webhook), so the window means the same thing whichever it was.
-export async function startHoldIfNeeded(tx: Tx, quotationId: string, paidAt: Date): Promise<void> {
-  const agreement = await tx.commercialAgreement.findUnique({ where: { quotationId }, select: { id: true, holdStartedAt: true, holdWindowDays: true } });
+export async function startHoldIfNeeded(tx: Tx, key: AgreementKey, paidAt: Date): Promise<void> {
+  const ref = refOf(key);
+  const agreement = await tx.commercialAgreement.findFirst({ where: { quotationId: ref.quotationId, confirmationId: ref.confirmationId }, select: { id: true, holdStartedAt: true, holdWindowDays: true } });
   if (!agreement || agreement.holdStartedAt) return;
   await tx.commercialAgreement.update({ where: { id: agreement.id }, data: { holdStartedAt: paidAt, holdExpiresAt: holdExpiry(paidAt, agreement.holdWindowDays) } });
 }
@@ -194,15 +215,20 @@ export interface RecordAgreementPaymentInput {
 // rest to the balance invoice, so a customer may pay MORE than the 25% (it is a minimum, not a maximum) and every invoice's own
 // arithmetic stays true. Serialised on the agreement, so two people recording at once can never together exceed what is owed. The first
 // payment starts the hold window. Recording it never confirms anything by itself — see commercialFlow.service.ts.
-export async function recordAgreementPayment(quotationId: string, input: RecordAgreementPaymentInput, actorId: string | null) {
+export async function recordAgreementPayment(which: AgreementKey, input: RecordAgreementPaymentInput, actorId: string | null) {
+  const ref = refOf(which);
+  const { quotationId } = ref;
   if (!(MANUAL_PAYMENT_METHODS as readonly string[]).includes(input.method)) throw new ValidationError('Choose how the payment was received');
   const reference = input.reference?.trim() || null;
   const key = input.idempotencyKey?.trim() || null;
 
   return prisma.$transaction(async (tx) => {
     await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
-    const agreement = await ensureAgreementInTx(tx, { quotationId, actorId });
-    if (!agreement) throw new ConflictError('This agreement was made before the 25% rule — record the payment on its invoice instead');
+    // A confirmation's agreement is made with the confirmation; the whole quotation's is made here if it does not exist yet.
+    const agreement = ref.confirmationId
+      ? await tx.commercialAgreement.findFirst({ where: { quotationId, confirmationId: ref.confirmationId } })
+      : await ensureAgreementInTx(tx, { quotationId, actorId });
+    if (!agreement) throw new ConflictError(ref.confirmationId ? 'This confirmation has no agreement' : 'This agreement was made before the 25% rule — record the payment on its invoice instead');
     await tx.$queryRaw`SELECT "id" FROM "commercial_agreements" WHERE "id" = ${agreement.id} FOR UPDATE`;
 
     // A form submitted twice (double-click, retry) is recorded once.
@@ -211,7 +237,7 @@ export async function recordAgreementPayment(quotationId: string, input: RecordA
       if (prior) return { receiptId: prior.receiptId as string, duplicate: true, splits: [] as { invoiceNumber: string; amount: number }[] };
     }
 
-    const invoices = await tx.invoice.findMany({ where: { quotationId, kind: { in: ['ADVANCE', 'BALANCE'] } }, include: { payments: true } });
+    const invoices = await tx.invoice.findMany({ where: agreementInvoicesWhere(ref), include: { payments: true } });
     const paidOn = (inv?: (typeof invoices)[number]) => (inv ? inv.payments.filter((p) => p.status === 'SUCCESS').reduce((s, p) => s + p.amount, 0) : 0);
     const advance = invoices.find((i) => i.kind === 'ADVANCE');
     let balance = invoices.find((i) => i.kind === 'BALANCE');
@@ -231,8 +257,10 @@ export async function recordAgreementPayment(quotationId: string, input: RecordA
 
     // The rest of the payment needs the balance invoice: it is created here, from the agreement, if it does not exist yet.
     if (plan.splits.some((s) => s.target === 'BALANCE') && !balance) {
+      const forConfirmation = ref.confirmationId ? await tx.confirmation.findUnique({ where: { id: ref.confirmationId }, select: { number: true, total: true, gst: true } }) : null;
       const balancePlan = planBalanceInvoice({
-        quotation,
+        // a confirmation is billed like a quotation of its own services: its total and its GST
+        quotation: forConfirmation ? { ...quotation, quotationNumber: `${quotation.quotationNumber} · ${forConfirmation.number}`, total: forConfirmation.total, gstAmount: forConfirmation.gst } : quotation,
         wedding: { primaryDate: wedding?.primaryDate ?? booking?.weddingDate ?? null, weddingType: wedding?.weddingType ?? booking?.weddingType ?? null },
         client: { name: agreement.customerName, phone: agreement.customerPhone },
         advance: agreement.confirmationAmount,
@@ -244,6 +272,7 @@ export async function recordAgreementPayment(quotationId: string, input: RecordA
           status: 'DRAFT',
           kind: 'BALANCE',
           quotation: { connect: { id: quotationId } },
+          ...(ref.confirmationId ? { confirmation: { connect: { id: ref.confirmationId } } } : {}),
           booking: agreement.bookingId ? { connect: { id: agreement.bookingId } } : undefined,
           wedding: wedding ? { connect: { id: wedding.id } } : undefined,
           items: { create: balancePlan.items },
@@ -268,9 +297,9 @@ export async function recordAgreementPayment(quotationId: string, input: RecordA
       applied.push({ invoiceNumber: invoice.invoiceNumber, amount: split.amount });
     }
 
-    await startHoldIfNeeded(tx, quotationId, paidAt);
+    await startHoldIfNeeded(tx, ref, paidAt);
 
-    const received = (await receivedFor(tx, quotationId)) ;
+    const received = await receivedFor(tx, ref);
     const status = confirmationStatus({ required: agreement.confirmationAmount, received, holdStartedAt: agreement.holdStartedAt ?? paidAt, holdWindowDays: agreement.holdWindowDays });
     await logMoney(
       tx,
@@ -308,7 +337,7 @@ export async function assertBookingMayConfirm(bookingId: string): Promise<void> 
 // The conversion itself re-checks, inside its own transaction and without creating anything: nothing but a satisfied agreement (or one
 // made under the old flow) may become a wedding.
 export async function assertAgreementSatisfiedInTx(tx: Tx, quotationId: string): Promise<void> {
-  const agreement = await tx.commercialAgreement.findUnique({ where: { quotationId } });
+  const agreement = await tx.commercialAgreement.findFirst({ where: { confirmationId: null, quotationId } });
   if (!agreement) return;
   const received = await receivedFor(tx, quotationId);
   const status = confirmationStatus({ required: agreement.confirmationAmount, received, holdStartedAt: agreement.holdStartedAt, holdWindowDays: agreement.holdWindowDays });
@@ -319,7 +348,7 @@ export async function assertAgreementSatisfiedInTx(tx: Tx, quotationId: string):
 // payments. Idempotent.
 export async function attachAgreementToWedding(tx: Tx, quotationId: string | null | undefined, wedding: { id: string; customerId: string | null }, actorId: string | null): Promise<boolean> {
   if (!quotationId) return false;
-  const agreement = await tx.commercialAgreement.findUnique({ where: { quotationId } });
+  const agreement = await tx.commercialAgreement.findFirst({ where: { confirmationId: null, quotationId } });
   if (!agreement) return false;
   await tx.invoice.updateMany({ where: { quotationId, weddingId: null }, data: { weddingId: wedding.id, ...(wedding.customerId ? { customerId: wedding.customerId } : {}) } });
   if (!agreement.confirmedAt) {

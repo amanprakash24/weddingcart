@@ -33,7 +33,7 @@ dbDescribe('a venue’s own settings (real database)', () => {
       const brand = (await proposalService.view(token))?.brand;
       await app.quotationService.accept(draft.id, { channel: 'WHATSAPP', note: 'db test' }, null);
       await app.quotationService.createBooking(draft.id, {}, null);
-      const agreement = await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId: draft.id }, select: { confirmationPercent: true, confirmationAmount: true, holdWindowDays: true } });
+      const agreement = await app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId: draft.id }, select: { confirmationPercent: true, confirmationAmount: true, holdWindowDays: true } });
       return { quotationId: draft.id, brand, agreement };
     });
   }
@@ -117,7 +117,7 @@ dbDescribe('a venue’s own settings (real database)', () => {
   });
 
   test('the booking already agreed keeps the rule it was made with', async () => {
-    const kept = await inA(() => app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId: before.quotationId }, select: { confirmationPercent: true, confirmationAmount: true, holdWindowDays: true } }));
+    const kept = await inA(() => app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId: before.quotationId }, select: { confirmationPercent: true, confirmationAmount: true, holdWindowDays: true } }));
     expect(kept).toEqual({ confirmationPercent: 25, confirmationAmount: 50000, holdWindowDays: 7 });
   });
 

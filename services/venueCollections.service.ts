@@ -28,7 +28,8 @@ const SELECT = {
   id: true,
   quotationNumber: true,
   consultation: { select: { id: true, name: true, phone: true, weddingDate: true, pipelineStage: true } },
-  agreement: { select: { bookingId: true, agreementTotal: true, confirmationPercent: true, confirmationAmount: true, holdWindowDays: true, holdStartedAt: true, confirmedAt: true } },
+  // a venue's bookings are whole-quotation agreements (no confirmation) — PR 8 confirmations are Shaadi Shopping's
+  agreements: { where: { confirmationId: null }, take: 1, select: { bookingId: true, agreementTotal: true, confirmationPercent: true, confirmationAmount: true, holdWindowDays: true, holdStartedAt: true, confirmedAt: true } },
   booking: { select: { status: true, weddingDate: true, wedding: { select: { id: true, status: true, primaryDate: true } } } },
   invoices: {
     where: { kind: { in: ['ADVANCE', 'BALANCE'] } },
@@ -43,14 +44,15 @@ export function createVenueCollectionsService(deps: VenueCollectionsDeps = defau
       const now = deps.now();
       const business = await deps.business();
       const quotations = await deps.db.quotation.findMany({
-        where: { status: 'ACCEPTED', consultationId: { not: null }, agreement: { isNot: null } },
+        where: { status: 'ACCEPTED', consultationId: { not: null }, agreements: { some: { confirmationId: null } } },
         select: SELECT,
         orderBy: { acceptedAt: 'desc' },
         take: 500,
       });
       const rows: CollectionRow[] = [];
       for (const q of quotations) {
-        const { consultation: c, agreement, booking } = q;
+        const { consultation: c, booking } = q;
+        const agreement = q.agreements[0] ?? null;
         if (!c || !agreement || c.pipelineStage === 'LOST' || booking?.wedding?.status === 'CANCELLED') continue;
         const weddingId = booking?.wedding?.id ?? q.invoices.find((i) => i.weddingId)?.weddingId ?? null;
         const money = buildAgreementMoney({

@@ -128,7 +128,7 @@ dbDescribe('Golden Wedding Workflow — Rahul & Priya (real database)', () => {
     expect(booking.items.find((i) => i.packageName === 'Catering per plate')).toMatchObject({ price: 300, quantity: 500 });
     expect(await app.prisma.booking.count({ where: { quotationId } })).toBe(1);
     // the agreement is frozen and the booking's invoice — exactly the 25% (₹1,25,000), not the quote's typed ₹2,00,000 advance — exists before any wedding
-    expect(await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId } })).toMatchObject({ agreementTotal: 500000, confirmationAmount: 125000, bookingId });
+    expect(await app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId } })).toMatchObject({ agreementTotal: 500000, confirmationAmount: 125000, bookingId });
     const invoices = await app.prisma.invoice.findMany({ where: { quotationId } });
     expect(invoices).toMatchObject([{ kind: 'ADVANCE', total: 125000, status: 'DRAFT', weddingId: null, bookingId }]);
     advanceInvoiceId = invoices[0].id;

@@ -23,7 +23,9 @@ export const reconciliationService = {
       prisma.commercialAgreement.findMany({
         select: {
           agreementTotal: true,
-          quotation: { select: { quotationNumber: true, invoices: { where: { kind: { in: ['ADVANCE', 'BALANCE'] } }, select: { total: true, payments: { where: { status: 'SUCCESS' }, select: { amount: true } } } } } },
+          confirmationId: true,
+          confirmation: { select: { number: true } },
+          quotation: { select: { quotationNumber: true, invoices: { where: { kind: { in: ['ADVANCE', 'BALANCE'] } }, select: { confirmationId: true, total: true, payments: { where: { status: 'SUCCESS' }, select: { amount: true } } } } } },
         },
       }),
       vendorPaymentService.reconciliationRows(),
@@ -37,7 +39,11 @@ export const reconciliationService = {
     const sum = (ps: { amount: number }[]) => ps.reduce((s, p) => s + p.amount, 0);
     const checks: Check[] = [
       ...invoiceChecks(invoices.map((i) => ({ number: i.invoiceNumber, status: i.status, total: i.total, storedAmountPaid: i.amountPaid, successfulPayments: sum(i.payments), isWeddingInvoice: i.weddingId !== null, credited: i.creditedAmount, creditNotesTotal: sum(i.creditNotes), voided: i.voidedAt !== null }))),
-      ...agreementChecks(agreements.map((a) => ({ quotationNumber: a.quotation.quotationNumber, agreementTotal: a.agreementTotal, invoiceTotals: a.quotation.invoices.map((i) => i.total), received: a.quotation.invoices.reduce((s, i) => s + sum(i.payments), 0) }))),
+      ...agreementChecks(agreements.map((a) => {
+        // each agreement against its own invoices: a confirmation's (PR 8), or the whole quotation's (no confirmation)
+        const own = a.quotation.invoices.filter((i) => i.confirmationId === a.confirmationId);
+        return { quotationNumber: a.confirmation ? `${a.quotation.quotationNumber} · ${a.confirmation.number}` : a.quotation.quotationNumber, agreementTotal: a.agreementTotal, invoiceTotals: own.map((i) => i.total), received: own.reduce((s, i) => s + sum(i.payments), 0) };
+      })),
       ...vendorChecks(assignments),
       ...auditChecks(unattributed.map((u) => ({ tableName: u.tableName, count: u._count._all })), AUDIT_DAYS),
     ];

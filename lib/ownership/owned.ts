@@ -15,6 +15,7 @@ export const OWNED_MODELS = [
   'Quotation',
   'Booking',
   'CommercialAgreement',
+  'Confirmation', // PR 8: services confirmed together
   'Wedding',
   'Invoice',
   'Payment',
@@ -29,7 +30,7 @@ export type OwnedModel = (typeof OWNED_MODELS)[number];
 export const CHILD_MODELS = [
   'ConsultationVendorSelection', 'BookingItem', 'InvoiceItem', 'QuotationItem', 'LeadInsight', 'Couple', 'WeddingEvent', 'Guest',
   'GuestFunctionResponse', 'VendorEnquiry', 'VendorBooking', 'TimelineMilestone', 'Document', 'Task', 'ActivityLog', 'ApprovalRequest',
-  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment', 'CoupleVendor', 'VendorQuoteRequest', 'VendorQuoteFunction', 'WeddingMember', 'CoupleChecklistItem', 'CoupleBudgetCategory', 'CoupleExpense', 'VendorPayment', 'VendorWorkOrder', 'WorkOrderAdjustment', 'CreditNote',
+  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment', 'CoupleVendor', 'VendorQuoteRequest', 'VendorQuoteFunction', 'WeddingMember', 'CoupleChecklistItem', 'CoupleBudgetCategory', 'CoupleExpense', 'VendorPayment', 'VendorWorkOrder', 'WorkOrderAdjustment', 'CreditNote', 'ConfirmationLine',
 ] as const;
 
 export type ChildModel = (typeof CHILD_MODELS)[number];
@@ -50,9 +51,10 @@ export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
   Enquiry: [link('consultation', 'Consultation')],
   Quotation: [link('lead', 'Lead'), link('enquiry', 'Enquiry'), link('consultation', 'Consultation'), link('advanceInvoice', 'Invoice')],
   Booking: [link('enquiry', 'Enquiry'), link('consultation', 'Consultation'), link('quotation', 'Quotation')],
-  CommercialAgreement: [link('quotation', 'Quotation'), link('booking', 'Booking')],
+  CommercialAgreement: [link('quotation', 'Quotation'), link('booking', 'Booking'), link('confirmation', 'Confirmation')],
+  Confirmation: [link('quotation', 'Quotation')],
   Wedding: [link('sourceLead', 'Lead'), link('sourceEnquiry', 'Enquiry'), link('sourceConsultation', 'Consultation'), link('sourceBooking', 'Booking')],
-  Invoice: [link('wedding', 'Wedding'), link('quotation', 'Quotation'), link('booking', 'Booking')],
+  Invoice: [link('wedding', 'Wedding'), link('quotation', 'Quotation'), link('booking', 'Booking'), link('confirmation', 'Confirmation')],
   Payment: [link('invoice', 'Invoice')],
   ConsultationVendorSelection: [link('consultation', 'Consultation')],
   BookingItem: [link('booking', 'Booking')],
@@ -76,6 +78,7 @@ export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
   VendorWorkOrder: [link('vendorBooking', 'VendorBooking')],
   WorkOrderAdjustment: [link('workOrder', 'VendorWorkOrder')],
   CreditNote: [link('invoice', 'Invoice')],
+  ConfirmationLine: [link('confirmation', 'Confirmation')],
   // The couple's "I have paid" claims (Roadmap 1.3) belong to the business whose quotation they are on.
   PaymentSubmission: [link('quotation', 'Quotation')],
   CoupleVendor: [link('wedding', 'Wedding'), link('weddingEvent', 'WeddingEvent')],
@@ -105,11 +108,12 @@ export const OWNED_RELATIONS: Partial<Record<OwnedModel | ChildModel, string[]>>
   Enquiry: ['quotations', 'wedding', 'bookings', 'consultation'],
   Consultation: ['quotations', 'wedding', 'bookings', 'enquiries', 'client'],
   BusinessClient: ['consultations'],
-  Quotation: ['supersedes', 'supersededBy', 'lead', 'enquiry', 'consultation', 'advanceInvoice', 'invoices', 'booking', 'agreement'],
+  Quotation: ['supersedes', 'supersededBy', 'lead', 'enquiry', 'consultation', 'advanceInvoice', 'invoices', 'booking', 'agreements', 'confirmations'],
   Booking: ['enquiry', 'consultation', 'invoices', 'wedding', 'agreement', 'quotation'],
-  CommercialAgreement: ['quotation', 'booking'],
+  CommercialAgreement: ['quotation', 'booking', 'confirmation'],
+  Confirmation: ['quotation', 'agreement', 'invoices'],
   Wedding: ['sourceLead', 'sourceEnquiry', 'sourceConsultation', 'sourceBooking', 'invoices'],
-  Invoice: ['wedding', 'payments', 'quotation', 'booking', 'advanceForQuotation'],
+  Invoice: ['wedding', 'payments', 'quotation', 'booking', 'advanceForQuotation', 'confirmation'],
   Payment: ['invoice'],
   ConsultationVendorSelection: ['consultation'],
   BookingItem: ['booking'],
@@ -127,6 +131,7 @@ export const OWNED_RELATIONS: Partial<Record<OwnedModel | ChildModel, string[]>>
   ApprovalRequest: ['wedding'],
   PaymentLink: ['invoice'],
   CreditNote: ['invoice'],
+  ConfirmationLine: ['confirmation'],
   PaymentSubmission: ['quotation'],
   CoupleVendor: ['wedding'],
   VendorQuoteRequest: ['wedding'],

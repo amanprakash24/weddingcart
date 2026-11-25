@@ -501,7 +501,7 @@ export const weddingWorkspaceService = {
           ? { sourceType: 'CONSULTATION', id: (wedding.sourceConsultationId ?? viaBooking?.consultationId) as string }
           : null;
     // Money v1: the terms the booking was made on (frozen at booking time), when this wedding's agreement has them.
-    const frozen = found ? await prisma.commercialAgreement.findUnique({ where: { quotationId: found.quotation.id } }) : null;
+    const frozen = found ? await prisma.commercialAgreement.findFirst({ where: { confirmationId: null, quotationId: found.quotation.id } }) : null;
     const money = found && frozen
       ? buildAgreementMoney({
           quotationId: found.quotation.id,

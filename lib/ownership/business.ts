@@ -53,7 +53,7 @@ export function rulesOf(b: Pick<BusinessInfo, 'confirmationPercent' | 'holdWindo
 }
 
 // "QTN" for the platform; "SWA-QTN" for a venue — then lib/numbering.ts adds the month / year and the sequence. Pure.
-export function documentPrefix(b: Pick<BusinessInfo, 'kind' | 'numberPrefix'>, kind: 'QTN' | 'INV' | 'WED' | 'WO' | 'CN'): string {
+export function documentPrefix(b: Pick<BusinessInfo, 'kind' | 'numberPrefix'>, kind: 'QTN' | 'INV' | 'WED' | 'WO' | 'CN' | 'CNF'): string {
   if (b.kind === 'PLATFORM') return kind;
   if (!b.numberPrefix) throw new Error('This business has no number prefix yet');
   return `${b.numberPrefix}-${kind}`;

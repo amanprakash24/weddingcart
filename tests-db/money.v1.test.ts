@@ -28,7 +28,7 @@ dbDescribe('Money V1 — the 25% confirmation rule (real database)', () => {
     const booking = await app.quotationService.createBooking(quotation.id, {}, null);
     return { consultation, quotation, booking };
   }
-  const agreementOf = (quotationId: string) => app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId } });
+  const agreementOf = (quotationId: string) => app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId } });
   const invoicesOf = (quotationId: string) => app.prisma.invoice.findMany({ where: { quotationId }, include: { payments: true }, orderBy: { createdAt: 'asc' } });
   const money = (quotationId: string) => app.agreement.loadAgreementMoney(quotationId);
   const pay = (quotationId: string, amount: number, extra: Record<string, unknown> = {}) =>
@@ -297,7 +297,7 @@ dbDescribe('Money V1 — the 25% confirmation rule (real database)', () => {
       const { quotation, booking } = await booked('Overdue A');
       await pay(quotation.id, 20000);
       const ninety = days(-9);
-      await app.prisma.commercialAgreement.update({ where: { quotationId: quotation.id }, data: { holdStartedAt: ninety, holdExpiresAt: new Date(ninety.getTime() + 7 * 86_400_000) } });
+      await app.prisma.commercialAgreement.updateMany({ where: { quotationId: quotation.id, confirmationId: null }, data: { holdStartedAt: ninety, holdExpiresAt: new Date(ninety.getTime() + 7 * 86_400_000) } });
       const m = await money(quotation.id);
       expect(m).toMatchObject({ state: 'DATE_HELD', overdue: true, remaining: 30000, bookingConfirmed: false });
       expect(m.daysLeft).toBeLessThan(0);
@@ -310,7 +310,7 @@ dbDescribe('Money V1 — the 25% confirmation rule (real database)', () => {
       const { quotation, booking } = await booked('Overdue B');
       await pay(quotation.id, 20000);
       const ago = days(-10);
-      await app.prisma.commercialAgreement.update({ where: { quotationId: quotation.id }, data: { holdStartedAt: ago, holdExpiresAt: new Date(ago.getTime() + 7 * 86_400_000) } });
+      await app.prisma.commercialAgreement.updateMany({ where: { quotationId: quotation.id, confirmationId: null }, data: { holdStartedAt: ago, holdExpiresAt: new Date(ago.getTime() + 7 * 86_400_000) } });
       const r = await pay(quotation.id, 30000);
       expect(r.confirmation.confirmed).toBe(true);
       expect(await weddingOf(booking.id)).not.toBeNull();
