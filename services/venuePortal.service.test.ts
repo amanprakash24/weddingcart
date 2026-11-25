@@ -202,6 +202,8 @@ describe('venuePortalService.respond — the vendor answers a booking request (1
       weddingEvent: { findUnique: mock(async () => ({ id: 'we-1', weddingId: 'wedding-1' })) },
       activityLog: { create: logCreate },
       task: { updateMany: mock(async () => ({ count: 1 })) },
+      // A work order already exists for this booking, so confirming does not issue one here (issuing is covered by tests-db/vendor.work-orders.test.ts).
+      vendorWorkOrder: { findUnique: mock(async () => ({ id: 'wo-1', status: 'ISSUED' })) },
       wedding: { findUnique: mock(async () => ({ id: 'wedding-1', status: 'ACTIVE' })), update: mock(async () => ({})) },
     };
     return { prismaMock: { ...base, $transaction: mock(async (fn: (tx: typeof base) => unknown) => fn(base)) }, update, logCreate };

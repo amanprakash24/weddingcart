@@ -45,3 +45,16 @@ export async function generateWeddingNumber(tx: Tx): Promise<string> {
   });
   return nextSequenceNumber(bucket, last?.weddingNumber ?? null);
 }
+
+// WO-YYYYMM-NNNN — vendor work orders (money design v1, PR 4, 25 Nov 2026), sequential within the month, per business like invoices.
+export async function generateWorkOrderNumber(tx: Tx): Promise<string> {
+  const bucket = monthBucket(documentPrefix(await currentBusiness(), 'WO'));
+  await lockNumberBucket(tx, bucket);
+  const [last] = await tx.vendorWorkOrder.findMany({
+    where: { number: { startsWith: bucket } },
+    orderBy: { number: 'desc' },
+    take: 1,
+    select: { number: true },
+  });
+  return nextSequenceNumber(bucket, last?.number ?? null);
+}

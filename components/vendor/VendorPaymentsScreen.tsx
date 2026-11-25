@@ -43,6 +43,11 @@ function WorkCard({ work: w }: { work: VendorWorkView }) {
         </div>
       )}
       {w.workStatus === 'AWAITING_VENDOR' && <p className="mt-2 text-xs text-[var(--color-text-muted)]">Confirm this booking (Services) to have it counted.</p>}
+      {w.workOrder && (
+        <a href={`/vendor/work-orders/${w.workOrder.id}`} className="mt-2 inline-flex min-h-10 items-center text-xs font-semibold text-[var(--color-primary-text)] underline">
+          Work order {w.workOrder.number}{w.workOrder.status === 'CANCELLED' ? ' (cancelled)' : ''}
+        </a>
+      )}
       {w.payments.length > 0 && (
         <ul className="mt-2 space-y-0.5 border-t border-[var(--color-border-subtle)] pt-2 text-xs text-[var(--color-text-muted)]">
           {w.payments.map((p) => (

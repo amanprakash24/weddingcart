@@ -1,3 +1,4 @@
+import { vendorWorkOrderService } from '@/services/vendorWorkOrder.service';
 import { auditAs } from '@/lib/finance/audit';
 import { generateInvoiceNumber } from '@/services/documentNumber.service';
 import { prisma } from '@/lib/prisma';
@@ -19,7 +20,7 @@ import { agreementFigures } from '@/lib/invoice/lifecycle';
 import { findAgreementForWedding } from '@/services/invoiceWorkflow.service';
 import { buildAgreementMoney, type AgreementMoneyView } from '@/lib/commercial/view';
 import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
-import { NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
+import { ConflictError, NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { unassignedServiceFromTask } from '@/lib/booking/unassigned';
 import type { PendingFunctionChange } from '@/lib/wedding/coupleFunctions';
@@ -264,6 +265,8 @@ async function cancelVendorBookingInTx(
   options: { needsNewVendor: boolean; replacedBy?: string }
 ) {
   await vendorBookingRepository.update(booking.id, { status: 'CANCELLED' }, tx);
+  // Its work order, if issued, is cancelled with it — kept, with who and why (money design v1, PR 4).
+  await vendorWorkOrderService.cancelInTx(tx, booking.id, actorId, reason || 'Assignment cancelled');
   await tx.task.updateMany({ where: { vendorBookingId: booking.id, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { status: 'CANCELLED', completedAt: null } });
   await activityLogRepository.create(
     {
@@ -772,6 +775,8 @@ export const weddingWorkspaceService = {
       }
 
       if (status === 'CONFIRMED') {
+        // The vendor said yes: their numbered work order is issued now, in this same transaction (money design v1, PR 4).
+        await vendorWorkOrderService.issueInTx(tx, vendorBookingId, by?.actorId ?? null);
         await maybeActivateWedding(weddingId, tx);
       }
 
@@ -964,6 +969,8 @@ export const weddingWorkspaceService = {
     if (booking.status !== 'PENDING_VENDOR_CONFIRMATION' && booking.status !== 'CONFIRMED') throw new InvalidTransitionError(`The price of a ${booking.status.toLowerCase().replace(/_/g, ' ')} booking can no longer be changed`);
     if (!Number.isInteger(agreedPrice) || agreedPrice <= 0) throw new ValidationError('The agreed price should be a whole number of rupees');
     if (agreedPrice === booking.agreedPrice) return booking;
+    const wo = await prisma.vendorWorkOrder.findUnique({ where: { vendorBookingId }, select: { number: true, status: true } });
+    if (wo?.status === 'ISSUED') throw new ConflictError(`Work order ${wo.number} is issued — its amount is locked; changes are made as adjustments`);
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const updated = await vendorBookingRepository.update(vendorBookingId, { agreedPrice }, tx);

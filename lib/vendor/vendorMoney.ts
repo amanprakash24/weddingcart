@@ -21,12 +21,26 @@ export const WORK_STATUS_WORDS: Record<WorkStatus, string> = {
   CANCELLED: 'Cancelled',
 };
 
+export type PricingModel = 'COMMISSION' | 'FIXED';
+
+export interface WorkOrderTerms {
+  status: string; // ISSUED / CANCELLED — only an ISSUED one fixes the terms
+  pricingModel: PricingModel;
+  vendorPayable: number;
+  clientPrice: number;
+  commissionRate: number | null;
+  commissionAmount: number | null;
+}
+
 export interface AssignmentFacts {
   id: string;
   status: string; // VendorBookingStatus
   venueStatus: string; // VenueBookingStatus — the setup steps the vendor moves through
-  agreedPrice: number;
+  agreedPrice: number; // the client price share for this service
   currentRate: number | null; // the vendor category's commission % today (null: none set up)
+  pricingModel?: PricingModel | null; // null / absent: an older assignment — commission, as before
+  vendorPrice?: number | null; // FIXED only
+  workOrder?: WorkOrderTerms | null;
   payout: { status: string; commissionRate: number; commissionAmount: number; netAmount: number } | null;
   payments: { amount: number; voided: boolean }[];
 }
@@ -35,16 +49,34 @@ export interface AssignmentMoney {
   id: string;
   workStatus: WorkStatus;
   owed: boolean; // counts in the work value (confirmed or completed)
-  workValue: number; // 0 when not owed
-  commissionRate: number | null;
-  commission: number | null; // null: no rate set up
-  commissionIsEstimate: boolean; // true until a payout fixed it
-  net: number | null;
+  pricingModel: PricingModel;
+  workOrderIssued: boolean; // the terms are frozen on an issued work order
+  workValue: number; // the client price share; 0 when not owed
+  commissionRate: number | null; // COMMISSION only
+  commission: number | null; // COMMISSION: null = no rate set up; FIXED: null (there is none)
+  commissionIsEstimate: boolean; // COMMISSION at today's rate, nothing frozen yet
+  margin: number | null; // client price − vendor payable (internal; founder only)
+  net: number | null; // what the vendor gets for owed work (0 when not owed); null = unknown
   paid: number;
   remaining: number | null;
   // What the vendor is paid for this work whatever its status — the one amount a vendor ever sees (money design rule 1, 25 Nov 2026).
-  // A work still waiting for the vendor's yes shows what they would be paid; null: no commission rate set up.
+  // A work still waiting for the vendor's yes shows what they would be paid; null: unknown (no rate, or a fixed price not set).
   payable: number | null;
+}
+
+// The terms of one work, from the first that applies (25 Nov 2026, money design v1 PR 4):
+//   1. an older payout (it fixed the commission when it was calculated)
+//   2. an ISSUED work order (frozen when the vendor confirmed)
+//   3. the assignment's pricing model: FIXED → the vendor price; COMMISSION (or none set) → the category's current rate
+// The two models are never mixed: a FIXED work has no commission; a COMMISSION work has no vendor price.
+export function assignmentTerms(a: AssignmentFacts): { pricingModel: PricingModel; clientPrice: number; commissionRate: number | null; commission: number | null; payable: number | null; frozen: boolean } {
+  if (a.payout) return { pricingModel: 'COMMISSION', clientPrice: a.agreedPrice, commissionRate: a.payout.commissionRate, commission: a.payout.commissionAmount, payable: a.payout.netAmount, frozen: true };
+  const wo = a.workOrder && a.workOrder.status === 'ISSUED' ? a.workOrder : null;
+  if (wo) return { pricingModel: wo.pricingModel, clientPrice: wo.clientPrice, commissionRate: wo.commissionRate, commission: wo.commissionAmount, payable: wo.vendorPayable, frozen: true };
+  if (a.pricingModel === 'FIXED') return { pricingModel: 'FIXED', clientPrice: a.agreedPrice, commissionRate: null, commission: null, payable: a.vendorPrice ?? null, frozen: false };
+  const rate = a.currentRate;
+  const commission = rate === null ? null : Math.round((a.agreedPrice * rate) / 100);
+  return { pricingModel: 'COMMISSION', clientPrice: a.agreedPrice, commissionRate: rate, commission, payable: commission === null ? null : a.agreedPrice - commission, frozen: false };
 }
 
 export function workStatusOf(status: string, venueStatus: string): WorkStatus {
@@ -57,24 +89,24 @@ export function workStatusOf(status: string, venueStatus: string): WorkStatus {
 
 export function assignmentMoney(a: AssignmentFacts): AssignmentMoney {
   const owed = a.status === 'CONFIRMED' || a.status === 'COMPLETED';
-  const workValue = owed ? a.agreedPrice : 0;
-  const fixed = a.payout !== null;
-  const commissionRate = fixed ? a.payout!.commissionRate : a.currentRate;
-  const commission = !owed ? 0 : fixed ? a.payout!.commissionAmount : commissionRate === null ? null : Math.round((workValue * commissionRate) / 100);
-  const net = !owed ? 0 : fixed ? a.payout!.netAmount : commission === null ? null : workValue - commission;
+  const t = assignmentTerms(a);
+  const net = !owed ? 0 : t.payable;
   const paid = a.payments.filter((p) => !p.voided).reduce((s, p) => s + p.amount, 0) + (a.payout?.status === 'PAID' ? a.payout.netAmount : 0);
   return {
     id: a.id,
     workStatus: workStatusOf(a.status, a.venueStatus),
     owed,
-    workValue,
-    commissionRate,
-    commission,
-    commissionIsEstimate: owed && !fixed,
+    pricingModel: t.pricingModel,
+    workOrderIssued: !!(a.workOrder && a.workOrder.status === 'ISSUED'),
+    workValue: owed ? t.clientPrice : 0,
+    commissionRate: t.commissionRate,
+    commission: !owed ? (t.pricingModel === 'FIXED' ? null : 0) : t.commission,
+    commissionIsEstimate: owed && !t.frozen && t.pricingModel === 'COMMISSION',
+    margin: !owed ? 0 : t.payable === null ? null : t.clientPrice - t.payable,
     net,
     paid,
     remaining: net === null ? null : net - paid,
-    payable: fixed ? a.payout!.netAmount : commissionRate === null ? null : a.agreedPrice - Math.round((a.agreedPrice * commissionRate) / 100),
+    payable: t.payable,
   };
 }
 
@@ -108,7 +140,8 @@ export function vendorTotals(rows: AssignmentMoney[]): VendorTotals {
 
 export interface MoneyTotals {
   workValue: number;
-  commission: number | null; // null when any owed work has no rate set up
+  commission: number | null; // commission-model works only; null when one of those has no rate set up
+  margin: number | null; // client price − vendor payable over owed works (internal; founder only); null when one is unknown
   net: number | null;
   paid: number;
   remaining: number | null;
@@ -119,13 +152,15 @@ export interface MoneyTotals {
 
 export function moneyTotals(rows: AssignmentMoney[], all: { id: string; status: string; agreedPrice: number }[] = []): MoneyTotals {
   const owed = rows.filter((r) => r.owed);
-  const unknown = owed.some((r) => r.commission === null);
+  const unknown = owed.some((r) => r.net === null);
+  const commissionUnknown = owed.some((r) => r.pricingModel === 'COMMISSION' && r.commission === null);
   const sum = (f: (r: AssignmentMoney) => number) => rows.reduce((s, r) => s + f(r), 0);
   const paid = sum((r) => r.paid);
   const net = unknown ? null : sum((r) => r.net ?? 0);
   return {
     workValue: sum((r) => r.workValue),
-    commission: unknown ? null : sum((r) => r.commission ?? 0),
+    commission: commissionUnknown ? null : owed.reduce((s, r) => s + (r.pricingModel === 'COMMISSION' ? (r.commission ?? 0) : 0), 0),
+    margin: unknown ? null : owed.reduce((s, r) => s + (r.margin ?? 0), 0),
     net,
     paid,
     remaining: net === null ? null : net - paid,

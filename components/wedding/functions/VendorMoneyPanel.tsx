@@ -172,6 +172,13 @@ function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId:
     }
   };
 
+  const [pricing, setPricing] = useState<{ model: 'COMMISSION' | 'FIXED'; vendorPrice: string; accept: boolean; reason: string } | null>(null);
+  const savePricing = async () => {
+    if (!pricing) return;
+    const body = { model: pricing.model, vendorPrice: pricing.model === 'FIXED' ? pricing.vendorPrice : undefined, acceptNegativeMargin: pricing.accept, reason: pricing.reason };
+    if (await send(`/api/weddings/${weddingId}/vendor-bookings/${w.id}/pricing`, 'PATCH', body)) setPricing(null);
+  };
+
   const record = async () => {
     if (!form) return;
     const c = checkPayment(form, m.remaining, today());
@@ -186,13 +193,53 @@ function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId:
           <p className="text-sm font-semibold text-gray-900">{w.functionName} <span className="font-normal text-gray-500">· {new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(w.functionDate))}</span></p>
           <p className="text-xs text-gray-600">
             Agreed {inr(w.agreedPrice)}
-            {m.owed && showCommission && m.commission !== null && ` · commission ${inr(m.commission)} (${m.commissionRate}%${m.commissionIsEstimate ? ', current rate' : ''})`}
+            {showCommission && m.pricingModel === 'FIXED' && ` · fixed vendor price ${amountOrDash(m.payable)}`}
+            {m.owed && showCommission && m.pricingModel === 'COMMISSION' && m.commission !== null && ` · commission ${inr(m.commission)} (${m.commissionRate}%${m.commissionIsEstimate ? ', current rate' : ''})`}
+            {m.owed && showCommission && m.margin !== null && ` · margin ${inr(m.margin)}`}
             {m.owed && ` · they get ${amountOrDash(m.net)} · paid ${inr(m.paid)} · left ${amountOrDash(m.remaining)}`}
             {!m.owed && m.paid > 0 && ` · paid ${inr(m.paid)} although not owed`}
           </p>
+          {w.workOrder && (
+            <a href={`/admin/weddings/${weddingId}/work-orders/${w.workOrder.id}`} className="text-xs font-semibold text-gray-800 underline">
+              Work order {w.workOrder.number}{w.workOrder.status === 'CANCELLED' ? ' (cancelled)' : ''}
+            </a>
+          )}
         </div>
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_TONE[m.workStatus]}`}>{WORK_STATUS_WORDS[m.workStatus]}</span>
       </div>
+
+      {/* How this vendor is paid — founder only, before the work order is issued (money design v1, PR 4). */}
+      {showCommission && !m.workOrderIssued && (m.workStatus === 'AWAITING_VENDOR' || m.workStatus === 'NOT_STARTED' || m.workStatus === 'IN_PROGRESS') && (
+        pricing ? (
+          <form onSubmit={(e) => { e.preventDefault(); void savePricing(); }} className="mt-2 grid gap-2 rounded-lg bg-gray-50 p-2 sm:grid-cols-3">
+            <label className="grid gap-1 text-xs text-gray-600">How the vendor is paid
+              <select aria-label="Pricing model" value={pricing.model} onChange={(e) => setPricing({ ...pricing, model: e.target.value as 'COMMISSION' | 'FIXED' })} className={field}>
+                <option value="COMMISSION">Commission (category rate)</option>
+                <option value="FIXED">Fixed vendor price</option>
+              </select>
+            </label>
+            {pricing.model === 'FIXED' && (
+              <label className="grid gap-1 text-xs text-gray-600">Vendor price ₹
+                <input aria-label="Vendor price" inputMode="numeric" value={pricing.vendorPrice} onChange={(e) => setPricing({ ...pricing, vendorPrice: e.target.value })} className={field} />
+              </label>
+            )}
+            {pricing.model === 'FIXED' && Number(pricing.vendorPrice.replace(/[,\s₹]/g, '')) > w.agreedPrice && (
+              <div className="grid gap-1 text-xs text-amber-900 sm:col-span-3">
+                <label className="flex items-center gap-2"><input type="checkbox" checked={pricing.accept} onChange={(e) => setPricing({ ...pricing, accept: e.target.checked })} /> This is more than the couple pays for this service — go ahead anyway</label>
+                <input aria-label="Why" value={pricing.reason} onChange={(e) => setPricing({ ...pricing, reason: e.target.value })} placeholder="Why we pay the vendor more" className={field} />
+              </div>
+            )}
+            <div className="flex gap-2 sm:col-span-3">
+              <button type="submit" disabled={busy} className="min-h-10 rounded-lg bg-gray-900 px-3 text-sm font-semibold text-white disabled:opacity-40">Save pricing</button>
+              <button type="button" onClick={() => setPricing(null)} className="min-h-10 px-2 text-sm text-gray-600">Cancel</button>
+            </div>
+          </form>
+        ) : (
+          <button type="button" onClick={() => { setError(null); setPricing({ model: m.pricingModel, vendorPrice: w.vendorPrice != null ? String(w.vendorPrice) : '', accept: false, reason: '' }); }} className="mt-1 min-h-8 text-xs font-semibold text-gray-600 underline">
+            {m.pricingModel === 'FIXED' ? 'Fixed price' : 'Commission'} · change how this vendor is paid
+          </button>
+        )
+      )}
 
       {w.payments.length > 0 && (
         <ul className="mt-2 space-y-1 text-xs">
