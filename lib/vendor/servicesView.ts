@@ -16,6 +16,7 @@ export interface VendorServiceCard {
   venueName: string | null;
   city: string;
   agreedAmount: number | null; // null: this member may not see money
+  vendorDone: boolean; // they said the work is done; waiting for our check (PR 6)
   status: VendorBookingRow['bookingStatus'];
   venueStatus: VendorBookingRow['venueStatus'];
   nextVenueStatus: VendorBookingRow['venueStatus'] | null;
@@ -51,6 +52,7 @@ export function buildVendorServicesView(bookings: VendorBookingRow[]): VendorSer
       venueName: b.event.venueName,
       city: b.event.city,
       agreedAmount: b.amount,
+      vendorDone: b.vendorDone,
       status: b.bookingStatus,
       venueStatus: b.venueStatus,
       nextVenueStatus: NEXT_VENUE_STATUS[b.venueStatus],

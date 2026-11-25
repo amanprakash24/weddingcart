@@ -18,11 +18,13 @@ const STATUS_TONE: Record<WorkStatus, string> = {
   AWAITING_VENDOR: 'bg-amber-50 text-amber-800',
   NOT_STARTED: 'bg-gray-100 text-gray-700',
   IN_PROGRESS: 'bg-blue-50 text-blue-800',
+  AWAITING_CHECK: 'bg-violet-50 text-violet-800',
   COMPLETED: 'bg-emerald-50 text-emerald-800',
   DECLINED: 'bg-red-50 text-red-700',
   CANCELLED: 'bg-gray-100 text-gray-500',
 };
 const field = 'min-h-10 w-full rounded-lg border border-gray-300 px-2.5 text-sm';
+const ADJ_LABEL: Record<string, string> = { INCREASE: 'Price increase', EXTRA_WORK: 'Extra work', DECREASE: 'Price decrease', CANCELLATION: 'Part cancelled' };
 
 export default function VendorMoneyPanel({ weddingId, refreshKey = 0 }: { weddingId: string; refreshKey?: number }) {
   const { vendorMoney, commission } = useWorkspaceMoney();
@@ -149,7 +151,8 @@ function Stat({ label, value, strong }: { label: string; value: string; strong?:
 }
 
 function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId: string; work: WorkView; showCommission: boolean; onChanged: () => Promise<void> }) {
-  const [form, setForm] = useState<{ amount: string; paidOn: string; method: string; reference: string; note: string } | null>(null);
+  const [form, setForm] = useState<{ amount: string; paidOn: string; method: string; reference: string; note: string; finalOverrideReason: string } | null>(null);
+  const [adjusting, setAdjusting] = useState<{ kind: string; amount: string; clientPriceDelta: string; reason: string } | null>(null);
   const [voiding, setVoiding] = useState<{ id: string; reason: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,6 +189,11 @@ function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId:
     if (await send(`/api/weddings/${weddingId}/vendor-bookings/${w.id}/payments`, 'POST', form)) setForm(null);
   };
 
+  const saveAdjustment = async () => {
+    if (!adjusting) return;
+    if (await send(`/api/weddings/${weddingId}/vendor-bookings/${w.id}/adjustments`, 'POST', adjusting)) setAdjusting(null);
+  };
+
   return (
     <div className="rounded-lg border border-gray-100 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -193,6 +201,7 @@ function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId:
           <p className="text-sm font-semibold text-gray-900">{w.functionName} <span className="font-normal text-gray-500">· {new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(w.functionDate))}</span></p>
           <p className="text-xs text-gray-600">
             Agreed {inr(w.agreedPrice)}
+            {w.adjustments.length > 0 && m.workValue !== null && m.workValue !== w.agreedPrice && ` → ${inr(m.workValue)} after changes`}
             {showCommission && m.pricingModel === 'FIXED' && ` · fixed vendor price ${amountOrDash(m.payable)}`}
             {m.owed && showCommission && m.pricingModel === 'COMMISSION' && m.commission !== null && ` · commission ${inr(m.commission)} (${m.commissionRate}%${m.commissionIsEstimate ? ', current rate' : ''})`}
             {m.owed && showCommission && m.margin !== null && ` · margin ${inr(m.margin)}`}
@@ -264,9 +273,44 @@ function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId:
       )}
 
       {w.legacyPayoutPending && <p className="mt-2 text-xs text-amber-800">An earlier payout for this work is waiting to be marked paid (in the function’s vendor card).</p>}
+      {w.vendorDoneAt && m.workStatus !== 'COMPLETED' && (
+        <p className="mt-2 rounded-lg bg-violet-50 p-2 text-xs text-violet-900">The vendor says the work is done ({day(w.vendorDoneAt.slice(0, 10))}){w.vendorDoneNote ? `: ${w.vendorDoneNote}` : ''}. Check it, then press Mark completed in the function’s vendor card — the final payment waits for that.</p>
+      )}
+      {w.adjustments.length > 0 && (
+        <ul className="mt-2 space-y-0.5 text-xs text-gray-700">
+          {w.adjustments.map((x) => (
+            <li key={x.id}>{day(x.createdAt.slice(0, 10))} · {ADJ_LABEL[x.kind] ?? x.kind} · <b>{x.payableDelta > 0 ? '+' : '−'}{inr(Math.abs(x.payableDelta))}</b>{showCommission && x.clientPriceDelta !== 0 ? ` (couple ${x.clientPriceDelta > 0 ? '+' : '−'}${inr(Math.abs(x.clientPriceDelta))})` : ''} · {x.reason}</li>
+          ))}
+        </ul>
+      )}
+      {m.workOrderIssued && !adjusting && m.owed && (
+        <button type="button" onClick={() => { setError(null); setAdjusting({ kind: 'EXTRA_WORK', amount: '', clientPriceDelta: '', reason: '' }); }} className="mt-2 mr-2 min-h-10 rounded-lg border border-gray-300 px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">Adjust the amount</button>
+      )}
+      {adjusting && (
+        <form onSubmit={(e) => { e.preventDefault(); void saveAdjustment(); }} className="mt-2 grid gap-2 rounded-lg bg-gray-50 p-2 sm:grid-cols-3">
+          <label className="grid gap-1 text-xs text-gray-600">What changes
+            <select aria-label="Kind of change" value={adjusting.kind} onChange={(e) => setAdjusting({ ...adjusting, kind: e.target.value })} className={field}>
+              <option value="EXTRA_WORK">Extra work (+)</option><option value="INCREASE">Price increase (+)</option><option value="DECREASE">Price decrease (−)</option><option value="CANCELLATION">Part cancelled (−)</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs text-gray-600">Change to the vendor’s amount ₹
+            <input aria-label="Change to the vendor's amount" inputMode="numeric" value={adjusting.amount} onChange={(e) => setAdjusting({ ...adjusting, amount: e.target.value })} className={field} />
+          </label>
+          <label className="grid gap-1 text-xs text-gray-600">Change to the couple’s price ₹ (optional, − for less)
+            <input aria-label="Change to the couple's price" inputMode="numeric" value={adjusting.clientPriceDelta} onChange={(e) => setAdjusting({ ...adjusting, clientPriceDelta: e.target.value })} className={field} />
+          </label>
+          <label className="grid gap-1 text-xs text-gray-600 sm:col-span-3">Why (the vendor sees this)
+            <input aria-label="Why the amount changes" value={adjusting.reason} maxLength={300} onChange={(e) => setAdjusting({ ...adjusting, reason: e.target.value })} className={field} />
+          </label>
+          <div className="flex gap-2 sm:col-span-3">
+            <button type="submit" disabled={busy} className="min-h-10 rounded-lg bg-gray-900 px-4 text-sm font-semibold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Save adjustment'}</button>
+            <button type="button" onClick={() => setAdjusting(null)} className="min-h-10 px-2 text-sm text-gray-600">Cancel</button>
+          </div>
+        </form>
+      )}
 
       {w.canRecord && !w.legacyPayoutPending && !form && (
-        <button type="button" onClick={() => { setError(null); setForm({ amount: '', paidOn: today(), method: 'UPI', reference: '', note: '' }); }} className="mt-2 min-h-10 rounded-lg border border-gray-300 px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">Record payment</button>
+        <button type="button" onClick={() => { setError(null); setForm({ amount: '', paidOn: today(), method: 'UPI', reference: '', note: '', finalOverrideReason: '' }); }} className="mt-2 min-h-10 rounded-lg border border-gray-300 px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">Record payment</button>
       )}
       {form && (
         <form onSubmit={(e) => { e.preventDefault(); void record(); }} className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -284,6 +328,11 @@ function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId:
           <label className="grid gap-1 text-xs text-gray-600">Reference (UTR, cheque no.)
             <input aria-label="Reference" value={form.reference} maxLength={100} onChange={(e) => setForm({ ...form, reference: e.target.value })} className={field} />
           </label>
+          {m.remaining !== null && Number(form.amount.replace(/[,\s₹]/g, '')) === m.remaining && m.workStatus !== 'COMPLETED' && (
+            <label className="grid gap-1 text-xs text-amber-900 sm:col-span-3">This is the final payment and the work is not verified yet. Mark it completed first — or say why we pay now:
+              <input aria-label="Why pay the final amount before the work is verified" value={form.finalOverrideReason} maxLength={200} onChange={(e) => setForm({ ...form, finalOverrideReason: e.target.value })} className={field} />
+            </label>
+          )}
           <label className="grid gap-1 text-xs text-gray-600 sm:col-span-2">Note
             <input aria-label="Note" value={form.note} maxLength={300} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. Advance for Haldi decoration" className={field} />
           </label>

@@ -4,7 +4,7 @@ import { ConflictError, NotFoundError, ValidationError } from '@/lib/errors';
 import { auditAs } from '@/lib/finance/audit';
 import { commissionRateRepository } from '@/repositories/commissionRate.repository';
 import { generateWorkOrderNumber } from '@/services/documentNumber.service';
-import { buildWorkOrder, checkPricing, vendorWorkOrderView, type PricingInput, type VendorWorkOrderView, type WorkOrderScope } from '@/lib/vendor/workOrder';
+import { adjustmentLabel, buildWorkOrder, checkAdjustment, checkPricing, vendorWorkOrderView, type AdjustmentInput, type PricingInput, type VendorWorkOrderView, type WorkOrderScope } from '@/lib/vendor/workOrder';
 
 // Vendor work orders and pricing models (money design v1, PR 4, 25 Nov 2026). The rules are in lib/vendor/workOrder.ts; this loads the
 // records and writes. A work order is issued inside the same transaction that confirms the assignment, so it exists exactly when the
@@ -179,6 +179,37 @@ export const vendorWorkOrderService = {
     }, { timeout: 60_000 });
   },
 
+  // PR 6 — a change after the work order is issued: never an edit, an adjustment (full money access on the wedding; the route checks).
+  // The vendor's amount becomes the work order's plus every adjustment, never below what was already paid (also a database rule).
+  async addAdjustment(weddingId: string, vendorBookingId: string, input: AdjustmentInput, actorId: string | null) {
+    return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM vendor_bookings WHERE id = ${vendorBookingId} FOR UPDATE`;
+      const b = await tx.vendorBooking.findFirst({
+        where: { id: vendorBookingId, weddingEvent: { weddingId } },
+        include: { vendor: { select: { name: true } }, workOrder: { include: { adjustments: { select: { payableDelta: true } } } }, vendorPayments: { select: { amount: true, voidedAt: true } }, payouts: { select: { status: true, netAmount: true } } },
+      });
+      if (!b) throw new NotFoundError('VendorBooking', vendorBookingId);
+      if (!b.workOrder || b.workOrder.status !== 'ISSUED') throw new ConflictError('There is no issued work order for this work — change the price directly while it is not yet confirmed');
+      const payableNow = b.workOrder.vendorPayable + b.workOrder.adjustments.reduce((n, x) => n + x.payableDelta, 0);
+      const paid = b.vendorPayments.filter((p) => p.voidedAt === null).reduce((n, p) => n + p.amount, 0) + b.payouts.filter((p) => p.status === 'PAID').reduce((n, p) => n + p.netAmount, 0);
+      const c = checkAdjustment(input, payableNow, paid);
+      if (!c.ok) throw new ValidationError(c.error);
+      await auditAs(tx, actorId, c.value.reason);
+      const adj = await tx.workOrderAdjustment.create({ data: { workOrder: { connect: { id: b.workOrder.id } }, kind: c.value.kind, payableDelta: c.value.payableDelta, clientPriceDelta: c.value.clientPriceDelta, reason: c.value.reason, createdById: actorId } });
+      const after = payableNow + c.value.payableDelta;
+      await tx.activityLog.create({
+        data: {
+          type: 'STATUS_CHANGED',
+          summary: `Work order ${b.workOrder.number} adjusted (${adjustmentLabel(c.value.kind).toLowerCase()}): ${c.value.payableDelta > 0 ? '+' : '−'}${inr(Math.abs(c.value.payableDelta))} for ${b.vendor.name} — now ${inr(after)}. ${c.value.reason}`,
+          wedding: { connect: { id: weddingId } },
+          vendorBooking: { connect: { id: b.id } },
+          ...(actorId ? { performedBy: { connect: { id: actorId } } } : {}),
+        },
+      });
+      return { adjustment: adj, payableNow: after };
+    });
+  },
+
   // Cancel an assignment's issued work order (the assignment was cancelled or replaced), inside the caller's transaction.
   async cancelInTx(tx: Tx, vendorBookingId: string, actorId: string | null, reason: string) {
     const wo = await tx.vendorWorkOrder.findUnique({ where: { vendorBookingId } });
@@ -213,14 +244,14 @@ export const vendorWorkOrderService = {
 
   // A vendor's own work order: only theirs, only the vendor-safe view.
   async forVendor(vendorId: string, workOrderId: string): Promise<VendorWorkOrderView & { vendorName: string }> {
-    const w = await prisma.vendorWorkOrder.findFirst({ where: { id: workOrderId, vendorId }, include: { vendor: { select: { name: true } } } });
+    const w = await prisma.vendorWorkOrder.findFirst({ where: { id: workOrderId, vendorId }, include: { vendor: { select: { name: true } }, adjustments: { orderBy: { createdAt: 'asc' }, select: { kind: true, payableDelta: true, reason: true, createdAt: true } } } });
     if (!w) throw new NotFoundError('VendorWorkOrder', workOrderId);
     return { ...vendorWorkOrderView(w), vendorName: w.vendor.name };
   },
 
   // The team's view (full money access on the wedding — the route checks). Commission and margin: founder only.
   async forStaff(weddingId: string, workOrderId: string, opts: { seesCommission: boolean }): Promise<StaffWorkOrderView> {
-    const w = await prisma.vendorWorkOrder.findFirst({ where: { id: workOrderId, vendorBooking: { weddingEvent: { weddingId } } }, include: { vendor: { select: { name: true } } } });
+    const w = await prisma.vendorWorkOrder.findFirst({ where: { id: workOrderId, vendorBooking: { weddingEvent: { weddingId } } }, include: { vendor: { select: { name: true } }, adjustments: { orderBy: { createdAt: 'asc' }, select: { kind: true, payableDelta: true, reason: true, createdAt: true } } } });
     if (!w) throw new NotFoundError('VendorWorkOrder', workOrderId);
     return {
       ...vendorWorkOrderView(w),

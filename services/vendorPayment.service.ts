@@ -29,7 +29,7 @@ const assignmentInclude = {
   vendor: { select: { id: true, name: true, categoryId: true, category: { select: { name: true } } } },
   weddingEvent: { select: { id: true, type: true, label: true, date: true, wedding: { select: { id: true, weddingNumber: true, status: true, customer: { select: { name: true } }, couple: { select: { brideName: true, groomName: true } } } } } },
   payouts: { select: { id: true, status: true, grossAmount: true, commissionRate: true, commissionAmount: true, netAmount: true, paidAt: true } },
-  workOrder: { select: { id: true, number: true, status: true, pricingModel: true, vendorPayable: true, clientPrice: true, commissionRate: true, commissionAmount: true } },
+  workOrder: { select: { id: true, number: true, status: true, pricingModel: true, vendorPayable: true, clientPrice: true, commissionRate: true, commissionAmount: true, adjustments: { orderBy: { createdAt: 'asc' }, select: { id: true, kind: true, payableDelta: true, clientPriceDelta: true, reason: true, createdAt: true } } } },
   vendorPayments: { orderBy: [{ paidOn: 'asc' }, { createdAt: 'asc' }] },
 } satisfies Prisma.VendorBookingInclude;
 
@@ -87,6 +87,10 @@ export interface WorkView {
   workOrder: { id: string; number: string; status: string } | null; // the numbered work order (money design v1, PR 4)
   pricingModel: 'COMMISSION' | 'FIXED' | null; // as set on the assignment (null: an older one — commission)
   vendorPrice: number | null; // FIXED only
+  // PR 6: changes after the work order (vendor amount delta; client-price delta is internal), and the vendor's "work done"
+  adjustments: { id: string; kind: string; payableDelta: number; clientPriceDelta: number; reason: string; createdAt: string }[];
+  vendorDoneAt: string | null;
+  vendorDoneNote: string | null;
 }
 
 export interface VendorGroup {
@@ -104,7 +108,7 @@ function workView(a: Loaded, rates: Map<string, number | null>): WorkView {
     status: a.status,
     venueStatus: a.venueStatus,
     agreedPrice: a.agreedPrice,
-    pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, currentRate: rates.get(a.vendor.categoryId) ?? null,
+    pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, vendorDone: a.vendorDoneAt !== null, currentRate: rates.get(a.vendor.categoryId) ?? null,
     payout: payout ? { status: payout.status, commissionRate: payout.commissionRate, commissionAmount: payout.commissionAmount, netAmount: payout.netAmount } : null,
     payments: a.vendorPayments.map((p) => ({ amount: p.amount, voided: p.voidedAt !== null })),
   });
@@ -143,6 +147,9 @@ function workView(a: Loaded, rates: Map<string, number | null>): WorkView {
     workOrder: a.workOrder ? { id: a.workOrder.id, number: a.workOrder.number, status: a.workOrder.status } : null,
     pricingModel: a.pricingModel,
     vendorPrice: a.vendorPrice,
+    adjustments: (a.workOrder?.adjustments ?? []).map((x) => ({ id: x.id, kind: x.kind, payableDelta: x.payableDelta, clientPriceDelta: x.clientPriceDelta, reason: x.reason, createdAt: x.createdAt.toISOString() })),
+    vendorDoneAt: a.vendorDoneAt?.toISOString() ?? null,
+    vendorDoneNote: a.vendorDoneNote,
   };
 }
 
@@ -170,6 +177,8 @@ export interface VendorWorkView {
   owed: boolean;
   payable: number | null;
   workOrder: { id: string; number: string; status: string } | null;
+  adjustments: { id: string; kind: string; payableDelta: number; reason: string; createdAt: string }[]; // never the couple's side
+  vendorDone: boolean;
   paid: number;
   remaining: number | null;
   payments: { id: string; amount: number; paidOn: string; methodLabel: string; reference: string | null }[];
@@ -186,6 +195,8 @@ function vendorWorkView(w: WorkView): VendorWorkView {
     owed: w.money.owed,
     payable: w.money.payable,
     workOrder: w.workOrder,
+    adjustments: w.adjustments.map((x) => ({ id: x.id, kind: x.kind, payableDelta: x.payableDelta, reason: x.reason, createdAt: x.createdAt })),
+    vendorDone: w.vendorDoneAt !== null,
     paid: w.money.paid,
     remaining: w.money.owed ? w.money.remaining : w.money.paid > 0 ? -w.money.paid : 0,
     payments: w.payments.filter((p) => !p.voided).map((p) => ({ id: p.id, amount: p.amount, paidOn: p.paidOn, methodLabel: p.methodLabel, reference: p.reference })),
@@ -236,7 +247,7 @@ export const vendorPaymentService = {
   async companyTotals(): Promise<{ outstanding: number; worksLeft: number; unknownWorks: number; ledgerPaid: number; settledLedgerCommission: number }> {
     const loaded = await prisma.vendorBooking.findMany({
       where: { OR: [{ status: { in: ['CONFIRMED', 'COMPLETED'] } }, { vendorPayments: { some: { voidedAt: null } } }] },
-      include: { vendor: { select: { categoryId: true } }, payouts: true, workOrder: true, vendorPayments: { select: { amount: true, voidedAt: true } } },
+      include: { vendor: { select: { categoryId: true } }, payouts: true, workOrder: { include: { adjustments: true } }, vendorPayments: { select: { amount: true, voidedAt: true } } },
     });
     const rates = await ratesFor(loaded.map((a) => a.vendor.categoryId));
     let outstanding = 0, worksLeft = 0, unknownWorks = 0, ledgerPaid = 0, settledLedgerCommission = 0;
@@ -247,7 +258,7 @@ export const vendorPaymentService = {
         status: a.status,
         venueStatus: a.venueStatus,
         agreedPrice: a.agreedPrice,
-        pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, currentRate: rates.get(a.vendor.categoryId) ?? null,
+        pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, vendorDone: a.vendorDoneAt !== null, currentRate: rates.get(a.vendor.categoryId) ?? null,
         payout: payout ? { status: payout.status, commissionRate: payout.commissionRate, commissionAmount: payout.commissionAmount, netAmount: payout.netAmount } : null,
         payments: a.vendorPayments.map((p) => ({ amount: p.amount, voided: p.voidedAt !== null })),
       });
@@ -271,7 +282,7 @@ export const vendorPaymentService = {
       await tx.$queryRaw`SELECT id FROM vendor_bookings WHERE id = ${vendorBookingId} FOR UPDATE`;
       const a = await tx.vendorBooking.findFirst({
         where: { id: vendorBookingId, weddingEvent: { weddingId } },
-        include: { vendor: { select: { id: true, name: true, categoryId: true } }, payouts: true, workOrder: true, vendorPayments: { select: { amount: true, voidedAt: true } } },
+        include: { vendor: { select: { id: true, name: true, categoryId: true } }, payouts: true, workOrder: { include: { adjustments: true } }, vendorPayments: { select: { amount: true, voidedAt: true } } },
       });
       if (!a) throw new NotFoundError('VendorBooking', vendorBookingId);
       if (a.status !== 'CONFIRMED' && a.status !== 'COMPLETED') throw new ConflictError('Payments are recorded only for work the vendor has confirmed');
@@ -283,13 +294,21 @@ export const vendorPaymentService = {
         status: a.status,
         venueStatus: a.venueStatus,
         agreedPrice: a.agreedPrice,
-        pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, currentRate: rates.get(a.vendor.categoryId) ?? null,
+        pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, vendorDone: a.vendorDoneAt !== null, currentRate: rates.get(a.vendor.categoryId) ?? null,
         payout: payout ? { status: payout.status, commissionRate: payout.commissionRate, commissionAmount: payout.commissionAmount, netAmount: payout.netAmount } : null,
         payments: a.vendorPayments.map((p) => ({ amount: p.amount, voided: p.voidedAt !== null })),
       });
       const c = checkPayment(input, money.remaining, indiaToday());
+      // The final payment waits for the work to be verified (money design v1, PR 6, decision 4) — or a reason to pay now, recorded.
+      const override = typeof input.finalOverrideReason === 'string' ? input.finalOverrideReason.replace(/\s+/g, ' ').trim() : '';
+      const isFinal = c.ok && money.remaining !== null && c.value.amount === money.remaining;
+      if (c.ok && isFinal && a.status !== 'COMPLETED' && override.length < 3) {
+        throw new ValidationError('This is the final payment and the work is not verified yet — mark it completed first, or give a reason to pay now');
+      }
       if (!c.ok) throw new ValidationError(c.error);
-      const created = await tx.vendorPayment.create({ data: { ...c.value, vendorBooking: { connect: { id: a.id } }, vendor: { connect: { id: a.vendorId } }, recordedById: actorId } });
+      const overridden = isFinal && a.status !== 'COMPLETED';
+      if (overridden) await auditAs(tx, actorId, `final payment before verification: ${override}`);
+      const created = await tx.vendorPayment.create({ data: { ...c.value, vendorBooking: { connect: { id: a.id } }, vendor: { connect: { id: a.vendorId } }, recordedById: actorId, ...(overridden ? { finalOverrideReason: override, finalOverrideById: actorId } : {}) } });
       await tx.activityLog.create({
         data: {
           type: ActivityType.STATUS_CHANGED,
