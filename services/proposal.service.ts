@@ -202,7 +202,8 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     // D8: the business that owns this quotation — Shaadi Shopping, or the venue whose own customer this is.
     view.brand = await deps.brand(q.businessId);
     // The GST number the couple sees is the one frozen on THIS quotation (Quotation.sellerGstin), never today's business profile.
-    if (!view.brand.isPlatform) view.brand = { ...view.brand, gstin: q.sellerGstin ?? null };
+    // Shaadi Shopping's older quotations have none frozen: they show its business record's (as its receipts do).
+    view.brand = { ...view.brand, gstin: q.sellerGstin ?? (view.brand.isPlatform ? (view.brand.gstin ?? null) : null) };
     // "Your hall": a venue's own quotation for its own enquiry — started now, read alongside what follows, awaited at the end. A
     // failure here never hides the proposal.
     const hallsRead: Promise<ProposalHall[]> =

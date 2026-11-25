@@ -44,7 +44,8 @@ export function Letterhead({ issuer, title, facts }: { issuer: ReceiptIssuer; ti
   return (
     <>
       <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-[#8B1A4A] via-[#C5A46D] to-[#8B1A4A]" />
-      <header className="mt-6 flex items-start justify-between gap-8">
+      {/* Side by side from 640px (and on paper); stacked on a phone, where the logo and phone were squeezed into a sliver. */}
+      <header className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8 print:flex-row print:items-start print:justify-between print:gap-8">
         <div className="min-w-0">
           {issuer.isPlatform ? (
             // eslint-disable-next-line @next/next/no-img-element -- static logo in /public, printed as-is
@@ -66,11 +67,11 @@ export function Letterhead({ issuer, title, facts }: { issuer: ReceiptIssuer; ti
             {issuer.gstin && <>GSTIN {issuer.gstin}</>}
           </p>
         </div>
-        <div className="shrink-0 text-right">
+        <div className="shrink-0 sm:text-right print:text-right">
           <p className="text-[22px] tracking-[0.12em] text-[#8B1A4A]" style={serif}>
             {title}
           </p>
-          <dl className="mt-3 grid grid-cols-[auto_auto] justify-end gap-x-4 gap-y-1 text-[11px]">
+          <dl className="mt-3 grid grid-cols-[auto_auto] justify-start gap-x-4 gap-y-1 text-[11px] sm:justify-end print:justify-end">
             {facts.map(([k, v]) => (
               <div key={k} className="contents">
                 <dt className="text-[#9A8676]">{k}</dt>

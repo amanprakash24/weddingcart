@@ -121,6 +121,8 @@ export interface ProposalQuotationInput {
   validUntil: Date | null;
   acceptedAt: Date | null;
   changesRequestedAt: Date | null;
+  sentAt?: Date | null; // when it went to the couple (the date on its letterhead)
+  createdAt?: Date;
   subtotal: number;
   discount: number;
   gstEnabled: boolean;
@@ -185,6 +187,7 @@ export interface CustomerProposal {
   version: number;
   state: ProposalState;
   validUntil: string | null;
+  issuedOn: string | null; // when the quotation was sent (else made) — on its letterhead (25 Nov 2026)
   acceptedAt: string | null;
   changesRequested: boolean;
   booked: boolean; // the booking made from this proposal is confirmed
@@ -308,6 +311,7 @@ export function toCustomerProposal(
     version: q.revision,
     state,
     validUntil: q.validUntil ? q.validUntil.toISOString() : null,
+    issuedOn: (q.sentAt ?? q.createdAt)?.toISOString() ?? null, // the date printed on the quotation
     acceptedAt: q.acceptedAt ? q.acceptedAt.toISOString() : null,
     changesRequested: q.changesRequestedAt !== null,
     booked: state === 'ACCEPTED' && after.booked,

@@ -418,7 +418,7 @@ describe('reviews (Roadmap 1.4)', () => {
 
 describe('brand on the couple’s link (D8)', () => {
   test('Shaadi Shopping’s quotation shows Shaadi Shopping', async () => {
-    expect((await proposalService.view(TOKEN))?.brand).toEqual({ name: 'Shaadi Shopping', phone: null, isPlatform: true });
+    expect((await proposalService.view(TOKEN))?.brand).toEqual({ name: 'Shaadi Shopping', phone: null, isPlatform: true, gstin: null }); // GSTIN: frozen on the quotation, else Shaadi Shopping's own (none here)
   });
 
   test('a venue’s own quotation shows the venue and its number', async () => {

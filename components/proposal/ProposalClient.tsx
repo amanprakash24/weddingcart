@@ -21,6 +21,7 @@ import PaymentsPanel from '@/components/proposal/PaymentsPanel';
 import ReviewsPanel from '@/components/proposal/ReviewsPanel';
 import YourBookingPanel from '@/components/proposal/YourBookingPanel';
 import YourHallPanel from '@/components/proposal/YourHallPanel';
+import { Letterhead } from '@/components/proposal/PaymentReceipt';
 import { blockedHall, hallLine, hallStatusWords, liveHalls } from '@/lib/quotation/proposalHalls';
 
 // A clock for "Your hall": a 30-second tick, so a hold that ends while the page is open is seen to end (another booking's hold →
@@ -561,13 +562,19 @@ export default function ProposalClient({
       {/* Brand bar */}
       <div className="border-b border-[#C5A46D]/20 bg-[#1E0510] px-5 py-3 print:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <p className="flex items-center gap-3 text-lg tracking-wide text-[#F3D9A4]" style={serif}>
-            {p.brand.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element -- the business's own logo, an address stored by our own upload route
-              <img src={p.brand.logoUrl} alt="" className="h-9 w-9 rounded-md bg-white object-contain p-0.5" />
-            )}
-            {contact.name}
-          </p>
+          {contact.isPlatform ? (
+            // Shaadi Shopping's own logo (25 Nov 2026 — its quotations showed only the words), the light version for this dark bar
+            // eslint-disable-next-line @next/next/no-img-element -- static logo in /public
+            <img src="/logo-horizontal-light.png" alt="Shaadi Shopping" className="h-9 w-auto" />
+          ) : (
+            <p className="flex items-center gap-3 text-lg tracking-wide text-[#F3D9A4]" style={serif}>
+              {p.brand.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element -- the business's own logo, an address stored by our own upload route
+                <img src={p.brand.logoUrl} alt="" className="h-9 w-9 rounded-md bg-white object-contain p-0.5" />
+              )}
+              {contact.name}
+            </p>
+          )}
           {contact.phone && (
             <a
               href={`tel:${contact.phone.tel}`}
@@ -781,23 +788,35 @@ export default function ProposalClient({
           <PaymentsPanel token={token} number={p.number} coupleName={p.couple.name} weddingDate={p.wedding.date} initial={p.payments} from={{ name: contact.name, phone: contact.phone?.display ?? null, isPlatform: contact.isPlatform, logoUrl: p.brand.logoUrl ?? null, gstin: p.brand.gstin ?? null, whatsApp: contact.isPlatform ? null : (contact.phone?.whatsApp ?? null) }} />
         ) : (
           <div role="tabpanel" aria-label="Detailed quotation" className="space-y-6">
-            {/* Printed header — the on-screen hero does not print. */}
-            <div className="hidden print:block">
-              <p className="text-xl" style={serif}>
-                {contact.name} — Quotation {p.number}
-              </p>
-              <p className="text-sm">
-                {[p.couple.name, ...facts, p.venueName ? `Venue: ${p.venueName}` : null, ...p.halls.map((h) => `Hall: ${hallLine(h)}`)]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-              <p className="text-xs">
-                Version {p.version}
-                {validUntil && <> · Valid until {validUntil}</>}
-                {contact.phone && <> · {contact.phone.display}</>}
-                {p.brand.gstin && <> · GSTIN {p.brand.gstin}</>}
-              </p>
-            </div>
+            {/* The quotation's letterhead, on screen and on paper (25 Nov 2026: Shaadi Shopping's quotations had no logo and no
+                details) — the same letterhead as the receipts: the issuer's logo, phone and GSTIN; number, version, date, validity;
+                and who it is prepared for. */}
+            <section className="rounded-[24px] bg-white p-5 shadow-[0_20px_60px_rgba(42,6,20,0.06)] ring-1 ring-[#E8DCC8]/70 sm:p-8 print:p-0 print:shadow-none print:ring-0">
+              <Letterhead
+                issuer={{ name: contact.name, phone: contact.phone?.display ?? null, isPlatform: contact.isPlatform, logoUrl: p.brand.logoUrl ?? null, gstin: p.brand.gstin ?? null }}
+                title="QUOTATION"
+                facts={[
+                  ['Quotation no.', p.number],
+                  ['Version', String(p.version)],
+                  ...(p.issuedOn ? [['Date', formatDate(p.issuedOn) ?? ''] as [string, string]] : []),
+                  ...(validUntil ? [['Valid until', validUntil] as [string, string]] : []),
+                ]}
+              />
+              <div className="mt-6 grid gap-4 border-t border-[#E8DCC8] pt-4 text-sm sm:grid-cols-2">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#8B1A4A]">Prepared for</p>
+                  <p className="mt-1 text-base text-[#2A1F1B]" style={serif}>{p.couple.name ?? 'Your wedding'}</p>
+                  {p.wedding.eventType && <p className="text-[#6B5B4D]">{p.wedding.eventType}</p>}
+                </div>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px] text-[#6B5B4D]">
+                  {weddingDate && (<><dt>Date</dt><dd className="text-[#2A1F1B]">{weddingDate}</dd></>)}
+                  {p.wedding.guestCount != null && (<><dt>Guests</dt><dd className="text-[#2A1F1B]">{p.wedding.guestCount.toLocaleString('en-IN')}</dd></>)}
+                  {p.wedding.city && (<><dt>City</dt><dd className="text-[#2A1F1B]">{p.wedding.city}</dd></>)}
+                  {p.venueName && (<><dt>Venue</dt><dd className="text-[#2A1F1B]">{p.venueName}</dd></>)}
+                  {p.halls.map((h) => (<div key={hallLine(h)} className="contents"><dt>Hall</dt><dd className="text-[#2A1F1B]">{hallLine(h)}</dd></div>))}
+                </dl>
+              </div>
+            </section>
 
             <section className="rounded-[24px] bg-white p-5 shadow-[0_20px_60px_rgba(42,6,20,0.06)] ring-1 ring-[#E8DCC8]/70 sm:p-8 print:p-0 print:shadow-none print:ring-0">
               <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
