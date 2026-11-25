@@ -21,7 +21,7 @@ const STATUS_WORDS: Record<string, string> = {
 const describe = (q: QuoteFact) => `${q.quotationNumber} (${STATUS_WORDS[q.status] ?? q.status.toLowerCase()}${q.revision > 1 ? `, revision ${q.revision}` : ''})`;
 
 export function describeSourceConflict(sourceLabel: string, quotes: QuoteFact[]): string {
-  const open = quotes.filter((q) => q.status === 'DRAFT' || q.status === 'SENT');
+  const open = quotes.filter((q) => q.status === 'DRAFT' || q.status === 'READY_TO_SHARE' || q.status === 'SENT');
   const accepted = quotes.filter((q) => q.status === 'ACCEPTED');
   const all = quotes.map(describe).join(', ') || 'none';
 

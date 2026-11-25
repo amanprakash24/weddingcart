@@ -88,7 +88,7 @@ export function createVendorEnquiryService(deps: VendorEnquiryDeps) {
       // The current quote: the accepted one, else the newest open one. Replaced/declined/expired quotes don't count.
       const quote =
         (await db.quotation.findFirst({ where: { ...where, status: 'ACCEPTED' }, include: { items: true } })) ??
-        (await db.quotation.findFirst({ where: { ...where, status: { in: ['DRAFT', 'SENT'] } }, orderBy: { createdAt: 'desc' }, include: { items: true } }));
+        (await db.quotation.findFirst({ where: { ...where, status: { in: ['DRAFT', 'READY_TO_SHARE', 'SENT'] } }, orderBy: { createdAt: 'desc' }, include: { items: true } }));
       const selections =
         sourceType === 'CONSULTATION' ? await db.consultationVendorSelection.findMany({ where: { consultationId: sourceId }, select: { vendorId: true, serviceKey: true } }) : [];
       const f = await facts(sourceType, sourceId);
