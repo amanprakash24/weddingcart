@@ -1,3 +1,4 @@
+import { auditAs } from '@/lib/finance/audit';
 import { prisma } from '@/lib/prisma';
 import { ActivityType } from '@/generated/prisma/client';
 import type { Payout, Prisma } from '@/generated/prisma/client';
@@ -54,6 +55,7 @@ export const payoutService = {
     const netAmount = grossAmount - commissionAmount;
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const payout = await payoutRepository.create(
         {
           vendorBooking: { connect: { id: vendorBookingId } },
@@ -96,6 +98,7 @@ export const payoutService = {
     }
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const updated = await payoutRepository.update(payoutId, { status: 'PAID', paidAt: new Date() }, tx);
 
       await activityLogRepository.create(

@@ -58,7 +58,7 @@ describe('founder-only screens', () => {
   test('Couple sign-in is not in More for everyone — the shell adds it for the founder only', () => {
     expect(MORE.map((item) => item.key)).not.toContain('couple-sign-in');
     const shell = readFileSync(join(root, 'components', 'admin', 'AdminShell.tsx'), 'utf8');
-    expect(shell).toContain("role === 'super_admin' ? [...MORE, OUR_TEAM, COUPLE_SIGN_IN, SETUP] : MORE");
+    expect(shell).toContain("role === 'super_admin' ? [...MORE, OUR_TEAM, MONEY_CHECK, COUPLE_SIGN_IN, SETUP] : MORE");
   });
 
   test('Invoices (every invoice in the company, with amounts) is shown to the founder only — desktop and phone', () => {

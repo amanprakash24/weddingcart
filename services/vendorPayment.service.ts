@@ -1,3 +1,4 @@
+import { auditAs } from '@/lib/finance/audit';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
@@ -209,6 +210,17 @@ export const vendorPaymentService = {
     return { totals: vendorTotals(works.map((w) => w.money)), works: works.map(vendorWorkView) };
   },
 
+  // Reconciliation (founder, read-only): every assignment's money with the facts the checks need — from the same calculation the
+  // screens use (lib/finance/reconciliation.ts).
+  async reconciliationRows(): Promise<{ ref: string; vendorId: string; money: AssignmentMoney; hasPayout: boolean; ledgerEntries: number }[]> {
+    const loaded = await loadAssignments({});
+    const rates = await ratesFor(loaded.map((a) => a.vendor.categoryId));
+    return loaded.map((a) => {
+      const w = workView(a, rates);
+      return { ref: `${w.weddingNumber} · ${w.vendorName} · ${w.functionName}`, vendorId: a.vendorId, money: w.money, hasPayout: a.payouts.length > 0, ledgerEntries: a.vendorPayments.filter((p) => p.voidedAt === null).length };
+    });
+  },
+
   // Founder dashboard, all weddings: what is still owed to vendors for confirmed work, on how many works, what has gone out as
   // payments recorded one by one, and the commission on works now fully paid that way (a payout's own commission is counted
   // from the payout).
@@ -246,6 +258,7 @@ export const vendorPaymentService = {
   // together pay more than is owed.
   async record(weddingId: string, vendorBookingId: string, input: PaymentInput, actorId: string | null) {
     return prisma.$transaction(async (tx) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       await tx.$queryRaw`SELECT id FROM vendor_bookings WHERE id = ${vendorBookingId} FOR UPDATE`;
       const a = await tx.vendorBooking.findFirst({
         where: { id: vendorBookingId, weddingEvent: { weddingId } },
@@ -286,6 +299,7 @@ export const vendorPaymentService = {
     const r = checkVoidReason(reason);
     if (!r.ok) throw new ValidationError(r.error);
     return prisma.$transaction(async (tx) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const p = await tx.vendorPayment.findFirst({ where: { id: paymentId, vendorBooking: { weddingEvent: { weddingId } } }, include: { vendor: { select: { name: true } } } });
       if (!p) throw new NotFoundError('VendorPayment', paymentId);
       if (p.voidedAt) throw new ConflictError('This payment entry was already voided');

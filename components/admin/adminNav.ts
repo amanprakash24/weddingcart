@@ -1,4 +1,4 @@
-import { Star, AlertTriangle, Briefcase, CalendarDays, Handshake, Database, FileText, Heart, KeyRound, LayoutDashboard, ListChecks, Receipt, Sparkles, Tag, UserRound, Users, UsersRound } from 'lucide-react';
+import { Star, AlertTriangle, Briefcase, CalendarDays, Handshake, Database, FileText, Heart, KeyRound, LayoutDashboard, ListChecks, Receipt, ShieldCheck, Sparkles, Tag, UserRound, Users, UsersRound } from 'lucide-react';
 
 // The one admin navigation. Product structure: Today / Leads & Quotes / Weddings / Vendors / Invoices, with everything
 // else under More. Every /admin page renders inside this shell (app/admin/layout.tsx), so the same sidebar (desktop) or
@@ -92,6 +92,9 @@ export const MORE: NavItem[] = [
 ];
 
 // Shaadi Shopping's own people (services/adminTeam.service.ts) — shown to the founder only; the server refuses everyone else.
+// The founder's money reconciliation (money design v1, PR 2): read-only checks and the finance audit — founder only, server-enforced.
+export const MONEY_CHECK: NavItem = { key: 'money-check', label: 'Money check', href: '/admin/reconciliation', icon: ShieldCheck, isActive: ({ pathname }) => pathname.startsWith('/admin/reconciliation') };
+
 export const OUR_TEAM: NavItem = { key: 'our-team', label: 'Our team', href: '/admin/team', icon: UsersRound, isActive: ({ pathname }) => pathname.startsWith('/admin/team') };
 
 // A couple's My Wedding sign-in by mobile number, and a new code if they lost theirs (services/coupleLogin.service.ts) — founder only,

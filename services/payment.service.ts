@@ -1,3 +1,4 @@
+import { auditAs, SYSTEM_ACTORS } from '@/lib/finance/audit';
 import { prisma } from '@/lib/prisma';
 import { Prisma, ActivityType } from '@/generated/prisma/client';
 import type { PaymentLink } from '@/generated/prisma/client';
@@ -94,6 +95,7 @@ export const paymentService = {
     }
 
     return prisma.$transaction(async (tx) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const link = await paymentLinkRepository.create(
         {
           invoice: { connect: { id: invoice.id } },
@@ -127,6 +129,7 @@ export const paymentService = {
       const linkId = payload.payload.payment_link?.entity.id;
       if (!linkId) return { handled: false };
       await prisma.$transaction(async (tx) => {
+        await auditAs(tx, SYSTEM_ACTORS.razorpay); // finance audit: who is acting (lib/finance/audit.ts)
         const link = await paymentLinkRepository.findByRazorpayId(linkId, tx);
         if (link && link.status === 'CREATED') {
           await paymentLinkRepository.update(link.id, { status: 'EXPIRED' }, tx);
@@ -175,6 +178,7 @@ export const paymentService = {
     const amountRupees = paymentEntity.amount / 100;
 
     await prisma.$transaction(async (tx) => {
+      await auditAs(tx, SYSTEM_ACTORS.razorpay); // finance audit: who is acting (lib/finance/audit.ts)
       await createPayment(tx, invoice.id, {
         amount: amountRupees,
         method: paymentEntity.method,

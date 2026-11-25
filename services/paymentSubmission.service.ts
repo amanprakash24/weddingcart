@@ -1,3 +1,4 @@
+import { auditAs, SYSTEM_ACTORS } from '@/lib/finance/audit';
 import type { Prisma } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
@@ -130,6 +131,7 @@ export function createPaymentSubmissionService(deps: PaymentSubmissionDeps = def
       const stored = proof && proof.size > 0 ? await deps.upload(proof.bytes) : null;
       try {
         await deps.db.$transaction(async (tx) => {
+          await auditAs(tx, SYSTEM_ACTORS.coupleLink); // finance audit: who is acting (lib/finance/audit.ts)
           await tx.$queryRaw`SELECT "id" FROM "quotations" WHERE "id" = ${quotation.id} FOR UPDATE`;
           if ((await tx.paymentSubmission.count({ where: { quotationId: quotation.id, status: 'PENDING' } })) >= PENDING_MAX)
             throw new ConflictError('We are still checking your earlier payments — please wait for us, or call us');
@@ -205,6 +207,7 @@ export function createPaymentSubmissionService(deps: PaymentSubmissionDeps = def
       if (!quotation) throw new NotFoundError('Quotation', quotationId);
 
       await deps.db.$transaction(async (tx) => {
+        await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
         const sub = await tx.paymentSubmission.findUnique({ where: { id: submissionId } });
         if (!sub || sub.quotationId !== quotationId) throw new NotFoundError('Payment submission', submissionId);
         const updated = await tx.paymentSubmission.updateMany({ where: { id: submissionId, status: 'PENDING' }, data: { status: 'REJECTED', rejectReason: text, reviewedAt: deps.now(), reviewedById: actorId } });

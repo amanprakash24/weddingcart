@@ -1,3 +1,4 @@
+import { auditAs } from '@/lib/finance/audit';
 import type { Prisma } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
@@ -66,6 +67,7 @@ export const paymentScheduleService = {
 
   async set(quotationId: string, input: { instalments: InstalmentInput[]; expectedVersion: number }, actorId: string | null): Promise<PaymentScheduleView> {
     await prisma.$transaction(async (tx) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       // Lock the agreement row: two saves at once are taken one after the other, and the second sees the first's version.
       const locked = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "commercial_agreements" WHERE "quotationId" = ${quotationId} FOR UPDATE`;
       if (locked.length === 0) throw new ConflictError('There is no booking agreement for this quotation yet — accept the quotation and create the booking first');

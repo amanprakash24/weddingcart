@@ -1,3 +1,4 @@
+import { auditAs } from '@/lib/finance/audit';
 import type { Prisma, Wedding } from '@/generated/prisma/client';
 import { ActivityType } from '@/generated/prisma/enums';
 import { prisma } from '@/lib/prisma';
@@ -64,6 +65,7 @@ export const invoiceWorkflowService = {
   // DRAFT → SENT. Issuing is what makes an invoice "sent" — creating a payment link does it too (payment.service.ts).
   async issueInvoice(weddingId: string, invoiceId: string, actorId: string | null) {
     return prisma.$transaction(async (tx) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${invoiceId} FOR UPDATE`; // whoever arrives second sees the first one's result
       const invoice = await loadWeddingInvoice(tx, weddingId, invoiceId);
       if (invoice.status !== 'DRAFT') throw new ConflictError(`Invoice ${invoice.invoiceNumber} has already been issued`);
@@ -84,6 +86,7 @@ export const invoiceWorkflowService = {
   // The second invoice of an accepted agreement: total − advance, from the ACCEPTED quotation only.
   async createBalanceInvoice(weddingId: string, actorId: string | null) {
     return prisma.$transaction(async (tx) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       const wedding = await tx.wedding.findUnique({ where: { id: weddingId } });
       if (!wedding) throw new NotFoundError('Wedding', weddingId);
       const agreement = await findAgreementForWedding(tx, wedding);
@@ -150,6 +153,7 @@ export const invoiceWorkflowService = {
     actorId: string | null
   ) {
     return prisma.$transaction(async (tx) => {
+      await auditAs(tx, actorId); // finance audit: who is acting (lib/finance/audit.ts)
       // Two people recording at once must not both fit under the balance: serialise on the invoice row.
       await tx.$queryRaw`SELECT "id" FROM "invoices" WHERE "id" = ${invoiceId} FOR UPDATE`;
       const invoice = await loadWeddingInvoice(tx, weddingId, invoiceId);
