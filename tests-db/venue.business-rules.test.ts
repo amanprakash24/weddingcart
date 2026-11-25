@@ -107,7 +107,7 @@ dbDescribe('per-business numbers, rules and proposal links (real database)', () 
     const noPhone = await runInScope(await scopeForProposalToken(first[1].token), () => proposalService.view(first[1].token));
     expect(noPhone?.brand).toEqual({ name: venues[1].name, phone: null, isPlatform: false, logoUrl: null, gstin: null });
     const platformView = await runInScope(await scopeForProposalToken(platformToken), () => proposalService.view(platformToken));
-    expect(platformView?.brand).toEqual({ name: 'Shaadi Shopping', phone: null, isPlatform: true });
+    expect(platformView?.brand).toEqual({ name: 'Shaadi Shopping', phone: null, isPlatform: true, logoUrl: null, gstin: null }); // its own logo is the static one; GSTIN from the quotation or its record (none here)
   });
 
   test('a venue’s link opens nothing in another business’s records', async () => {
