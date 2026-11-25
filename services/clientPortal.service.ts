@@ -5,6 +5,8 @@ import { customerActivityText } from '@/lib/customer/activityText';
 import { coupleWeddings, weddingScope } from '@/lib/customer/coupleEntry';
 import { can, guestForViewer, type CoupleRole } from '@/lib/customer/familyAccess';
 import type { PendingFunctionChange } from '@/lib/wedding/coupleFunctions';
+import { budgetSummary, type BudgetSummary } from '@/lib/wedding/coupleBudget';
+import { coupleBudgetService, type BudgetRecords } from '@/services/coupleChecklistBudget.service';
 import { runInScope } from '@/lib/ownership/scope';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
 import { upiLink, upiPayeeFrom, upiPayeeOf } from '@/lib/payments/upi';
@@ -134,6 +136,8 @@ export interface ClientPortalEvent {
   ownVendors: { id: string; name: string; category: string; phone: string | null; price: number | null; notes: string | null; weddingEventId: string | null }[];
   quoteRequests: { id: string; vendorName: string; vendorSlug: string; category: string; functionId: string | null; functionIds: string[]; note: string | null; status: 'REQUESTED' | 'QUOTED' | 'NOT_AVAILABLE' | 'BOOKED' | 'CLOSED'; staffNote: string | null; createdAt: string }[];
   canAskForQuotes: boolean;
+  // The couple's own budget (25 Nov 2026): their records and the summary against what is booked and paid. Money permission only.
+  coupleBudget: { records: BudgetRecords; summary: BudgetSummary } | null;
   // Family access (23 Nov 2026): who is looking. OWNER = the couple; otherwise a family member's role. What a role may not see is
   // removed on the server (forRole below) — the screens only hide buttons.
   access: { role: CoupleRole; relation: string | null; canMoney: boolean; canPlan: boolean; canFamily: boolean };
@@ -157,6 +161,7 @@ export function forRole(event: ClientPortalEvent, role: CoupleRole, relation: st
     approvals: [],
     ownVendors: event.ownVendors.map((v) => ({ ...v, price: null })),
     quoteRequests: event.quoteRequests.map((r) => ({ ...r, staffNote: null })),
+    coupleBudget: null,
   };
 }
 
@@ -197,6 +202,11 @@ export const clientPortalService = {
     const claims = await coupleMoneyService.claims(weddingId).catch((err) => {
       console.error(`My Wedding payment claims for ${weddingId} could not be loaded —`, err instanceof Error ? err.message : err);
       return { claims: [], canClaim: false, inReview: 0 };
+    });
+    // The couple's own budget never takes My Wedding down: if it cannot be read, the Budget section is simply not shown.
+    const budgetRecords = await coupleBudgetService.records(weddingId).catch((err) => {
+      console.error(`My Wedding budget for ${weddingId} could not be loaded —`, err instanceof Error ? err.message : err);
+      return null;
     });
     return [workspace].map((workspace) => {
       const { wedding, couple, events, tasks, timeline, finance, documents, activity, guests } = workspace;
@@ -377,8 +387,24 @@ export const clientPortalService = {
         ownVendors,
         quoteRequests: quoteRequests.map((r) => ({ id: r.id, vendorName: r.vendor.name, vendorSlug: r.vendor.slug, category: r.vendor.category.name, functionId: r.weddingEventId, functionIds: r.functions.map((x) => x.weddingEventId), note: r.note, status: r.status, staffNote: r.staffNote, createdAt: r.createdAt.toISOString() })),
         canAskForQuotes: businessId === PLATFORM_BUSINESS_ID,
+        coupleBudget: null as { records: BudgetRecords; summary: BudgetSummary } | null, // filled below from the same money figures
         access: { role: 'OWNER' as const, relation: null, canMoney: true, canPlan: true, canFamily: true }, // set per person by forRole
       };
-    })[0];
+    }).map((event) => ({
+      ...event,
+      coupleBudget: budgetRecords
+        ? {
+            records: budgetRecords,
+            summary: budgetSummary({
+              total: budgetRecords.total,
+              planned: budgetRecords.planned,
+              booked: { agreed: event.money.agreed, paid: event.money.received },
+              bookedLines: (workspace.finance.agreement?.lines ?? []).map((l) => ({ category: l.category, description: l.description, amount: l.quantity * l.unitPrice })),
+              ownVendors: event.ownVendors,
+              expenses: budgetRecords.expenses,
+            }),
+          }
+        : null,
+    }))[0];
   },
 };

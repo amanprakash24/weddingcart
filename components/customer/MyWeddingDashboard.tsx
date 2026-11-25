@@ -8,7 +8,9 @@ import CoupleVendors from '@/components/customer/CoupleVendors';
 import CoupleFunctions from '@/components/customer/CoupleFunctions';
 import type { CustomerReceipt } from '@/lib/payments/customerPayment';
 import { signOut } from 'next-auth/react';
-import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, KeyRound, LogOut, MapPin, Phone, ShoppingBag, UserPlus, Users } from 'lucide-react';
+import { CalendarDays, CheckCircle2, CreditCard, FileText, Home, KeyRound, LogOut, MapPin, Phone, ListChecks, ShoppingBag, UserPlus, Users, Wallet } from 'lucide-react';
+import CoupleChecklist from '@/components/customer/CoupleChecklist';
+import CoupleBudget from '@/components/customer/CoupleBudget';
 import CoupleFamily from '@/components/customer/CoupleFamily';
 import { FAMILY_ROLE_WORDS } from '@/lib/customer/familyAccess';
 import type { ClientPortalEvent } from '@/services/clientPortal.service';
@@ -197,7 +199,10 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
       <div className="mx-auto flex max-w-[1360px] flex-wrap items-start gap-6 px-4 py-5 sm:px-6 print:hidden">
         {/* Side menu — stays in place while the page scrolls (desktop) */}
         <nav aria-label="My wedding" className="os-glass-dark sticky top-20 hidden max-h-[calc(100vh-6rem)] w-[240px] shrink-0 overflow-y-auto rounded-[22px] border border-white/10 bg-[var(--color-bg-inverse)] p-3 lg:block">
-          {[...menu, ...(access.canFamily ? [{ id: 'family', label: 'Family', short: 'Family', icon: UserPlus }] : [])].map(({ id, label, icon: Icon }) => (
+          {[
+            ...menu.flatMap((x) => (x.id === 'functions' ? [x, { id: 'checklist', label: 'Checklist', short: 'Checklist', icon: ListChecks }] : x.id === 'payments' ? [x, { id: 'budget', label: 'Budget', short: 'Budget', icon: Wallet }] : [x])),
+            ...(access.canFamily ? [{ id: 'family', label: 'Family', short: 'Family', icon: UserPlus }] : []),
+          ].map(({ id, label, icon: Icon }) => (
             <a key={id} href={`#${id}`} className="flex min-h-11 items-center gap-2.5 rounded-xl px-3 text-[15px] text-[#CBD5E1] hover:bg-white/[0.08] hover:text-white">
               <Icon className="h-[18px] w-[18px]" aria-hidden /> {label}
               {id === 'overview' && open.length > 0 && <span className="ml-auto rounded-full bg-[var(--color-accent-pink)] px-2 text-xs font-bold text-[#111827]">{open.length}</span>}
@@ -313,8 +318,14 @@ export default function MyWeddingDashboard({ events, phone, codeGiven }: { event
             </aside>
           </div>
 
+          {/* Checklist (25 Nov 2026): a ready-made list the couple and planning family tick, edit and add to */}
+          <CoupleChecklist event={event} />
+
           {/* Payments: plan, every payment and its receipt, pay by UPI (22 Nov 2026) */}
           {access.canMoney && <MyWeddingPayments event={event} expert={expert} onReceipt={(r) => setPrinting({ kind: 'receipt', receipt: r })} />}
+
+          {/* Budget (25 Nov 2026): the couple's own plan and spending; what is booked with us fills in by itself */}
+          {access.canMoney && <CoupleBudget event={event} bookedWith={event.business.isShaadiShopping ? 'Shaadi Shopping' : event.business.name} />}
 
           {/* Vendors */}
           <CoupleVendors event={event} />
