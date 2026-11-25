@@ -53,7 +53,7 @@ dbDescribe('Finance audit log and reconciliation (real database)', () => {
     await vendorPaymentService.voidPayment(weddingId, p.id, 'DBTEST typed the wrong amount', actor);
     const log = await events('vendor_payments', p.id);
     expect(log.map((e) => [e.action, e.actorId])).toEqual([['INSERT', actor], ['UPDATE', actor]]);
-    expect(log[1].changed).toEqual(['voidReason', 'voidedAt', 'voidedById']);
+    expect([...log[1].changed].sort()).toEqual(['voidReason', 'voidedAt', 'voidedById'].sort()); // stored in byte order (COLLATE "C"), compared as a set
     expect((log[1].before as { voidedAt: string | null }).voidedAt).toBeNull();
   });
 

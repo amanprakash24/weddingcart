@@ -33,7 +33,7 @@ BEGIN
   IF TG_OP <> 'INSERT' THEN o := to_jsonb(OLD) - 'updatedAt'; END IF;
   IF TG_OP <> 'DELETE' THEN n := to_jsonb(NEW) - 'updatedAt'; END IF;
   IF TG_OP = 'UPDATE' THEN
-    SELECT coalesce(array_agg(k ORDER BY k), ARRAY[]::text[]) INTO ch FROM jsonb_object_keys(n) AS k WHERE n -> k IS DISTINCT FROM o -> k;
+    SELECT coalesce(array_agg(k ORDER BY k COLLATE "C"), ARRAY[]::text[]) INTO ch FROM jsonb_object_keys(n) AS k WHERE n -> k IS DISTINCT FROM o -> k;
     IF cardinality(ch) = 0 THEN RETURN NULL; END IF; -- only updatedAt moved: nothing to record
   END IF;
   INSERT INTO "finance_events" ("tableName", "rowId", "action", "actorId", "reason", "businessId", "changed", "before", "after")
