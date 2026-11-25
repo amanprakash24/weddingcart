@@ -12,7 +12,7 @@ export interface HistoryQuotation {
   id: string;
   quotationNumber: string;
   revision: number;
-  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
+  status: 'DRAFT' | 'READY_TO_SHARE' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
   total: number;
   discount: number;
   advanceAmount: number;
@@ -103,7 +103,7 @@ export function negotiationSteps(quotations: HistoryQuotation[]): NegotiationSte
   ];
   // Which step the deal is waiting on (none once accepted, or when the deal has ended).
   if (!accepted) {
-    const open = quotations.some((q) => q.status === 'DRAFT' || q.status === 'SENT');
+    const open = quotations.some((q) => q.status === 'DRAFT' || q.status === 'READY_TO_SHARE' || q.status === 'SENT');
     if (open) steps.find((step) => step.key === (revised && !revisedSent ? 'revised-sent' : 'accepted'))!.state = 'current';
   }
   return steps;

@@ -26,14 +26,14 @@ describe('POST /api/quotations/[id]/customer-link', () => {
   test('returns the new link ONCE, built on the host staff are using, never cached', async () => {
     const res = await POST(req('POST'), ctx);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ success: true, data: { url: `https://www.shaadishopping.com/proposal/${'T'.repeat(43)}` } });
+    expect(await res.json()).toEqual({ success: true, data: { url: `https://www.shaadishopping.com/quotation/${'T'.repeat(43)}` } });
     expect(res.headers.get('cache-control')).toBe('no-store');
     expect(issueCustomerLink).toHaveBeenCalledWith('q1', 'staff-1');
   });
 
   test('a preview deployment gets a preview link', async () => {
     const res = await POST(req('POST', 'https://weddingcart-abc.vercel.app'), ctx);
-    expect((await res.json()).data.url.startsWith('https://weddingcart-abc.vercel.app/proposal/')).toBe(true);
+    expect((await res.json()).data.url.startsWith('https://weddingcart-abc.vercel.app/quotation/')).toBe(true);
   });
 
   test('not sent / not valid → 409', async () => {

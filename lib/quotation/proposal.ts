@@ -39,6 +39,11 @@ export function proposalUrl(baseUrl: string, token: string): string {
   return `${baseUrl.replace(/\/+$/, '')}/proposal/${token}`;
 }
 
+// The same page at /quotation/<token> (app/quotation/[token]) — the address the CRM puts in its WhatsApp message.
+export function quotationUrl(baseUrl: string, token: string): string {
+  return `${baseUrl.replace(/\/+$/, '')}/quotation/${token}`;
+}
+
 // ---- what the couple may do ----
 
 // OPEN: view + accept + request changes. EXPIRED / ACCEPTED: view a read-only state. INVALID: the generic
@@ -48,7 +53,8 @@ export type ProposalState = 'OPEN' | 'EXPIRED' | 'ACCEPTED' | 'INVALID';
 export function proposalState(q: { status: QuotationStatus; validUntil: Date | null }, now: Date): ProposalState {
   if (q.status === 'ACCEPTED') return 'ACCEPTED';
   if (q.status === 'EXPIRED') return 'EXPIRED';
-  if (q.status === 'SENT') {
+  // READY_TO_SHARE: the link was made and WhatsApp opened — the client may open it before staff confirm they pressed Send.
+  if (q.status === 'SENT' || q.status === 'READY_TO_SHARE') {
     if (!q.validUntil || q.validUntil.getTime() <= now.getTime()) return 'EXPIRED';
     return 'OPEN';
   }
@@ -70,7 +76,9 @@ export function validateChangeNote(note: unknown): string {
 
 // A second request adds to the first instead of replacing it, so nothing the couple wrote is lost.
 export function appendChangeNote(existing: string | null, note: string, at: Date): string {
-  const stamped = `[${at.toISOString().slice(0, 10)}] ${note}`;
+  // India's date, not UTC: a request made after midnight in India was stamped with the previous day (found 20 Nov 2026).
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
+  const stamped = `[${day}] ${note}`;
   return existing ? `${existing}\n\n${stamped}` : stamped;
 }
 
@@ -113,6 +121,8 @@ export interface ProposalQuotationInput {
   validUntil: Date | null;
   acceptedAt: Date | null;
   changesRequestedAt: Date | null;
+  sentAt?: Date | null; // when it went to the couple (the date on its letterhead)
+  createdAt?: Date;
   subtotal: number;
   discount: number;
   gstEnabled: boolean;
@@ -177,6 +187,7 @@ export interface CustomerProposal {
   version: number;
   state: ProposalState;
   validUntil: string | null;
+  issuedOn: string | null; // when the quotation was sent (else made) — on its letterhead (25 Nov 2026)
   acceptedAt: string | null;
   changesRequested: boolean;
   booked: boolean; // the booking made from this proposal is confirmed
@@ -300,6 +311,7 @@ export function toCustomerProposal(
     version: q.revision,
     state,
     validUntil: q.validUntil ? q.validUntil.toISOString() : null,
+    issuedOn: (q.sentAt ?? q.createdAt)?.toISOString() ?? null, // the date printed on the quotation
     acceptedAt: q.acceptedAt ? q.acceptedAt.toISOString() : null,
     changesRequested: q.changesRequestedAt !== null,
     booked: state === 'ACCEPTED' && after.booked,

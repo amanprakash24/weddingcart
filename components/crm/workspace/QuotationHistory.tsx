@@ -5,6 +5,7 @@ import { buildVersionHistory, negotiationSteps, type HistoryQuotation } from '@/
 
 const STATUS_LABEL: Record<HistoryQuotation['status'], string> = {
   DRAFT: 'Draft',
+  READY_TO_SHARE: 'Ready to share',
   SENT: 'Sent',
   ACCEPTED: 'Accepted',
   REJECTED: 'Declined',
@@ -14,6 +15,7 @@ const STATUS_LABEL: Record<HistoryQuotation['status'], string> = {
 
 const STATUS_TONE: Record<HistoryQuotation['status'], string> = {
   DRAFT: 'bg-gray-100 text-gray-600',
+  READY_TO_SHARE: 'bg-amber-100 text-amber-800',
   SENT: 'bg-sky-100 text-sky-700',
   ACCEPTED: 'bg-emerald-100 text-emerald-700',
   REJECTED: 'bg-slate-200 text-slate-600',

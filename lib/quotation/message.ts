@@ -45,7 +45,7 @@ function greeting(customerName?: string | null): string {
 // The first message: the quotation itself.
 export function buildQuotationMessage(q: QuotationMessageInput, customerName?: string | null, extras: MessageExtras = {}): string {
   const lines: string[] = [];
-  lines.push(`${greeting(customerName)} 🙏`);
+  lines.push(`${greeting(customerName)},`);
   lines.push('');
   lines.push(
     `Thank you for considering Shaadi Shopping for your wedding${extras.eventDate ? ` on ${extras.eventDate}` : ''}. Here is your quotation (${q.quotationNumber}):`
@@ -88,6 +88,24 @@ export function buildQuotationMessage(q: QuotationMessageInput, customerName?: s
   return lines.join('\n');
 }
 
+// What the CRM sends on WhatsApp (20 Nov 2026): who it is for, the wedding date, the quotation number and the link to the
+// full quotation page — never the price breakdown, which lives on that page. No emoji: WhatsApp's wa.me link turns
+// them into "�" (checked 20 Nov 2026), so every pre-filled message here is plain text.
+export function buildQuotationShareMessage(i: { customerName?: string | null; eventDate?: string | null; quotationNumber: string; url: string }): string {
+  return [
+    `${greeting(i.customerName)},`,
+    '',
+    `Thank you for considering Shaadi Shopping for your wedding${i.eventDate ? ` on ${i.eventDate}` : ''}. Your quotation ${i.quotationNumber} is ready.`,
+    '',
+    'See every service, price and the terms here, and accept it or ask for changes on the same page:',
+    i.url,
+    '',
+    `Reply here or call us on ${SHAADI_PHONE_DISPLAY} if you have any questions.`,
+    '',
+    SIGN_OFF,
+  ].join('\n');
+}
+
 // A gentle nudge while the quotation is still waiting for an answer.
 export function buildFollowUpMessage(q: Pick<QuotationMessageInput, 'quotationNumber' | 'total' | 'validUntil'>, customerName?: string | null, sentOn?: string | null): string {
   const until = formatQuoteDate(q.validUntil);
@@ -105,7 +123,7 @@ export function buildFollowUpMessage(q: Pick<QuotationMessageInput, 'quotationNu
 // After the customer says yes: what happens next. Mentions the advance only when the quotation has one.
 export function buildAcceptanceThanks(q: Pick<QuotationMessageInput, 'quotationNumber' | 'advanceAmount'>, customerName?: string | null): string {
   return [
-    `Thank you${customerName?.trim() ? ` ${customerName.trim()}` : ''}! 🙏`,
+    `Thank you${customerName?.trim() ? ` ${customerName.trim()}` : ''}!`,
     '',
     `We have noted your acceptance of quotation ${q.quotationNumber}.`,
     '',
@@ -120,7 +138,7 @@ export function buildAcceptanceThanks(q: Pick<QuotationMessageInput, 'quotationN
 // Once the booking is confirmed and the wedding is set up.
 export function buildBookingConfirmedMessage(customerName: string | null | undefined, weddingNumber: string | null, eventDate?: string | null): string {
   return [
-    `Congratulations${customerName?.trim() ? ` ${customerName.trim()}` : ''}! 🎉`,
+    `Congratulations${customerName?.trim() ? ` ${customerName.trim()}` : ''}!`,
     '',
     `Your booking${eventDate ? ` for ${eventDate}` : ''} is confirmed${weddingNumber ? `. Your wedding reference is ${weddingNumber}` : ''}.`,
     '',

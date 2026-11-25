@@ -21,6 +21,7 @@ import {
   evaluateRejectable,
   evaluateRevisable,
   evaluateSendable,
+  evaluateShareable,
   statusAfterRevisionDiscarded,
   type AcceptanceChannel,
 } from '@/lib/quotation/rules';
@@ -144,11 +145,11 @@ async function loadSource(sourceType: SourceType, id: string, tx: Tx | typeof pr
   return leadRepository.findById(id, tx);
 }
 
-// A SENT quotation past its valid-until date is EXPIRED. There is no scheduler in V1, so this is applied
+// A SENT (or READY_TO_SHARE) quotation past its valid-until date is EXPIRED. There is no scheduler in V1, so this is applied
 // lazily whenever quotations are read or acted on — which also frees the source's "open quotation" slot.
 export async function expireOverdue(where: Prisma.QuotationWhereInput, tx: Tx | typeof prisma = prisma): Promise<void> {
   await tx.quotation.updateMany({
-    where: { ...where, status: 'SENT', validUntil: { lt: new Date() } },
+    where: { ...where, status: { in: ['SENT', 'READY_TO_SHARE'] }, validUntil: { lt: new Date() } },
     data: { status: 'EXPIRED' },
   });
 }
@@ -324,7 +325,7 @@ export const quotationService = {
           wedding: await findWeddingForSource(sourceType, sourceId, tx),
           accepted: await quotationRepository.findFirst({ ...subjectWhere(sourceType, sourceId), status: 'ACCEPTED' }, tx),
           open: await quotationRepository.findFirst(
-            { ...subjectWhere(sourceType, sourceId), status: { in: ['DRAFT', 'SENT'] } },
+            { ...subjectWhere(sourceType, sourceId), status: { in: ['DRAFT', 'READY_TO_SHARE', 'SENT'] } },
             tx
           ),
         });
@@ -481,6 +482,8 @@ export const quotationService = {
         id,
         {
           status: 'ACCEPTED',
+          // Accepted from READY_TO_SHARE: the client opened the link before staff confirmed sending — it evidently reached them.
+          ...(q.status === 'READY_TO_SHARE' && !q.sentAt ? { sentAt: now } : {}),
           acceptedAt: now,
           acceptedBy: actorId ? { connect: { id: actorId } } : undefined,
           acceptedChannel: input.channel,
@@ -493,7 +496,7 @@ export const quotationService = {
         sourceType,
         sourceId,
         ActivityType.QUOTATION_ACCEPTED,
-        `Quotation ${q.quotationNumber} accepted by the customer via ${CHANNEL_LABEL[input.channel]} — total ${rupees(q.total)}`,
+        `Quotation ${q.quotationNumber} accepted by the customer via ${CHANNEL_LABEL[input.channel]} — total ${rupees(q.total)}${q.status === 'READY_TO_SHARE' ? ' (before staff confirmed it was sent on WhatsApp)' : ''}`,
         note,
         actorId
       );
@@ -609,7 +612,7 @@ export const quotationService = {
         if (accepted) {
           throw new ConflictError(`This ${label} already has an accepted quotation (${accepted.quotationNumber})`);
         }
-        const open = await quotationRepository.findFirst({ ...where, status: { in: ['DRAFT', 'SENT'] }, id: { not: id } }, tx);
+        const open = await quotationRepository.findFirst({ ...where, status: { in: ['DRAFT', 'READY_TO_SHARE', 'SENT'] }, id: { not: id } }, tx);
         if (open) {
           throw new ConflictError(`This ${label} already has an open quotation (${open.quotationNumber}) — finish it first`);
         }
@@ -681,6 +684,52 @@ export const quotationService = {
       const first = err instanceof DuplicateError ? await quotationRepository.findById(id) : null;
       throw await explainSourceConflict(err, first ? sourceOf(first) : null, trace);
     }
+  },
+
+  // ----- CRM "Share on WhatsApp" (20 Nov 2026) -----
+
+  // DRAFT → READY_TO_SHARE, and a new client link, in one step. The quotation is NOT sent: WhatsApp may be blocked, cancelled
+  // or never sent. Only staff confirming "Yes, it's sent" (send()) makes it SENT; "Not sent" (cancelShare) makes it a draft
+  // again. A second click is refused (evaluateShareable) so it can never replace a link already in the client's WhatsApp.
+  async prepareShare(id: string, actorId: string | null): Promise<{ quotation: QuotationView; token: string }> {
+    await expireOverdue({ id });
+    return prisma.$transaction(async (tx) => {
+      const { q, sourceType, sourceId } = await loadLocked(tx, id);
+      const blocked = evaluateShareable({ status: q.status, itemCount: q.items.length, validUntil: q.validUntil }, new Date());
+      if (blocked) throw blocked;
+      const fresh = calculateQuotationTotals({ items: q.items, discount: q.discount, gstAmount: q.gstAmount, advanceAmount: q.advanceAmount });
+      if (fresh.subtotal !== q.subtotal || fresh.total !== q.total) {
+        throw new Error(`Quotation ${q.quotationNumber}: stored totals do not match its line items`);
+      }
+      const token = newCustomerToken();
+      const updated = await quotationRepository.update(
+        id,
+        { status: 'READY_TO_SHARE', customerTokenHash: hashCustomerToken(token), customerTokenCreatedAt: new Date() },
+        tx
+      );
+      await logEvent(
+        tx,
+        sourceType,
+        sourceId,
+        ActivityType.NOTE,
+        `Quotation ${q.quotationNumber} ready to share — client link created and WhatsApp opened. Not marked as sent until staff confirm.`,
+        null,
+        actorId
+      );
+      return { quotation: toQuotationView(updated), token };
+    });
+  },
+
+  // READY_TO_SHARE → DRAFT: the message was not sent (WhatsApp cancelled, wrong chat …). The link stops working so nothing the
+  // client might still open points at a quotation that can now change.
+  async cancelShare(id: string, actorId: string | null): Promise<QuotationView> {
+    return prisma.$transaction(async (tx) => {
+      const { q, sourceType, sourceId } = await loadLocked(tx, id);
+      if (q.status !== 'READY_TO_SHARE') throw new ConflictError(`This quotation is ${q.status.toLowerCase().replace(/_/g, ' ')}, not waiting to be shared`);
+      const updated = await quotationRepository.update(id, { status: 'DRAFT', customerTokenHash: null }, tx);
+      await logEvent(tx, sourceType, sourceId, ActivityType.NOTE, `Quotation ${q.quotationNumber} not sent — back to draft; its client link no longer works`, null, actorId);
+      return toQuotationView(updated);
+    });
   },
 
   // ----- Proposal link (08-quotation.md §15, decisions D2/D7) -----

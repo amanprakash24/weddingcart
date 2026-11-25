@@ -90,6 +90,10 @@ describe('change note', () => {
     expect(both).toContain('Reduce decoration');
     expect(both).toContain('Catering 300 guests');
   });
+
+  test('the date stamp is the date in India (00:30 IST on 20 Nov is still 19 Nov in UTC)', () => {
+    expect(appendChangeNote(null, 'x', new Date('2026-11-19T19:00:00Z'))).toBe('[2026-11-20] x');
+  });
 });
 
 describe('toCustomerProposal — allow-list only', () => {
@@ -234,7 +238,7 @@ describe('toCustomerProposal — allow-list only', () => {
       expect(json).not.toContain(secret);
     }
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW)).sort()).toEqual(
-      ['acceptedAt', 'addable', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'brand', 'halls', 'inclusions', 'items', 'myWedding', 'number', 'payments', 'reviews', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding', 'yourBooking'].sort()
+      ['acceptedAt', 'addable', 'advanceAmount', 'booked', 'changesRequested', 'confirmedVendors', 'couple', 'discount', 'exclusions', 'gstAmount', 'brand', 'halls', 'inclusions', 'issuedOn', 'items', 'myWedding', 'number', 'payments', 'reviews', 'state', 'subtotal', 'terms', 'total', 'validUntil', 'venueName', 'version', 'wedding', 'yourBooking'].sort()
     );
     expect(Object.keys(toCustomerProposal(quotation, source, vendors, NOW).items[0]).sort()).toEqual(['description', 'details', 'functionLabel', 'gst', 'gstPercent', 'lineTotal', 'quantity', 'service', 'taxable', 'unitPrice', 'vendor']);
   });

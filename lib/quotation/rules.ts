@@ -38,9 +38,13 @@ export function evaluateQuotable(state: QuotableState): Error | null {
   return null;
 }
 
+// The client already has a link to it: it must not change underneath them. "Not sent — back to draft" frees it.
+const READY_LOCKED = 'This quotation is ready to share and its client link exists — choose "Not sent — back to draft" to change it';
+
 // Only a DRAFT is editable. A sent quote is immutable; changing it means a revision.
 export function evaluateEditable(status: QuotationStatus): Error | null {
   if (status === 'DRAFT') return null;
+  if (status === 'READY_TO_SHARE') return new ConflictError(READY_LOCKED);
   return new ConflictError(
     status === 'SENT'
       ? 'This quotation has been sent and cannot be edited — create a revision instead'
@@ -51,6 +55,7 @@ export function evaluateEditable(status: QuotationStatus): Error | null {
 // Only a DRAFT can be deleted; anything that was sent is kept as history.
 export function evaluateDeletable(status: QuotationStatus): Error | null {
   if (status === 'DRAFT') return null;
+  if (status === 'READY_TO_SHARE') return new ConflictError(READY_LOCKED);
   return new ConflictError('Only a draft quotation can be deleted — a sent quotation is kept as history');
 }
 
@@ -79,28 +84,43 @@ export function isPastValidity(validUntil: Date | null, now: Date): boolean {
   return validUntil !== null && validUntil.getTime() < now.getTime();
 }
 
-// A DRAFT can be sent once it has at least one line and a valid-until date in the future.
-export function evaluateSendable(
-  q: { status: QuotationStatus; itemCount: number; validUntil: Date | null },
-  now: Date
-): Error | null {
-  if (q.status !== 'DRAFT') return new ConflictError('Only a draft quotation can be sent');
+// What a quotation needs before it can go to a client: at least one line and a valid-until date in the future.
+function readyToGo(q: { itemCount: number; validUntil: Date | null }, now: Date): Error | null {
   if (q.itemCount < 1) return new ValidationError('Add at least one line item before sending');
   if (!q.validUntil) return new ValidationError('Set a "valid until" date before sending');
   if (q.validUntil.getTime() <= now.getTime()) return new ValidationError('The "valid until" date must be in the future');
   return null;
 }
 
+// CRM "Share on WhatsApp": DRAFT → READY_TO_SHARE (the client link is made, WhatsApp opens). Only from a draft, so a second
+// click — or a second tab — is refused instead of quietly replacing a link that may already be in the client's WhatsApp.
+export function evaluateShareable(q: { status: QuotationStatus; itemCount: number; validUntil: Date | null }, now: Date): Error | null {
+  if (q.status === 'READY_TO_SHARE') return new ConflictError('This quotation is already ready to share — confirm it was sent, or open WhatsApp again with a new link');
+  if (q.status !== 'DRAFT') return new ConflictError('Only a draft quotation can be shared');
+  return readyToGo(q, now);
+}
+
+// "Yes, it's sent": DRAFT (venue flow, and the CRM's "Already sent it? Mark as sent") or READY_TO_SHARE (CRM) → SENT.
+export function evaluateSendable(
+  q: { status: QuotationStatus; itemCount: number; validUntil: Date | null },
+  now: Date
+): Error | null {
+  if (q.status !== 'DRAFT' && q.status !== 'READY_TO_SHARE') return new ConflictError('Only a draft quotation can be sent');
+  return readyToGo(q, now);
+}
+
 function notSentReason(status: QuotationStatus, verb: string): Error {
   if (status === 'EXPIRED') return new ConflictError('This quotation has expired — revise it to offer it again');
   if (status === 'DRAFT') return new ConflictError('This quotation has not been sent yet');
+  if (status === 'READY_TO_SHARE') return new ConflictError('Confirm the quotation was sent to the client first');
   return new ConflictError(`Only a sent quotation can be ${verb} (this one is ${status.toLowerCase()})`);
 }
 
-// Accept: only a SENT quotation still inside its validity window. (The database's partial unique index
-// guarantees at most one ACCEPTED quotation per source even if two requests race.)
+// Accept: only a SENT quotation still inside its validity window — or a READY_TO_SHARE one, because the client can open the
+// link and accept before staff confirm they pressed Send (the acceptance proves it reached them). (The database's partial
+// unique index guarantees at most one ACCEPTED quotation per source even if two requests race.)
 export function evaluateAcceptable(q: { status: QuotationStatus; validUntil: Date | null }, now: Date): Error | null {
-  if (q.status !== 'SENT') return notSentReason(q.status, 'accepted');
+  if (q.status !== 'SENT' && q.status !== 'READY_TO_SHARE') return notSentReason(q.status, 'accepted');
   if (isPastValidity(q.validUntil, now)) return new ConflictError('This quotation has expired — revise it to offer it again');
   return null;
 }
@@ -115,6 +135,7 @@ export function evaluateRevisable(status: QuotationStatus): Error | null {
   if (status === 'SENT' || status === 'REJECTED' || status === 'EXPIRED') return null;
   if (status === 'ACCEPTED') return new ConflictError('An accepted quotation cannot be revised');
   if (status === 'DRAFT') return new ConflictError('This quotation is still a draft — edit it instead');
+  if (status === 'READY_TO_SHARE') return new ConflictError(READY_LOCKED);
   return new ConflictError('This quotation was already replaced by a newer revision');
 }
 
@@ -140,7 +161,7 @@ export interface BookableState {
 export function evaluateBookable(state: BookableState): Error | null {
   if (state.status !== 'ACCEPTED') {
     return new ConflictError(
-      state.status === 'DRAFT' || state.status === 'SENT'
+      state.status === 'DRAFT' || state.status === 'READY_TO_SHARE' || state.status === 'SENT'
         ? "Record the customer's acceptance before creating a booking"
         : `Only an accepted quotation can become a booking (this one is ${state.status.toLowerCase()})`
     );

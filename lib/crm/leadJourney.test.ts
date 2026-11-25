@@ -148,10 +148,28 @@ describe('nextAction — exactly one primary action per state', () => {
 
   test('a ready draft only OPENS WhatsApp — it is marked sent after the operator confirms; "Mark as sent" is the fallback', () => {
     const draft = nextAction('DRAFT', ctx);
-    expect(draft.label).toBe('Open WhatsApp with the quote');
+    expect(draft.label).toBe('Share quotation on WhatsApp');
     expect(draft.why).toContain('confirm here');
     expect(draft.why).not.toContain('marks it as sent');
     expect(draft.secondary).toEqual([{ id: 'mark-sent', label: 'Already sent it? Mark as sent' }]);
+  });
+
+  test('ready to share: the one primary is the sent confirmation; WhatsApp again or back to draft are the alternatives (20 Nov 2026)', () => {
+    const ready = nextAction('READY_TO_SHARE', ctx);
+    expect(ready.id).toBe('confirm-sent');
+    expect(ready.label).toBe("Yes, it's sent");
+    expect(ready.secondary.map((s) => s.id)).toEqual(['share-again', 'not-sent']);
+    expect(ready.secondary.find((s) => s.id === 'not-sent')?.danger).toBe(true);
+  });
+
+  test('ready to share is open, not sent: chip, journey and steps never say "sent"', () => {
+    const q = { status: 'READY_TO_SHARE' as const, booking: null, createdAt: '2026-11-20T00:00:00Z' };
+    expect(pickCurrentQuotation([q])).toBe(q);
+    expect(deriveJourney({ pipelineStage: 'QUOTATION_SENT' as never, hasWedding: false, quotation: q })).toBe('READY_TO_SHARE');
+    expect(quotationChip(q, 'READY_TO_SHARE')).toEqual({ label: 'Ready to share', tone: 'amber' });
+    const steps = journeySteps('READY_TO_SHARE', q, { enquiryOn: null, sentOn: null, acceptedOn: null, acceptedVia: null, weddingNumber: null });
+    expect(steps[1]).toMatchObject({ label: 'Quote', status: 'current', sub: 'Ready to share' });
+    expect(JSON.stringify(steps).toLowerCase()).not.toContain('quote sent');
   });
 
   test('a sent quote offers the customer’s answer as secondary actions, not as a second primary', () => {

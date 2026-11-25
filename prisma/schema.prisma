@@ -1172,6 +1172,9 @@ enum LostReason {
 
 enum QuotationStatus {
   DRAFT
+  // CRM: the client link exists and WhatsApp was opened with it, but staff have not yet confirmed they pressed Send.
+  // Only that confirmation makes it SENT; "not sent" puts it back to DRAFT and stops the link (20 Nov 2026).
+  READY_TO_SHARE
   SENT
   ACCEPTED
   REJECTED

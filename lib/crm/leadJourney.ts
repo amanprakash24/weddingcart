@@ -6,7 +6,7 @@
 // not a confirmed booking. Pure and free of server imports so the admin UI and the tests can both use it.
 import type { PipelineStage } from '@/generated/prisma/enums';
 
-export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
+export type QuoteStatus = 'DRAFT' | 'READY_TO_SHARE' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
 export type BookingStatus = 'NEW' | 'CONTACTED' | 'CONFIRMED' | 'CLOSED';
 
 export interface JourneyQuotation {
@@ -24,7 +24,7 @@ export function pickCurrentQuotation<T extends JourneyQuotation>(quotations: T[]
   if (!quotations || quotations.length === 0) return null;
   const accepted = quotations.find((q) => q.status === 'ACCEPTED');
   if (accepted) return accepted;
-  const open = quotations.find((q) => q.status === 'DRAFT' || q.status === 'SENT');
+  const open = quotations.find((q) => q.status === 'DRAFT' || q.status === 'READY_TO_SHARE' || q.status === 'SENT');
   if (open) return open;
   const ended = quotations
     .filter((q) => q.status === 'REJECTED' || q.status === 'EXPIRED')
@@ -35,6 +35,7 @@ export function pickCurrentQuotation<T extends JourneyQuotation>(quotations: T[]
 export type JourneyState =
   | 'NO_QUOTE'
   | 'DRAFT'
+  | 'READY_TO_SHARE' // the client link exists and WhatsApp was opened; staff have not confirmed they pressed Send
   | 'SENT'
   | 'LAPSED' // the last quote was declined or expired
   | 'ACCEPTED' // the customer said yes; no booking yet
@@ -61,6 +62,8 @@ export function deriveJourney({ pipelineStage, hasWedding, quotation, sourceType
   switch (quotation.status) {
     case 'DRAFT':
       return 'DRAFT';
+    case 'READY_TO_SHARE':
+      return 'READY_TO_SHARE';
     case 'SENT':
       return 'SENT';
     case 'ACCEPTED':
@@ -87,6 +90,8 @@ export function quotationChip(quotation: JourneyQuotation | null, state: Journey
   switch (quotation.status) {
     case 'DRAFT':
       return { label: 'Draft', tone: 'gray' };
+    case 'READY_TO_SHARE':
+      return { label: 'Ready to share', tone: 'amber' };
     case 'SENT':
       return { label: 'Sent', tone: 'sky' };
     case 'ACCEPTED':
@@ -117,6 +122,7 @@ export type NextActionId =
   | 'create-quote'
   | 'finish-quote'
   | 'send-quote'
+  | 'confirm-sent'
   | 'follow-up'
   | 'revise-quote'
   | 'create-booking'
@@ -128,7 +134,8 @@ export type NextActionId =
   | 'view-reason';
 
 // 'mark-sent': the operator already sent the quote themselves (e.g. reloaded before confirming) — records it as sent.
-export type SecondaryActionId = 'customer-accepted' | 'customer-declined' | 'revise-quote' | 'not-proceeding' | 'mark-sent';
+// 'share-again': WhatsApp with a NEW link (the previous one stops working). 'not-sent': back to draft, the link stops working.
+export type SecondaryActionId = 'customer-accepted' | 'customer-declined' | 'revise-quote' | 'not-proceeding' | 'mark-sent' | 'share-again' | 'not-sent';
 
 export interface NextAction {
   id: NextActionId;
@@ -183,12 +190,24 @@ export function nextAction(state: JourneyState, c: NextActionContext): NextActio
         ? {
             id: 'send-quote',
             title: 'Send the quote',
-            why: 'The quote is ready. This opens WhatsApp with the message prepared. After you press Send there, confirm here — only then is the quote marked as sent.',
-            label: 'Open WhatsApp with the quote',
+            why: "The quote is ready. This creates the client's quotation link and opens WhatsApp with a short message carrying it. After you press Send there, confirm here — only then is the quote marked as sent.",
+            label: 'Share quotation on WhatsApp',
             quiet: false,
             secondary: [{ id: 'mark-sent', label: 'Already sent it? Mark as sent' }],
           }
         : { id: 'finish-quote', title: 'Finish the quote', why: 'Add at least one service and a valid-until date, then it can be sent.', label: 'Edit quote', quiet: false, secondary: [] };
+    case 'READY_TO_SHARE':
+      return {
+        id: 'confirm-sent',
+        title: 'Did the WhatsApp message go?',
+        why: `WhatsApp was opened with ${name}'s quotation link. If you pressed Send there, confirm it — only then is the quote marked as sent. If you did not send it, put it back to draft: the link stops working.`,
+        label: "Yes, it's sent",
+        quiet: false,
+        secondary: [
+          { id: 'share-again', label: 'Open WhatsApp again (new link)' },
+          { id: 'not-sent', label: 'Not sent — back to draft', danger: true },
+        ],
+      };
     case 'SENT':
       if (c.changesRequestedOn) {
         return {
@@ -263,7 +282,7 @@ export interface StepContext {
 
 // Green is reserved for a confirmed booking and its wedding; accepted and pending stay amber/ink.
 export function journeySteps(state: JourneyState, quotation: JourneyQuotation | null, c: StepContext): JourneyStep[] {
-  const sent = !!quotation && quotation.status !== 'DRAFT' && quotation.status !== 'SUPERSEDED';
+  const sent = !!quotation && quotation.status !== 'DRAFT' && quotation.status !== 'READY_TO_SHARE' && quotation.status !== 'SUPERSEDED';
   const accepted = quotation?.status === 'ACCEPTED';
   const hasBooking = !!quotation?.booking;
   const acceptedSub = [c.acceptedOn, c.acceptedVia].filter(Boolean).join(' · ');
@@ -276,6 +295,8 @@ export function journeySteps(state: JourneyState, quotation: JourneyQuotation | 
       return [enquiry, step('quote', 'Quote', 'current', 'Not made yet'), step('accepted', 'Accepted', 'upcoming'), step('booking', 'Booking', 'upcoming'), step('wedding', 'Wedding', 'upcoming')];
     case 'DRAFT':
       return [enquiry, step('quote', 'Quote', 'current', 'Draft'), step('accepted', 'Accepted', 'upcoming'), step('booking', 'Booking', 'upcoming'), step('wedding', 'Wedding', 'upcoming')];
+    case 'READY_TO_SHARE':
+      return [enquiry, step('quote', 'Quote', 'current', 'Ready to share'), step('accepted', 'Accepted', 'upcoming'), step('booking', 'Booking', 'upcoming'), step('wedding', 'Wedding', 'upcoming')];
     case 'SENT':
       return [enquiry, step('quote', 'Quote sent', 'done', c.sentOn ? `Sent ${c.sentOn}` : 'Sent'), step('accepted', 'Accepted', 'current', 'Waiting for reply'), step('booking', 'Booking', 'upcoming'), step('wedding', 'Wedding', 'upcoming')];
     case 'LAPSED':

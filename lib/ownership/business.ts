@@ -105,7 +105,12 @@ export interface ProposalBrand {
 }
 
 export async function proposalBrandFor(businessId: string): Promise<ProposalBrand> {
-  if (businessId === PLATFORM_BUSINESS_ID) return { name: 'Shaadi Shopping', phone: null, isPlatform: true }; // the page uses SHAADI_PHONE
+  if (businessId === PLATFORM_BUSINESS_ID) {
+    // The page uses SHAADI_PHONE and prints Shaadi Shopping's own logo (/logo-horizontal.png, as the receipts do). Its GSTIN comes
+    // from its business record, the same one the receipts read (25 Nov 2026: Shaadi Shopping's quotations had no logo or details).
+    const ss = await prisma.business.findUnique({ where: { id: businessId }, select: { gstin: true } });
+    return { name: 'Shaadi Shopping', phone: null, isPlatform: true, logoUrl: null, gstin: ss?.gstin ?? null };
+  }
   const b = await prisma.business.findUnique({ where: { id: businessId }, select: { name: true, contactPhone: true, logoUrl: true, gstin: true, vendor: { select: { ownerPhone: true } } } });
   const raw = (b?.contactPhone || b?.vendor?.ownerPhone || '').replace(/\D/g, '').slice(-10);
   return { name: b?.name ?? 'Vivah OS', phone: /^[6-9]\d{9}$/.test(raw) ? raw : null, isPlatform: false, logoUrl: b?.logoUrl ?? null, gstin: b?.gstin ?? null };

@@ -40,13 +40,13 @@ export function useQuotations({ sourceType, sourceId, onChanged }: { sourceType:
   // One helper for every lifecycle call: shows the server's message on failure, reloads on success. It waits for that reload before
   // it returns, so a dialog stays open on "Saving…" until the screen shows the real, refreshed state — never a stale one.
   const act = useCallback(
-    async (id: string, path: string, body?: unknown, okNotice?: string) => {
+    async (id: string, path: string, body?: unknown, okNotice?: string, method?: 'POST' | 'DELETE') => {
       setBusyId(id);
       setLoadError(null);
       setNotice(null);
       try {
         const res = await fetch(`/api/quotations/${id}${path}`, {
-          method: path ? 'POST' : 'DELETE',
+          method: method ?? (path ? 'POST' : 'DELETE'),
           headers: { 'Content-Type': 'application/json' },
           body: body === undefined ? undefined : JSON.stringify(body),
         });

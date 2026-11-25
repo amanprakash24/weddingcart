@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { buildQuotationMessage, formatQuoteDate } from '@/lib/quotation/message';
+import { buildQuotationShareMessage, formatQuoteDate } from '@/lib/quotation/message';
 import { errorMessage } from './useQuotations';
 import type { WorkspaceQuotation } from './types';
 
@@ -15,6 +15,8 @@ export default function CustomerLinkBox({ quotation, customerName, eventDate, on
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<'link' | 'message' | null>(null);
 
+  // While a quote is ready to share, its link is handled by the "Did the WhatsApp message go?" card — not here.
+  if (quotation.status === 'READY_TO_SHARE') return null;
   const sentAndValid = quotation.status === 'SENT' && quotation.validUntil !== null && new Date(quotation.validUntil).getTime() > new Date().getTime();
   // Roadmap 1.4: an accepted quotation keeps its link (payments §20, reviews §21), so a lost one can be replaced too.
   const open = sentAndValid || quotation.status === 'ACCEPTED';
@@ -43,7 +45,7 @@ export default function CustomerLinkBox({ quotation, customerName, eventDate, on
   const copy = async (what: 'link' | 'message') => {
     if (!url) return;
     try {
-      await navigator.clipboard.writeText(what === 'link' ? url : buildQuotationMessage(quotation, customerName, { eventDate, proposalUrl: url }));
+      await navigator.clipboard.writeText(what === 'link' ? url : buildQuotationShareMessage({ customerName, eventDate, quotationNumber: quotation.quotationNumber, url }));
       setCopied(what);
     } catch {
       setCopied(null);

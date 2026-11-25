@@ -202,7 +202,8 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     // D8: the business that owns this quotation — Shaadi Shopping, or the venue whose own customer this is.
     view.brand = await deps.brand(q.businessId);
     // The GST number the couple sees is the one frozen on THIS quotation (Quotation.sellerGstin), never today's business profile.
-    if (!view.brand.isPlatform) view.brand = { ...view.brand, gstin: q.sellerGstin ?? null };
+    // Shaadi Shopping's older quotations have none frozen: they show its business record's (as its receipts do).
+    view.brand = { ...view.brand, gstin: q.sellerGstin ?? (view.brand.isPlatform ? (view.brand.gstin ?? null) : null) };
     // "Your hall": a venue's own quotation for its own enquiry — started now, read alongside what follows, awaited at the end. A
     // failure here never hides the proposal.
     const hallsRead: Promise<ProposalHall[]> =
@@ -270,9 +271,10 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     const now = new Date();
     await deps.db.$transaction(async (tx) => {
       const current = await tx.quotation.findUnique({ where: { id: q.id }, select: { changesRequestNote: true } });
-      // Only while it is still SENT — a staff revision/acceptance in the meantime wins.
+      // Only while it is still SENT (or READY_TO_SHARE: the client opened the link before staff confirmed sending) — a staff
+      // revision/acceptance in the meantime wins.
       const updated = await tx.quotation.updateMany({
-        where: { id: q.id, status: 'SENT' },
+        where: { id: q.id, status: { in: ['SENT', 'READY_TO_SHARE'] } },
         data: { changesRequestedAt: now, changesRequestNote: appendChangeNote(current?.changesRequestNote ?? null, text, now) },
       });
       if (updated.count !== 1) throw new ConflictError('This proposal was just updated — please reload the page');
