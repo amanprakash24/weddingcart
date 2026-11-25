@@ -25,6 +25,8 @@ describe('the ready-made checklist', () => {
     const today = '2026-11-25';
     expect(checklistGroup({ done: true, dueDate: '2026-01-01' }, today)).toBe('DONE');
     expect(checklistGroup({ done: false, dueDate: null }, today)).toBe('EARLIER');
+    expect(checklistGroup({ done: false, dueDate: null, ready: true }, today)).toBe('EARLIER');
+    expect(checklistGroup({ done: false, dueDate: null, ready: false }, today)).toBe('ANYTIME'); // the couple's own, undated
     expect(checklistGroup({ done: false, dueDate: '2026-11-24' }, today)).toBe('OVERDUE');
     expect(checklistGroup({ done: false, dueDate: '2026-12-02' }, today)).toBe('THIS_WEEK');
     expect(checklistGroup({ done: false, dueDate: '2026-12-03' }, today)).toBe('LATER');

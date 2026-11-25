@@ -17,9 +17,11 @@ const GROUPS: { id: ChecklistGroup; label: string }[] = [
   { id: 'OVERDUE', label: 'Overdue' },
   { id: 'THIS_WEEK', label: 'This week' },
   { id: 'LATER', label: 'Coming up' },
+  { id: 'ANYTIME', label: 'No date' },
   { id: 'EARLIER', label: 'Earlier steps — tick what is done' },
   { id: 'DONE', label: 'Done' },
 ];
+const FOLD_AFTER = 5; // "Coming up" and "Earlier steps" show this many, then "Show N more"
 type Form = { id: string | null; title: string; dueDate: string; weddingEventId: string; notes: string };
 const blank: Form = { id: null, title: '', dueDate: '', weddingEventId: '', notes: '' };
 
@@ -29,6 +31,7 @@ export default function CoupleChecklist({ event }: { event: ClientPortalEvent })
   const [items, setItems] = useState<ChecklistItemView[] | null>(null);
   const [form, setForm] = useState<Form | null>(null);
   const [showDone, setShowDone] = useState(false);
+  const [expanded, setExpanded] = useState<ChecklistGroup[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,14 +121,17 @@ export default function CoupleChecklist({ event }: { event: ClientPortalEvent })
         <p className="mt-3 text-sm text-[var(--color-text-muted)]">Loading…</p>
       ) : (
         GROUPS.map((g) => {
-          const list = items.filter((i) => checklistGroup(i, t) === g.id);
-          if (!list.length) return null;
+          // In date order within a group (undated items keep the ready-made order); long groups start folded on a phone-length list.
+          const all = items.filter((i) => checklistGroup(i, t) === g.id).sort((a, b) => (a.dueDate && b.dueDate ? a.dueDate.localeCompare(b.dueDate) : 0));
+          if (!all.length) return null;
           if (g.id === 'DONE' && !showDone) {
-            return <button key={g.id} type="button" onClick={() => setShowDone(true)} className="mt-4 min-h-11 text-sm font-semibold text-[var(--color-primary-text)]">Show {list.length} done</button>;
+            return <button key={g.id} type="button" onClick={() => setShowDone(true)} className="mt-4 min-h-11 text-sm font-semibold text-[var(--color-primary-text)]">Show {all.length} done</button>;
           }
+          const folded = (g.id === 'LATER' || g.id === 'EARLIER') && !expanded.includes(g.id) && all.length > FOLD_AFTER + 1;
+          const list = folded ? all.slice(0, FOLD_AFTER) : all;
           return (
             <div key={g.id} className="mt-4">
-              <h3 className={`text-xs font-bold uppercase tracking-[0.12em] ${g.id === 'OVERDUE' ? 'text-[#B42318]' : 'text-[var(--color-text-muted)]'}`}>{g.label} · {list.length}</h3>
+              <h3 className={`text-xs font-bold uppercase tracking-[0.12em] ${g.id === 'OVERDUE' ? 'text-[#B42318]' : 'text-[var(--color-text-muted)]'}`}>{g.label} · {all.length}</h3>
               <ul className="mt-1.5 divide-y divide-white/70 rounded-2xl border border-white/70 bg-white/55">
                 {list.map((i) => (
                   <li key={i.id} className="flex items-start gap-2 px-2 py-1.5">
@@ -145,6 +151,7 @@ export default function CoupleChecklist({ event }: { event: ClientPortalEvent })
                   </li>
                 ))}
               </ul>
+              {folded && <button type="button" onClick={() => setExpanded([...expanded, g.id])} className="mt-1 min-h-11 text-sm font-semibold text-[var(--color-primary-text)]">Show {all.length - FOLD_AFTER} more</button>}
             </div>
           );
         })

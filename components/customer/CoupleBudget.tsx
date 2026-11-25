@@ -62,8 +62,8 @@ export default function CoupleBudget({ event, bookedWith }: { event: ClientPorta
       <p className="mt-1 text-xs text-[var(--color-text-muted)]">Your own planner. What you booked with {bookedWith} fills in by itself; add everything else you spend.</p>
 
       {/* Total */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-white/70 bg-white/60 p-3.5 sm:col-span-1">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl border border-white/70 bg-white/60 p-3.5">
           <p className="text-xs text-[var(--color-text-muted)]">Your budget</p>
           {totalText === null ? (
             <p className="flex items-center gap-1.5 text-lg font-bold">{s.total === null ? <span className="text-sm font-semibold text-[var(--color-text-muted)]">Not set</span> : inr(s.total)}

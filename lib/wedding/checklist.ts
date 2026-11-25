@@ -100,12 +100,12 @@ export function checkChecklistItem(input: ChecklistItemInput): { ok: true; value
   return { ok: true, value: { title, notes: notes || null, dueDate: raw ? utcDay(raw) : null, weddingEventId: fn } };
 }
 
-export type ChecklistGroup = 'OVERDUE' | 'THIS_WEEK' | 'LATER' | 'EARLIER' | 'DONE';
+export type ChecklistGroup = 'OVERDUE' | 'THIS_WEEK' | 'LATER' | 'ANYTIME' | 'EARLIER' | 'DONE';
 
-// Where an item sits on the screen.
-export function checklistGroup(item: { done: boolean; dueDate: string | null }, today: string): ChecklistGroup {
+// Where an item sits on the screen. Undated: a ready-made step whose date had passed → "earlier steps"; the couple's own → "no date".
+export function checklistGroup(item: { done: boolean; dueDate: string | null; ready?: boolean }, today: string): ChecklistGroup {
   if (item.done) return 'DONE';
-  if (!item.dueDate) return 'EARLIER';
+  if (!item.dueDate) return item.ready === false ? 'ANYTIME' : 'EARLIER';
   if (item.dueDate < today) return 'OVERDUE';
   const week = ymdOf(new Date(utcDay(today).getTime() + 7 * DAY));
   return item.dueDate <= week ? 'THIS_WEEK' : 'LATER';
