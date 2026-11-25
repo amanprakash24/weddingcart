@@ -39,6 +39,10 @@ export const payoutService = {
     if (existingPayouts.length > 0) {
       throw new InvalidTransitionError('Payout already calculated for this booking');
     }
+    // Payments recorded one by one (25 Nov 2026) replace the single payout — never both for the same work, or it is paid twice.
+    if ((await prisma.vendorPayment.count({ where: { vendorBookingId, voidedAt: null } })) > 0) {
+      throw new InvalidTransitionError('Payments for this work are recorded one by one — use "Record payment"');
+    }
 
     const vendor = await prisma.vendor.findUnique({ where: { id: vendorBooking.vendorId }, select: { categoryId: true } });
     if (!vendor) throw new NotFoundError('Vendor', vendorBooking.vendorId);
@@ -86,6 +90,9 @@ export const payoutService = {
 
     if (payout.status !== 'PENDING') {
       throw new InvalidTransitionError(`Cannot mark payout paid from status ${payout.status}`);
+    }
+    if ((await prisma.vendorPayment.count({ where: { vendorBookingId: payout.vendorBookingId, voidedAt: null } })) > 0) {
+      throw new InvalidTransitionError('Payments for this work are already recorded one by one — marking the payout paid too would count it twice');
     }
 
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {

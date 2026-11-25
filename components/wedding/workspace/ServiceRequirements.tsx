@@ -17,7 +17,7 @@ export default function ServiceRequirements({ events, unassigned }: { events: Wo
   // Quoted prices: anyone with access to this wedding's money; agreed vendor prices: the coordinator and founder (MoneyContext).
   const money = useWorkspaceMoney();
   const rows = REQUIREMENTS.map((name) => {
-    const bookings = events.flatMap((event) => event.vendorBookings.filter((booking) => booking.status !== 'CANCELLED' && matches(booking.vendorCategory, name)).map((booking) => ({ ...booking, functionName: functionLabel(event) })));
+    const bookings = events.flatMap((event) => event.vendorBookings.filter((booking) => booking.status !== 'CANCELLED' && booking.status !== 'DECLINED' && matches(booking.vendorCategory, name)).map((booking) => ({ ...booking, functionName: functionLabel(event) })));
     const waiting = unassigned.filter((row) => matches(row.category, name));
     return { name, bookings, waiting };
   });

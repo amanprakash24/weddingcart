@@ -42,6 +42,10 @@ function makePrismaMock(vendorBookingStatus: string, existingPayouts: unknown[] 
     vendor: {
       findUnique: mock(async () => ({ categoryId: 'category-1' })),
     },
+    // No payments recorded one by one (25 Nov 2026) — the single payout is still allowed for this work.
+    vendorPayment: {
+      count: mock(async () => 0),
+    },
     commissionRate: {
       findFirst: mock(async () => ({ id: 'rate-1', categoryId: 'category-1', rate: 10 })),
     },

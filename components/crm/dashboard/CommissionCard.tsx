@@ -34,7 +34,7 @@ export default function CommissionCard({ commission }: { commission: NonNullable
 
       <div className="border-t border-gray-100 pt-3 mt-3">
         <Row label="Outstanding vendor payouts" value={formatInr(commission.outstandingPayoutAmount)} />
-        <Row label="Pending payouts" value={String(commission.pendingPayoutCount)} />
+        <Row label="Works with money left to pay" value={String(commission.pendingPayoutCount)} />
         <Row label="Gross margin" value={formatInr(commission.grossMargin)} />
         {showDivergenceNote && (
           <p className="text-xs text-amber-600 mt-1">

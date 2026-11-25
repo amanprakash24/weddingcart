@@ -17,6 +17,7 @@ import CoupleSignInCard from '@/components/vivah-os/CoupleSignInCard';
 import FunctionsPanel from '@/components/wedding/functions/FunctionsPanel';
 import CoupleVendorRequests from '@/components/wedding/functions/CoupleVendorRequests';
 import CouplePlanPanel from '@/components/wedding/functions/CouplePlanPanel';
+import VendorMoneyPanel from '@/components/wedding/functions/VendorMoneyPanel';
 import type { FunctionPayload } from '@/components/wedding/functions/FunctionForm';
 import TimelineMilestones from './TimelineMilestones';
 import Documents from './Documents';
@@ -276,6 +277,8 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
             functionDecisionBase={`${basePath}/functions`}
             onRefresh={load}
           />
+          {/* Vendors — money and work (25 Nov 2026): owed, paid, left, work status; payments recorded one by one */}
+          <VendorMoneyPanel weddingId={id} refreshKey={workspace.events.reduce((n, e) => n + e.vendorBookings.length, 0)} />
           <ServiceRequirements events={workspace.events} unassigned={view.vendors.filter((r) => r.state === 'unassigned')} />
           {/* Client OS → Vendors (22 Nov 2026): quotes the couple asked for, and the vendors they hired themselves */}
           <CoupleVendorRequests weddingId={id} />

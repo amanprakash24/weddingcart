@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import type { PipelineStage } from '@/generated/prisma/enums';
 import { commandCenterService, type CommandCenter } from '@/services/commandCenter.service';
+import { vendorPaymentService } from '@/services/vendorPayment.service';
 import { commissionRateRepository } from '@/repositories/commissionRate.repository';
 
 // Sprint 5.4 — Founder Dashboard. Today's Work stays on the existing
@@ -172,9 +173,11 @@ async function getExpectedCommission(): Promise<number> {
 }
 
 async function getCommission(): Promise<CommissionSummary> {
-  const [paidPayoutAgg, pendingPayoutAgg, allSuccessfulPaymentsAgg, pendingWeddings, expected] = await Promise.all([
+  const [paidPayoutAgg, vendors, allSuccessfulPaymentsAgg, pendingWeddings, expected] = await Promise.all([
     prisma.payout.aggregate({ where: { status: 'PAID' }, _sum: { commissionAmount: true, netAmount: true } }),
-    prisma.payout.aggregate({ where: { status: 'PENDING' }, _sum: { netAmount: true }, _count: true }),
+    // 25 Nov 2026: what is owed to vendors comes from confirmed work and every payment (lib/vendor/vendorMoney.ts), not from
+    // PENDING payouts alone — which showed ₹0 outstanding while confirmed work was unpaid.
+    vendorPaymentService.companyTotals(),
     // No invoice-status filter, deliberately different from revenue.totalCollected
     // above — a successful payment means money moved regardless of the
     // invoice's current display status. This is the cash side of Gross Margin.
@@ -184,15 +187,15 @@ async function getCommission(): Promise<CommissionSummary> {
   ]);
 
   return {
-    confirmed: paidPayoutAgg._sum.commissionAmount ?? 0,
+    confirmed: (paidPayoutAgg._sum.commissionAmount ?? 0) + vendors.settledLedgerCommission,
     pendingWeddings,
     expected,
-    outstandingPayoutAmount: pendingPayoutAgg._sum.netAmount ?? 0,
-    pendingPayoutCount: pendingPayoutAgg._count,
+    outstandingPayoutAmount: vendors.outstanding,
+    pendingPayoutCount: vendors.worksLeft,
     // Gross Margin (cash) can genuinely diverge from confirmed commission
     // (accrual) when an invoice bundles GST/discounts/non-vendor-booking
     // line items — that's a real reconciliation signal, not a bug.
-    grossMargin: (allSuccessfulPaymentsAgg._sum.amount ?? 0) - (paidPayoutAgg._sum.netAmount ?? 0),
+    grossMargin: (allSuccessfulPaymentsAgg._sum.amount ?? 0) - (paidPayoutAgg._sum.netAmount ?? 0) - vendors.ledgerPaid,
   };
 }
 

@@ -206,7 +206,7 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
             </>
           )}
           {s === 'CONFIRMED' && <button type="button" disabled={busy} onClick={() => setMode('completing')} className={`${btn} bg-emerald-600 text-white disabled:opacity-40`}>Mark completed</button>}
-          {vendorMoney && s === 'COMPLETED' && !booking.payout && <button type="button" disabled={busy} onClick={() => run(() => h.onCalculatePayout(booking.id))} className={ghost}>Calculate payout</button>}
+          {/* "Calculate payout" retired 25 Nov 2026: payments are recorded one by one in "Vendors — money and work" below. */}
           {vendorMoney && booking.payout?.status === 'PENDING' && <button type="button" disabled={busy} onClick={markPaid} className={ghost}>Mark paid</button>}
           {vendorMoney && canChange && <button type="button" onClick={() => { setPrice(String(booking.agreedPrice)); setMode('pricing'); }} className={ghost}>Edit price</button>}
           {vendorMoney && (canChange || s === 'DECLINED') && <button type="button" onClick={() => { setNewPrice(String(booking.agreedPrice)); setMode('replacing'); }} className={ghost}>Replace vendor</button>}

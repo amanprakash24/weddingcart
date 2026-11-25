@@ -417,6 +417,7 @@ model Vendor {
   // Phase B (Wedding OS / Vendor OS / Finance)
   vendorBookings    VendorBooking[]
   payouts           Payout[]
+  vendorPayments    VendorPayment[] // each payment Shaadi Shopping made to this vendor (25 Nov 2026)
   // Route A commercial-tier history — see PartnerAgreement's own comment. Required by Prisma
   // as the opposite side of that model's `vendor` relation; nothing reads this list yet.
   partnerAgreements PartnerAgreement[]
@@ -1666,6 +1667,7 @@ model VendorBooking {
   activities ActivityLog[]
   documents  Document[]
   payouts    Payout[]
+  vendorPayments VendorPayment[] // each payment made for this work: advance, part, final (25 Nov 2026)
   review     Review? // the couple's review of this booking (Roadmap 1.4)
 
   @@map("vendor_bookings")
@@ -2858,4 +2860,30 @@ model CoupleExpense {
 
   @@index([weddingId])
   @@map("couple_expenses")
+}
+
+// One payment Shaadi Shopping made to a vendor for one assigned work (25 Nov 2026) — an advance, a part or the final amount.
+// Append-only: an entry is never edited or deleted; a mistake is voided (kept, with who and why) and the right one recorded.
+// Rules and the totals both dashboards show: lib/vendor/vendorMoney.ts. (Payout stays as history: an older payout marked PAID still
+// counts as paid.)
+model VendorPayment {
+  id              String        @id @default(uuid())
+  vendorBookingId String
+  vendorBooking   VendorBooking @relation(fields: [vendorBookingId], references: [id])
+  vendorId        String
+  vendor          Vendor        @relation(fields: [vendorId], references: [id])
+  amount          Int // rupees, > 0
+  paidOn          DateTime // the day the money went (UTC midnight of the India date)
+  method          String // UPI / BANK_TRANSFER / CASH / CHEQUE / OTHER
+  reference       String? // UTR, cheque number …
+  note            String?
+  recordedById    String?
+  createdAt       DateTime      @default(now())
+  voidedAt        DateTime?
+  voidedById      String?
+  voidReason      String?
+
+  @@index([vendorBookingId])
+  @@index([vendorId])
+  @@map("vendor_payments")
 }
