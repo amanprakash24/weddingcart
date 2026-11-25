@@ -52,8 +52,8 @@ describe('buildQuotationMessage', () => {
   });
 
   test('a missing name still reads naturally', () => {
-    expect(buildQuotationMessage(base, null)).toMatch(/^Namaste 🙏/);
-    expect(buildQuotationMessage(base, '   ')).toMatch(/^Namaste 🙏/);
+    expect(buildQuotationMessage(base, null)).toMatch(/^Namaste,/);
+    expect(buildQuotationMessage(base, '   ')).toMatch(/^Namaste,/);
   });
 
   test('shows subtotal, discount and tax only when they exist', () => {

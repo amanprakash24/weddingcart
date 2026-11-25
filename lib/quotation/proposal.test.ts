@@ -90,6 +90,10 @@ describe('change note', () => {
     expect(both).toContain('Reduce decoration');
     expect(both).toContain('Catering 300 guests');
   });
+
+  test('the date stamp is the date in India (00:30 IST on 20 Nov is still 19 Nov in UTC)', () => {
+    expect(appendChangeNote(null, 'x', new Date('2026-11-19T19:00:00Z'))).toBe('[2026-11-20] x');
+  });
 });
 
 describe('toCustomerProposal — allow-list only', () => {

@@ -6,6 +6,8 @@ describe('isProposalPath', () => {
   test('matches the proposal pages only', () => {
     expect(isProposalPath('/proposal')).toBe(true);
     expect(isProposalPath(`/proposal/${'x'.repeat(43)}`)).toBe(true);
+    expect(isProposalPath(`/quotation/${'x'.repeat(43)}`)).toBe(true); // same secret page, CRM address (20 Nov 2026)
+    expect(isProposalPath('/quotations-guide')).toBe(false);
     for (const p of ['/', '/proposals', '/proposal-ideas', '/venues/patna', '/admin', null, undefined]) expect(isProposalPath(p)).toBe(false);
   });
 });

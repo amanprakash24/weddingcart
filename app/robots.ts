@@ -15,6 +15,8 @@ export default function robots(): MetadataRoute.Robots {
         '/cart',
         '/proposal',
         '/proposal/*',
+        '/quotation',
+        '/quotation/*',
         '/customer$',
         '/customer/*',
         '/vendor$',

@@ -270,9 +270,10 @@ export function createProposalService(deps: ProposalDeps = defaultDeps()) {
     const now = new Date();
     await deps.db.$transaction(async (tx) => {
       const current = await tx.quotation.findUnique({ where: { id: q.id }, select: { changesRequestNote: true } });
-      // Only while it is still SENT — a staff revision/acceptance in the meantime wins.
+      // Only while it is still SENT (or READY_TO_SHARE: the client opened the link before staff confirmed sending) — a staff
+      // revision/acceptance in the meantime wins.
       const updated = await tx.quotation.updateMany({
-        where: { id: q.id, status: 'SENT' },
+        where: { id: q.id, status: { in: ['SENT', 'READY_TO_SHARE'] } },
         data: { changesRequestedAt: now, changesRequestNote: appendChangeNote(current?.changesRequestNote ?? null, text, now) },
       });
       if (updated.count !== 1) throw new ConflictError('This proposal was just updated — please reload the page');

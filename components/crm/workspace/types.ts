@@ -74,7 +74,7 @@ export interface WorkspaceQuotation {
   id: string;
   quotationNumber: string;
   revision: number;
-  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
+  status: 'DRAFT' | 'READY_TO_SHARE' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';
   subtotal: number;
   discount: number;
   gstEnabled: boolean;

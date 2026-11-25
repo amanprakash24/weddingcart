@@ -23,13 +23,13 @@ const nextConfig: NextConfig = {
       // catch-all so these values win (the last matching header key overrides). Never indexed, and the URL is never
       // sent on as a Referer. (No-store caching comes from the page being force-dynamic — Next overrides Cache-Control
       // set here for pages.)
-      {
-        source: '/proposal/:path*',
+      ...['/proposal/:path*', '/quotation/:path*'].map((source) => ({
+        source, // /quotation/<token> is the same secret page (20 Nov 2026)
         headers: [
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
           { key: 'Referrer-Policy', value: 'no-referrer' },
         ],
-      },
+      })),
       // Client invitations carry a family's names and phone number: shared by link, never listed by search engines.
       {
         source: '/invitations/:path*',

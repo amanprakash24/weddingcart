@@ -3,11 +3,12 @@
 // V1 never sends anything itself: the operator opens WhatsApp with the message prepared and presses send there.
 // Pure, so it can be tested. The wording lives in lib/quotation/message.ts.
 import type { JourneyState } from '@/lib/crm/leadJourney';
+import { whatsappSafeText } from '@/lib/whatsappText';
 import {
   buildAcceptanceThanks,
   buildBookingConfirmedMessage,
   buildFollowUpMessage,
-  buildQuotationMessage,
+  buildQuotationShareMessage,
   type QuotationMessageInput,
 } from '@/lib/quotation/message';
 
@@ -15,7 +16,7 @@ import {
 // 10-digit Indian mobile number produces a link; anything else returns null and the UI offers "Copy message" instead.
 export function whatsappUrl(phone: string | null | undefined, text: string): string | null {
   const digits = (phone ?? '').replace(/\D/g, '').slice(-10);
-  return digits.length === 10 ? `https://wa.me/91${digits}?text=${encodeURIComponent(text)}` : null;
+  return digits.length === 10 ? `https://wa.me/91${digits}?text=${encodeURIComponent(whatsappSafeText(text))}` : null;
 }
 
 export interface JourneyMessage {
@@ -32,19 +33,28 @@ export interface JourneyMessageInput {
   eventDate: string | null; // words, already validated — or null
   sentOn: string | null;
   weddingNumber: string | null;
+  // The client link made by "Share on WhatsApp" (only known in this browser tab — the server keeps just its hash).
+  shareUrl?: string | null;
 }
+
+// Shown in the preview before the link exists: it is created when staff press "Share quotation on WhatsApp".
+export const LINK_PLACEHOLDER = '[the quotation link is added when you share]';
 
 export function journeyMessage(state: JourneyState, i: JourneyMessageInput): JourneyMessage | null {
   const q = i.quotation;
   switch (state) {
     case 'DRAFT':
+    case 'READY_TO_SHARE':
       if (!q) return null;
       return {
         kind: 'quote',
         label: 'Quote message',
-        text: buildQuotationMessage(q, i.customerName, { eventDate: i.eventDate }),
-        cta: 'Open WhatsApp with the quote',
-        hint: 'This only opens WhatsApp. After you press Send there, confirm here — only then is the quote marked as sent.',
+        text: buildQuotationShareMessage({ customerName: i.customerName, eventDate: i.eventDate, quotationNumber: q.quotationNumber, url: i.shareUrl || LINK_PLACEHOLDER }),
+        cta: state === 'DRAFT' ? 'Share quotation on WhatsApp' : 'Open WhatsApp again (new link)',
+        hint:
+          state === 'DRAFT'
+            ? "Creates the client's quotation link, then opens WhatsApp with this message. Nothing is marked as sent until you confirm."
+            : 'Waiting for you to confirm the message was sent. Opening WhatsApp again makes a new link; the earlier one stops working.',
       };
     case 'SENT':
       if (!q) return null;

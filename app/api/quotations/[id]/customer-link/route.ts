@@ -3,7 +3,7 @@ import { moneyDenied } from '@/lib/auth/moneyGuard';
 import { requireRole } from '@/lib/auth/session';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { handleApiError } from '@/lib/errors';
-import { proposalUrl } from '@/lib/quotation/proposal';
+import { quotationUrl } from '@/lib/quotation/proposal';
 import { quotationService } from '@/services/quotation.service';
 import { platformScoped } from '@/lib/ownership/entry';
 
@@ -20,7 +20,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { token } = await quotationService.issueCustomerLink((await params).id, session.user.id ?? null);
     // The host staff are on (production, preview or local), so the link always points at the same site.
-    return NextResponse.json({ success: true, data: { url: proposalUrl(req.nextUrl.origin, token) } }, { headers: NO_STORE });
+    return NextResponse.json({ success: true, data: { url: quotationUrl(req.nextUrl.origin, token) } }, { headers: NO_STORE });
   } catch (err) {
     return handleApiError(err);
   }

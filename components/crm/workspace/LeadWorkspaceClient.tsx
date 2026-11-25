@@ -34,7 +34,7 @@ import { describeLostReason, toStageReason, type NotProceedingKey } from '@/lib/
 import { eventDateWords } from '@/lib/crm/eventDate';
 import { serviceLabel } from '@/lib/serviceLabels';
 import { journeyMessage, whatsappUrl } from '@/lib/crm/journeyMessage';
-import { buildFollowUpMessage, buildQuotationMessage, formatQuoteDate } from '@/lib/quotation/message';
+import { buildFollowUpMessage, buildQuotationShareMessage, formatQuoteDate } from '@/lib/quotation/message';
 import {
   CONFIRMED_NOTICE,
   FOLLOW_UP_SENT_NOTE,
@@ -75,6 +75,10 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   const [followUps, setFollowUps] = useState(0);
   // WhatsApp was opened (or the message copied) and we are waiting for the operator to say they pressed Send.
   const [pendingSend, setPendingSend] = useState<PendingSend | null>(null);
+  // The client link made by "Share quotation on WhatsApp". The server keeps only its hash, so the URL is known in this tab only.
+  const [shareLink, setShareLink] = useState<{ quotationId: string; url: string } | null>(null);
+  // Blocks a second click while the first share is still on its way (the server also refuses a second share of the same quote).
+  const sharingRef = useRef(false);
   // Money v1: where the accepted quotation's confirmation payment stands, reported by the agreement card; and a counter that reopens
   // the card with its payment form open when the Next action is "Record payment".
   const [money, setMoney] = useState<AgreementMoneyView | null>(null);
@@ -185,7 +189,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
     weddingNumber,
     closedReason,
     followUps,
-    changesRequestedOn: current?.status === 'SENT' && current.changesRequestedAt ? formatQuoteDate(current.changesRequestedAt) : null,
+    changesRequestedOn: (current?.status === 'SENT' || current?.status === 'READY_TO_SHARE') && current.changesRequestedAt ? formatQuoteDate(current.changesRequestedAt) : null,
     money: showAgreement && money ? { ready: money.state === 'CONFIRMED', remaining: money.remaining, required: money.confirmationAmount, percent: money.confirmationPercent } : null,
   });
   const steps = journeySteps(state, current, {
@@ -195,7 +199,8 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
     acceptedVia: acceptedVia ? acceptedVia.charAt(0).toUpperCase() + acceptedVia.slice(1) : null,
     weddingNumber,
   });
-  const message = journeyMessage(state, { quotation: current, customerName, eventDate, sentOn, weddingNumber });
+  const knownShareUrl = shareLink && current && shareLink.quotationId === current.id ? shareLink.url : null;
+  const message = journeyMessage(state, { quotation: current, customerName, eventDate, sentOn, weddingNumber, shareUrl: knownShareUrl });
   const canOpenWhatsApp = whatsappUrl(customer.phone, '') !== null;
   // Changes whenever the linked vendors may have changed, so the vendor-availability card reloads (04-vendor-os.md §9).
   const vendorLinkKey = [
@@ -209,7 +214,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
 
   // Sending is two steps (lib/crm/whatsappConfirm.ts): open WhatsApp — which records NOTHING — then the operator confirms
   // they pressed Send. Only that confirmation marks the quote as sent (or logs the follow-up).
-  const quoteText = current ? buildQuotationMessage(current, customerName, { eventDate }) : null;
+  const quoteText = current && knownShareUrl ? buildQuotationShareMessage({ customerName, eventDate, quotationNumber: current.quotationNumber, url: knownShareUrl }) : null;
   const followUpText = current ? buildFollowUpMessage(current, customerName, sentOn) : null;
   const activePending = pendingStillValid(pendingSend, current, pendingSend?.kind === 'quote' ? quoteText : followUpText) ? pendingSend : null;
 
@@ -243,7 +248,54 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
     quotesApi.setNotice(pendingPrompt(pending).opened);
   };
 
-  const sendQuote = () => openForConfirmation('quote', quoteText);
+  // "Share quotation on WhatsApp" (20 Nov 2026). 'new': DRAFT → READY_TO_SHARE with a new client link. 'again': a new link for a
+  // quote that is already ready to share (the earlier one stops working). Then WhatsApp opens with the short message — or, when
+  // that is not possible, the message is copied. Nothing here marks the quote as sent: staff confirm that afterwards.
+  const shareQuote = async (mode: 'new' | 'again', how: 'open' | 'copy') => {
+    if (!current || sharingRef.current) return;
+    sharingRef.current = true;
+    // Opened before any await, so the browser still treats it as the click's own tab and does not block it.
+    const win = how === 'open' && whatsappUrl(customer.phone, '') ? window.open('about:blank', '_blank') : null;
+    try {
+      const payload = await quotesApi.act(current.id, mode === 'new' ? '/share' : '/customer-link');
+      const url: string | undefined = mode === 'new' ? payload?.url : payload?.data?.url;
+      if (!payload || !url) {
+        win?.close();
+        return;
+      }
+      setShareLink({ quotationId: current.id, url });
+      const text = buildQuotationShareMessage({ customerName, eventDate, quotationNumber: current.quotationNumber, url });
+      const waUrl = whatsappUrl(customer.phone, text);
+      if (win && waUrl) {
+        win.opener = null;
+        win.location.href = waUrl;
+        quotesApi.setNotice('WhatsApp opened with the quotation link. Press Send there, then confirm here — it is not marked as sent until you do.');
+        return;
+      }
+      win?.close();
+      try {
+        await navigator.clipboard.writeText(text);
+        quotesApi.setNotice('Message with the quotation link copied — paste it into WhatsApp and send it, then confirm here.');
+      } catch {
+        quotesApi.setNotice('The quotation link is ready — copy the message from the preview, send it on WhatsApp, then confirm here.');
+      }
+    } finally {
+      sharingRef.current = false;
+    }
+  };
+  const sendQuote = () => shareQuote('new', 'open');
+  // "Yes, it's sent" for a quote that is ready to share: only now is it SENT.
+  const confirmShared = async () => {
+    if (!current || current.status !== 'READY_TO_SHARE') return;
+    const done = await quotesApi.act(current.id, '/send', undefined, CONFIRMED_NOTICE.quote);
+    if (done) setShareLink(null);
+  };
+  // "Not sent — back to draft": the quote can be changed again and its link stops working.
+  const notSent = async () => {
+    if (!current || current.status !== 'READY_TO_SHARE') return;
+    const done = await quotesApi.act(current.id, '/share', undefined, 'Not sent. The quote is a draft again and its link no longer works.', 'DELETE');
+    if (done) setShareLink(null);
+  };
 
   // "Yes, it's sent": only now is anything recorded.
   const confirmPending = async () => {
@@ -291,12 +343,14 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   const sendJourneyMessage = () => {
     if (!message) return;
     if (message.kind === 'follow-up') return void followUp();
-    if (message.kind === 'quote') return void sendQuote();
+    if (message.kind === 'quote') return void shareQuote(state === 'READY_TO_SHARE' ? 'again' : 'new', 'open');
     const url = whatsappUrl(customer.phone, message.text);
     if (url) window.open(url, '_blank', 'noopener');
   };
   const copyMessage = async () => {
     if (!message) return;
+    // A quote message is only worth copying with its real link: make one first (a draft), or a new one if this tab lost it.
+    if (message.kind === 'quote' && (state === 'DRAFT' || !knownShareUrl)) return void shareQuote(state === 'DRAFT' ? 'new' : 'again', 'copy');
     try {
       await navigator.clipboard.writeText(message.text);
       quotesApi.setNotice('Message copied — paste it into WhatsApp.');
@@ -317,6 +371,9 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
         break;
       case 'send-quote':
         await sendQuote();
+        break;
+      case 'confirm-sent':
+        await confirmShared();
         break;
       case 'follow-up':
         await followUp();
@@ -355,6 +412,8 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
   const onSecondary = (secondary: SecondaryActionId) => {
     if (secondary === 'revise-quote') return void reviseQuote();
     if (secondary === 'mark-sent') return void markSent();
+    if (secondary === 'share-again') return void shareQuote('again', 'open');
+    if (secondary === 'not-sent') return void notSent();
     setDialog(secondary === 'customer-accepted' ? 'accept' : secondary === 'customer-declined' ? 'decline' : 'not-proceeding');
   };
 

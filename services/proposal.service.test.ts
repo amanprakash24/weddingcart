@@ -40,7 +40,10 @@ const bookingSourceFacts = mock(async () => ({ name: 'Rahul & Priya', phone: '98
 const activityCreate = mock(async () => ({}));
 const applyCommercialEvent = mock(async () => 'NEGOTIATION');
 const updateMany = mock(async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
-  const matches = Object.entries(args.where).every(([k, v]) => (k === 'id' ? row.id === v : row[k] === v));
+  // { in: [...] } as Prisma reads it; anything else is an exact match.
+  const matches = Object.entries(args.where).every(([k, v]) =>
+    v && typeof v === 'object' && 'in' in v ? (v as { in: unknown[] }).in.includes(row[k]) : row[k] === v
+  );
   if (!matches) return { count: 0 };
   Object.assign(row, args.data);
   return { count: 1 };

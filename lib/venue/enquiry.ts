@@ -168,6 +168,7 @@ export function sourceLabel(channel: string | null | undefined, sourceDetail: st
 // ---------- what to do next ----------
 
 import type { QuoteStage } from './quotation';
+import { whatsappSafeText } from '@/lib/whatsappText';
 
 export interface FollowUp {
   id: string;
@@ -232,7 +233,7 @@ export const ACTION_ORDER: NextAction['kind'][] = ['PAYMENT_TO_CHECK', 'QUOTE_AC
 
 // Opens a chat with the venue's OWN customer, from the venue's own tool. (Public marketplace pages are different: there every
 // contact link must be Shaadi Shopping's number, never a venue's.)
-export const whatsappTo = (phone: string, text: string) => `https://wa.me/91${phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(text)}`;
+export const whatsappTo = (phone: string, text: string) => `https://wa.me/91${phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(whatsappSafeText(text))}`;
 
 // History lines that say what has been paid or invoiced. A member without `view_financials` (a manager, by default) does not get
 // them from the server — the same rule as the payments on the quotation (services/venueQuotation.service.ts `moneyHidden`).

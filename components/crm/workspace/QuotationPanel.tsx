@@ -239,6 +239,9 @@ const QuotationPanel = forwardRef<
     if (state === 'ACCEPTED' && accepted) {
       return { tone: 'amber' as const, title: acceptedLine, lines: [...(current.acceptedNote ? [current.acceptedNote] : []), 'This is not a confirmed booking yet — create the booking, then confirm it.'] };
     }
+    if (current.status === 'READY_TO_SHARE') {
+      return { tone: 'amber' as const, title: 'Ready to share — not sent yet', lines: ['The client link exists and WhatsApp was opened. Confirm the message was sent (above) to mark it as sent, or put it back to draft to change it.'] };
+    }
     if (current.status === 'REJECTED') return { tone: 'red' as const, title: 'Declined by the customer', lines: current.rejectionReason ? [current.rejectionReason] : [] };
     if (current.status === 'EXPIRED') return { tone: 'amber' as const, title: 'This quote passed its valid-until date', lines: [] };
     return null;
@@ -334,7 +337,7 @@ const QuotationPanel = forwardRef<
                 ))}
               </div>
             )}
-            {current.status === 'SENT' && current.changesRequestedAt && current.changesRequestNote && (
+            {(current.status === 'SENT' || current.status === 'READY_TO_SHARE') && current.changesRequestedAt && current.changesRequestNote && (
               <div className="grid gap-0.5 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-3 text-sm text-sky-900">
                 <b className="font-bold">{customerName} asked for changes on {formatQuoteDate(current.changesRequestedAt)}</b>
                 <span className="whitespace-pre-line">{current.changesRequestNote}</span>
