@@ -15,7 +15,7 @@ const work = (over: Partial<AssignmentFacts> = {}): AssignmentFacts => ({
 describe('one work', () => {
   test('confirmed, nothing paid yet: owed, never ₹0 (the bug of 25 Nov 2026)', () => {
     expect(assignmentMoney(work())).toEqual({
-      id: 'w1', workStatus: 'NOT_STARTED', owed: true, workValue: 10000, commissionRate: 10, commission: 1000, commissionIsEstimate: true, net: 9000, paid: 0, remaining: 9000, payable: 9000,
+      id: 'w1', workStatus: 'NOT_STARTED', owed: true, pricingModel: 'COMMISSION', workOrderIssued: false, workValue: 10000, commissionRate: 10, commission: 1000, commissionIsEstimate: true, margin: 1000, net: 9000, paid: 0, remaining: 9000, payable: 9000,
     });
   });
 
@@ -62,7 +62,7 @@ describe('totals — Maa Durga on WED-2026-0002 (25 Nov 2026 records)', () => {
   const all = facts.map((f) => ({ id: f.id, status: f.status, agreedPrice: f.agreedPrice }));
 
   test('the three confirmed works only: ₹28,000 of work, ₹25,200 to receive, nothing paid', () => {
-    expect(moneyTotals(facts.map(assignmentMoney), all)).toEqual({ workValue: 28000, commission: 2800, net: 25200, paid: 0, remaining: 25200, awaitingVendorValue: 0, works: 3, completed: 0 });
+    expect(moneyTotals(facts.map(assignmentMoney), all)).toEqual({ workValue: 28000, commission: 2800, margin: 2800, net: 25200, paid: 0, remaining: 25200, awaitingVendorValue: 0, works: 3, completed: 0 });
   });
 
   test('one unknown rate makes the totals unknown, not smaller', () => {
@@ -114,5 +114,25 @@ describe('what a vendor may see (25 Nov 2026, money design rule 1)', () => {
     const t = vendorTotals(rows);
     expect(t).toEqual({ payable: 16200, paid: 3000, remaining: 13200, awaitingPayable: 4500, works: 2, completed: 0 });
     expect(Object.keys(t).sort()).toEqual(['awaitingPayable', 'completed', 'paid', 'payable', 'remaining', 'works']);
+  });
+});
+
+describe('pricing models and work orders (money design v1, PR 4)', () => {
+  test('fixed price: the vendor gets their price; no commission; margin = client price − vendor price', () => {
+    const m = assignmentMoney(work({ agreedPrice: 100000, pricingModel: 'FIXED', vendorPrice: 80000 }));
+    expect(m).toMatchObject({ pricingModel: 'FIXED', commission: null, commissionRate: null, payable: 80000, net: 80000, margin: 20000, commissionIsEstimate: false });
+  });
+  test('fixed price not set yet: unknown, never guessed', () => {
+    expect(assignmentMoney(work({ pricingModel: 'FIXED', vendorPrice: null }))).toMatchObject({ payable: null, net: null, margin: null });
+  });
+  test('an issued work order freezes the terms: a later rate change or price edit does not move them', () => {
+    const wo = { status: 'ISSUED', pricingModel: 'COMMISSION' as const, vendorPayable: 9000, clientPrice: 10000, commissionRate: 10, commissionAmount: 1000 };
+    const m = assignmentMoney(work({ agreedPrice: 12000, currentRate: 15, workOrder: wo }));
+    expect(m).toMatchObject({ workOrderIssued: true, workValue: 10000, commission: 1000, commissionRate: 10, payable: 9000, margin: 1000, commissionIsEstimate: false });
+    expect(assignmentMoney(work({ workOrder: { ...wo, status: 'CANCELLED' } }))).toMatchObject({ workOrderIssued: false, payable: 9000, commissionIsEstimate: true }); // back to today's rate
+  });
+  test('totals: commission counts commission-model works only; margin covers both', () => {
+    const rows = [assignmentMoney(work({ id: 'c', agreedPrice: 10000 })), assignmentMoney(work({ id: 'f', agreedPrice: 100000, pricingModel: 'FIXED', vendorPrice: 80000 }))];
+    expect(moneyTotals(rows)).toMatchObject({ workValue: 110000, commission: 1000, margin: 21000, net: 89000 });
   });
 });

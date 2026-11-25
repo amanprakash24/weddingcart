@@ -418,6 +418,7 @@ model Vendor {
   vendorBookings    VendorBooking[]
   payouts           Payout[]
   vendorPayments    VendorPayment[] // each payment Shaadi Shopping made to this vendor (25 Nov 2026)
+  workOrders        VendorWorkOrder[] // numbered work orders issued to this vendor (25 Nov 2026)
   // Route A commercial-tier history — see PartnerAgreement's own comment. Required by Prisma
   // as the opposite side of that model's `vendor` relation; nothing reads this list yet.
   partnerAgreements PartnerAgreement[]
@@ -1671,6 +1672,12 @@ model VendorBooking {
   documents  Document[]
   payouts    Payout[]
   vendorPayments VendorPayment[] // each payment made for this work: advance, part, final (25 Nov 2026)
+  // Pricing model (money design v1, PR 4, 25 Nov 2026). null = an older assignment: commission at the category rate, as before.
+  // COMMISSION: the vendor gets agreedPrice less the commission. FIXED: the vendor gets vendorPrice; agreedPrice stays the client price.
+  // Set by the founder only; locked once the work order is issued (database rule, migration 20261125200000_vendor_work_orders).
+  pricingModel   VendorPricingModel?
+  vendorPrice    Int?
+  workOrder      VendorWorkOrder?
   review     Review? // the couple's review of this booking (Roadmap 1.4)
 
   @@map("vendor_bookings")
@@ -2911,4 +2918,44 @@ model FinanceEvent {
   @@index([at])
   @@index([tableName, rowId])
   @@map("finance_events")
+}
+
+enum VendorPricingModel {
+  COMMISSION
+  FIXED
+}
+
+enum WorkOrderStatus {
+  ISSUED
+  CANCELLED
+}
+
+// A vendor work order (money design v1, PR 4, 25 Nov 2026): issued when the vendor confirms an assignment, numbered WO-YYYYMM-NNNN,
+// and FROZEN — the database refuses any change to its number, amounts, model or scope (trigger work_order_frozen); it can only be
+// cancelled, with who and why. The scope field is what the vendor sees (function, date, venue, service, deliverables, terms) together with
+// vendorPayable. clientPrice, commission and margin are INTERNAL: never sent to a vendor (lib/vendor/workOrder.ts).
+model VendorWorkOrder {
+  id               String             @id @default(uuid())
+  number           String             @unique
+  vendorBookingId  String             @unique
+  vendorBooking    VendorBooking      @relation(fields: [vendorBookingId], references: [id], onDelete: Cascade)
+  vendorId         String
+  vendor           Vendor             @relation(fields: [vendorId], references: [id])
+  pricingModel     VendorPricingModel
+  vendorPayable    Int // what the vendor is paid for this work
+  clientPrice      Int // internal: the couple's price share for this service
+  commissionRate   Float? // internal: COMMISSION only, frozen at issue
+  commissionAmount Int? // internal: COMMISSION only
+  margin           Int // internal: clientPrice − vendorPayable
+  scope            Json // vendor-visible snapshot
+  status           WorkOrderStatus    @default(ISSUED)
+  historical       Boolean            @default(false) // issued later for an assignment confirmed before work orders existed
+  issuedAt         DateTime           @default(now())
+  issuedById       String?
+  cancelledAt      DateTime?
+  cancelledById    String?
+  cancelReason     String?
+
+  @@index([vendorId])
+  @@map("vendor_work_orders")
 }

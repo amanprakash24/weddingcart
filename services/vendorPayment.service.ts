@@ -29,6 +29,7 @@ const assignmentInclude = {
   vendor: { select: { id: true, name: true, categoryId: true, category: { select: { name: true } } } },
   weddingEvent: { select: { id: true, type: true, label: true, date: true, wedding: { select: { id: true, weddingNumber: true, status: true, customer: { select: { name: true } }, couple: { select: { brideName: true, groomName: true } } } } } },
   payouts: { select: { id: true, status: true, grossAmount: true, commissionRate: true, commissionAmount: true, netAmount: true, paidAt: true } },
+  workOrder: { select: { id: true, number: true, status: true, pricingModel: true, vendorPayable: true, clientPrice: true, commissionRate: true, commissionAmount: true } },
   vendorPayments: { orderBy: [{ paidOn: 'asc' }, { createdAt: 'asc' }] },
 } satisfies Prisma.VendorBookingInclude;
 
@@ -83,6 +84,9 @@ export interface WorkView {
   payments: PaymentEntryView[];
   canRecord: boolean; // owed, and something is left to pay
   legacyPayoutPending: boolean; // an older payout calculated but not yet marked paid
+  workOrder: { id: string; number: string; status: string } | null; // the numbered work order (money design v1, PR 4)
+  pricingModel: 'COMMISSION' | 'FIXED' | null; // as set on the assignment (null: an older one — commission)
+  vendorPrice: number | null; // FIXED only
 }
 
 export interface VendorGroup {
@@ -100,7 +104,7 @@ function workView(a: Loaded, rates: Map<string, number | null>): WorkView {
     status: a.status,
     venueStatus: a.venueStatus,
     agreedPrice: a.agreedPrice,
-    currentRate: rates.get(a.vendor.categoryId) ?? null,
+    pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, currentRate: rates.get(a.vendor.categoryId) ?? null,
     payout: payout ? { status: payout.status, commissionRate: payout.commissionRate, commissionAmount: payout.commissionAmount, netAmount: payout.netAmount } : null,
     payments: a.vendorPayments.map((p) => ({ amount: p.amount, voided: p.voidedAt !== null })),
   });
@@ -136,6 +140,9 @@ function workView(a: Loaded, rates: Map<string, number | null>): WorkView {
     payments,
     canRecord: money.owed && money.remaining !== null && money.remaining > 0,
     legacyPayoutPending: payout?.status === 'PENDING',
+    workOrder: a.workOrder ? { id: a.workOrder.id, number: a.workOrder.number, status: a.workOrder.status } : null,
+    pricingModel: a.pricingModel,
+    vendorPrice: a.vendorPrice,
   };
 }
 
@@ -162,6 +169,7 @@ export interface VendorWorkView {
   workStatus: AssignmentMoney['workStatus'];
   owed: boolean;
   payable: number | null;
+  workOrder: { id: string; number: string; status: string } | null;
   paid: number;
   remaining: number | null;
   payments: { id: string; amount: number; paidOn: string; methodLabel: string; reference: string | null }[];
@@ -177,6 +185,7 @@ function vendorWorkView(w: WorkView): VendorWorkView {
     workStatus: w.money.workStatus,
     owed: w.money.owed,
     payable: w.money.payable,
+    workOrder: w.workOrder,
     paid: w.money.paid,
     remaining: w.money.owed ? w.money.remaining : w.money.paid > 0 ? -w.money.paid : 0,
     payments: w.payments.filter((p) => !p.voided).map((p) => ({ id: p.id, amount: p.amount, paidOn: p.paidOn, methodLabel: p.methodLabel, reference: p.reference })),
@@ -185,7 +194,7 @@ function vendorWorkView(w: WorkView): VendorWorkView {
 
 // A commission the viewer may not see: removed, with net kept (the same rule as payouts — lib/auth/moneyAccess.ts).
 function hideCommission(m: AssignmentMoney): AssignmentMoney {
-  return { ...m, commission: null, commissionRate: null };
+  return { ...m, commission: null, commissionRate: null, margin: null }; // margin is founder-only too (rule 4)
 }
 
 export const vendorPaymentService = {
@@ -196,8 +205,8 @@ export const vendorPaymentService = {
     let works = loaded.map((a) => workView(a, rates));
     const totals = moneyTotals(works.map((w) => w.money), loaded.map((a) => ({ id: a.id, status: a.status, agreedPrice: a.agreedPrice })));
     if (!opts.seesCommission) works = works.map((w) => ({ ...w, money: hideCommission(w.money) }));
-    const vendors = groupByVendor(works, loaded).map((g) => (opts.seesCommission ? g : { ...g, totals: { ...g.totals, commission: null } }));
-    return { vendors, totals: opts.seesCommission ? totals : { ...totals, commission: null } };
+    const vendors = groupByVendor(works, loaded).map((g) => (opts.seesCommission ? g : { ...g, totals: { ...g.totals, commission: null, margin: null } }));
+    return { vendors, totals: opts.seesCommission ? totals : { ...totals, commission: null, margin: null } };
   },
 
   // The vendor's own view: every Shaadi Shopping work of theirs, across weddings. Only for people who may see the vendor's money.
@@ -227,7 +236,7 @@ export const vendorPaymentService = {
   async companyTotals(): Promise<{ outstanding: number; worksLeft: number; unknownWorks: number; ledgerPaid: number; settledLedgerCommission: number }> {
     const loaded = await prisma.vendorBooking.findMany({
       where: { OR: [{ status: { in: ['CONFIRMED', 'COMPLETED'] } }, { vendorPayments: { some: { voidedAt: null } } }] },
-      include: { vendor: { select: { categoryId: true } }, payouts: true, vendorPayments: { select: { amount: true, voidedAt: true } } },
+      include: { vendor: { select: { categoryId: true } }, payouts: true, workOrder: true, vendorPayments: { select: { amount: true, voidedAt: true } } },
     });
     const rates = await ratesFor(loaded.map((a) => a.vendor.categoryId));
     let outstanding = 0, worksLeft = 0, unknownWorks = 0, ledgerPaid = 0, settledLedgerCommission = 0;
@@ -238,7 +247,7 @@ export const vendorPaymentService = {
         status: a.status,
         venueStatus: a.venueStatus,
         agreedPrice: a.agreedPrice,
-        currentRate: rates.get(a.vendor.categoryId) ?? null,
+        pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, currentRate: rates.get(a.vendor.categoryId) ?? null,
         payout: payout ? { status: payout.status, commissionRate: payout.commissionRate, commissionAmount: payout.commissionAmount, netAmount: payout.netAmount } : null,
         payments: a.vendorPayments.map((p) => ({ amount: p.amount, voided: p.voidedAt !== null })),
       });
@@ -262,7 +271,7 @@ export const vendorPaymentService = {
       await tx.$queryRaw`SELECT id FROM vendor_bookings WHERE id = ${vendorBookingId} FOR UPDATE`;
       const a = await tx.vendorBooking.findFirst({
         where: { id: vendorBookingId, weddingEvent: { weddingId } },
-        include: { vendor: { select: { id: true, name: true, categoryId: true } }, payouts: true, vendorPayments: { select: { amount: true, voidedAt: true } } },
+        include: { vendor: { select: { id: true, name: true, categoryId: true } }, payouts: true, workOrder: true, vendorPayments: { select: { amount: true, voidedAt: true } } },
       });
       if (!a) throw new NotFoundError('VendorBooking', vendorBookingId);
       if (a.status !== 'CONFIRMED' && a.status !== 'COMPLETED') throw new ConflictError('Payments are recorded only for work the vendor has confirmed');
@@ -274,7 +283,7 @@ export const vendorPaymentService = {
         status: a.status,
         venueStatus: a.venueStatus,
         agreedPrice: a.agreedPrice,
-        currentRate: rates.get(a.vendor.categoryId) ?? null,
+        pricingModel: a.pricingModel, vendorPrice: a.vendorPrice, workOrder: a.workOrder, currentRate: rates.get(a.vendor.categoryId) ?? null,
         payout: payout ? { status: payout.status, commissionRate: payout.commissionRate, commissionAmount: payout.commissionAmount, netAmount: payout.netAmount } : null,
         payments: a.vendorPayments.map((p) => ({ amount: p.amount, voided: p.voidedAt !== null })),
       });

@@ -43,6 +43,8 @@ function makePrismaMock({
       findUnique: mock(async () => ({ id: 'we-1', weddingId })),
     },
     task: { updateMany: mock(async () => ({ count: 1 })) },
+    // A work order already exists for this booking, so confirming does not issue one here (issuing is covered by tests-db/vendor.work-orders.test.ts).
+    vendorWorkOrder: { findUnique: mock(async () => ({ id: 'wo-1', status: 'ISSUED' })) },
     activityLog: {
       create: activityLogCreateMock,
     },
@@ -233,6 +235,7 @@ function makePlanMock(over: { taskWeddingId?: string; taskTitle?: string; staff?
     wedding: { findUnique: mock(async () => weddingRow), update: weddingUpdate },
     user: { findFirst: mock(async () => (over.staff === false ? null : { id: 'staff-1', name: 'Asha' })) },
     task: { findUnique: mock(async () => taskRow), update: taskUpdate, updateMany: taskUpdateMany, create: mock(async () => ({ id: 'task-x' })) },
+    vendorWorkOrder: { findUnique: mock(async () => ({ id: 'wo-1', status: 'ISSUED' })) }, // already issued: confirming issues none here
     activityLog: { create: logCreate },
     weddingEvent: { findUnique: mock(async () => ({ id: 'we-1', weddingId: 'wedding-1' })) },
     vendor: { findUnique: mock(async () => ({ id: 'vendor-1', name: 'Lens Studio' })) },
