@@ -41,11 +41,15 @@ export interface IssuableWorkOrder {
 
 // The frozen figures + scope for a work order, or why one cannot be issued (the confirmation itself still goes ahead).
 export function buildWorkOrder(facts: AssignmentFacts, scope: Omit<WorkOrderScope, 'terms'>): { ok: true; value: IssuableWorkOrder } | { ok: false; reason: string } {
-  const t = assignmentTerms({ ...facts, workOrder: null, payout: null });
+  // An older payout keeps its own figures (a historical work order must match what was already settled); otherwise the model's terms.
+  const t = assignmentTerms({ ...facts, workOrder: null });
   if (t.payable === null) {
     return { ok: false, reason: t.pricingModel === 'FIXED' ? 'the fixed vendor price is not set' : 'no commission rate is set up for this vendor’s category' };
   }
   if (t.payable < 0) return { ok: false, reason: 'the vendor amount would be below zero' };
+  if (t.pricingModel === 'COMMISSION' && t.commission !== null && t.payable !== t.clientPrice - t.commission) {
+    return { ok: false, reason: 'the older payout no longer matches the agreed price — settle it by hand first' };
+  }
   return {
     ok: true,
     value: {

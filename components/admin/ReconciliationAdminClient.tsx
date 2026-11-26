@@ -49,6 +49,7 @@ export default function ReconciliationAdminClient() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Money check</h1>
           <p className="text-sm text-gray-600">Do the invoices, payments, agreements and vendor money all agree? Read-only: nothing here changes a record.</p>
+          <a href="/admin/work-orders/historical" className="mt-1 inline-block text-sm font-semibold text-gray-800 underline">Work orders for earlier confirmations</a>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading} className="min-h-10 rounded-lg border border-gray-300 px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50">{loading ? 'Checking…' : 'Run again'}</button>
       </header>
