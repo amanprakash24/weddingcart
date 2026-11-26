@@ -21,6 +21,7 @@ import { findAgreementForWedding } from '@/services/invoiceWorkflow.service';
 import { buildAgreementMoney, type AgreementMoneyView } from '@/lib/commercial/view';
 import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
 import { ConflictError, NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
+import { resolveSourceDate } from '@/lib/quotation/booking';
 import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { unassignedServiceFromTask } from '@/lib/booking/unassigned';
 import type { PendingFunctionChange } from '@/lib/wedding/coupleFunctions';
@@ -58,6 +59,12 @@ export interface WeddingWorkspaceEvent {
     vendorId: string;
     vendorName: string;
     vendorCategory: string;
+    // What the service is, from its quotation line (PR A); null on older services (the card then shows the vendor's category).
+    description: string | null;
+    serviceCategory: string | null;
+    serviceDate: Date | null;
+    quotedPrice: number | null;
+    discountShare: number | null;
     status: VendorBookingStatus;
     agreedPrice: number;
     declineReason: string | null;
@@ -400,6 +407,11 @@ export const weddingWorkspaceService = {
             vendorId: vb.vendorId,
             vendorName: vendor?.name ?? 'Unknown vendor',
             vendorCategory: vendor?.category.name ?? '',
+            description: vb.description,
+            serviceCategory: vb.serviceCategory,
+            serviceDate: vb.serviceDate,
+            quotedPrice: vb.quotedPrice,
+            discountShare: vb.discountShare,
             status: vb.status,
             agreedPrice: vb.agreedPrice,
             workOrderNumber: workOrderByBooking.get(vb.id) ?? null,
@@ -1000,6 +1012,59 @@ export const weddingWorkspaceService = {
         {
           type: ActivityType.STATUS_CHANGED,
           summary: `Agreed price for ${vendor.name} changed: ${inr(booking.agreedPrice)} → ${inr(agreedPrice)}`,
+          wedding: { connect: { id: weddingId } },
+          vendorBooking: { connect: { id: vendorBookingId } },
+          performedBy: actorId ? { connect: { id: actorId } } : undefined,
+        },
+        tx
+      );
+      return updated;
+    });
+  },
+
+  // What a service is (PR A, 26 Nov 2026): move it to another function of this wedding, or change its day, category or words. Not the
+  // price (Edit price / adjustments). Once its work order is issued, the function and day are what the vendor was sent: they stay.
+  async updateVendorBookingDetails(
+    weddingId: string,
+    vendorBookingId: string,
+    input: { weddingEventId: string; serviceDate: string | null; serviceCategory: string | null; description: string | null },
+    actorId: string | null
+  ) {
+    const { booking, vendor } = await loadBookingForChange(weddingId, vendorBookingId);
+    if (booking.status === 'CANCELLED' || booking.status === 'COMPLETED') {
+      throw new InvalidTransitionError(`A ${booking.status.toLowerCase()} service can no longer be changed`);
+    }
+    const target = await weddingEventRepository.findById(input.weddingEventId);
+    if (!target || target.weddingId !== weddingId) throw new ValidationError("Pick one of this wedding's functions");
+    const serviceDate = input.serviceDate ? resolveSourceDate(input.serviceDate) : null;
+    if (input.serviceDate && !serviceDate) throw new ValidationError('That date does not look right — please check it');
+    const day = (d: Date | null) => (d ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(d) : null);
+    const moved = target.id !== booking.weddingEventId;
+    const redated = day(serviceDate) !== day(booking.serviceDate);
+    if (moved || redated) {
+      const wo = await prisma.vendorWorkOrder.findUnique({ where: { vendorBookingId }, select: { number: true, status: true } });
+      if (wo?.status === 'ISSUED') {
+        throw new ConflictError(`Work order ${wo.number} is issued — its function and date are what the vendor was sent. Cancel and re-issue it to move the work.`);
+      }
+    }
+    const changes: string[] = [];
+    if (moved) changes.push(`moved to ${target.label?.trim() || target.type.charAt(0) + target.type.slice(1).toLowerCase().replace(/_/g, ' ')}`);
+    if (redated) changes.push(`date ${day(booking.serviceDate) ?? 'none'} → ${day(serviceDate) ?? 'none'}`);
+    if ((input.serviceCategory ?? null) !== (booking.serviceCategory ?? null)) changes.push(`category “${input.serviceCategory ?? ''}”`);
+    if ((input.description ?? null) !== (booking.description ?? null)) changes.push(`description “${input.description ?? ''}”`);
+    if (changes.length === 0) return booking;
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const updated = await vendorBookingRepository.update(
+        vendorBookingId,
+        { weddingEvent: { connect: { id: target.id } }, serviceDate, serviceCategory: input.serviceCategory, description: input.description },
+        tx
+      );
+      // A move takes the service's open tasks (confirm the vendor …) with it, so they show under the right function.
+      if (moved) await tx.task.updateMany({ where: { vendorBookingId, status: { in: ['PENDING', 'IN_PROGRESS'] } }, data: { weddingEventId: target.id } });
+      await activityLogRepository.create(
+        {
+          type: ActivityType.STATUS_CHANGED,
+          summary: `${vendor.name}: ${changes.join(', ')}`,
           wedding: { connect: { id: weddingId } },
           vendorBooking: { connect: { id: vendorBookingId } },
           performedBy: actorId ? { connect: { id: actorId } } : undefined,

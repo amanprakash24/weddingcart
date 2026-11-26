@@ -74,6 +74,7 @@ describe('planBookingFromQuotation', () => {
   test('every line keeps its quoted unit price and quantity — prices come from the quote, not a package list', () => {
     const plan = planBookingFromQuotation({ quotation, source, vendors });
     expect(plan.items[1]).toEqual({
+      quotationItemId: null,
       vendorId: 'v-cater',
       vendorName: 'Royal Feast Catering',
       vendorCategory: 'Catering',
@@ -81,6 +82,12 @@ describe('planBookingFromQuotation', () => {
       price: 800,
       quantity: 500,
     });
+  });
+
+  test('each booking item remembers the quotation line it came from (PR A)', () => {
+    const withIds = { ...quotation, items: quotation.items.map((i, n) => ({ ...i, id: `line-${n}` })) };
+    const plan = planBookingFromQuotation({ quotation: withIds, source, vendors });
+    expect(plan.items.map((i) => i.quotationItemId)).toEqual(quotation.items.map((_, n) => `line-${n}`));
   });
 
   test('a vendor line takes the vendor\'s real name and category', () => {
@@ -91,6 +98,7 @@ describe('planBookingFromQuotation', () => {
   test('a custom line becomes an unassigned item so conversion creates a "pick a vendor" task', () => {
     const plan = planBookingFromQuotation({ quotation, source, vendors });
     expect(plan.items[2]).toEqual({
+      quotationItemId: null,
       vendorId: null,
       vendorName: UNASSIGNED_VENDOR_NAME,
       vendorCategory: 'Decorators',

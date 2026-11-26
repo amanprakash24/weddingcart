@@ -28,6 +28,7 @@ import ServiceRequirements from './ServiceRequirements';
 import Approvals from './Approvals';
 import GuestRsvp from './GuestRsvp';
 import SsPlanningCard from './SsPlanningCard';
+import type { ServiceDetailsInput } from '@/components/wedding/functions/FunctionsPanel';
 
 type Approval = {
   id: string; subjectType: string; title: string | null; description: string | null; amount: number | null;
@@ -157,6 +158,10 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
     await postJson(`${basePath}/vendor-bookings/${vbId}`, { agreedPrice }, 'PATCH');
     await load();
   };
+  const editServiceDetails = async (vbId: string, input: ServiceDetailsInput) => {
+    await postJson(`${basePath}/vendor-bookings/${vbId}/details`, input, 'PATCH');
+    await load();
+  };
   const addService = async (weddingEventId: string, vendorId: string, agreedPrice: number) => {
     await postJson(`${basePath}/vendor-bookings`, { weddingEventId, vendorId, agreedPrice });
     await load();
@@ -272,6 +277,7 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
             onCancelVendor={cancelVendor}
             onReplaceVendor={replaceVendor}
             onEditPrice={editVendorPrice}
+            onEditServiceDetails={editServiceDetails}
             onAddService={addService}
             onAssign={assignVendor}
             onRemoveService={removeService}

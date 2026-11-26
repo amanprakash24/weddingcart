@@ -32,6 +32,7 @@ interface DraftLine {
   description: string;
   category: string;
   functionLabel: string;
+  eventDate: string; // YYYY-MM-DD — with the function, where this service sits in the wedding (PR A)
   vendor: VendorHit | null; // who provides this line — shown to the couple on the proposal (08-quotation.md §16)
   unitPrice: string;
   quantity: string;
@@ -53,12 +54,16 @@ interface Draft {
   notes: string;
 }
 
-const emptyLine = (): DraftLine => ({ description: '', category: '', functionLabel: '', vendor: null, unitPrice: '', quantity: '1' });
+const emptyLine = (eventDate = ''): DraftLine => ({ description: '', category: '', functionLabel: '', eventDate, vendor: null, unitPrice: '', quantity: '1' });
+// The lead's date as a default for new lines — only when it is a real YYYY-MM-DD.
+const defaultDay = (d: string | null) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : '');
+// Suggestions for a line's function; any other name ("Accommodation", "Welcome dinner") is allowed and becomes its own function.
+const FUNCTION_SUGGESTIONS = ['Engagement', 'Tilak', 'Haldi', 'Mehndi', 'Sangeet', 'Wedding', 'Reception', 'Accommodation'];
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const toNumber = (value: string) => Math.max(0, Math.floor(Number(value) || 0));
 
-function draftFromPrefill(prefill: QuotationPrefillLine[], selections: Selections): Draft {
+function draftFromPrefill(prefill: QuotationPrefillLine[], selections: Selections, day = ''): Draft {
   // A pre-filled vendor is shown by name: from the consultation's selection, or (enquiry vendor interest) the line itself.
   const hitFor = (p: QuotationPrefillLine): VendorHit | null => {
     if (!p.vendorId) return null;
@@ -67,8 +72,8 @@ function draftFromPrefill(prefill: QuotationPrefillLine[], selections: Selection
   };
   return {
     items: prefill.length
-      ? prefill.map((p) => ({ ...emptyLine(), description: p.description, category: p.category ?? '', vendor: hitFor(p) }))
-      : [emptyLine()],
+      ? prefill.map((p) => ({ ...emptyLine(day), description: p.description, category: p.category ?? '', vendor: hitFor(p) }))
+      : [emptyLine(day)],
     discount: '',
     gstEnabled: false,
     gstAmount: '',
@@ -87,6 +92,7 @@ function draftFromQuotation(q: WorkspaceQuotation): Draft {
       description: i.description,
       category: i.category ?? '',
       functionLabel: i.functionLabel ?? '',
+      eventDate: i.eventDate ? i.eventDate.slice(0, 10) : '',
       vendor: i.vendor ? { id: i.vendor.id, name: i.vendor.name, city: i.vendor.city, category: i.vendor.category } : null,
       unitPrice: String(i.unitPrice),
       quantity: String(i.quantity),
@@ -141,13 +147,14 @@ const QuotationPanel = forwardRef<
     vendorSuggestions: Selections;
     customerName: string;
     eventDate: string | null; // shown under the number, only when it is a real date
+    lineDate?: string | null; // the same date as YYYY-MM-DD — the default day for new lines (PR A)
     guestCount: number | null;
     weddingNumber: string | null;
     closedReason: string | null;
     onChanged: () => void;
   }
 >(function QuotationPanel(
-  { api, current, state, sourceType, sourceId, readOnly, prefill, vendorSuggestions, customerName, eventDate, guestCount, weddingNumber, closedReason, onChanged },
+  { api, current, state, sourceType, sourceId, readOnly, prefill, vendorSuggestions, customerName, eventDate, lineDate = null, guestCount, weddingNumber, closedReason, onChanged },
   ref
 ) {
   const { quotations, loadError, notice, busyId, load, act } = api;
@@ -156,7 +163,7 @@ const QuotationPanel = forwardRef<
   const [formError, setFormError] = useState<string | null>(null);
 
   useImperativeHandle(ref, () => ({
-    startCreate: () => setEditing({ id: null, draft: draftFromPrefill(prefill, vendorSuggestions) }),
+    startCreate: () => setEditing({ id: null, draft: draftFromPrefill(prefill, vendorSuggestions, defaultDay(lineDate)) }),
     startEdit: () => {
       if (current?.status === 'DRAFT') setEditing({ id: current.id, draft: draftFromQuotation(current) });
     },
@@ -165,14 +172,21 @@ const QuotationPanel = forwardRef<
 
   const save = async () => {
     if (!editing || saving) return;
+    const d = editing.draft;
+    // Every line says which function and day it is for (PR A): that is how the wedding is built when the couple confirms.
+    const missing = d.items.findIndex((i) => !i.functionLabel.trim() || !i.eventDate);
+    if (missing !== -1) {
+      setFormError(`Line ${missing + 1}: add its function and date — the wedding's functions are built from them.`);
+      return;
+    }
     setSaving(true);
     setFormError(null);
-    const d = editing.draft;
     const body = {
       items: d.items.map((i) => ({
         description: i.description,
         category: i.category || null,
         functionLabel: i.functionLabel || null,
+        eventDate: i.eventDate || null,
         vendorId: i.vendor?.id ?? null,
         unitPrice: toNumber(i.unitPrice),
         quantity: Math.max(1, toNumber(i.quantity)),
@@ -383,27 +397,23 @@ const QuotationPanel = forwardRef<
             {editing.draft.items.map((line, index) => (
               <div key={index} className="grid grid-cols-12 gap-2 items-start">
                 <input
-                  className={`${inputClass} col-span-12 sm:col-span-5`}
+                  className={`${inputClass} col-span-12 sm:col-span-6`}
                   placeholder="What is included, e.g. Grand Ballroom — 500 guests"
                   value={line.description}
                   onChange={(e) => setLine(index, { description: e.target.value })}
                 />
                 <input
                   className={`${inputClass} col-span-4 sm:col-span-2`}
-                  placeholder="Function (e.g. Wedding, Mehndi)"
-                  value={line.functionLabel}
-                  onChange={(e) => setLine(index, { functionLabel: e.target.value })}
-                />
-                <input
-                  className={`${inputClass} col-span-3 sm:col-span-1`}
                   inputMode="numeric"
+                  aria-label="Qty"
                   placeholder="Qty"
                   value={line.quantity}
                   onChange={(e) => setLine(index, { quantity: e.target.value })}
                 />
                 <input
-                  className={`${inputClass} col-span-5 sm:col-span-3`}
+                  className={`${inputClass} col-span-6 sm:col-span-3`}
                   inputMode="numeric"
+                  aria-label="Price"
                   placeholder="Price (₹)"
                   value={line.unitPrice}
                   onChange={(e) => setLine(index, { unitPrice: e.target.value })}
@@ -413,10 +423,33 @@ const QuotationPanel = forwardRef<
                   aria-label="Remove line"
                   disabled={editing.draft.items.length === 1}
                   onClick={() => setDraft({ items: editing.draft.items.filter((_, i) => i !== index) })}
-                  className="col-span-12 sm:col-span-1 text-gray-400 hover:text-red-500 disabled:opacity-30 text-sm py-2"
+                  className="col-span-2 sm:col-span-1 text-gray-400 hover:text-red-500 disabled:opacity-30 text-sm py-2"
                 >
                   ✕
                 </button>
+                <input
+                  className={`${inputClass} col-span-12 sm:col-span-4`}
+                  placeholder="Function (e.g. Wedding, Mehndi)"
+                  aria-label="Function"
+                  list="quotation-function-names"
+                  value={line.functionLabel}
+                  onChange={(e) => setLine(index, { functionLabel: e.target.value })}
+                />
+                <input
+                  className={`${inputClass} col-span-6 sm:col-span-4`}
+                  type="date"
+                  aria-label="Date of this line"
+                  value={line.eventDate}
+                  onChange={(e) => setLine(index, { eventDate: e.target.value })}
+                />
+                <input
+                  className={`${inputClass} col-span-6 sm:col-span-4`}
+                  placeholder="Category (e.g. Food, Hall)"
+                  aria-label="Category"
+                  maxLength={60}
+                  value={line.category}
+                  onChange={(e) => setLine(index, { category: e.target.value })}
+                />
                 <div className="col-span-12 grid gap-1.5">
                   <VendorPicker
                     picked={line.vendor}
@@ -435,7 +468,10 @@ const QuotationPanel = forwardRef<
                 </div>
               </div>
             ))}
-            <button type="button" onClick={() => setDraft({ items: [...editing.draft.items, emptyLine()] })} className="text-xs text-amber-600 hover:underline">
+            <datalist id="quotation-function-names">
+              {FUNCTION_SUGGESTIONS.map((f) => <option key={f} value={f} />)}
+            </datalist>
+            <button type="button" onClick={() => setDraft({ items: [...editing.draft.items, emptyLine(editing.draft.items.at(-1)?.eventDate ?? defaultDay(lineDate))] })} className="text-xs text-amber-600 hover:underline">
               + Add line
             </button>
           </div>

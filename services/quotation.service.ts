@@ -10,7 +10,7 @@ import { lockNumberBucket, monthBucket, nextSequenceNumber } from '@/lib/numberi
 import { calculateQuotationTotals } from '@/lib/quotation/totals';
 import { formatQuoteDate } from '@/lib/quotation/message';
 import { pickVenueTerms, type TermsVendor } from '@/lib/quotation/terms';
-import { planBookingFromQuotation, type BookingOverrides, type BookingSource } from '@/lib/quotation/booking';
+import { planBookingFromQuotation, resolveSourceDate, type BookingOverrides, type BookingSource } from '@/lib/quotation/booking';
 import { canIssueCustomerLink, hashCustomerToken, newCustomerToken, proposalState } from '@/lib/quotation/proposal';
 import {
   evaluateAcceptable,
@@ -55,6 +55,7 @@ export interface QuotationItemInput {
   description: string;
   category?: string | null;
   functionLabel?: string | null;
+  eventDate?: string | null; // YYYY-MM-DD — the day this line happens (PR A)
   vendorId?: string | null;
   unitPrice: number;
   quantity: number;
@@ -214,12 +215,21 @@ async function assertVendorsExist(items: QuotationItemInput[], tx: Tx | typeof p
   return found.map((v) => ({ id: v.id, defaultTerms: v.defaultTerms, categoryName: v.category.name }));
 }
 
+// A line's day: a clear YYYY-MM-DD in a plausible year, or none (lib/quotation/booking.ts).
+function lineDate(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  const date = resolveSourceDate(raw);
+  if (!date) throw new ValidationError(`The date ${raw} on a quotation line does not look right — please check it`);
+  return date;
+}
+
 function itemRows(items: QuotationItemInput[]) {
   return items.map((item, index) => ({
     sortOrder: index + 1,
     description: item.description.trim(),
     category: item.category?.trim() || null,
     functionLabel: item.functionLabel?.trim() || null,
+    eventDate: lineDate(item.eventDate),
     vendorId: item.vendorId || null,
     unitPrice: item.unitPrice,
     quantity: item.quantity,
@@ -667,6 +677,7 @@ export const quotationService = {
                 description: item.description,
                 category: item.category,
                 functionLabel: item.functionLabel,
+                eventDate: item.eventDate,
                 vendorId: item.vendorId,
                 unitPrice: item.unitPrice,
                 quantity: item.quantity,

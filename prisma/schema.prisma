@@ -900,6 +900,8 @@ model BookingItem {
   packageName    String
   price          Int
   quantity       Int
+  // The quotation line this item came from (kept as text: quotation lines of an accepted quotation never change). Null = older bookings.
+  quotationItemId String?
 
   @@map("booking_items")
 }
@@ -1298,7 +1300,9 @@ model QuotationItem {
   sortOrder     Int
   description   String // e.g. "Grand Ballroom — 500 guests"
   category      String? // Venue / Catering / Decoration …
-  functionLabel String? // e.g. "Sangeet" — informational until a Wedding exists
+  functionLabel String? // e.g. "Sangeet" — the function this line is for; the wedding is built from these (PR A, 26 Nov 2026)
+  // The day this line happens (UTC midnight of the India day). With functionLabel it decides which wedding function the service joins.
+  eventDate     DateTime?
   vendorId      String? // null = custom line; a vendor is assigned after conversion
   vendor        Vendor?   @relation(fields: [vendorId], references: [id])
   unitPrice     Int
@@ -1692,6 +1696,14 @@ model VendorBooking {
   // Set by the founder only; locked once the work order is issued (database rule, migration 20261125200000_vendor_work_orders).
   pricingModel   VendorPricingModel?
   vendorPrice    Int?
+  // What this service is, from its quotation line (PR A, 26 Nov 2026). All null on services made before it: the card then shows the
+  // vendor listing's category, as before. Editable by staff (function / date / category / description); the price only via adjustments.
+  quotationItemId String?
+  description     String?
+  serviceCategory String?
+  serviceDate     DateTime?
+  quotedPrice     Int? // the line as quoted (unit price × quantity), before its share of any discount
+  discountShare   Int? // its share of the quotation's discount; agreedPrice started as quotedPrice − discountShare
   workOrder      VendorWorkOrder?
   // Completion (money design v1, PR 6): the vendor says the work is done; staff verify it ("Mark completed" sets status COMPLETED).
   vendorDoneAt   DateTime?

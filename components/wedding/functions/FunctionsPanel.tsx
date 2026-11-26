@@ -13,6 +13,17 @@ import { useWorkspaceMoney } from '@/components/wedding/workspace/MoneyContext';
 import CoupleFunctionReview from './CoupleFunctionReview';
 
 type Booking = WorkspaceWeddingEvent['vendorBookings'][number];
+type FunctionChoice = { id: string; name: string; date: string };
+
+export interface ServiceDetailsInput {
+  weddingEventId: string;
+  serviceDate: string | null; // YYYY-MM-DD
+  serviceCategory: string | null;
+  description: string | null;
+}
+
+// The India day (YYYY-MM-DD) of a stored date, for a date input.
+const dayOf = (iso: string | null) => (iso ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(iso)) : '');
 
 const money = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const btn = 'min-h-9 rounded-lg px-3 py-1.5 text-sm font-medium';
@@ -51,6 +62,8 @@ export interface FunctionsHandlers {
   onRemoveService: (taskId: string) => Promise<void>;
   onCalculatePayout: (vendorBookingId: string) => Promise<void>;
   onMarkPayoutPaid: (payoutId: string) => Promise<void>;
+  // What a service is (PR A, 26 Nov 2026): move it to another function, or change its date, category or description.
+  onEditServiceDetails?: (vendorBookingId: string, input: ServiceDetailsInput) => Promise<void>;
   // Couple-controlled functions (22 Nov 2026): where staff confirm a couple's function, and how the panel reloads after.
   functionDecisionBase?: string;
   onRefresh?: () => Promise<unknown> | void;
@@ -76,7 +89,13 @@ export default function FunctionsPanel({ events, unassigned, defaultCity, ...h }
       ) : (
         <div className="mt-4 grid grid-cols-1 gap-4">
           {events.map((event) => (
-            <FunctionCard key={event.id} event={event} unassigned={unassigned.filter((r) => r.weddingEventId === event.id)} {...h} />
+            <FunctionCard
+              key={event.id}
+              event={event}
+              unassigned={unassigned.filter((r) => r.weddingEventId === event.id)}
+              functions={events.map((e) => ({ id: e.id, name: functionLabel(e), date: e.date }))}
+              {...h}
+            />
           ))}
         </div>
       )}
@@ -84,7 +103,7 @@ export default function FunctionsPanel({ events, unassigned, defaultCity, ...h }
   );
 }
 
-function FunctionCard({ event, unassigned, ...h }: { event: WorkspaceWeddingEvent; unassigned: VendorRow[] } & FunctionsHandlers) {
+function FunctionCard({ event, unassigned, functions, ...h }: { event: WorkspaceWeddingEvent; unassigned: VendorRow[]; functions: FunctionChoice[] } & FunctionsHandlers) {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [addingService, setAddingService] = useState(false);
@@ -134,7 +153,7 @@ function FunctionCard({ event, unassigned, ...h }: { event: WorkspaceWeddingEven
 
       {!editing && (
         <div className="mt-3 grid grid-cols-1 gap-2">
-          {active.map((b) => <ServiceRow key={b.id} booking={b} {...h} />)}
+          {active.map((b) => <ServiceRow key={b.id} booking={b} functionId={event.id} functions={functions} {...h} />)}
           {unassigned.map((row) => (
             <div key={row.key} className="rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-3">
               {vendorMoney ? <UnassignedRow row={row} onAssign={h.onAssign} onRemove={h.onRemoveService} /> : <p className="text-sm text-gray-700">{row.name} — not assigned to a vendor yet</p>}
@@ -153,9 +172,9 @@ function FunctionCard({ event, unassigned, ...h }: { event: WorkspaceWeddingEven
   );
 }
 
-type Mode = 'idle' | 'declining' | 'completing' | 'cancelling' | 'replacing' | 'pricing';
+type Mode = 'idle' | 'declining' | 'completing' | 'cancelling' | 'replacing' | 'pricing' | 'details';
 
-function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers) {
+function ServiceRow({ booking, functionId, functions, ...h }: { booking: Booking; functionId: string; functions: FunctionChoice[] } & FunctionsHandlers) {
   const [mode, setMode] = useState<Mode>('idle');
   const [reason, setReason] = useState('');
   const [price, setPrice] = useState(String(booking.agreedPrice));
@@ -182,7 +201,23 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-gray-900">{booking.vendorName}</p>
-          <p className="text-xs text-gray-500">{booking.vendorCategory}{vendorMoney ? ` · ${money(booking.agreedPrice)}` : ''}</p>
+          {/* What the service is (PR A): its quotation line's words, category and day; older services show the vendor's category. */}
+          {booking.description && <p className="text-sm text-gray-800">{booking.description}</p>}
+          <p className="text-xs text-gray-500">
+            {[booking.serviceCategory || booking.vendorCategory, booking.serviceDate ? dateWords(booking.serviceDate) : null].filter(Boolean).join(' · ')}
+            {vendorMoney && !(booking.quotedPrice !== null && (booking.discountShare ?? 0) > 0) ? ` · ${money(booking.agreedPrice)}` : ''}
+          </p>
+          {/* Quoted price on top, the discount under it, and what is payable — clearly (founder's decision, 26 Nov 2026). */}
+          {vendorMoney && booking.quotedPrice !== null && (booking.discountShare ?? 0) > 0 && (
+            <dl className="mt-1 grid w-fit grid-cols-[auto_auto] gap-x-4 text-xs tabular-nums">
+              <dt className="text-gray-500">Quoted</dt>
+              <dd className="text-right text-gray-700">{money(booking.quotedPrice)}</dd>
+              <dt className="text-gray-500">Discount</dt>
+              <dd className="text-right text-gray-700">−{money(booking.discountShare ?? 0)}</dd>
+              <dt className="font-semibold text-gray-900">Final payable</dt>
+              <dd className="text-right font-semibold text-gray-900">{money(booking.agreedPrice)}</dd>
+            </dl>
+          )}
           {s === 'DECLINED' && booking.declineReason && <p className="mt-0.5 text-xs text-red-600">{booking.declineReason}</p>}
           {booking.payout && (
             <p className="mt-0.5 text-xs text-gray-400">
@@ -218,6 +253,7 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
           {vendorMoney && (s === 'CONFIRMED' || s === 'COMPLETED') && booking.payout?.status !== 'PAID' && (
             <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('vendor-money:record', { detail: booking.id }))} className={`${btn} border border-emerald-600 text-emerald-700`}>Record payment</button>
           )}
+          {h.onEditServiceDetails && s !== 'COMPLETED' && <button type="button" onClick={() => setMode('details')} className={ghost}>Edit details</button>}
           {vendorMoney && canChange && !booking.workOrderNumber && <button type="button" onClick={() => { setPrice(String(booking.agreedPrice)); setMode('pricing'); }} className={ghost}>Edit price</button>}
           {vendorMoney && (canChange || s === 'DECLINED') && <button type="button" onClick={() => { setNewPrice(String(booking.agreedPrice)); setMode('replacing'); }} className={ghost}>Replace vendor</button>}
           {vendorMoney && (canChange || s === 'DECLINED') && <button type="button" onClick={() => setMode('cancelling')} className={`${btn} text-gray-500 hover:bg-gray-100`}>Cancel vendor</button>}
@@ -239,6 +275,17 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
           <button type="button" disabled={busy} onClick={() => done(() => h.onComplete(booking.id, false))} className={ghost}>No, late</button>
           <button type="button" disabled={busy} onClick={back} className={`${btn} text-gray-500 hover:bg-gray-100`}>Back</button>
         </div>
+      )}
+
+      {mode === 'details' && h.onEditServiceDetails && (
+        <ServiceDetailsForm
+          booking={booking}
+          functionId={functionId}
+          functions={functions}
+          busy={busy}
+          onSave={(input) => done(() => (h.onEditServiceDetails as NonNullable<FunctionsHandlers['onEditServiceDetails']>)(booking.id, input))}
+          onBack={back}
+        />
       )}
 
       {mode === 'pricing' && (
@@ -298,5 +345,52 @@ function AddService({ onAdd, onCancel }: { onAdd: (vendorId: string, price: numb
       </div>
       {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
     </div>
+  );
+}
+
+// Edit what a service is (PR A, 26 Nov 2026): its function, day, category and words. The price is not here — it changes only through
+// "Edit price" before a work order, or "Adjust the amount" after. Once a work order is issued its function and day are what the vendor
+// was sent, so they stay fixed here (cancel and re-issue to move the work).
+function ServiceDetailsForm({ booking, functionId, functions, busy, onSave, onBack }: {
+  booking: Booking;
+  functionId: string;
+  functions: FunctionChoice[];
+  busy: boolean;
+  onSave: (input: ServiceDetailsInput) => void;
+  onBack: () => void;
+}) {
+  const [fnId, setFnId] = useState(functionId);
+  const [day, setDay] = useState(dayOf(booking.serviceDate));
+  const [category, setCategory] = useState(booking.serviceCategory ?? '');
+  const [description, setDescription] = useState(booking.description ?? '');
+  const locked = !!booking.workOrderNumber;
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave({ weddingEventId: fnId, serviceDate: day || null, serviceCategory: category.trim() || null, description: description.trim() || null });
+      }}
+      className="mt-2 grid grid-cols-1 gap-2 rounded-lg bg-gray-50 p-3 sm:grid-cols-2"
+    >
+      <label className="grid gap-1 text-xs text-gray-600">Function
+        <select aria-label="Function" value={fnId} disabled={locked} onChange={(e) => setFnId(e.target.value)} className={input}>
+          {functions.map((f) => <option key={f.id} value={f.id}>{f.name}{dateWords(f.date) ? ` · ${dateWords(f.date)}` : ''}</option>)}
+        </select>
+      </label>
+      <label className="grid gap-1 text-xs text-gray-600">Date
+        <input aria-label="Date" type="date" value={day} disabled={locked} onChange={(e) => setDay(e.target.value)} className={input} />
+      </label>
+      <label className="grid gap-1 text-xs text-gray-600">Category
+        <input aria-label="Category" value={category} maxLength={60} onChange={(e) => setCategory(e.target.value)} placeholder={booking.vendorCategory || 'e.g. Food, Hall, Decoration'} className={input} />
+      </label>
+      <label className="grid gap-1 text-xs text-gray-600">Description
+        <input aria-label="Description" value={description} maxLength={200} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Food (B + L) for 11 Dec" className={input} />
+      </label>
+      {locked && <p className="text-xs text-gray-600 sm:col-span-2">Function and date are fixed by work order {booking.workOrderNumber} — the vendor was sent them.</p>}
+      <div className="flex flex-wrap gap-2 sm:col-span-2">
+        <button type="submit" disabled={busy} className={`${btn} bg-gray-900 text-white disabled:opacity-40`}>{busy ? 'Saving…' : 'Save details'}</button>
+        <button type="button" disabled={busy} onClick={onBack} className={`${btn} text-gray-500 hover:bg-gray-100`}>Back</button>
+      </div>
+    </form>
   );
 }

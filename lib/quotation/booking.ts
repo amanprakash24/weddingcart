@@ -29,6 +29,7 @@ export interface BookingOverrides {
 }
 
 export interface QuotedLine {
+  id?: string; // the quotation line (kept on the booking item so the wedding knows which line each service came from)
   description: string;
   category: string | null;
   functionLabel: string | null;
@@ -51,6 +52,7 @@ export interface BookingPlan {
   weddingType: string | null;
   guestCount: number | null;
   items: {
+    quotationItemId: string | null;
     vendorId: string | null;
     vendorName: string;
     vendorCategory: string;
@@ -120,6 +122,7 @@ export function planBookingFromQuotation(input: {
       throw new ValidationError(`The vendor on the line "${line.description}" no longer exists — edit the quotation first`);
     }
     return {
+      quotationItemId: line.id ?? null,
       vendorId: vendor ? (line.vendorId as string) : null,
       vendorName: vendor ? vendor.name : UNASSIGNED_VENDOR_NAME,
       vendorCategory: vendor ? vendor.categoryName : line.category?.trim() || 'Service',

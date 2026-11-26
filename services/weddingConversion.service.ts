@@ -6,6 +6,7 @@ import { subjectWhere } from '@/lib/crm/subject';
 import { generateWeddingNumber } from '@/services/documentNumber.service';
 import { agreedPriceFor, planVendorlessItem } from '@/lib/booking/unassigned';
 import { netShares } from '@/lib/booking/allocate';
+import { planLineFunctions } from '@/lib/wedding/lineFunctions';
 import { COUPLE_SIGN_IN_TASK } from '@/lib/customer/weddingLink';
 import { prisma } from '@/lib/prisma';
 import { bookingRepository } from '@/repositories/booking.repository';
@@ -24,7 +25,7 @@ import type { SourceType } from '@/services/leadInbox.service';
 import { Prisma, type Wedding, type Lead, type Enquiry, type Consultation } from '@/generated/prisma/client';
 import { weddingCustomerFields } from '@/lib/customer/weddingLink';
 import { PLATFORM_BUSINESS_ID } from '@/lib/ownership/owned';
-import { functionsFromLabels } from '@/lib/wedding/functions';
+import { FUNCTION_TYPES, functionsFromLabels } from '@/lib/wedding/functions';
 
 type Tx = Prisma.TransactionClient;
 type ConvertibleSubject = Lead | Enquiry | Consultation;
@@ -199,11 +200,46 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
     const functionTypes = ownBooking && booking.quotationId
       ? functionsFromLabels((await tx.quotationItem.findMany({ where: { quotationId: booking.quotationId }, select: { functionLabel: true } })).map((i) => i.functionLabel))
       : (['WEDDING'] as const);
+    // Shaadi Shopping's booking (PR A, 26 Nov 2026): each quotation line names its function and day, so the wedding gets one function per
+    // function + day and every service sits under its own (lib/wedding/lineFunctions.ts). A booking made before lines carried this
+    // (no quotationItemId) has no facts, and gets the one "Wedding" function on the wedding date, exactly as before.
+    const lineFacts =
+      !ownBooking && booking.quotationId
+        ? await tx.quotationItem.findMany({
+            where: { quotationId: booking.quotationId },
+            select: { id: true, functionLabel: true, eventDate: true, category: true, description: true },
+          })
+        : [];
+    const factOf = new Map(lineFacts.map((l) => [l.id, l]));
+    const facts = (item: (typeof booking.items)[number]) => (item.quotationItemId ? factOf.get(item.quotationItemId) : undefined);
+
     const weddingEvents = [];
-    for (const type of functionTypes) {
-      weddingEvents.push(await weddingEventRepository.create({ wedding: { connect: { id: wedding.id } }, type, date: booking.weddingDate!, city: booking.city }, tx));
+    const eventOfItem = new Map<string, { id: string }>();
+    if (ownBooking) {
+      for (const type of functionTypes) {
+        weddingEvents.push(await weddingEventRepository.create({ wedding: { connect: { id: wedding.id } }, type, date: booking.weddingDate!, city: booking.city }, tx));
+      }
+    } else {
+      const plan = planLineFunctions(
+        booking.items.map((item) => ({ key: item.id, functionLabel: facts(item)?.functionLabel ?? null, eventDate: facts(item)?.eventDate ?? null })),
+        booking.weddingDate!
+      );
+      // In the order the wedding runs: by day, then by function.
+      const order = plan.created.map((_, i) => i).sort((a, b) => plan.created[a].date.getTime() - plan.created[b].date.getTime() || FUNCTION_TYPES.indexOf(plan.created[a].type) - FUNCTION_TYPES.indexOf(plan.created[b].type));
+      const made = new Map<number, { id: string }>();
+      for (const i of order) {
+        const fn = plan.created[i];
+        const ev = await weddingEventRepository.create({ wedding: { connect: { id: wedding.id } }, type: fn.type, label: fn.label, date: fn.date, city: booking.city }, tx);
+        made.set(i, ev);
+        weddingEvents.push(ev);
+      }
+      if (weddingEvents.length === 0) {
+        weddingEvents.push(await weddingEventRepository.create({ wedding: { connect: { id: wedding.id } }, type: 'WEDDING', date: booking.weddingDate!, city: booking.city }, tx));
+      }
+      for (const [key, target] of plan.targets) if ("newIndex" in target) eventOfItem.set(key, made.get(target.newIndex)!);
     }
     const weddingEvent = weddingEvents[0];
+    const eventFor = (item: { id: string }) => eventOfItem.get(item.id) ?? weddingEvent;
 
     await activityLogRepository.create(
       {
@@ -262,7 +298,7 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
             description: plan.taskDescription,
             priority: 'HIGH',
             wedding: { connect: { id: wedding.id } },
-            weddingEvent: { connect: { id: weddingEvent.id } },
+            weddingEvent: { connect: { id: eventFor(item).id } },
           },
           tx
         );
@@ -271,11 +307,22 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
 
       const vendorBooking = await vendorBookingRepository.create(
         {
-          weddingEvent: { connect: { id: weddingEvent.id } },
+          weddingEvent: { connect: { id: eventFor(item).id } },
           vendor: { connect: { id: item.vendorId } },
           // the line's share of the agreed amount (unit price × quantity, less its part of any discount) — not one unit of it
           agreedPrice: share,
           status: 'PENDING_VENDOR_CONFIRMATION',
+          // What this service is, from its quotation line (PR A): shown on its card instead of the vendor listing's category.
+          ...(facts(item)
+            ? {
+                quotationItemId: item.quotationItemId,
+                description: facts(item)!.description,
+                serviceCategory: facts(item)!.category,
+                serviceDate: facts(item)!.eventDate ?? null,
+                quotedPrice: agreedPriceFor(item),
+                discountShare: agreedPriceFor(item) - share,
+              }
+            : {}),
         },
         tx
       );
@@ -286,7 +333,7 @@ export async function convertBookingToWedding(bookingId: string): Promise<Weddin
           title: `Confirm booking with ${item.vendorName} for "${item.packageName}"`,
           priority: 'MEDIUM',
           wedding: { connect: { id: wedding.id } },
-          weddingEvent: { connect: { id: weddingEvent.id } },
+          weddingEvent: { connect: { id: eventFor(item).id } },
           vendorBooking: { connect: { id: vendorBooking.id } },
         },
         tx

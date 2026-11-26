@@ -29,6 +29,8 @@ export const quotationItemSchema = z.object({
   description: z.string().trim().min(1, 'Describe this line').max(200),
   category: optionalText(60),
   functionLabel: optionalText(60),
+  // The day this line happens, YYYY-MM-DD (PR A). With the function it decides where the service sits in the wedding.
+  eventDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, 'Pick a valid date for this line').nullable().optional(),
   vendorId: z.string().trim().min(1).nullable().optional(),
   unitPrice: z.coerce.number().int('Price must be a whole number of rupees').min(0),
   quantity: z.coerce.number().int('Quantity must be a whole number').min(1),

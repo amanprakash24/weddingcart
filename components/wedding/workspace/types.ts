@@ -37,6 +37,12 @@ export interface WorkspaceVendorBooking {
   vendorId: string;
   vendorName: string;
   vendorCategory: string;
+  // What the service is, from its quotation line (PR A, 26 Nov 2026); null on older services.
+  description: string | null;
+  serviceCategory: string | null;
+  serviceDate: string | null;
+  quotedPrice: number | null; // hidden (null) without vendor-money access
+  discountShare: number | null;
   status: VendorBookingStatus;
   agreedPrice: number;
   workOrderNumber: string | null; // an issued work order fixes the price (26 Nov 2026)

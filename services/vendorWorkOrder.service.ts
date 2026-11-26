@@ -71,14 +71,15 @@ async function planFor(db: Tx | typeof prisma, vendorBookingId: string) {
     weddingNumber: ev.wedding.weddingNumber,
     coupleName: ev.wedding.customer?.name || [ev.wedding.couple?.brideName, ev.wedding.couple?.groomName].filter(Boolean).join(' & ') || null,
     functionName: ev.label || ev.type.charAt(0) + ev.type.slice(1).toLowerCase().replace(/_/g, ' '),
-    functionDate: indiaDay(ev.date),
+    // The service's own day, category and words when its quotation line gave them (PR A), else the function's and the listing's.
+    functionDate: indiaDay(b.serviceDate ?? ev.date),
     startTime: ev.startTime,
     venueName: ev.venueName,
     venueAddress: ev.venueAddress,
     city: ev.city,
     guestCount: ev.wedding.guestCount,
-    service: b.vendor.category?.name ?? 'Service',
-    packageName: b.vendorPackage?.name ?? null,
+    service: b.serviceCategory ?? b.vendor.category?.name ?? 'Service',
+    packageName: b.description ?? b.vendorPackage?.name ?? null,
     deliverables: b.vendorPackage?.description ?? null,
   };
   const payout = b.payouts[0] ?? null;
