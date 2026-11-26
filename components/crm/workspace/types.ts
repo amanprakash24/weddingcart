@@ -112,6 +112,7 @@ export interface WorkspaceQuotation {
     description: string;
     category: string | null;
     functionLabel: string | null;
+    eventDate: string | null; // ISO; the day this line happens (PR A)
     vendorId: string | null;
     vendor: { id: string; name: string; city: string; category: string } | null;
     unitPrice: number;

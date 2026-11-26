@@ -9,7 +9,7 @@ const NOW = new Date('2026-09-21T04:30:00.000Z');
 const day = (n: number) => new Date(Date.UTC(2026, 8, 21 + n)).toISOString();
 
 const vb = (id: string, name: string, category: string, status: WorkspaceWeddingEvent['vendorBookings'][number]['status'], price = 10000) => ({
-  id, vendorId: `v-${id}`, vendorName: name, vendorCategory: category, status, agreedPrice: price, workOrderNumber: null, declineReason: null, respondedAt: null, onTimeService: null, payout: null,
+  id, vendorId: `v-${id}`, vendorName: name, vendorCategory: category, description: null, serviceCategory: null, serviceDate: null, quotedPrice: null, discountShare: null, status, agreedPrice: price, workOrderNumber: null, declineReason: null, respondedAt: null, onTimeService: null, payout: null,
 });
 const fn = (id: string, type: string, label: string | null, date: string, vendorBookings: WorkspaceWeddingEvent['vendorBookings'] = [], extra: Partial<WorkspaceWeddingEvent> = {}): WorkspaceWeddingEvent => ({
   id, type, label, date, startTime: null, venueName: null, venueAddress: null, city: 'Patna', budget: null, tasks: [], vendorBookings, ...extra,

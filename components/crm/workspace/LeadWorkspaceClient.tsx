@@ -534,6 +534,7 @@ export default function LeadWorkspaceClient({ sourceType, id }: { sourceType: So
             readOnly={!!subject.wedding || state === 'NOT_PROCEEDING'}
             customerName={customerName}
             eventDate={eventDate}
+            lineDate={eventDate ? weddingDetails.date : null}
             guestCount={weddingDetails.guestCount}
             weddingNumber={weddingNumber}
             closedReason={closedReason}

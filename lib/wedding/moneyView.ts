@@ -52,6 +52,8 @@ export function weddingMoneyView<W extends WeddingWorkspace>(
     vendorBookings: event.vendorBookings.map((vb) => ({
       ...vb,
       agreedPrice: vendorMoney ? vb.agreedPrice : 0,
+      quotedPrice: vendorMoney ? vb.quotedPrice : null,
+      discountShare: vendorMoney ? vb.discountShare : null,
       payout: !vendorMoney || !vb.payout ? null : commission ? vb.payout : { ...vb.payout, commissionRate: 0, commissionAmount: 0 },
     })),
   }));

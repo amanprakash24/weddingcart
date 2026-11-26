@@ -133,3 +133,18 @@ describe('createBookingSchema — every field optional; only clear dates are acc
     expect(parsed).not.toHaveProperty('quotationId');
   });
 });
+
+describe('a line\'s day (PR A)', () => {
+  test('a YYYY-MM-DD day is kept; none is fine', () => {
+    expect(createQuotationSchema.parse({ ...valid, items: [{ ...item, functionLabel: 'Haldi', eventDate: '2026-12-10' }] }).items[0].eventDate).toBe('2026-12-10');
+    expect(createQuotationSchema.parse({ ...valid, items: [{ ...item, eventDate: null }] }).items[0].eventDate).toBeNull();
+    expect(createQuotationSchema.parse(valid).items[0].eventDate).toBeUndefined();
+  });
+  test('anything else is refused with words staff can act on', () => {
+    for (const bad of ['10-12-2026', '2026/12/10', 'tomorrow', 'dddd-dd-dd']) {
+      const r = createQuotationSchema.safeParse({ ...valid, items: [{ ...item, eventDate: bad }] });
+      expect(r.success).toBe(false);
+      if (!r.success) expect(r.error.issues[0].message).toBe('Pick a valid date for this line');
+    }
+  });
+});

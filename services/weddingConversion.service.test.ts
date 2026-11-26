@@ -131,6 +131,8 @@ function makePrismaMock({
       findUnique: quotationFindUniqueMock,
       update: quotationUpdateMock,
     },
+    // PR A: the lines' function and day (none here — the booking items predate them, so one Wedding function as before)
+    quotationItem: { findMany: mock(async () => []) },
     weddingEvent: { create: weddingEventCreateMock },
     vendorBooking: { create: vendorBookingCreateMock },
     task: { create: taskCreateMock },
