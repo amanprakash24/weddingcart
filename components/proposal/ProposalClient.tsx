@@ -33,6 +33,7 @@ const subscribeTick = (onChange: () => void) => {
 };
 const tickNow = () => Math.floor(Date.now() / TICK_MS);
 import { coupleBookingWords } from '@/lib/quotation/coupleBooking';
+import { SS_PLANNING, planningScope } from '@/lib/planning/ssPlanning';
 
 // The couple's wedding proposal (docs/wedding-os/08-quotation.md §15–17). One link, two separate experiences
 // (Decision 10): the visual, curated PROPOSAL, and the commercially detailed QUOTATION where the couple accepts.
@@ -237,7 +238,7 @@ function ServiceShowcase({ item, grouped }: { item: Item; grouped: boolean }) {
 
 // ── The detailed quotation: every line, every rupee, the terms ───────────────────────────────────────────────────
 
-function QuotationTable({ items }: { items: Item[] }) {
+function QuotationTable({ items, planningIncluded = false }: { items: Item[]; planningIncluded?: boolean }) {
   const groups = groupByFunction(items);
   return (
     <table className="w-full text-left text-sm">
@@ -303,7 +304,38 @@ function QuotationTable({ items }: { items: Item[] }) {
           })}
         </tbody>
       ))}
+      {/* Shaadi Shopping's own planning & coordination — always included, never a price, never in the totals (lib/planning/ssPlanning.ts). */}
+      {planningIncluded && (
+        <tbody>
+          <tr className="border-b border-[#F0E6D6] align-top">
+            <td className="py-3 pr-3">
+              <p className="font-medium text-[#2A1F1B]">{SS_PLANNING.provider}</p>
+              <p className="text-xs text-[#7A6556]">{SS_PLANNING.service} · {planningScope(items.map((i) => i.functionLabel ?? ''))}</p>
+            </td>
+            <td className="hidden py-3 pr-3 sm:table-cell print:table-cell" />
+            <td className="hidden py-3 pr-3 sm:table-cell print:table-cell" />
+            <td className="py-3 text-right font-medium italic text-[#1F7A4D]">{SS_PLANNING.included}</td>
+          </tr>
+        </tbody>
+      )}
     </table>
+  );
+}
+
+// The planner's own card at the top of the proposal — Shaadi Shopping's quotations only.
+function PlanningIncludedCard({ items }: { items: Item[] }) {
+  return (
+    <section aria-label={SS_PLANNING.service} className="rounded-[24px] border border-[#E8DCC8] bg-white p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Eyebrow>{SS_PLANNING.service}</Eyebrow>
+          <p className="mt-2 text-xl text-[#2A1F1B]" style={{ fontFamily: 'var(--font-playfair), serif' }}>{SS_PLANNING.provider}</p>
+          <p className="mt-1 text-sm text-[#6B5B4D]">{SS_PLANNING.covers}</p>
+          <p className="mt-1 text-sm text-[#6B5B4D]">{planningScope(items.map((i) => i.functionLabel ?? ''))}</p>
+        </div>
+        <span className="rounded-full bg-[#E7F4EC] px-3 py-1 text-xs font-semibold text-[#1F7A4D]">{SS_PLANNING.included}</span>
+      </div>
+    </section>
   );
 }
 
@@ -705,6 +737,7 @@ export default function ProposalClient({
         {tab === 'proposal' ? (
           <div role="tabpanel" aria-label="Your proposal" className="space-y-10">
             {p.yourBooking && <YourBookingPanel booking={p.yourBooking} businessName={contact.name} />}
+            {contact.isPlatform && <PlanningIncludedCard items={p.items} />}
             {groups.map((group, gi) => (
               <section key={group.title ?? gi} className="space-y-5">
                 {group.title && <Eyebrow>{group.title}</Eyebrow>}
@@ -842,7 +875,7 @@ export default function ProposalClient({
                 </p>
               )}
               <div className="mt-4">
-                <QuotationTable items={p.items} />
+                <QuotationTable items={p.items} planningIncluded={contact.isPlatform} />
               </div>
 
               <dl className="ml-auto mt-5 max-w-sm space-y-2 text-sm">

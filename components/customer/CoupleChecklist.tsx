@@ -6,6 +6,7 @@ import type { ClientPortalEvent } from '@/services/clientPortal.service';
 import type { ChecklistItemView } from '@/services/coupleChecklistBudget.service';
 import { checklistGroup, checkChecklistItem, type ChecklistGroup } from '@/lib/wedding/checklist';
 import { functionDisplayName } from '@/lib/wedding/coupleFunctions';
+import { SS_PLANNING, planningScope } from '@/lib/planning/ssPlanning';
 
 // My Wedding → Checklist (25 Nov 2026). A ready-made list dated back from the wedding day; the couple (and family who help plan) tick,
 // edit, remove and add their own. The team's own work stays under "Your expert is doing" (tasks) — never mixed in here.
@@ -85,6 +86,17 @@ export default function CoupleChecklist({ event }: { event: ClientPortalEvent })
           <button type="button" onClick={() => { setError(null); setForm(blank); }} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--primary)] px-4 text-sm font-bold text-white"><Plus className="h-4 w-4" aria-hidden />Add a to-do</button>
         )}
       </div>
+      {/* What Shaadi Shopping handles for them (26 Nov 2026): planning & coordination, included — never a price (lib/planning/ssPlanning.ts). */}
+      {event.business.isShaadiShopping && (
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-2 rounded-2xl border border-[var(--color-primary-border,#DDD6FE)] bg-[var(--color-primary-subtle-bg)] px-3.5 py-3">
+          <div className="min-w-0">
+            <p className="font-semibold">{SS_PLANNING.service} <span className="font-normal text-[var(--color-text-muted)]">· {SS_PLANNING.provider}</span></p>
+            <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">{SS_PLANNING.covers}</p>
+            <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">{planningScope(event.functions.map(functionDisplayName))}{event.coordinatorName ? ` · Your Wedding Expert: ${event.coordinatorName}` : ''}</p>
+          </div>
+          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-[var(--color-primary-text)]">{SS_PLANNING.included}</span>
+        </div>
+      )}
       {items && total > 0 && (
         <div className="mt-3">
           <p className="text-sm text-[var(--color-text-secondary)]"><b>{done}</b> of {total} done</p>

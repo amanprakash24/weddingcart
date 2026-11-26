@@ -27,6 +27,7 @@ import type { WeddingWorkspace, WeddingStatus, MilestoneStatus, CreateInvoiceInp
 import ServiceRequirements from './ServiceRequirements';
 import Approvals from './Approvals';
 import GuestRsvp from './GuestRsvp';
+import SsPlanningCard from './SsPlanningCard';
 
 type Approval = {
   id: string; subjectType: string; title: string | null; description: string | null; amount: number | null;
@@ -256,6 +257,8 @@ export default function WeddingWorkspaceClient({ id }: { id: string }) {
 
       {tab === 'functions' && (
         <div className="space-y-4">
+          {/* The staff wedding page only shows Shaadi Shopping's own weddings (/admin works as Shaadi Shopping) */}
+          <SsPlanningCard events={workspace.events} coordinatorName={workspace.wedding.coordinatorName} />
           <FunctionsPanel
             events={workspace.events}
             unassigned={view.vendors.filter((r) => r.state === 'unassigned')}

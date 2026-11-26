@@ -7,6 +7,7 @@ import type { ClientPortalEvent } from '@/services/clientPortal.service';
 import { ownVendorProblem, QUOTE_STATUS_WORDS, type OwnVendorInput } from '@/lib/wedding/coupleVendors';
 import { serviceStatus, whatsappTo } from '@/lib/customer/myWedding';
 import { functionDisplayName } from '@/lib/wedding/coupleFunctions';
+import { SS_PLANNING } from '@/lib/planning/ssPlanning';
 
 // My Wedding → Vendors (22 Nov 2026): booked through the planner, the couple's own outside vendors (clearly not partners), finding
 // vendors listed on Shaadi Shopping with "Ask for a quote", and what happened to each request.
@@ -123,7 +124,7 @@ export default function CoupleVendors({ event }: { event: ClientPortalEvent }) {
             <p className="font-semibold">Shaadi Shopping <span className="font-normal text-[var(--color-text-muted)]">· Wedding planning &amp; coordination</span></p>
             <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">{event.functions.length ? `All functions: ${event.functions.map(fnLabel).join(', ')}` : 'Your whole wedding'}</p>
           </div>
-          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-[var(--color-primary-text)]">Your planner</span>
+          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-[var(--color-primary-text)]">Your planner · {SS_PLANNING.included}</span>
         </div>
       )}
 
