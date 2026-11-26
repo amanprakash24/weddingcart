@@ -72,11 +72,15 @@ export interface VendorWorkOrderView {
   issuedAt: string;
   cancelledAt: string | null;
   cancelReason: string | null;
-  vendorPayable: number;
+  vendorPayable: number; // as issued (frozen)
+  // changes since issue (PR 6) — the vendor's side only — and the amount now
+  adjustments: { kind: string; payableDelta: number; reason: string; createdAt: string }[];
+  payableNow: number;
   scope: WorkOrderScope;
 }
 
-export function vendorWorkOrderView(w: { id: string; number: string; status: string; issuedAt: Date; cancelledAt: Date | null; cancelReason: string | null; vendorPayable: number; scope: unknown }): VendorWorkOrderView {
+export function vendorWorkOrderView(w: { id: string; number: string; status: string; issuedAt: Date; cancelledAt: Date | null; cancelReason: string | null; vendorPayable: number; scope: unknown; adjustments?: { kind: string; payableDelta: number; reason: string; createdAt: Date }[] }): VendorWorkOrderView {
+  const adjustments = (w.adjustments ?? []).map((a) => ({ kind: a.kind, payableDelta: a.payableDelta, reason: a.reason, createdAt: a.createdAt.toISOString() }));
   const s = (w.scope ?? {}) as Partial<WorkOrderScope>;
   return {
     id: w.id,
@@ -86,6 +90,8 @@ export function vendorWorkOrderView(w: { id: string; number: string; status: str
     cancelledAt: w.cancelledAt?.toISOString() ?? null,
     cancelReason: w.cancelReason,
     vendorPayable: w.vendorPayable,
+    adjustments,
+    payableNow: w.vendorPayable + adjustments.reduce((n, a) => n + a.payableDelta, 0),
     scope: {
       weddingNumber: s.weddingNumber ?? '',
       coupleName: s.coupleName ?? null,
@@ -125,4 +131,38 @@ export function checkPricing(input: PricingInput, clientPrice: number): { ok: tr
     return { ok: true, value: { pricingModel: 'FIXED', vendorPrice: raw, note: `negative margin accepted: ${reason}` } };
   }
   return { ok: true, value: { pricingModel: 'FIXED', vendorPrice: raw, note: null } };
+}
+
+// ---- Adjustments after issue (PR 6) ----
+
+export const ADJUSTMENT_KINDS = [
+  { id: 'INCREASE', label: 'Price increase', sign: 1 },
+  { id: 'EXTRA_WORK', label: 'Extra work', sign: 1 },
+  { id: 'DECREASE', label: 'Price decrease', sign: -1 },
+  { id: 'CANCELLATION', label: 'Part cancelled', sign: -1 },
+] as const;
+export type AdjustmentKindId = (typeof ADJUSTMENT_KINDS)[number]['id'];
+export const adjustmentLabel = (id: string) => ADJUSTMENT_KINDS.find((k) => k.id === id)?.label ?? id;
+
+export interface AdjustmentInput {
+  kind: unknown;
+  amount: unknown; // the change to the vendor's amount, in whole rupees, without a sign — the kind gives the sign
+  clientPriceDelta?: unknown; // internal: the couple's side of the same change (signed, may be 0)
+  reason: unknown;
+}
+
+// `payableNow` / `paid`: what the vendor's amount is now and what was already paid — an adjustment never takes it below what was paid.
+export function checkAdjustment(input: AdjustmentInput, payableNow: number, paid: number): { ok: true; value: { kind: AdjustmentKindId; payableDelta: number; clientPriceDelta: number; reason: string } } | { ok: false; error: string } {
+  const kind = ADJUSTMENT_KINDS.find((k) => k.id === input.kind);
+  if (!kind) return { ok: false, error: 'Choose what kind of change this is' };
+  const amount = typeof input.amount === 'number' ? input.amount : Number(String(input.amount ?? '').replace(/[,\s₹]/g, ''));
+  if (!Number.isInteger(amount) || amount <= 0) return { ok: false, error: 'Enter the change to the vendor’s amount in whole rupees' };
+  const rawClient = input.clientPriceDelta === undefined || input.clientPriceDelta === null || input.clientPriceDelta === '' ? 0 : Number(String(input.clientPriceDelta).replace(/[,\s₹]/g, ''));
+  if (!Number.isInteger(rawClient)) return { ok: false, error: 'The change to the couple’s price should be whole rupees (use − for less)' };
+  const reason = typeof input.reason === 'string' ? input.reason.replace(/\s+/g, ' ').trim() : '';
+  if (reason.length < 3) return { ok: false, error: 'Say why the amount changes — the vendor sees this' };
+  if (reason.length > 300) return { ok: false, error: 'Keep the reason under 300 characters' };
+  const payableDelta = kind.sign * amount;
+  if (payableNow + payableDelta < paid) return { ok: false, error: `That would take the vendor’s amount to ₹${(payableNow + payableDelta).toLocaleString('en-IN')}, below the ₹${paid.toLocaleString('en-IN')} already paid` };
+  return { ok: true, value: { kind: kind.id, payableDelta, clientPriceDelta: rawClient, reason } };
 }

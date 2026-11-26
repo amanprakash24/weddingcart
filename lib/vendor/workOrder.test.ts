@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildWorkOrder, checkPricing, vendorWorkOrderView, WORK_ORDER_TERMS } from './workOrder';
+import { buildWorkOrder, checkAdjustment, checkPricing, vendorWorkOrderView, WORK_ORDER_TERMS } from './workOrder';
 import type { AssignmentFacts } from './vendorMoney';
 
 const facts = (over: Partial<AssignmentFacts> = {}): AssignmentFacts => ({ id: 'vb', status: 'CONFIRMED', venueStatus: 'PENDING', agreedPrice: 100000, currentRate: 10, payout: null, payments: [], ...over });
@@ -24,7 +24,7 @@ describe('issuing a work order', () => {
 describe('what a vendor is sent', () => {
   test('scope and their own amount only — no client price, commission or margin', () => {
     const v = vendorWorkOrderView({ id: 'w', number: 'WO-202611-0001', status: 'ISSUED', issuedAt: new Date('2026-11-25T10:00:00Z'), cancelledAt: null, cancelReason: null, vendorPayable: 90000, scope: { ...scope, terms: WORK_ORDER_TERMS } });
-    expect(Object.keys(v).sort()).toEqual(['cancelReason', 'cancelledAt', 'id', 'issuedAt', 'number', 'scope', 'status', 'vendorPayable']);
+    expect(Object.keys(v).sort()).toEqual(['adjustments', 'cancelReason', 'cancelledAt', 'id', 'issuedAt', 'number', 'payableNow', 'scope', 'status', 'vendorPayable']);
     const sent = JSON.stringify(v);
     for (const secret of ['100000', 'clientPrice', 'commission', 'margin', '10000,']) expect(sent).not.toContain(secret);
     expect(v.vendorPayable).toBe(90000);
@@ -54,5 +54,17 @@ describe('historical work orders (PR 5)', () => {
   test('an older payout that no longer matches the agreed price is not issued — settled by hand first', () => {
     const drifted = facts({ status: 'COMPLETED', agreedPrice: 80000, payout: { status: 'PAID', commissionRate: 10, commissionAmount: 7500, netAmount: 67500 } });
     expect(buildWorkOrder(drifted, scope)).toMatchObject({ ok: false, reason: expect.stringContaining('older payout') });
+  });
+});
+
+describe('adjustments after issue (PR 6)', () => {
+  test('the kind gives the sign; a reason is required; never below what was paid', () => {
+    expect(checkAdjustment({ kind: 'EXTRA_WORK', amount: '5,000', reason: 'Second entry arch' }, 45000, 0)).toEqual({ ok: true, value: { kind: 'EXTRA_WORK', payableDelta: 5000, clientPriceDelta: 0, reason: 'Second entry arch' } });
+    expect(checkAdjustment({ kind: 'DECREASE', amount: 3000, clientPriceDelta: '-3500', reason: 'Smaller stage' }, 45000, 0)).toMatchObject({ ok: true, value: { payableDelta: -3000, clientPriceDelta: -3500 } });
+    expect(checkAdjustment({ kind: 'DECREASE', amount: 3000, reason: ' ' }, 45000, 0)).toMatchObject({ ok: false });
+    expect(checkAdjustment({ kind: 'CANCELLATION', amount: 30000, reason: 'Gate decor dropped' }, 45000, 20000)).toMatchObject({ ok: false, error: expect.stringContaining('below the ₹20,000 already paid') });
+    expect(checkAdjustment({ kind: 'CANCELLATION', amount: 25000, reason: 'Gate decor dropped' }, 45000, 20000)).toMatchObject({ ok: true, value: { payableDelta: -25000 } });
+    expect(checkAdjustment({ kind: 'REFUND', amount: 1, reason: 'xyz' }, 45000, 0)).toMatchObject({ ok: false });
+    expect(checkAdjustment({ kind: 'INCREASE', amount: -5, reason: 'xyz' }, 45000, 0)).toMatchObject({ ok: false });
   });
 });

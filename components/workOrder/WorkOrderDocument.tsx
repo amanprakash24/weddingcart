@@ -62,9 +62,24 @@ export default function WorkOrderDocument({ wo, vendorName, showAmount, internal
       </section>
 
       {showAmount && (
-        <section className="mt-6 flex items-baseline justify-between border-y border-[#E8DCC8] py-4">
-          <span className="text-sm text-[#6B5B4D]">Your amount for this work</span>
-          <span className="text-2xl font-semibold tabular-nums">{inr(wo.vendorPayable)}</span>
+        <section className="mt-6 border-y border-[#E8DCC8] py-4">
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm text-[#6B5B4D]">{wo.adjustments.length ? 'Your amount as issued' : 'Your amount for this work'}</span>
+            <span className={wo.adjustments.length ? 'text-base tabular-nums' : 'text-2xl font-semibold tabular-nums'}>{inr(wo.vendorPayable)}</span>
+          </div>
+          {wo.adjustments.length > 0 && (
+            <>
+              <ul className="mt-2 space-y-1 text-sm text-[#4A3B30]">
+                {wo.adjustments.map((a, i) => (
+                  <li key={i} className="flex justify-between gap-3"><span>{issued(a.createdAt)} · {a.reason}</span><span className="shrink-0 whitespace-nowrap tabular-nums">{a.payableDelta > 0 ? '+' : '−'}{inr(Math.abs(a.payableDelta))}</span></li>
+                ))}
+              </ul>
+              <div className="mt-2 flex items-baseline justify-between border-t border-[#E8DCC8] pt-2">
+                <span className="text-sm text-[#6B5B4D]">Your amount now</span>
+                <span className="text-2xl font-semibold tabular-nums">{inr(wo.payableNow)}</span>
+              </div>
+            </>
+          )}
         </section>
       )}
 

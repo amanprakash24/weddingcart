@@ -29,7 +29,7 @@ export type OwnedModel = (typeof OWNED_MODELS)[number];
 export const CHILD_MODELS = [
   'ConsultationVendorSelection', 'BookingItem', 'InvoiceItem', 'QuotationItem', 'LeadInsight', 'Couple', 'WeddingEvent', 'Guest',
   'GuestFunctionResponse', 'VendorEnquiry', 'VendorBooking', 'TimelineMilestone', 'Document', 'Task', 'ActivityLog', 'ApprovalRequest',
-  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment', 'CoupleVendor', 'VendorQuoteRequest', 'VendorQuoteFunction', 'WeddingMember', 'CoupleChecklistItem', 'CoupleBudgetCategory', 'CoupleExpense', 'VendorPayment', 'VendorWorkOrder',
+  'PaymentLink', 'Payout', 'PaymentSubmission', 'PaymentInstalment', 'CoupleVendor', 'VendorQuoteRequest', 'VendorQuoteFunction', 'WeddingMember', 'CoupleChecklistItem', 'CoupleBudgetCategory', 'CoupleExpense', 'VendorPayment', 'VendorWorkOrder', 'WorkOrderAdjustment',
 ] as const;
 
 export type ChildModel = (typeof CHILD_MODELS)[number];
@@ -74,6 +74,7 @@ export const PARENT_LINKS: Record<OwnedModel | ChildModel, ParentLink[]> = {
   Payout: [link('vendorBooking', 'VendorBooking')],
   VendorPayment: [link('vendorBooking', 'VendorBooking')],
   VendorWorkOrder: [link('vendorBooking', 'VendorBooking')],
+  WorkOrderAdjustment: [link('workOrder', 'VendorWorkOrder')],
   // The couple's "I have paid" claims (Roadmap 1.3) belong to the business whose quotation they are on.
   PaymentSubmission: [link('quotation', 'Quotation')],
   CoupleVendor: [link('wedding', 'Wedding'), link('weddingEvent', 'WeddingEvent')],

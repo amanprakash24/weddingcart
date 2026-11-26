@@ -740,6 +740,8 @@ export const weddingWorkspaceService = {
           // Sprint 7.3 — captured only on COMPLETED, cheap to record now for
           // the future Vendor Score (docs/wedding-os/04-vendor-os.md §7).
           onTimeService: status === 'COMPLETED' ? onTimeService ?? null : vendorBooking.onTimeService,
+          // "Mark completed" is the staff check of the vendor's work (money design v1, PR 6): who verified it and when — the final payment waits for it.
+          ...(status === 'COMPLETED' ? { verifiedAt: new Date(), verifiedById: by?.actorId ?? null } : {}),
         },
         tx
       );

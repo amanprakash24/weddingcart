@@ -10,10 +10,11 @@
 //   paid         = VendorPayment entries that are not voided + an older Payout marked PAID (its net amount)
 //   remaining    = net − paid (negative = paid more than is owed, e.g. on work cancelled after an advance)
 
-export type WorkStatus = 'AWAITING_VENDOR' | 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'DECLINED' | 'CANCELLED';
+export type WorkStatus = 'AWAITING_VENDOR' | 'NOT_STARTED' | 'IN_PROGRESS' | 'AWAITING_CHECK' | 'COMPLETED' | 'DECLINED' | 'CANCELLED';
 
 export const WORK_STATUS_WORDS: Record<WorkStatus, string> = {
   AWAITING_VENDOR: 'Waiting for the vendor to confirm',
+  AWAITING_CHECK: 'Done — waiting for our check',
   NOT_STARTED: 'Not started',
   IN_PROGRESS: 'In progress',
   COMPLETED: 'Completed',
@@ -30,6 +31,8 @@ export interface WorkOrderTerms {
   clientPrice: number;
   commissionRate: number | null;
   commissionAmount: number | null;
+  // changes after issue (PR 6): the vendor's amount and the couple's price move by these, never by editing the work order
+  adjustments?: { payableDelta: number; clientPriceDelta: number }[];
 }
 
 export interface AssignmentFacts {
@@ -41,6 +44,7 @@ export interface AssignmentFacts {
   pricingModel?: PricingModel | null; // null / absent: an older assignment — commission, as before
   vendorPrice?: number | null; // FIXED only
   workOrder?: WorkOrderTerms | null;
+  vendorDone?: boolean; // the vendor said the work is done (not yet verified)
   payout: { status: string; commissionRate: number; commissionAmount: number; netAmount: number } | null;
   payments: { amount: number; voided: boolean }[];
 }
@@ -72,18 +76,26 @@ export interface AssignmentMoney {
 export function assignmentTerms(a: AssignmentFacts): { pricingModel: PricingModel; clientPrice: number; commissionRate: number | null; commission: number | null; payable: number | null; frozen: boolean } {
   if (a.payout) return { pricingModel: 'COMMISSION', clientPrice: a.agreedPrice, commissionRate: a.payout.commissionRate, commission: a.payout.commissionAmount, payable: a.payout.netAmount, frozen: true };
   const wo = a.workOrder && a.workOrder.status === 'ISSUED' ? a.workOrder : null;
-  if (wo) return { pricingModel: wo.pricingModel, clientPrice: wo.clientPrice, commissionRate: wo.commissionRate, commission: wo.commissionAmount, payable: wo.vendorPayable, frozen: true };
+  if (wo) {
+    const adj = wo.adjustments ?? [];
+    const payable = wo.vendorPayable + adj.reduce((n, x) => n + x.payableDelta, 0);
+    const clientPrice = wo.clientPrice + adj.reduce((n, x) => n + x.clientPriceDelta, 0);
+    // commission model: our share is what is left between the couple's price and the vendor's amount once adjusted
+    const commission = wo.pricingModel === 'COMMISSION' ? (adj.length ? clientPrice - payable : wo.commissionAmount) : null;
+    return { pricingModel: wo.pricingModel, clientPrice, commissionRate: wo.commissionRate, commission, payable, frozen: true };
+  }
   if (a.pricingModel === 'FIXED') return { pricingModel: 'FIXED', clientPrice: a.agreedPrice, commissionRate: null, commission: null, payable: a.vendorPrice ?? null, frozen: false };
   const rate = a.currentRate;
   const commission = rate === null ? null : Math.round((a.agreedPrice * rate) / 100);
   return { pricingModel: 'COMMISSION', clientPrice: a.agreedPrice, commissionRate: rate, commission, payable: commission === null ? null : a.agreedPrice - commission, frozen: false };
 }
 
-export function workStatusOf(status: string, venueStatus: string): WorkStatus {
+export function workStatusOf(status: string, venueStatus: string, vendorDone = false): WorkStatus {
   if (status === 'COMPLETED') return 'COMPLETED';
   if (status === 'CANCELLED') return 'CANCELLED';
   if (status === 'DECLINED') return 'DECLINED';
   if (status !== 'CONFIRMED') return 'AWAITING_VENDOR'; // PENDING_VENDOR_CONFIRMATION / CUSTOMER_APPROVAL_PENDING
+  if (vendorDone) return 'AWAITING_CHECK'; // the vendor says it is done; staff have not verified it yet (PR 6)
   return venueStatus === 'PENDING' ? 'NOT_STARTED' : 'IN_PROGRESS'; // READY_FOR_SETUP … COMPLETED (setup done, work not closed)
 }
 
@@ -94,7 +106,7 @@ export function assignmentMoney(a: AssignmentFacts): AssignmentMoney {
   const paid = a.payments.filter((p) => !p.voided).reduce((s, p) => s + p.amount, 0) + (a.payout?.status === 'PAID' ? a.payout.netAmount : 0);
   return {
     id: a.id,
-    workStatus: workStatusOf(a.status, a.venueStatus),
+    workStatus: workStatusOf(a.status, a.venueStatus, a.vendorDone ?? false),
     owed,
     pricingModel: t.pricingModel,
     workOrderIssued: !!(a.workOrder && a.workOrder.status === 'ISSUED'),
@@ -187,6 +199,7 @@ export interface PaymentInput {
   method: unknown;
   reference?: unknown;
   note?: unknown;
+  finalOverrideReason?: unknown; // PR 6: why the final payment is made before the work is verified
 }
 
 // `remaining` is what is still owed on this work (null: unknown because no commission rate is set up — then nothing can be

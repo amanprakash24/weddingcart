@@ -16,6 +16,7 @@ const WORK_PILL: Record<WorkStatus, PillStatus> = {
   AWAITING_VENDOR: 'dateHeld',
   NOT_STARTED: 'neutral',
   IN_PROGRESS: 'info',
+  AWAITING_CHECK: 'dateHeld',
   COMPLETED: 'confirmed',
   DECLINED: 'overdue',
   CANCELLED: 'neutral',
@@ -43,6 +44,14 @@ function WorkCard({ work: w }: { work: VendorWorkView }) {
         </div>
       )}
       {w.workStatus === 'AWAITING_VENDOR' && <p className="mt-2 text-xs text-[var(--color-text-muted)]">Confirm this booking (Services) to have it counted.</p>}
+      {w.adjustments.length > 0 && (
+        <ul className="mt-2 space-y-0.5 border-t border-[var(--color-border-subtle)] pt-2 text-xs text-[var(--color-text-muted)]">
+          {w.adjustments.map((x) => (
+            <li key={x.id}>{ymdLabel(x.createdAt.slice(0, 10))} · {x.payableDelta > 0 ? '+' : '−'}{inr(Math.abs(x.payableDelta))} · {x.reason}</li>
+          ))}
+        </ul>
+      )}
+      {w.vendorDone && w.workStatus !== 'COMPLETED' && <p className="mt-2 text-xs text-[var(--color-text-muted)]">You marked this work done — waiting for our check.</p>}
       {w.workOrder && (
         <a href={`/vendor/work-orders/${w.workOrder.id}`} className="mt-2 inline-flex min-h-10 items-center text-xs font-semibold text-[var(--color-primary-text)] underline">
           Work order {w.workOrder.number}{w.workOrder.status === 'CANCELLED' ? ' (cancelled)' : ''}

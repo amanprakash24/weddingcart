@@ -1678,6 +1678,11 @@ model VendorBooking {
   pricingModel   VendorPricingModel?
   vendorPrice    Int?
   workOrder      VendorWorkOrder?
+  // Completion (money design v1, PR 6): the vendor says the work is done; staff verify it ("Mark completed" sets status COMPLETED).
+  vendorDoneAt   DateTime?
+  vendorDoneNote String?
+  verifiedAt     DateTime?
+  verifiedById   String?
   review     Review? // the couple's review of this booking (Roadmap 1.4)
 
   @@map("vendor_bookings")
@@ -2892,6 +2897,9 @@ model VendorPayment {
   voidedAt        DateTime?
   voidedById      String?
   voidReason      String?
+  // The final payment before the work was verified (money design v1, PR 6): allowed only with a reason, recorded here.
+  finalOverrideReason String?
+  finalOverrideById   String?
 
   @@index([vendorBookingId])
   @@index([vendorId])
@@ -2955,7 +2963,33 @@ model VendorWorkOrder {
   cancelledAt      DateTime?
   cancelledById    String?
   cancelReason     String?
+  adjustments      WorkOrderAdjustment[] // changes after issue — never edits (PR 6)
 
   @@index([vendorId])
   @@map("vendor_work_orders")
+}
+
+enum AdjustmentKind {
+  INCREASE
+  DECREASE
+  EXTRA_WORK
+  CANCELLATION
+}
+
+// A change to an issued work order (money design v1, PR 6, 25 Nov 2026): the work order is never edited; the vendor's amount is its
+// vendorPayable plus every adjustment. Append-only (the database refuses an update) and never below what was already paid (trigger).
+// payableDelta is what the vendor sees; clientPriceDelta is internal (the couple's side of the same change, if any).
+model WorkOrderAdjustment {
+  id               String          @id @default(uuid())
+  workOrderId      String
+  workOrder        VendorWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  kind             AdjustmentKind
+  payableDelta     Int
+  clientPriceDelta Int             @default(0)
+  reason           String
+  createdById      String?
+  createdAt        DateTime        @default(now())
+
+  @@index([workOrderId])
+  @@map("work_order_adjustments")
 }

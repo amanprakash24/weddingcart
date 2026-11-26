@@ -1,3 +1,4 @@
+import { auditAs } from '@/lib/finance/audit';
 import { prisma } from '@/lib/prisma';
 import { NotFoundError, InvalidTransitionError, ValidationError } from '@/lib/errors';
 import { VenueBookingStatus, AvailabilityStatus } from '@/generated/prisma/enums';
@@ -35,7 +36,7 @@ async function vendorById(vendorId: string) {
 // `amount` is the vendor's OWN payable amount (lib/vendor/vendorMoney.ts `payable`) — never the couple's price (agreedPrice) or our
 // commission (money design rule 1, 25 Nov 2026). null for a member without view_financials, left out here on the server.
 function bookingView(payable: number | null, booking: {
-  id: string; status: string; venueStatus: VenueBookingStatus; agreedPrice: number; respondedAt: Date | null;
+  id: string; status: string; venueStatus: VenueBookingStatus; agreedPrice: number; respondedAt: Date | null; vendorDoneAt: Date | null;
   weddingEvent: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; venueAddress: string | null; city: string; wedding: { id: string; weddingNumber: string; weddingType: string | null; guestCount: number | null; customer: { name: string | null } | null; events: { id: string; type: string; label: string | null; date: Date; startTime: string | null; venueName: string | null; city: string }[] } };
   vendorPackage: { name: string; description: string } | null;
   tasks: { id: string; title: string; status: string; dueAt: Date | null }[];
@@ -48,6 +49,7 @@ function bookingView(payable: number | null, booking: {
     // Already fetched (no `select` narrows this query, so every VendorBooking scalar column is returned by
     // default) — just wasn't exposed until the Vendor -> Today screen needed a real "recent activity" source.
     respondedAt: booking.respondedAt?.toISOString() ?? null,
+    vendorDone: booking.vendorDoneAt !== null, // the vendor said the work is done (PR 6)
     event: {
       id: booking.weddingEvent.wedding.id,
       name: booking.weddingEvent.wedding.customer?.name || booking.weddingEvent.wedding.weddingNumber,
@@ -135,6 +137,22 @@ export const venuePortalService = {
     if (!checked.ok) throw new ValidationError(checked.error);
     const updated = await weddingWorkspaceService.updateVendorBookingStatus(booking.weddingEvent.weddingId, booking.id, checked.status, checked.reason ?? undefined, undefined, { actorId: userId, vendorOs: true });
     return { id: updated.id, status: updated.status, declineReason: updated.declineReason };
+  },
+
+  // The vendor says the work is done (money design v1, PR 6). Only on confirmed work of the vendor the person works in; staff then
+  // verify it ("Mark completed"). Saying it twice changes nothing.
+  async markDone({ vendorId, userId }: { vendorId: string; userId: string }, bookingId: string, note: unknown) {
+    const text = typeof note === 'string' ? note.replace(/\s+/g, ' ').trim().slice(0, 300) : '';
+    return prisma.$transaction(async (tx) => {
+      await auditAs(tx, userId, 'vendor: work done');
+      const booking = await tx.vendorBooking.findFirst({ where: { id: bookingId, vendorId }, select: { id: true, status: true, vendorDoneAt: true, weddingEvent: { select: { weddingId: true, label: true, type: true } } } });
+      if (!booking) throw new NotFoundError('Booking', bookingId);
+      if (booking.status !== 'CONFIRMED') throw new InvalidTransitionError(booking.status === 'COMPLETED' ? 'This work is already completed' : 'Only confirmed work can be marked done');
+      if (booking.vendorDoneAt) return { id: booking.id, vendorDoneAt: booking.vendorDoneAt.toISOString() };
+      const updated = await tx.vendorBooking.update({ where: { id: booking.id }, data: { vendorDoneAt: new Date(), vendorDoneNote: text || null }, select: { id: true, vendorDoneAt: true } });
+      await tx.activityLog.create({ data: { type: 'NOTE', summary: `The vendor says the work for ${booking.weddingEvent.label || booking.weddingEvent.type} is done${text ? `: ${text}` : ''} — check it and mark it completed`, wedding: { connect: { id: booking.weddingEvent.weddingId } }, vendorBooking: { connect: { id: booking.id } }, performedBy: { connect: { id: userId } } } });
+      return { id: updated.id, vendorDoneAt: updated.vendorDoneAt!.toISOString() };
+    });
   },
 
   // Self-service availability: a vendor sets AVAILABLE/TENTATIVE/BOOKED/BLOCKED on

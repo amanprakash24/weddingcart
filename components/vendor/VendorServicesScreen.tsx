@@ -34,6 +34,47 @@ function dateLabel(value: string) {
   return new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
 }
 
+function WorkDone({ bookingId, initiallyDone }: { bookingId: string; initiallyDone: boolean }) {
+  const [done, setDone] = useState(initiallyDone);
+  const [asking, setAsking] = useState(false);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (done) return <p className="mt-3 rounded-lg bg-[var(--color-surface-subtle,#f5f3ff)] p-2 text-xs text-[var(--color-text-secondary)]">You marked this work done. Shaadi Shopping will check it — the final payment follows.</p>;
+  const send = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/vendor/bookings/${bookingId}/done`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note }) });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.success) throw new Error(body?.error || 'Could not save. Please try again.');
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-3 border-t border-[var(--color-border-subtle)] pt-2">
+      {!asking ? (
+        <button type="button" onClick={() => setAsking(true)} className="min-h-11 rounded-lg border border-[var(--color-border-default)] px-3 text-sm font-semibold text-[var(--color-text-primary)]">Work done</button>
+      ) : (
+        <div className="grid gap-2">
+          <label className="grid gap-1 text-xs text-[var(--color-text-muted)]">Anything we should know? (optional)
+            <input aria-label="Note about the finished work" value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} className="min-h-11 rounded-lg border border-[var(--color-border-default)] px-3 text-base" />
+          </label>
+          <div className="flex gap-2">
+            <button type="button" disabled={busy} onClick={() => void send()} className="min-h-11 rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-white disabled:opacity-40">{busy ? 'Saving…' : 'Yes, the work is done'}</button>
+            <button type="button" onClick={() => setAsking(false)} className="min-h-11 px-3 text-sm text-[var(--color-text-secondary)]">Not yet</button>
+          </div>
+        </div>
+      )}
+      {error && <p role="alert" className="mt-1 text-xs text-red-700">{error}</p>}
+    </div>
+  );
+}
+
 function ServiceCard({ service, isVenue, onAdvanceVenueStatus, advancing, onAnswered }: { service: VendorServiceCard; isVenue: boolean; onAdvanceVenueStatus: (bookingId: string, next: VendorServiceCard['venueStatus']) => void; advancing: boolean; onAnswered: (bookingId: string, status: 'CONFIRMED' | 'DECLINED') => void }) {
   const pill = BOOKING_STATUS_PILL[service.status];
   return (
@@ -77,6 +118,8 @@ function ServiceCard({ service, isVenue, onAdvanceVenueStatus, advancing, onAnsw
 
       {/* IMPORTANT: this is the vendor's OWN amount for this one service (what they are paid, after our commission — the commission
           itself and the couple's price never reach this screen; 25 Nov 2026). Never the wedding's invoice, budget or balance. */}
+      {/* "Work done" (money design v1, PR 6): the vendor says the work is done; Shaadi Shopping checks it and marks it completed. */}
+      {service.status === 'CONFIRMED' && <WorkDone bookingId={service.bookingId} initiallyDone={service.vendorDone} />}
       {service.agreedAmount !== null && (
         <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border-subtle)] pt-2">
           <span className="text-xs text-[var(--color-text-muted)]">Your amount</span>

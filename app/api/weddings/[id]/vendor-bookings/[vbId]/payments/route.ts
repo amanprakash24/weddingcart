@@ -14,7 +14,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const raw: unknown = await req.json().catch(() => null);
     const body = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-    const payment = await vendorPaymentService.record(id, vbId, { amount: body.amount, paidOn: body.paidOn, method: body.method, reference: body.reference, note: body.note }, session.user.id ?? null);
+    const payment = await vendorPaymentService.record(id, vbId, { amount: body.amount, paidOn: body.paidOn, method: body.method, reference: body.reference, note: body.note, finalOverrideReason: body.finalOverrideReason }, session.user.id ?? null);
     return NextResponse.json({ success: true, data: payment }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     return handleApiError(err);
