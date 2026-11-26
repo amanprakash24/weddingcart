@@ -88,7 +88,7 @@ export function createFixtures(app: App) {
 
   // Receives exactly what the agreement needs to confirm the booking (or a given amount), as cash.
   async function payConfirmation(quotationId: string, amount?: number) {
-    const agreement = await prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId } });
+    const agreement = await prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId } });
     return app.agreement.recordAgreementPayment(quotationId, { amount: amount ?? agreement.confirmationAmount, method: 'CASH' }, null);
   }
 
@@ -114,6 +114,7 @@ export function createFixtures(app: App) {
     });
     for (const id of weddingIds) await prisma.wedding.delete({ where: { id } }); // cascades events, vendor bookings, tasks, milestones, logs
     await prisma.booking.deleteMany({ where: { id: { in: bookingIds } } });
+    await prisma.confirmation.deleteMany({ where: { quotationId: { in: quotationIds } } }); // PR 8 (lines go with them)
     await prisma.quotation.deleteMany({ where: { consultationId: { in: ids } } });
     await prisma.activityLog.deleteMany({ where: { consultationId: { in: ids } } });
     await prisma.task.deleteMany({ where: { consultationId: { in: ids } } });

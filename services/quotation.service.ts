@@ -149,9 +149,17 @@ async function loadSource(sourceType: SourceType, id: string, tx: Tx | typeof pr
 // lazily whenever quotations are read or acted on — which also frees the source's "open quotation" slot.
 export async function expireOverdue(where: Prisma.QuotationWhereInput, tx: Tx | typeof prisma = prisma): Promise<void> {
   await tx.quotation.updateMany({
-    where: { ...where, status: { in: ['SENT', 'READY_TO_SHARE'] }, validUntil: { lt: new Date() } },
+    // a partly confirmed quotation never expires: some of its services are booked (PR 8)
+    where: { ...where, status: { in: ['SENT', 'READY_TO_SHARE'] }, validUntil: { lt: new Date() }, confirmations: { none: { status: 'CONFIRMED' } } },
     data: { status: 'EXPIRED' },
   });
+}
+
+// Money design v1, PR 8: a quotation with confirmed services stays SENT for the rest. Accepting it as a whole would bill the confirmed
+// services twice; declining or revising it would leave confirmed services without their quotation.
+async function refuseIfPartlyConfirmed(tx: Tx, quotationId: string, what: string): Promise<void> {
+  const live = await tx.confirmation.findMany({ where: { quotationId, status: 'CONFIRMED' }, select: { number: true } });
+  if (live.length) throw new ConflictError(`Some services of this quotation are confirmed (${live.map((c) => c.number).join(', ')}) — it cannot be ${what}`);
 }
 
 async function logEvent(
@@ -474,6 +482,7 @@ export const quotationService = {
       const now = new Date();
       const blocked = evaluateAcceptable({ status: q.status, validUntil: q.validUntil }, now);
       if (blocked) throw blocked;
+      await refuseIfPartlyConfirmed(tx, id, 'accepted as a whole — confirm the remaining services instead');
       // A hall held for another couple stops this acceptance; this couple's own hold is taken over (services/hallHold.service.ts).
       if (sourceType === 'CONSULTATION') await claimHallsForAcceptance(tx, sourceId, now);
 
@@ -515,6 +524,7 @@ export const quotationService = {
       const { q, sourceType, sourceId } = await loadLocked(tx, id);
       const blocked = evaluateRejectable(q.status);
       if (blocked) throw blocked;
+      await refuseIfPartlyConfirmed(tx, id, 'declined');
 
       const updated = await quotationRepository.update(id, { status: 'REJECTED', rejectedAt: new Date(), rejectionReason: reason }, tx);
       await logEvent(tx, sourceType, sourceId, ActivityType.QUOTATION_REJECTED, `Quotation ${q.quotationNumber} rejected`, reason, actorId);
@@ -602,6 +612,7 @@ export const quotationService = {
         mark(`locked, was ${q.status}`);
         const blocked = evaluateRevisable(q.status);
         if (blocked) throw blocked;
+        await refuseIfPartlyConfirmed(tx, id, 'revised yet (revising with confirmed services locked comes in the next update)');
 
         const label = SOURCE_LABEL[sourceType];
         if (await tx.quotation.findFirst({ where: { supersedesId: id }, select: { id: true } })) {

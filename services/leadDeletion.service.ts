@@ -53,7 +53,7 @@ export function createLeadDeletionService(deps: LeadDeletionDeps = { db: prisma 
 
     const quotations = await db.quotation.findMany({
       where: subject,
-      select: { id: true, booking: { select: { id: true } }, agreement: { select: { id: true } }, _count: { select: { invoices: true, paymentSubmissions: true } } },
+      select: { id: true, booking: { select: { id: true } }, agreements: { select: { id: true } }, _count: { select: { invoices: true, paymentSubmissions: true } } },
     });
     // A booking made straight from the website form (no quotation) points at the enquiry / consultation itself.
     const directBookings = sourceType === 'LEAD' ? 0 : await db.booking.count({ where: sourceType === 'ENQUIRY' ? { enquiryId: id } : { consultationId: id } });
@@ -63,7 +63,7 @@ export function createLeadDeletionService(deps: LeadDeletionDeps = { db: prisma 
     });
 
     const booked = quotations.filter((q) => q.booking).length + directBookings;
-    const agreements = quotations.filter((q) => q.agreement).length;
+    const agreements = quotations.filter((q) => q.agreements.length > 0).length; // whole-quotation or per confirmation (PR 8)
     const invoices = quotations.reduce((n, q) => n + q._count.invoices, 0);
     const claims = quotations.reduce((n, q) => n + q._count.paymentSubmissions, 0);
     const blockers = [

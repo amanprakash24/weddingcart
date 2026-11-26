@@ -50,7 +50,7 @@ export interface GstTotals {
 
 // Shares of `discount` across the lines, in proportion to their amounts, in whole rupees that add up to exactly `discount`
 // (largest remainders get the leftover rupees; ties go to the earlier line).
-function spreadDiscount(amounts: number[], discount: number): number[] {
+export function spreadDiscount(amounts: number[], discount: number): number[] {
   const subtotal = amounts.reduce((a, b) => a + b, 0);
   if (discount <= 0 || subtotal <= 0) return amounts.map(() => 0);
   const exact = amounts.map((a) => (a * discount) / subtotal);

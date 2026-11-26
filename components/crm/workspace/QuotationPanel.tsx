@@ -24,6 +24,7 @@ import CustomerLinkBox from './CustomerLinkBox';
 const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'phone', IN_PERSON: 'in person', OTHER: 'another channel', ONLINE: 'the proposal link (online)' };
 
 import type { QuotationPrefillLine } from './quotationPrefill';
+import ConfirmationsBox from './ConfirmationsBox';
 import { SS_PLANNING, isShaadiShoppingBusiness, planningScope } from '@/lib/planning/ssPlanning';
 export type { QuotationPrefillLine } from './quotationPrefill';
 
@@ -358,6 +359,8 @@ const QuotationPanel = forwardRef<
               </div>
             )}
             {!readOnly && <CustomerLinkBox quotation={current} customerName={customerName} eventDate={eventDate} onChanged={() => { load(); onChanged(); }} />}
+            {/* Money design v1, PR 8a: confirm chosen services now, the rest later */}
+            <ConfirmationsBox quotation={current} readOnly={Boolean(readOnly)} onChanged={() => { load(); onChanged(); }} />
             {!readOnly && current.status === 'DRAFT' && (
               <div className="flex flex-wrap gap-2">
                 <button type="button" disabled={busy} onClick={() => setEditing({ id: current.id, draft: draftFromQuotation(current) })} className="min-h-[40px] rounded-xl border border-gray-200 px-3.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">

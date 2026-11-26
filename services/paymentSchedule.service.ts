@@ -37,13 +37,13 @@ export interface PaymentScheduleView {
 // Credit notes on the agreement's invoices (money design v1, PR 7): the advance invoice's lower the booking amount, the balance
 // invoice's lower what the instalments must add up to.
 async function creditsFor(client: Tx | typeof prisma, quotationId: string): Promise<{ advance: number; balance: number }> {
-  const rows = await client.invoice.findMany({ where: { quotationId, kind: { in: ['ADVANCE', 'BALANCE'] } }, select: { kind: true, creditedAmount: true } });
+  const rows = await client.invoice.findMany({ where: { quotationId, confirmationId: null, kind: { in: ['ADVANCE', 'BALANCE'] } }, select: { kind: true, creditedAmount: true } });
   return { advance: rows.filter((r) => r.kind === 'ADVANCE').reduce((s, r) => s + r.creditedAmount, 0), balance: rows.filter((r) => r.kind === 'BALANCE').reduce((s, r) => s + r.creditedAmount, 0) };
 }
 
 async function receivedFor(client: Tx | typeof prisma, quotationId: string): Promise<number> {
   // the same money the agreement counts: successful payments on its advance / balance invoices
-  const payments = await client.payment.findMany({ where: { status: 'SUCCESS', invoice: { quotationId, kind: { in: ['ADVANCE', 'BALANCE'] } } }, select: { amount: true } });
+  const payments = await client.payment.findMany({ where: { status: 'SUCCESS', invoice: { quotationId, confirmationId: null, kind: { in: ['ADVANCE', 'BALANCE'] } } }, select: { amount: true } });
   return payments.reduce((s, p) => s + p.amount, 0);
 }
 
@@ -51,8 +51,8 @@ export const paymentScheduleService = {
   async get(quotationId: string, now: Date = new Date()): Promise<PaymentScheduleView> {
     const quotation = await prisma.quotation.findUnique({ where: { id: quotationId }, select: { id: true } });
     if (!quotation) throw new NotFoundError('Quotation', quotationId);
-    const agreement = await prisma.commercialAgreement.findUnique({
-      where: { quotationId },
+    const agreement = await prisma.commercialAgreement.findFirst({
+      where: { confirmationId: null, quotationId },
       select: { agreementTotal: true, confirmationAmount: true, scheduleVersion: true, instalments: { orderBy: { sortOrder: 'asc' }, select: { label: true, amount: true, dueDate: true } } },
     });
     if (!agreement) return { exists: false, version: 0, agreementTotal: 0, confirmationAmount: 0, balance: 0, received: 0, instalments: [], steps: [] };
@@ -79,8 +79,8 @@ export const paymentScheduleService = {
       // Lock the agreement row: two saves at once are taken one after the other, and the second sees the first's version.
       const locked = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "commercial_agreements" WHERE "quotationId" = ${quotationId} FOR UPDATE`;
       if (locked.length === 0) throw new ConflictError('There is no booking agreement for this quotation yet — accept the quotation and create the booking first');
-      const agreement = await tx.commercialAgreement.findUnique({
-        where: { quotationId },
+      const agreement = await tx.commercialAgreement.findFirst({
+        where: { confirmationId: null, quotationId },
         select: { id: true, agreementTotal: true, confirmationAmount: true, scheduleVersion: true, quotation: { select: { quotationNumber: true, leadId: true, enquiryId: true, consultationId: true } } },
       });
       if (!agreement) throw new ConflictError('There is no booking agreement for this quotation yet');

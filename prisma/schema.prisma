@@ -954,6 +954,9 @@ model Invoice {
   // never written by the app. Outstanding = total − successful payments − creditedAmount. A void cancels an invoice the couple
   // never paid; a voided invoice is frozen (database rule) and counts for nothing.
   creditedAmount Int          @default(0)
+  // Money design v1, PR 8: the confirmation this invoice bills (null = a whole-quotation agreement, or a manual invoice).
+  confirmationId String?
+  confirmation   Confirmation? @relation(fields: [confirmationId], references: [id], onDelete: Restrict)
   creditNotes    CreditNote[]
   voidedAt       DateTime?
   voidedById     String?
@@ -966,8 +969,9 @@ model Invoice {
   // The quotation whose advance this invoice was created from (at most one).
   advanceForQuotation Quotation? @relation("QuotationAdvanceInvoice")
 
-  // At most one ADVANCE and one BALANCE invoice per quotation (NULL quotationId — manual invoices — never clash).
-  @@unique([quotationId, kind])
+  // At most one ADVANCE and one BALANCE invoice per quotation for invoices with no confirmation, and per confirmation otherwise —
+  // both partial unique indexes in SQL (migration 20261126000000), which Prisma cannot express.
+  @@index([quotationId, kind])
   @@index([weddingId, createdAt])
   @@index([quotationId])
   @@index([bookingId])
@@ -1203,6 +1207,7 @@ enum QuotationStatus {
 //  - partial unique index: at most one open (DRAFT/SENT) quotation per source;
 //  - partial unique index: at most one ACCEPTED quotation per source.
 model Quotation {
+  confirmations Confirmation[] // services confirmed from it (PR 8)
   id              String     @id @default(uuid())
   quotationNumber String     @unique // QTN-YYYYMM-NNNN, same scheme as INV-/WED-
   revision        Int        @default(1)
@@ -1259,7 +1264,8 @@ model Quotation {
   advanceInvoice   Invoice?             @relation("QuotationAdvanceInvoice", fields: [advanceInvoiceId], references: [id])
   invoices         Invoice[]            @relation("InvoiceQuotation") // every invoice raised against this agreement (advance, balance)
   booking          Booking? // one Booking per quotation (Booking.quotationId is unique)
-  agreement        CommercialAgreement? // the frozen commercial terms this quotation was accepted on (money v1)
+  // the frozen commercial terms: one for a whole-quotation booking (no confirmation), one per confirmation otherwise (PR 8)
+  agreements       CommercialAgreement[]
 
   items       QuotationItem[]
   createdById String?
@@ -2087,7 +2093,11 @@ enum PaymentLinkStatus {
 // quotation was accepted has no Booking.
 model CommercialAgreement {
   id                   String    @id @default(uuid())
-  quotationId          String    @unique
+  // One agreement per quotation for an agreement with no confirmation (whole-quotation bookings, every agreement made before
+  // 25 Nov 2026); one per confirmation otherwise. Both are database rules (partial unique indexes, migration 20261126000000).
+  quotationId          String
+  confirmationId       String?       @unique
+  confirmation         Confirmation? @relation(fields: [confirmationId], references: [id], onDelete: Restrict)
   quotation            Quotation @relation(fields: [quotationId], references: [id], onDelete: Restrict)
   quotationRevision    Int
   bookingId            String?   @unique
@@ -2125,6 +2135,7 @@ model CommercialAgreement {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
 
   @@index([businessId])
+  @@index([quotationId])
   @@map("commercial_agreements")
 }
 
@@ -2561,6 +2572,7 @@ model Business {
   quotations            Quotation[]
   bookings              Booking[]
   commercialAgreements  CommercialAgreement[]
+  confirmations         Confirmation[]
   weddings              Wedding[]
   invoices              Invoice[]
   payments              Payment[]
@@ -3019,4 +3031,68 @@ model CreditNote {
 
   @@index([invoiceId])
   @@map("credit_notes")
+}
+
+enum ConfirmationStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+// Services of a quotation confirmed together (money design v1, PR 8, 25 Nov 2026): the unit of money. Numbered CNF-YYYYMM-NNNN.
+// Its figures and lines are frozen (database rule); it has its own agreement and its own advance and balance invoices. The rest of
+// the quotation stays open for later. lib/commercial/confirmation.ts works the figures out.
+model Confirmation {
+  id                  String             @id @default(uuid())
+  number              String             @unique
+  quotationId         String
+  quotation           Quotation          @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  quotationRevision   Int
+  status              ConfirmationStatus @default(CONFIRMED)
+  channel             String // IN_PERSON / CALL / WHATSAPP / COUPLE_LINK
+  confirmedAt         DateTime           @default(now())
+  confirmedById       String?
+  subtotal            Int
+  discount            Int
+  taxable             Int
+  gst                 Int
+  total               Int
+  confirmationPercent Int
+  advance             Int
+  weddingId           String? // set when it joins a wedding (PR 8b)
+  lines               ConfirmationLine[]
+  agreement           CommercialAgreement?
+  invoices            Invoice[]
+  createdAt           DateTime           @default(now())
+
+  businessId String   @default("shaadi-shopping")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([quotationId])
+  @@index([businessId])
+  @@map("confirmations")
+}
+
+// One confirmed service, frozen. A quotation line is in at most one live confirmation (partial unique index in SQL).
+model ConfirmationLine {
+  id              String       @id @default(uuid())
+  confirmationId  String
+  confirmation    Confirmation @relation(fields: [confirmationId], references: [id], onDelete: Cascade)
+  quotationItemId String // the quotation line it came from (kept as text: quotation lines are copied, never edited, on revision)
+  sortOrder       Int
+  description     String
+  category        String?
+  functionLabel   String?
+  vendorId        String?
+  quantity        Int
+  unitPrice       Int
+  amount          Int
+  discountShare   Int
+  taxable         Int
+  gstRateBp       Int?
+  gst             Int
+  total           Int
+  live            Boolean      @default(true) // false once its confirmation is cancelled
+
+  @@index([confirmationId])
+  @@map("confirmation_lines")
 }

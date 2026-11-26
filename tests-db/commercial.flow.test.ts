@@ -173,7 +173,7 @@ dbDescribe('Commercial flow V1 (real database)', () => {
     expect(await stageOf()).toBe('ACCEPTED'); // still pending until it is confirmed
     // Money V1: the agreement is frozen now (25% of ₹1,10,000 = ₹27,500, not the ₹50,000 typed as the quotation's advance) and the
     // booking's invoice exists, for exactly that amount, before any wedding does.
-    expect(await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId: q3 } })).toMatchObject({ bookingId: booking.id, agreementTotal: 110000, confirmationAmount: 27500, confirmationPercent: 25, holdWindowDays: 7 });
+    expect(await app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId: q3 } })).toMatchObject({ bookingId: booking.id, agreementTotal: 110000, confirmationAmount: 27500, confirmationPercent: 25, holdWindowDays: 7 });
     expect(await app.prisma.invoice.findMany({ where: { quotationId: q3 } })).toMatchObject([{ kind: 'ADVANCE', total: 27500, bookingId: booking.id, weddingId: null, status: 'DRAFT' }]);
     expect((await errorOf(app.quotationService.createBooking(q3, {}, null)))?.message).toContain('A booking was already created from this quotation');
     expect(await app.prisma.booking.count({ where: { quotationId: q3 } })).toBe(1);

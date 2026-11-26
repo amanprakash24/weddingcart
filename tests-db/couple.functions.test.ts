@@ -23,7 +23,7 @@ dbDescribe('Couple-controlled functions (real database)', () => {
   const inDays = (n: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(Date.now() + n * 86_400_000));
   const snapshot = async () => {
     const w = await app.prisma.wedding.findUniqueOrThrow({ where: { id: weddingId }, select: { primaryDate: true, status: true } });
-    const a = await app.prisma.commercialAgreement.findUniqueOrThrow({ where: { quotationId }, select: { agreementTotal: true } });
+    const a = await app.prisma.commercialAgreement.findFirstOrThrow({ where: { confirmationId: null, quotationId }, select: { agreementTotal: true } });
     const vb = await app.prisma.vendorBooking.findMany({ where: { weddingEvent: { weddingId } }, select: { id: true, status: true, agreedPrice: true }, orderBy: { id: 'asc' } });
     return JSON.stringify({ w, a, vb });
   };
