@@ -332,6 +332,11 @@ export const weddingWorkspaceService = {
     });
 
     const vendorIds = [...new Set(vendorBookings.map((vb) => vb.vendorId))];
+    // Which bookings have an issued work order (their price is fixed by it — the card says so instead of offering "Edit price").
+    const issuedOrders = vendorBookings.length
+      ? await prisma.vendorWorkOrder.findMany({ where: { vendorBookingId: { in: vendorBookings.map((vb) => vb.id) }, status: 'ISSUED' }, select: { vendorBookingId: true, number: true } })
+      : [];
+    const workOrderByBooking = new Map(issuedOrders.map((w) => [w.vendorBookingId, w.number]));
     // Deliberately not vendorRepository.findMany — that forces a
     // packages/faqs include this view doesn't need, and doesn't expose
     // category (a relation, not a string field on Vendor). A minimal direct
@@ -390,6 +395,7 @@ export const weddingWorkspaceService = {
             vendorCategory: vendor?.category.name ?? '',
             status: vb.status,
             agreedPrice: vb.agreedPrice,
+            workOrderNumber: workOrderByBooking.get(vb.id) ?? null,
             declineReason: vb.declineReason,
             respondedAt: vb.respondedAt,
             onTimeService: vb.onTimeService,
