@@ -6,6 +6,7 @@ import Link from 'next/link';
 import VendorLoginCode from '@/components/admin/VendorLoginCode';
 import ProfileMediaReview from '@/components/admin/ProfileMediaReview';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { adminSend, failureMessage } from '@/lib/adminSend';
 import { Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, Users, AtSign, Globe, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle, Send } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
@@ -441,6 +442,19 @@ export default function AdminClient() {
   const [bookingCreateDateWarning, setBookingCreateDateWarning] = useState('');
   const [bookingCreateError, setBookingCreateError] = useState('');
   const [bookingCreateSubmitting, setBookingCreateSubmitting] = useState(false);
+  // A save, delete or status change that failed: shown in the red banner at the top instead of vanishing (lib/adminSend.ts).
+  const [actionError, setActionError] = useState('');
+  // Runs one save / delete. On failure the reason goes in the banner and it returns null, so the caller keeps the form open
+  // with what was typed.
+  const send = async (url: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown) => {
+    setActionError('');
+    const result = await adminSend(url, method, body);
+    if (!result.ok) {
+      setActionError(result.message);
+      return null;
+    }
+    return result;
+  };
 
   // "Start Enquiry" (from a Consultation) state — reuses the existing public
   // POST /api/enquiries, enquiryCreateSchema, and enquiryService.create()
@@ -555,7 +569,7 @@ export default function AdminClient() {
   // ── Vendor handlers ────────────────────────────────────────────────────────
   const handleDeleteVendor = async (id: string) => {
     if (!confirm('Delete this vendor?')) return;
-    await fetch(`/api/vendors/${id}`, { method: 'DELETE' });
+    await send(`/api/vendors/${id}`, 'DELETE');
     fetchAll();
   };
 
@@ -631,11 +645,10 @@ export default function AdminClient() {
       packages: builtPackages,
     };
 
-    if (editingVendor) {
-      await fetch(`/api/vendors/${editingVendor.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    } else {
-      await fetch('/api/vendors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    }
+    const saved = editingVendor
+      ? await send(`/api/vendors/${editingVendor.id}`, 'PUT', payload)
+      : await send('/api/vendors', 'POST', payload);
+    if (!saved) return;
     setShowAddVendor(false);
     setEditingVendor(null);
     setVendorForm(EMPTY_VENDOR);
@@ -647,7 +660,7 @@ export default function AdminClient() {
   // ── Category handlers ──────────────────────────────────────────────────────
   const handleDeleteCategory = async (id: string) => {
     if (!confirm('Delete this category?')) return;
-    await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+    await send(`/api/categories/${id}`, 'DELETE');
     fetchAll();
   };
 
@@ -665,11 +678,10 @@ export default function AdminClient() {
 
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingCategory) {
-      await fetch(`/api/categories/${editingCategory.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(categoryForm) });
-    } else {
-      await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...categoryForm, vendorCount: 0 }) });
-    }
+    const saved = editingCategory
+      ? await send(`/api/categories/${editingCategory.id}`, 'PUT', categoryForm)
+      : await send('/api/categories', 'POST', { ...categoryForm, vendorCount: 0 });
+    if (!saved) return;
     setShowAddCategory(false);
     setEditingCategory(null);
     setCategoryForm(EMPTY_CATEGORY);
@@ -696,11 +708,10 @@ export default function AdminClient() {
 
   const handleSpecialCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingSpecialCategory) {
-      await fetch(`/api/categories/${editingSpecialCategory.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...specialCategoryForm, isSpecial: true }) });
-    } else {
-      await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...specialCategoryForm, isSpecial: true, vendorCount: 0 }) });
-    }
+    const saved = editingSpecialCategory
+      ? await send(`/api/categories/${editingSpecialCategory.id}`, 'PUT', { ...specialCategoryForm, isSpecial: true })
+      : await send('/api/categories', 'POST', { ...specialCategoryForm, isSpecial: true, vendorCount: 0 });
+    if (!saved) return;
     setShowAddSpecialCategory(false);
     setEditingSpecialCategory(null);
     setSpecialCategoryForm(EMPTY_CATEGORY);
@@ -709,7 +720,7 @@ export default function AdminClient() {
 
   const handleDeleteSpecialCategory = async (id: string) => {
     if (!confirm('Delete this special service category?')) return;
-    await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+    await send(`/api/categories/${id}`, 'DELETE');
     fetchAll();
   };
 
@@ -769,11 +780,10 @@ export default function AdminClient() {
       features: vendorForm.features.split(',').map((f) => f.trim()).filter(Boolean),
       packages: builtPackages,
     };
-    if (editingSpecialVendor) {
-      await fetch(`/api/vendors/${editingSpecialVendor.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    } else {
-      await fetch('/api/vendors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    }
+    const saved = editingSpecialVendor
+      ? await send(`/api/vendors/${editingSpecialVendor.id}`, 'PUT', payload)
+      : await send('/api/vendors', 'POST', payload);
+    if (!saved) return;
     setShowAddSpecialVendor(false);
     setEditingSpecialVendor(null);
     setEditingVendor(null);
@@ -785,7 +795,7 @@ export default function AdminClient() {
 
   const handleDeleteLead = async (id: string) => {
     if (!confirm('Delete this lead?')) return;
-    await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+    if (!(await send(`/api/leads/${id}`, 'DELETE'))) return;
     setSelectedLeads((prev) => { const next = new Set(prev); next.delete(id); return next; });
     fetchAll();
   };
@@ -793,13 +803,21 @@ export default function AdminClient() {
   const handleDeleteSelectedLeads = async () => {
     if (selectedLeads.size === 0) return;
     if (!confirm(`Delete ${selectedLeads.size} selected lead${selectedLeads.size > 1 ? 's' : ''}?`)) return;
-    await Promise.all([...selectedLeads].map((id) => fetch(`/api/leads/${id}`, { method: 'DELETE' })));
-    setSelectedLeads(new Set());
+    setActionError('');
+    const ids = [...selectedLeads];
+    const results = await Promise.all(ids.map((id) => adminSend(`/api/leads/${id}`, 'DELETE')));
+    const failed = ids.filter((_, i) => !results[i].ok);
+    const firstFailure = results.find((r) => !r.ok);
+    if (firstFailure && !firstFailure.ok) {
+      setActionError(`${failed.length} of ${ids.length} leads were not deleted — ${firstFailure.message}`);
+    }
+    // Only the ones that failed stay ticked, so pressing Delete again retries just those.
+    setSelectedLeads(new Set(failed));
     fetchAll();
   };
 
   const handleStatusChange = async (type: 'enquiries' | 'consultations', id: string, status: string) => {
-    await fetch(`/api/${type}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+    await send(`/api/${type}/${id}`, 'PUT', { status });
     fetchAll();
   };
 
@@ -936,20 +954,32 @@ export default function AdminClient() {
       });
     const payload = { ...invoiceForm, items, subtotal: invoiceSubtotal, discount: invoiceDiscountAmt, gstAmount: invoiceGstAmt, total: invoiceTotal, amountPaid: invoiceAmountPaid };
     if (editingInvoice) {
-      await fetch(`/api/invoices/${editingInvoice._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (!(await send(`/api/invoices/${editingInvoice._id}`, 'PUT', payload))) return;
     } else {
-      let res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      let data = await res.json();
+      setActionError('');
+      let res: Response;
+      let data: AnyRecord | null;
+      try {
+        res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        data = await res.json().catch(() => null);
+      } catch {
+        setActionError(failureMessage(0, null));
+        return;
+      }
       // This customer already has a wedding: its invoices are managed inside the wedding (Money), not here. Creating a separate
       // standalone invoice is still possible, but only on purpose.
-      if (res.status === 409 && data.code === 'HAS_WEDDING') {
-        if (!window.confirm(`${data.error}
+      if (res.status === 409 && data?.code === 'HAS_WEDDING') {
+        if (!window.confirm(`${data?.error}
 
 Create a separate standalone invoice anyway?`)) return;
-        res = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, confirmStandalone: true }) });
-        data = await res.json();
+        const retry = await send('/api/invoices', 'POST', { ...payload, confirmStandalone: true });
+        if (!retry) return;
+        data = retry.data as AnyRecord;
+      } else if (!res.ok || !data?.success) {
+        setActionError(failureMessage(res.status, data));
+        return;
       }
-      if (data.success) setPreviewInvoice(data.data);
+      if (data?.success) setPreviewInvoice(data.data);
     }
     setShowInvoiceForm(false);
     setEditingInvoice(null);
@@ -1104,6 +1134,15 @@ Create a separate standalone invoice anyway?`)) return;
 
   return (
     <div>
+      {actionError && (
+        <div role="alert" className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-xl flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 shadow-lg">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{actionError}</span>
+          <button type="button" onClick={() => setActionError('')} aria-label="Close message" className="-m-1 min-w-[32px] min-h-[32px] flex items-center justify-center rounded-lg hover:bg-red-100">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Main */}
       <main>
         <div className="p-6 max-w-6xl">
@@ -2756,7 +2795,7 @@ Create a separate standalone invoice anyway?`)) return;
                       <button
                         onClick={async () => {
                           if (!confirm('Delete this application?')) return;
-                          await fetch(`/api/vendor-applications/${a._id}`, { method: 'DELETE' });
+                          await send(`/api/vendor-applications/${a._id}`, 'DELETE');
                           fetchAll();
                         }}
                         className="text-xs px-3 py-1.5 rounded-full font-medium border border-gray-200 text-rose-500 hover:border-rose-300 hover:bg-rose-50 transition-all mt-1"
@@ -3187,7 +3226,7 @@ Create a separate standalone invoice anyway?`)) return;
                                 className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
                                 <Edit className="w-4 h-4" />
                               </button>
-                              <button onClick={async () => { if (!confirm('Delete this invoice?')) return; await fetch(`/api/invoices/${inv._id}`, { method: 'DELETE' }); fetchAll(); }}
+                              <button onClick={async () => { if (!confirm('Delete this invoice?')) return; await send(`/api/invoices/${inv._id}`, 'DELETE'); fetchAll(); }}
                                 className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -3195,7 +3234,7 @@ Create a separate standalone invoice anyway?`)) return;
                             {/* Status update */}
                             <div className="flex gap-1.5">
                               {(['draft', 'sent', 'paid'] as const).map(s => (
-                                <button key={s} onClick={async () => { await fetch(`/api/invoices/${inv._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: s }) }); fetchAll(); }}
+                                <button key={s} onClick={async () => { await send(`/api/invoices/${inv._id}`, 'PUT', { status: s }); fetchAll(); }}
                                   className={`text-xs px-2.5 py-1 rounded-full font-medium border transition-all capitalize ${inv.status === s ? 'border-amber-400 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500 hover:border-amber-300'}`}>
                                   {s}
                                 </button>
