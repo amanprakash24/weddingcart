@@ -33,10 +33,11 @@ function dateValue(value: Date): string {
 // and bounds-checked at write time (invoice.service.ts's create()/update()).
 // Falling back to it here (rather than trusting Payment rows universally)
 // avoids silently zeroing out a real, manually-recorded balance.
-type InvoiceWithSuccessfulPayments = { total: number; amountPaid: number; weddingId: string | null; payments: { amount: number }[] };
+type InvoiceWithSuccessfulPayments = { total: number; amountPaid: number; creditedAmount: number; weddingId: string | null; payments: { amount: number }[] };
+// What is settled on an invoice: payments plus credit notes (money design v1, PR 7) — what is still due is total minus this.
 function paidAmount(invoice: InvoiceWithSuccessfulPayments): number {
   if (invoice.weddingId === null) return invoice.amountPaid;
-  return invoice.payments.reduce((sum, payment) => sum + payment.amount, 0);
+  return invoice.payments.reduce((sum, payment) => sum + payment.amount, 0) + invoice.creditedAmount;
 }
 
 async function countPipeline(stage: PipelineStage): Promise<number> {
@@ -158,17 +159,18 @@ export const commandCenterService = {
       }),
       includeFinancials
         ? prisma.invoice.findMany({
-            where: { status: { not: 'DRAFT' } },
+            where: { status: { not: 'DRAFT' }, voidedAt: null },
             select: {
               total: true,
               amountPaid: true,
+              creditedAmount: true,
               weddingId: true,
               payments: { where: { status: 'SUCCESS' }, select: { amount: true } },
             },
           })
         : Promise.resolve([]),
       prisma.invoice.findMany({
-        where: { status: { notIn: ['DRAFT', 'PAID'] } },
+        where: { status: { notIn: ['DRAFT', 'PAID'] }, voidedAt: null },
         orderBy: { createdAt: 'asc' },
         select: {
           id: true,
@@ -176,6 +178,7 @@ export const commandCenterService = {
           invoiceNumber: true,
           total: true,
           amountPaid: true,
+          creditedAmount: true,
           weddingId: true,
           payments: { where: { status: 'SUCCESS' }, select: { amount: true } },
           paymentLinks: { where: { status: 'CREATED' }, orderBy: { expiresAt: 'asc' }, take: 1, select: { expiresAt: true } },

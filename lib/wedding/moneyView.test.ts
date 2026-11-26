@@ -21,7 +21,7 @@ function workspace(): WeddingWorkspace {
     finance: {
       budget: { planned: 900000, committed: 120000, variance: 780000 },
       invoices: [{ id: 'inv1', total: 200000, amountPaid: 50000, outstanding: 150000 }],
-      totals: { invoicedTotal: 200000, collected: 50000, outstanding: 150000 },
+      totals: { invoicedTotal: 200000, collected: 50000, outstanding: 150000, credited: 0, refundOwed: 0 },
       agreement: { quotationId: 'q1', total: 800000 },
     },
     activity: [
@@ -83,7 +83,7 @@ describe('weddingMoneyView', () => {
     const view = weddingMoneyView(workspace(), 'none', false);
     expect(view.money).toMatchObject({ access: 'none', vendorMoney: false, commission: false, assign: false });
     expect(view.finance.invoices).toEqual([]);
-    expect(view.finance.totals).toEqual({ invoicedTotal: 0, collected: 0, outstanding: 0 });
+    expect(view.finance.totals).toEqual({ invoicedTotal: 0, collected: 0, outstanding: 0, credited: 0, refundOwed: 0 });
     expect(view.finance.agreement).toBeNull();
     expect(view.events[0].vendorBookings[0]).toMatchObject({ vendorName: 'Decor Co', agreedPrice: 0, payout: null });
     expect(view.activity[0].summary).toBe(`Payment received: ${MASKED_AMOUNT} via upi`);

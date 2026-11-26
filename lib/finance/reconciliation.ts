@@ -30,26 +30,41 @@ export interface InvoiceFact {
   storedAmountPaid: number; // Invoice.amountPaid — a legacy column; payments are the truth for wedding invoices
   successfulPayments: number; // sum of SUCCESS payments
   isWeddingInvoice: boolean;
+  // PR 7: the invoice's creditedAmount and the sum of its credit notes (they must agree), and whether it is cancelled
+  credited?: number;
+  creditNotesTotal?: number;
+  voided?: boolean;
 }
 
-export function expectedInvoiceStatus(total: number, paid: number, current: string): string {
+export function expectedInvoiceStatus(total: number, paid: number, current: string, credited = 0): string {
+  if (total > 0 && credited > 0 && paid + credited >= total) return 'PAID'; // settled by payments and credit notes together
   if (paid <= 0) return current === 'DRAFT' ? 'DRAFT' : 'SENT';
-  return paid >= total ? 'PAID' : 'PARTIALLY_PAID';
+  return paid + credited >= total ? 'PAID' : 'PARTIALLY_PAID';
 }
 
 export function invoiceChecks(invoices: InvoiceFact[]): Check[] {
   const status: CheckItem[] = [];
   const overpaid: CheckItem[] = [];
   const legacy: CheckItem[] = [];
+  const credits: CheckItem[] = [];
+  const voids: CheckItem[] = [];
   for (const i of invoices) {
-    const want = expectedInvoiceStatus(i.total, i.successfulPayments, i.status);
+    const credited = i.credited ?? 0;
+    if ((i.creditNotesTotal ?? 0) !== credited) credits.push({ ref: i.number, detail: 'the invoice’s credited amount differs from its credit notes', expected: inr(i.creditNotesTotal ?? 0), actual: inr(credited) });
+    if (i.voided) {
+      if (i.successfulPayments > 0) voids.push({ ref: i.number, detail: 'a cancelled invoice has payments', expected: inr(0), actual: inr(i.successfulPayments) });
+      continue; // a cancelled invoice keeps the status it had; it counts for nothing
+    }
+    const want = expectedInvoiceStatus(i.total, i.successfulPayments, i.status, credited);
     if (want !== i.status) status.push({ ref: i.number, detail: `${inr(i.successfulPayments)} received of ${inr(i.total)}`, expected: want, actual: i.status });
-    if (i.successfulPayments > i.total) overpaid.push({ ref: i.number, detail: 'more received than the invoice total — a refund or another invoice is owed', expected: `≤ ${inr(i.total)}`, actual: inr(i.successfulPayments) });
+    if (i.successfulPayments + credited > i.total) overpaid.push({ ref: i.number, detail: credited > 0 ? `payments and credit notes (${inr(credited)}) pass the total — ${inr(i.successfulPayments + credited - i.total)} is owed back to the couple` : 'more received than the invoice total — a refund or another invoice is owed', expected: `≤ ${inr(i.total)}`, actual: inr(i.successfulPayments + credited) });
     if (i.isWeddingInvoice && i.storedAmountPaid !== i.successfulPayments) legacy.push({ ref: i.number, detail: 'stored "amount paid" differs from the payments; the screens use the payments', expected: inr(i.successfulPayments), actual: inr(i.storedAmountPaid) });
   }
   return [
     { id: 'invoice-status', title: 'Invoice status matches the payments received', status: status.length ? 'error' : 'ok', items: status },
-    { id: 'invoice-overpaid', title: 'No invoice has received more than its total', status: overpaid.length ? 'warning' : 'ok', items: overpaid },
+    { id: 'invoice-overpaid', title: 'No invoice has received more than its total (refunds owed)', status: overpaid.length ? 'warning' : 'ok', items: overpaid },
+    { id: 'invoice-credits', title: 'Each invoice’s credited amount equals its credit notes', status: credits.length ? 'error' : 'ok', items: credits },
+    { id: 'invoice-void', title: 'No cancelled invoice has a payment', status: voids.length ? 'error' : 'ok', items: voids },
     { id: 'invoice-legacy-amount-paid', title: 'Old "amount paid" column (not used on screens)', status: legacy.length ? 'info' : 'ok', items: legacy },
   ];
 }

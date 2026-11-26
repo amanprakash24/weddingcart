@@ -86,6 +86,8 @@ export interface ClientPortalEvent {
       gstAmount: number;
       sellerGstin: string | null;
       lines: ClientDocumentLine[];
+      credited: number; // PR 7: credit notes lower what is due — they are not payments
+      creditNotes: { id: string; number: string; amount: number; gstAmount: number; reason: string; issuedAt: string }[];
     }[];
     payments: { id: string; amount: number; method: string; paidAt: string }[];
   };
@@ -218,7 +220,8 @@ export const clientPortalService = {
           provider: booking.vendorName || null,
         }))
       );
-      const invoices = finance.invoices.map((invoice) => {
+      // A cancelled invoice was never paid and counts for nothing: the couple does not see it (PR 7).
+      const invoices = finance.invoices.filter((invoice) => !invoice.voidedAt).map((invoice) => {
         const activeLink = invoice.paymentLinks.find((link) => link.status === 'CREATED');
         return {
           id: invoice.id,
@@ -235,6 +238,8 @@ export const clientPortalService = {
           gstAmount: invoice.gstEnabled ? invoice.gstAmount : 0,
           sellerGstin: invoice.sellerGstin,
           lines: invoice.items.map((i) => ({ description: i.description, quantity: i.quantity, unitPrice: null, amount: i.amount })),
+          credited: invoice.creditedAmount,
+          creditNotes: invoice.creditNotes.map((c) => ({ id: c.id, number: c.number, amount: c.amount, gstAmount: c.gstAmount, reason: c.reason, issuedAt: c.issuedAt.toISOString() })),
         };
       });
       // Every payment received, as receipts (the same grouping as the proposal link's receipts).

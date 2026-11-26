@@ -15,7 +15,7 @@ export interface FindManyParams {
 // payments, and payment links to render an invoice, so unlike the minimal
 // vendorBooking.repository.ts template, they're always included rather than
 // left to each caller to request.
-const withInvoiceDetails = { items: true, payments: true, paymentLinks: true } satisfies Prisma.InvoiceInclude;
+const withInvoiceDetails = { items: true, payments: true, paymentLinks: true, creditNotes: { orderBy: { issuedAt: 'asc' as const } } } satisfies Prisma.InvoiceInclude;
 export type InvoiceWithDetails = Prisma.InvoiceGetPayload<{ include: typeof withInvoiceDetails }>;
 
 export const invoiceRepository = {

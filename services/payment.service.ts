@@ -9,7 +9,7 @@ import { activityLogRepository } from '@/repositories/activityLog.repository';
 import { createPaymentLink as createRazorpayPaymentLink } from '@/lib/razorpay';
 import { settleInvoiceStatus } from '@/services/invoiceWorkflow.service';
 import { startHoldIfNeeded } from '@/services/agreement.service';
-import { NotFoundError } from '@/lib/errors';
+import { ConflictError, NotFoundError } from '@/lib/errors';
 
 type Tx = Prisma.TransactionClient;
 
@@ -76,7 +76,10 @@ export const paymentService = {
 
     // Server computes the amount to charge — never trusts a client value,
     // same rule createInvoice() follows for subtotal/total.
-    const outstanding = invoice.total - invoiceAmountPaid(invoice);
+    // Money design v1, PR 7: credit notes lower what is owed; a cancelled invoice takes no payment; nothing due → no link.
+    if (invoice.voidedAt) throw new ConflictError('This invoice is cancelled — it cannot take a payment');
+    const outstanding = invoice.total - invoiceAmountPaid(invoice) - invoice.creditedAmount;
+    if (outstanding <= 0) throw new ConflictError('Nothing is due on this invoice');
 
     const result = await createRazorpayPaymentLink({
       invoiceId: invoice.id,

@@ -47,6 +47,14 @@ export async function generateWeddingNumber(tx: Tx): Promise<string> {
 }
 
 // WO-YYYYMM-NNNN — vendor work orders (money design v1, PR 4, 25 Nov 2026), sequential within the month, per business like invoices.
+// Credit notes against the couple's invoices (money design v1, PR 7): CN-YYYYMM-NNNN, the same race-safe numbering.
+export async function generateCreditNoteNumber(tx: Tx): Promise<string> {
+  const bucket = monthBucket(documentPrefix(await currentBusiness(), 'CN'));
+  await lockNumberBucket(tx, bucket);
+  const [last] = await tx.creditNote.findMany({ where: { number: { startsWith: bucket } }, orderBy: { number: 'desc' }, take: 1, select: { number: true } });
+  return nextSequenceNumber(bucket, last?.number ?? null);
+}
+
 export async function generateWorkOrderNumber(tx: Tx): Promise<string> {
   const bucket = monthBucket(documentPrefix(await currentBusiness(), 'WO'));
   await lockNumberBucket(tx, bucket);

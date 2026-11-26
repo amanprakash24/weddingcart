@@ -16,7 +16,7 @@ import { invoiceRepository } from '@/repositories/invoice.repository';
 import { payoutRepository } from '@/repositories/payout.repository';
 import { computeWeddingHealth, type WeddingHealth } from '@/lib/wedding/health';
 import { computeWeddingStage } from '@/lib/wedding/stage';
-import { agreementFigures } from '@/lib/invoice/lifecycle';
+import { agreementFigures, invoiceMoney } from '@/lib/invoice/lifecycle';
 import { findAgreementForWedding } from '@/services/invoiceWorkflow.service';
 import { buildAgreementMoney, type AgreementMoneyView } from '@/lib/commercial/view';
 import { canTransitionWedding, maybeActivateWedding, canTransitionVendorBooking } from '@/lib/wedding/lifecycle';
@@ -97,6 +97,13 @@ export interface WeddingWorkspaceFinance {
     total: number;
     amountPaid: number;
     outstanding: number;
+    // Money design v1, PR 7: credit notes (never edits) and the cancelled state. outstanding = total − paid − credited (0 when
+    // cancelled); refundOwed = what is owed back to the couple when payments and credits pass the total.
+    creditedAmount: number;
+    refundOwed: number;
+    creditNotes: { id: string; number: string; amount: number; gstAmount: number; reason: string; issuedAt: Date }[];
+    voidedAt: Date | null;
+    voidReason: string | null;
     createdAt: Date;
     // What the invoice is for and which accepted agreement it belongs to (null for a manual invoice).
     kind: 'ADVANCE' | 'BALANCE' | 'OTHER';
@@ -125,7 +132,7 @@ export interface WeddingWorkspaceFinance {
       createdAt: Date;
     }[];
   }[];
-  totals: { invoicedTotal: number; collected: number; outstanding: number };
+  totals: { invoicedTotal: number; collected: number; outstanding: number; credited: number; refundOwed: number };
   // The accepted commercial agreement the wedding was booked on — the source of truth for what is owed. Null when the wedding
   // did not come from an accepted quotation.
   agreement: {
@@ -448,7 +455,11 @@ export const weddingWorkspaceService = {
         gstAmount: inv.gstAmount,
         total: inv.total,
         amountPaid,
-        outstanding: inv.total - amountPaid,
+        ...(({ outstanding, refundOwed }) => ({ outstanding, refundOwed }))(invoiceMoney({ total: inv.total, paid: amountPaid, credited: inv.creditedAmount, voided: inv.voidedAt !== null })),
+        creditedAmount: inv.creditedAmount,
+        creditNotes: inv.creditNotes.map((c) => ({ id: c.id, number: c.number, amount: c.amount, gstAmount: c.gstAmount, reason: c.reason, issuedAt: c.issuedAt })),
+        voidedAt: inv.voidedAt,
+        voidReason: inv.voidReason,
         createdAt: inv.createdAt,
         kind: inv.kind,
         quotationId: inv.quotationId,
@@ -537,7 +548,10 @@ export const weddingWorkspaceService = {
       },
       invoices: financeInvoices,
       totals: {
-        invoicedTotal: financeInvoices.reduce((sum, i) => sum + i.total, 0),
+        // a cancelled invoice counts for nothing; credit notes lower what was invoiced (PR 7)
+        invoicedTotal: financeInvoices.filter((i) => !i.voidedAt).reduce((sum, i) => sum + i.total - i.creditedAmount, 0),
+        credited: financeInvoices.reduce((sum, i) => sum + i.creditedAmount, 0),
+        refundOwed: financeInvoices.reduce((sum, i) => sum + i.refundOwed, 0),
         collected: financeInvoices.reduce((sum, i) => sum + i.amountPaid, 0),
         outstanding: financeInvoices.reduce((sum, i) => sum + i.outstanding, 0),
       },

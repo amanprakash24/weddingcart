@@ -50,7 +50,7 @@ mock.module('@/services/invoiceWorkflow.service', () => ({
 }));
 const workspaceFixture = {
   events: [{ id: 'e1', vendorBookings: [{ id: 'vb1', agreedPrice: 90000, payout: null }] }],
-  finance: { budget: { planned: null, committed: 90000, variance: null }, invoices: [{ id: 'inv1' }], totals: { invoicedTotal: 1, collected: 1, outstanding: 0 }, agreement: null },
+  finance: { budget: { planned: null, committed: 90000, variance: null }, invoices: [{ id: 'inv1' }], totals: { invoicedTotal: 1, collected: 1, outstanding: 0, credited: 0, refundOwed: 0 }, agreement: null },
   activity: [{ id: 'a1', summary: 'Payment received: ₹50,000 via upi', detail: null }],
 };
 const assignCoordinator = mock(async () => ({}));

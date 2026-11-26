@@ -19,7 +19,7 @@ function makeMocks(invoice: Row, payments: Row[] = []) {
   });
   const base = {
     invoice: {
-      findUnique: mock(async () => ({ ...state, items: [], payments: paymentRows, paymentLinks: [] })),
+      findUnique: mock(async () => ({ creditedAmount: 0, voidedAt: null, ...state, items: [], payments: paymentRows, paymentLinks: [], creditNotes: [] })),
       update: invoiceUpdate,
     },
     $queryRaw: mock(async () => []),

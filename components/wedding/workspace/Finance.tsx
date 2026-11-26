@@ -143,9 +143,11 @@ function InvoiceCard({
   onIssueInvoice,
   onRecordPayment,
   agreementManaged,
+  onChanged,
 }: {
   weddingId: string;
   invoice: WorkspaceInvoice;
+  onChanged?: () => unknown; // after a credit note or a cancellation (PR 7)
   onGeneratePaymentLink: (invoiceId: string) => Promise<void>;
   onIssueInvoice: (invoiceId: string) => Promise<void>;
   onRecordPayment: RecordPayment;
@@ -156,6 +158,33 @@ function InvoiceCard({
   const [recording, setRecording] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  // PR 7: issue a credit note / cancel the invoice — each needs a reason
+  const [action, setAction] = useState<{ kind: 'credit' | 'void'; amount: string; reason: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const voided = invoice.voidedAt !== null;
+  const issued = invoice.status !== 'DRAFT' || invoice.issuedAt !== null;
+  const canCredit = !voided && issued && invoice.total - invoice.creditedAmount > 0;
+  const canVoid = !voided && invoice.kind === 'OTHER' && invoice.amountPaid === 0 && invoice.creditedAmount === 0;
+  const saveAction = async () => {
+    if (!action) return;
+    setSaving(true);
+    setGenError(null);
+    try {
+      const res = await fetch(`/api/weddings/${weddingId}/invoices/${invoice.id}/${action.kind === 'credit' ? 'credit-notes' : 'void'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(action.kind === 'credit' ? { amount: action.amount, reason: action.reason } : { reason: action.reason }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.success) throw new Error(body?.error || 'Could not save. Please try again.');
+      setAction(null);
+      await onChanged?.();
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const hasActiveLink = invoice.paymentLinks.some((l) => l.status === 'CREATED');
 
@@ -184,22 +213,42 @@ function InvoiceCard({
   };
 
   return (
-    <li className="border border-gray-100 rounded-xl p-3">
+    <li className={`border border-gray-100 rounded-xl p-3 ${voided ? 'bg-gray-50 opacity-75' : ''}`}>
       <div className="flex items-center justify-between mb-1">
         <div>
           <span className="font-medium text-gray-900 text-sm">{invoice.invoiceNumber}</span>
           {invoice.kind !== 'OTHER' && <span className="ml-2 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">{INVOICE_KIND_LABELS[invoice.kind]}</span>}
           <span className="text-gray-400 text-xs ml-2">{invoice.clientName}</span>
         </div>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${INVOICE_STATUS_COLORS[invoice.status]}`}>
-          {INVOICE_STATUS_LABELS[invoice.status]}
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${voided ? 'bg-gray-200 text-gray-700' : INVOICE_STATUS_COLORS[invoice.status]}`}>
+          {voided ? 'Cancelled' : invoice.creditedAmount > 0 && invoice.outstanding === 0 && invoice.amountPaid < invoice.total ? 'Settled' : INVOICE_STATUS_LABELS[invoice.status]}
         </span>
       </div>
       <div className="text-xs text-gray-500 flex items-center gap-3 mb-2">
         <span>Total: {money(invoice.total)}</span>
         <span>Paid: {money(invoice.amountPaid)}</span>
+        {invoice.creditedAmount > 0 && <span>Credited: {money(invoice.creditedAmount)}</span>}
         <span className={invoice.outstanding > 0 ? 'text-amber-600' : ''}>Outstanding: {money(invoice.outstanding)}</span>
       </div>
+      {voided && (
+        <p className="mb-2 rounded-lg bg-gray-100 p-2 text-xs text-gray-700">
+          Cancelled {invoice.voidedAt ? new Date(invoice.voidedAt).toLocaleDateString('en-IN') : ''}: {invoice.voidReason}. It counts for nothing and the couple does not see it.
+        </p>
+      )}
+      {invoice.refundOwed > 0 && (
+        <p className="mb-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+          {money(invoice.refundOwed)} is owed back to the couple (payments and credit notes pass the total). It shows as owed until it is really paid back.
+        </p>
+      )}
+      {invoice.creditNotes.length > 0 && (
+        <ul className="mb-2 space-y-1">
+          {invoice.creditNotes.map((c) => (
+            <li key={c.id} className="text-xs text-gray-600">
+              Credit note <b>{c.number}</b> · − {money(c.amount)}{c.gstAmount > 0 ? ` (incl. GST ${money(c.gstAmount)})` : ''} · {new Date(c.issuedAt).toLocaleDateString('en-IN')} · {c.reason}
+            </li>
+          ))}
+        </ul>
+      )}
       <ul className="space-y-1 mb-2">
         {invoice.items.map((item) => (
           <li key={item.id} className="text-xs text-gray-500 flex items-center justify-between">
@@ -253,7 +302,7 @@ function InvoiceCard({
 
       {genError && <p className="text-xs text-red-500 mb-1">{genError}</p>}
       <div className="flex flex-wrap items-center gap-3">
-        {invoice.status === 'DRAFT' && (
+        {invoice.status === 'DRAFT' && !voided && (
           <button disabled={issuing} onClick={issue} className="text-xs font-medium text-blue-600 hover:underline disabled:opacity-40">
             {issuing ? 'Issuing…' : 'Mark as issued'}
           </button>
@@ -266,7 +315,32 @@ function InvoiceCard({
         {invoice.outstanding > 0 && !recording && !agreementManaged && (
           <button onClick={() => setRecording(true)} className="text-xs text-emerald-600 hover:underline">+ Record payment</button>
         )}
+        {canCredit && !action && (
+          <button onClick={() => setAction({ kind: 'credit', amount: '', reason: '' })} className="text-xs text-gray-700 hover:underline">Issue credit note</button>
+        )}
+        {canVoid && !action && (
+          <button onClick={() => setAction({ kind: 'void', amount: '', reason: '' })} className="text-xs text-red-600 hover:underline">Cancel invoice</button>
+        )}
       </div>
+      {action && (
+        <form onSubmit={(e) => { e.preventDefault(); void saveAction(); }} className="mt-2 grid gap-2 rounded-lg bg-gray-50 p-2 sm:grid-cols-3">
+          {action.kind === 'credit' && (
+            <label className="grid gap-1 text-xs text-gray-600">Credit ₹ (up to {money(invoice.total - invoice.creditedAmount)}, incl. GST)
+              <input aria-label="Credit amount" inputMode="numeric" value={action.amount} onChange={(e) => setAction({ ...action, amount: e.target.value })} className="min-h-10 rounded-lg border border-gray-300 px-2.5 text-sm" />
+            </label>
+          )}
+          <label className={`grid gap-1 text-xs text-gray-600 ${action.kind === 'credit' ? 'sm:col-span-2' : 'sm:col-span-3'}`}>
+            {action.kind === 'credit' ? 'Why (printed on the credit note the couple sees)' : 'Why is this invoice cancelled?'}
+            <input aria-label={action.kind === 'credit' ? 'Credit note reason' : 'Cancellation reason'} value={action.reason} maxLength={300} onChange={(e) => setAction({ ...action, reason: e.target.value })} className="min-h-10 rounded-lg border border-gray-300 px-2.5 text-sm" />
+          </label>
+          <div className="flex gap-2 sm:col-span-3">
+            <button type="submit" disabled={saving} className={`min-h-10 rounded-lg px-4 text-sm font-semibold text-white disabled:opacity-40 ${action.kind === 'void' ? 'bg-red-700' : 'bg-gray-900'}`}>
+              {saving ? 'Saving…' : action.kind === 'credit' ? 'Issue credit note' : 'Cancel this invoice'}
+            </button>
+            <button type="button" onClick={() => setAction(null)} className="min-h-10 px-2 text-sm text-gray-600">Back</button>
+          </div>
+        </form>
+      )}
       {recording && <RecordPaymentForm invoice={invoice} onRecord={onRecordPayment} onDone={() => setRecording(false)} />}
     </li>
   );
@@ -469,7 +543,7 @@ export default function Finance({
       ) : (
         <ul className="space-y-2 mb-2">
           {finance.invoices.map((invoice) => (
-            <InvoiceCard key={invoice.id} weddingId={weddingId} invoice={invoice} onGeneratePaymentLink={onGeneratePaymentLink} onIssueInvoice={onIssueInvoice} onRecordPayment={onRecordPayment} agreementManaged={Boolean(money) && invoice.kind !== 'OTHER' && invoice.quotationId === finance.agreement?.quotationId} />
+            <InvoiceCard key={invoice.id} weddingId={weddingId} invoice={invoice} onGeneratePaymentLink={onGeneratePaymentLink} onIssueInvoice={onIssueInvoice} onRecordPayment={onRecordPayment} onChanged={onMoneyChanged} agreementManaged={Boolean(money) && invoice.kind !== 'OTHER' && invoice.quotationId === finance.agreement?.quotationId} />
           ))}
         </ul>
       )}
