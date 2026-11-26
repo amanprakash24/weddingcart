@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   status: z.enum(['PENDING', 'IN_PROGRESS', 'DONE', 'BLOCKED']),
@@ -18,7 +19,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id, milestoneId } = await params;
   try {
-    const { status } = bodySchema.parse(await req.json());
+    const { status } = bodySchema.parse(await readJsonBody(req));
     const milestone = await weddingWorkspaceService.updateMilestone(id, milestoneId, status);
     return NextResponse.json({ success: true, data: milestone });
   } catch (err) {

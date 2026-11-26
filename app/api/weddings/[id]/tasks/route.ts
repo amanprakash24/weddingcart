@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   title: z.string().trim().min(1, 'Title is required'),
@@ -23,7 +24,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const task = await weddingWorkspaceService.addTask(id, {
       ...body,
       dueAt: body.dueAt ? new Date(body.dueAt) : undefined,

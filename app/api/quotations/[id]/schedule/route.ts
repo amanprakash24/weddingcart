@@ -7,6 +7,7 @@ import { handleApiError } from '@/lib/errors';
 import { MAX_INSTALMENTS } from '@/lib/money/schedule';
 import { paymentScheduleService } from '@/services/paymentSchedule.service';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // GET /api/quotations/[id]/schedule: the payment schedule of an accepted quotation's agreement (instalments, and what is paid of each).
 // PUT replaces the whole schedule: { instalments: [{ label, amount, dueDate: 'YYYY-MM-DD' }], expectedVersion }.
@@ -40,7 +41,7 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const parsed = body.parse(await req.json());
+    const parsed = body.parse(await readJsonBody(req));
     return NextResponse.json({ success: true, data: await paymentScheduleService.set(id, parsed, session.user.id ?? null) });
   } catch (err) {
     return handleApiError(err);

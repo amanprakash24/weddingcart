@@ -6,6 +6,7 @@ import { leadWorkspaceService } from '@/services/leadWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Status-only — not full task editing (title/dueAt/priority edits are out of
 // scope this sprint, per the plan's "we'll expand later as editing is added").
@@ -27,7 +28,7 @@ async function handlePATCH(
   }
 
   try {
-    const { status } = bodySchema.parse(await req.json());
+    const { status } = bodySchema.parse(await readJsonBody(req));
     const task = await leadWorkspaceService.completeTask(sourceType, id, taskId, status);
     return NextResponse.json({ success: true, data: task });
   } catch (err) {

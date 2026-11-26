@@ -7,6 +7,7 @@ import { leadWorkspaceService } from '@/services/leadWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   assignedToId: z.string().min(1).nullable(),
@@ -28,7 +29,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ sou
   }
 
   try {
-    const { assignedToId } = bodySchema.parse(await req.json());
+    const { assignedToId } = bodySchema.parse(await readJsonBody(req));
     const subject = await leadWorkspaceService.assignLead(sourceType, id, {
       assignedToId,
       actorId: session.user.id ?? null,

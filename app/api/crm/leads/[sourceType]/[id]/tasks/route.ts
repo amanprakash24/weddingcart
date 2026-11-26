@@ -6,6 +6,7 @@ import { leadWorkspaceService } from '@/services/leadWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   title: z.string().trim().min(1, 'Title is required'),
@@ -27,7 +28,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ sour
   }
 
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const task = await leadWorkspaceService.addTask(sourceType, id, {
       title: body.title,
       description: body.description,

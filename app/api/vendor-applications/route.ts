@@ -10,6 +10,7 @@ import type { ApplicationStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
 import { WeddingEventType } from '@/generated/prisma/enums';
 import { checkOnboardingVideo } from '@/lib/onboardingVideo';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Public, unauthenticated POST with previously zero rate limiting or
 // validation (audit finding) — reuses the exact throttle mechanism and
@@ -114,7 +115,7 @@ async function handlePOST(req: NextRequest) {
     }
     await recordRequest(rateLimitId);
 
-    const body = await req.json();
+    const body = await readJsonBody(req);
     // Whitelist + shape-validate fields — prevents injecting status or
     // vendorId (same whitelist intent as before) and now also rejects a
     // malformed payload before it ever reaches the service/database.

@@ -6,6 +6,7 @@ import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 import { quoteFunctionsBody } from '@/lib/wedding/coupleVendorSchema';
 import { coupleVendorsService } from '@/services/coupleVendors.service';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // DELETE /api/customer/weddings/[id]/quote-requests/[requestId]: the couple no longer needs this quote (the request is closed, kept).
 async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; requestId: string }> }) {
@@ -25,7 +26,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const { weddingEventIds } = quoteFunctionsBody.parse(await req.json());
+    const { weddingEventIds } = quoteFunctionsBody.parse(await readJsonBody(req));
     const { id, requestId } = await params;
     const userId = session.user.id;
     return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => coupleVendorsService.setRequestFunctions(id, requestId, weddingEventIds, userId), 'plan') });

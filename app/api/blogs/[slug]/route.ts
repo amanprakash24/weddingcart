@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import type { Blog } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Same response shaping as app/api/blogs/route.ts — kept local rather than
 // shared, matching how the categories/vendors [id] routes each own their
@@ -34,7 +35,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ slu
 
   try {
     const { slug } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
 
     const data: Parameters<typeof blogService.update>[1] = {};
     if (body.title !== undefined) data.title = body.title;

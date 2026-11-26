@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { payoutService } from '@/services/payout.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Only PAID is client-settable this sprint — tracking only, no
 // gateway-driven PROCESSING/FAILED transitions exist yet.
@@ -18,7 +19,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   if (guard instanceof NextResponse) return guard;
   const { session } = guard;
   try {
-    bodySchema.parse(await req.json());
+    bodySchema.parse(await readJsonBody(req));
     const payout = await payoutService.markPayoutPaid(id, payoutId, session.user.id ?? null);
     return NextResponse.json({ success: true, data: withoutCommission({ userId: session.user.id, roles: session.user.roles }, payout) });
   } catch (err) {

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // One deliberate scope addition beyond Milestone 6's literal spec (see
 // domain-model.md §5.2's "not yet built" note) — no vendor-facing self-serve
@@ -38,7 +39,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   const { id, vbId } = await params;
   try {
-    const { status, declineReason, onTimeService, agreedPrice } = bodySchema.parse(await req.json());
+    const { status, declineReason, onTimeService, agreedPrice } = bodySchema.parse(await readJsonBody(req));
     const changesMoney = agreedPrice !== undefined || status === 'CANCELLED';
     if (changesMoney) {
       const denied = await moneyDenied({ wedding: id }, 'full');

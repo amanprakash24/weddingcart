@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/errors';
 import type { InvoiceWithDetails } from '@/repositories/invoice.repository';
 import { findWeddingsForClientPhone, standaloneInvoiceWarning } from '@/services/invoiceWorkflow.service';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
 // ('draft'/'sent'/'paid', Prisma's InvoiceStatus enum is uppercase) and an
@@ -36,7 +37,7 @@ async function handlePOST(req: NextRequest) {
   const denied = await denyUnlessCompanyFinancials();
   if (denied) return denied;
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const {
       clientName, clientPhone, clientEmail, clientCity, eventDate, eventType,
       subtotal, discount, gstEnabled, gstAmount, total, amountPaid, notes, items,
