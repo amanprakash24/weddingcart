@@ -5,6 +5,7 @@ import { VenueBookingStatus } from '@/generated/prisma/enums';
 import { venuePortalService } from '@/services/venuePortal.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const schema = z.object({ venueStatus: z.nativeEnum(VenueBookingStatus) });
 
@@ -12,7 +13,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ boo
   const gate = await sharedRoute('weddings');
   if ('refused' in gate) return gate.refused;
   try {
-    const body = schema.parse(await req.json());
+    const body = schema.parse(await readJsonBody(req));
     return NextResponse.json({ success: true, data: await venuePortalService.updateStatus(gate.who.vendorId, (await params).bookingId, body.venueStatus) });
   } catch (error) { return handleApiError(error); }
 }

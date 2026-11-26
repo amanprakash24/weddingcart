@@ -34,9 +34,9 @@ async function handlePOST(req: NextRequest) {
     }
     await recordRequest(rateLimitId);
 
-    const { phone } = await req.json();
+    const { phone } = (await req.json().catch(() => null)) ?? {};
 
-    if (!phone || !/^\d{10}$/.test(phone)) {
+    if (typeof phone !== 'string' || !/^\d{10}$/.test(phone)) {
       return NextResponse.json({ success: false, message: 'Invalid phone number' }, { status: 400 });
     }
 

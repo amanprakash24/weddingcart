@@ -6,6 +6,7 @@ import { canAssignWork } from '@/lib/auth/moneyAccess';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Who looks after this wedding. Send { coordinatorId: null } to remove them.
 const bodySchema = z.object({ coordinatorId: z.string().trim().min(1).nullable() });
@@ -22,7 +23,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   try {
-    const { coordinatorId } = bodySchema.parse(await req.json());
+    const { coordinatorId } = bodySchema.parse(await readJsonBody(req));
     const wedding = await weddingWorkspaceService.assignCoordinator(id, coordinatorId, session.user.id ?? null);
     return NextResponse.json({ success: true, data: wedding });
   } catch (err) {

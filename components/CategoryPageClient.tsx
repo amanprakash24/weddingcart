@@ -8,6 +8,7 @@ import { Search, MapPin, SlidersHorizontal, Star, ChevronDown, X, ChevronRight, 
 import { Vendor, Category } from '@/types';
 import VendorCard from './VendorCard';
 import { workingImage } from '@/lib/images/workingImage';
+import SsPlanningFeature from '@/components/planning/SsPlanningFeature';
 
 const CATEGORY_INFO: Record<string, { name: string; desc: string; image: string }> = {
   venue: { name: 'Wedding Venues', desc: 'Find the perfect venue for your dream wedding', image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&q=80' },
@@ -224,6 +225,8 @@ export default function CategoryPageClient({ slug, initialCoverImage, initialNam
 
       {/* Vendors Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Shaadi Shopping's own planning & coordination comes first on this category (components/planning/SsPlanningFeature.tsx) */}
+        {slug === 'planning' && <SsPlanningFeature />}
         {loading ? (
           <div className={`grid gap-5 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
             {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton h-80 rounded-2xl" />)}

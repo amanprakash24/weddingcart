@@ -6,6 +6,7 @@ import { eventView } from '@/lib/events/view';
 import { eventService } from '@/services/event.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 async function handleGET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -31,7 +32,7 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
 
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const event = await eventService.update(id, {
       slug: body.slug,
       name: body.name,

@@ -7,6 +7,7 @@ import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { enquiryCreateSchema } from './schema';
 import type { Enquiry, EnquiryStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Public, unauthenticated POST — previously had neither validation nor rate
 // limiting (production-readiness audit finding), unlike its sibling routes
@@ -68,7 +69,7 @@ async function handlePOST(req: NextRequest) {
     }
     await recordRequest(rateLimitId);
 
-    const data = enquiryCreateSchema.parse(await req.json());
+    const data = enquiryCreateSchema.parse(await readJsonBody(req));
     const enquiry = await enquiryService.create(data);
     // The venue on Vivah OS gets it at once, in its own Enquiries (services/platformHandoff.service.ts). Never fails the couple's
     // enquiry — it is already saved here.

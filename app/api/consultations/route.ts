@@ -8,6 +8,7 @@ import { consultationCreateSchema } from './schema';
 import type { Consultation, ConsultationStatus } from '@/generated/prisma/client';
 import { SERVICE_LABELS } from '@/lib/serviceLabels';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Public, unauthenticated POST that sends a WhatsApp message to the admin's
 // own phone on every submission — unthrottled, this is spammable for real
@@ -178,7 +179,7 @@ async function handlePOST(req: NextRequest) {
     }
     await recordRequest(rateLimitId);
 
-    const body = await req.json();
+    const body = await readJsonBody(req);
 
     // weddingStyle/consultationDate remain WhatsApp-only fields. budgetRange
     // is validated and persisted separately from totalBudget.

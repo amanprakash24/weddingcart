@@ -6,6 +6,7 @@ import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { FUNCTION_TYPES } from '@/lib/wedding/functions';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Add a function (Mehndi, Sangeet, Reception, …) to the wedding. An "Other" function must be named; the city defaults to the wedding's.
 const bodySchema = z.object({
@@ -27,7 +28,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const created = await weddingWorkspaceService.addFunction(id, body, session.user.id ?? null);
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (err) {

@@ -161,6 +161,15 @@ export function handleApiError(err: unknown): NextResponse {
     // `issues` stays for forms that show one message per field (lib/apiFieldErrors.ts).
     return NextResponse.json({ success: false, error: USER_MESSAGES.invalid, issues: err.issues }, { status: 400 });
   }
+  if (err instanceof Prisma.PrismaClientValidationError) {
+    // The database refused the shape of what we asked it to save (e.g. "Invalid Date", a word where a number belongs) — on the
+    // older staff routes with no schema of their own (events, invoices, vendors) that is what the form sent, so the person gets
+    // the "please check" words with a 400. It is still logged and recorded for /admin/errors: when the bad value came from our
+    // own code rather than the form, the team must still see it.
+    console.error(err);
+    reportUnexpected(err);
+    return NextResponse.json({ success: false, error: USER_MESSAGES.invalid }, { status: 400 });
+  }
   console.error(err);
   reportUnexpected(err);
   return NextResponse.json({ success: false, error: USER_MESSAGES.unexpected }, { status: 500 });

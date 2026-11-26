@@ -6,6 +6,7 @@ import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 import { familyService } from '@/services/family.service';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // GET / POST /api/customer/weddings/[id]/family — the couple's family list, and adding someone to it (23 Nov 2026). The couple only
 // ('family' permission); family members themselves get 403. A new sign-in's code is returned ONCE, for the couple to send on WhatsApp.
@@ -26,7 +27,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const input = body.parse(await req.json());
+    const input = body.parse(await readJsonBody(req));
     const { id } = await params;
     const userId = session.user.id;
     const data = await asCoupleWedding(id, userId, () => familyService.add(id, input, userId), 'family');

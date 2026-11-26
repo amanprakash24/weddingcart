@@ -4,6 +4,7 @@ import { vendorProspectService } from '@/services/vendorProspect.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const schema = z.object({
   status: z.enum(['NEW', 'CONTACTED', 'INTERESTED', 'ONBOARDING', 'ONBOARDED', 'DECLINED', 'ALREADY_LISTED']),
@@ -16,7 +17,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   }
   try {
     const { id } = await params;
-    const parsed = schema.parse(await req.json());
+    const parsed = schema.parse(await readJsonBody(req));
 
     const prospect = await vendorProspectService.updateStatus(id, parsed.status, parsed.notes);
     if (!prospect) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
