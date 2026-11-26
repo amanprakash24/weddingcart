@@ -72,6 +72,7 @@ export interface LeadWorkspace {
 // Mirrors services/quotation.service.ts's QuotationView, with Dates as ISO strings.
 export interface WorkspaceQuotation {
   id: string;
+  businessId?: string; // whose quotation; Shaadi Shopping's carry the included planning & coordination row
   quotationNumber: string;
   revision: number;
   status: 'DRAFT' | 'READY_TO_SHARE' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'SUPERSEDED';

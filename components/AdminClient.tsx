@@ -6,6 +6,7 @@ import Link from 'next/link';
 import VendorLoginCode from '@/components/admin/VendorLoginCode';
 import ProfileMediaReview from '@/components/admin/ProfileMediaReview';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SS_PLANNING } from '@/lib/planning/ssPlanning';
 import { Briefcase, MessageSquare, Phone, Plus, Trash2, Edit, RefreshCw, CheckCircle, Star, ChevronRight, Database, Tag, BookOpen, Upload, X, Eye, Search, Sparkles, Users, AtSign, Globe, Link2, Receipt, Printer, Mail, TrendingUp, AlertTriangle, Send } from 'lucide-react';
 
 // ── Cloudinary image uploader ─────────────────────────────────────────────────
@@ -3306,6 +3307,15 @@ Create a separate standalone invoice anyway?`)) return;
                         <td className="py-3 text-sm font-semibold text-gray-900 text-right">₹{(it.amount * it.quantity).toLocaleString('en-IN')}</td>
                       </tr>
                     ))}
+                    {/* These standalone invoices are always Shaadi Shopping's own: its planning & coordination is included, never a
+                        price and never in the totals (lib/planning/ssPlanning.ts). */}
+                    <tr className="border-b border-gray-100">
+                      <td className="py-3 text-sm font-medium text-gray-900 break-words">{SS_PLANNING.service}</td>
+                      <td className="py-3 text-sm text-gray-500 break-words">{SS_PLANNING.provider}</td>
+                      <td className="py-3 text-sm text-gray-700 text-right whitespace-nowrap">—</td>
+                      <td className="py-3 text-sm text-gray-700 text-right whitespace-nowrap">—</td>
+                      <td className="py-3 text-sm font-semibold text-emerald-700 text-right italic">{SS_PLANNING.included}</td>
+                    </tr>
                   </tbody>
                 </table>
 
