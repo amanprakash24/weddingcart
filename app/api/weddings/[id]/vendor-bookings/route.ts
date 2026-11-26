@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   weddingEventId: z.string().trim().min(1),
@@ -18,7 +19,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   if (guard instanceof NextResponse) return guard;
   const { session } = guard;
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const vendorBooking = await weddingWorkspaceService.addVendorBooking(id, body, session.user.id ?? null);
     return NextResponse.json({ success: true, data: vendorBooking }, { status: 201 });
   } catch (err) {

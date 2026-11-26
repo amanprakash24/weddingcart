@@ -7,6 +7,7 @@ import { handleApiError } from '@/lib/errors';
 import { bookingCreateSchema } from './schema';
 import type { Booking } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Admin UI still expects the legacy Mongo shape: lowercase status
 // ('new'/'contacted'/'confirmed'/'closed', Prisma's BookingStatus enum is
@@ -34,7 +35,7 @@ async function handleGET() {
 async function handlePOST(req: NextRequest) {
   try {
     const { name, phone, city, items, total, weddingDate, weddingType, guestCount, enquiryId, consultationId } =
-      bookingCreateSchema.parse(await req.json());
+      bookingCreateSchema.parse(await readJsonBody(req));
     const booking = await bookingService.create({
       name,
       phone,

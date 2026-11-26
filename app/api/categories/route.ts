@@ -3,6 +3,9 @@ import { categoryService } from '@/services/category.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { platformScoped } from '@/lib/ownership/entry';
 import { workingImage } from '@/lib/images/workingImage';
+import { handleApiError } from '@/lib/errors';
+import { readJsonBody } from '@/lib/readJsonBody';
+import { createCategoryBody } from '@/lib/categories/categorySchema';
 
 async function handleGET(req: NextRequest) {
   try {
@@ -36,7 +39,7 @@ async function handlePOST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    const body = createCategoryBody.parse(await readJsonBody(req));
 
     const category = await categoryService.create({
       slug: body.slug,
@@ -52,11 +55,7 @@ async function handlePOST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err) {
-    console.error('POST /api/categories failed:', err);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create category' },
-      { status: 500 }
-    );
+    return handleApiError(err);
   }
 }
 

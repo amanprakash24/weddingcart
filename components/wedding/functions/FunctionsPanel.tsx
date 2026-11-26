@@ -197,6 +197,12 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
         </div>
       </div>
 
+      {mode === 'idle' && s === 'PENDING_VENDOR_CONFIRMATION' && vendorMoney && (
+        <p className="mt-2 text-xs text-gray-600">When they say yes (on a call or WhatsApp too), press <b>Confirmed</b> — then you can record any advance you paid them.</p>
+      )}
+      {mode === 'idle' && booking.workOrderNumber && vendorMoney && (
+        <p className="mt-2 text-xs text-gray-600">Price fixed by work order {booking.workOrderNumber} — it can no longer be edited here.</p>
+      )}
       {mode === 'idle' && (
         <div className="mt-2 flex flex-wrap gap-2">
           {s === 'PENDING_VENDOR_CONFIRMATION' && (
@@ -208,7 +214,11 @@ function ServiceRow({ booking, ...h }: { booking: Booking } & FunctionsHandlers)
           {s === 'CONFIRMED' && <button type="button" disabled={busy} onClick={() => setMode('completing')} className={`${btn} bg-emerald-600 text-white disabled:opacity-40`}>Mark completed</button>}
           {/* "Calculate payout" retired 25 Nov 2026: payments are recorded one by one in "Vendors — money and work" below. */}
           {vendorMoney && booking.payout?.status === 'PENDING' && <button type="button" disabled={busy} onClick={markPaid} className={ghost}>Mark paid</button>}
-          {vendorMoney && canChange && <button type="button" onClick={() => { setPrice(String(booking.agreedPrice)); setMode('pricing'); }} className={ghost}>Edit price</button>}
+          {/* Record payment where the team looks for it (26 Nov 2026): it opens this work's payment form in "Vendors — money and work". */}
+          {vendorMoney && (s === 'CONFIRMED' || s === 'COMPLETED') && booking.payout?.status !== 'PAID' && (
+            <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('vendor-money:record', { detail: booking.id }))} className={`${btn} border border-emerald-600 text-emerald-700`}>Record payment</button>
+          )}
+          {vendorMoney && canChange && !booking.workOrderNumber && <button type="button" onClick={() => { setPrice(String(booking.agreedPrice)); setMode('pricing'); }} className={ghost}>Edit price</button>}
           {vendorMoney && (canChange || s === 'DECLINED') && <button type="button" onClick={() => { setNewPrice(String(booking.agreedPrice)); setMode('replacing'); }} className={ghost}>Replace vendor</button>}
           {vendorMoney && (canChange || s === 'DECLINED') && <button type="button" onClick={() => setMode('cancelling')} className={`${btn} text-gray-500 hover:bg-gray-100`}>Cancel vendor</button>}
         </div>

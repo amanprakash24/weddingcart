@@ -6,6 +6,7 @@ import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 import { guestInputSchema } from '@/lib/guest/guestInput';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // The shared guest rules (lib/guest/guestInput.ts): optional details may be null.
 const schema = guestInputSchema;
@@ -14,7 +15,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const body = schema.parse(await req.json());
+    const body = schema.parse(await readJsonBody(req));
     const { id, guestId } = await params;
     const userId = session.user.id;
     const updated = await asCoupleWedding(id, userId, async () => {

@@ -8,6 +8,7 @@ import { bookingMoneyView, canSetBookingStatus } from '@/lib/booking/moneyView';
 import { handleApiError } from '@/lib/errors';
 import type { Booking, BookingStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 function toResponseShape<T extends Pick<Booking, 'id' | 'status'>>(booking: T) {
   return { ...booking, _id: booking.id, status: booking.status.toLowerCase() };
@@ -29,7 +30,7 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
 
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const status = toBookingStatus(body.status);
     if (!status) {
       return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });

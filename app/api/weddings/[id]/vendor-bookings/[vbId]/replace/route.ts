@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Cancel this vendor and book another one for the same service, in one step. The new booking waits for their yes; nothing is sent.
 const bodySchema = z.object({
@@ -18,7 +19,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   if (guard instanceof NextResponse) return guard;
   const { session } = guard;
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const booking = await weddingWorkspaceService.replaceVendorBooking(id, vbId, body, session.user.id ?? null);
     return NextResponse.json({ success: true, data: booking }, { status: 201 });
   } catch (err) {

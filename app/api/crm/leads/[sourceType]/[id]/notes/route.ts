@@ -6,6 +6,7 @@ import { leadWorkspaceService } from '@/services/leadWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   detail: z.string().trim().min(1, 'Note text is required'),
@@ -23,7 +24,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ sour
   }
 
   try {
-    const { detail } = bodySchema.parse(await req.json());
+    const { detail } = bodySchema.parse(await readJsonBody(req));
     const note = await leadWorkspaceService.addNote(sourceType, id, {
       detail,
       performedById: session.user.id ?? null,

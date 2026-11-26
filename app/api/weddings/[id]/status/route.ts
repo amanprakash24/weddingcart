@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // PLANNING->ACTIVE is deliberately not selectable here — it's automatic
 // (lib/wedding/lifecycle.ts's maybeActivateWedding, fired by a vendor
@@ -24,7 +25,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   try {
-    const { toStatus } = bodySchema.parse(await req.json());
+    const { toStatus } = bodySchema.parse(await readJsonBody(req));
     const wedding = await weddingWorkspaceService.transitionStatus(id, toStatus);
     return NextResponse.json({ success: true, data: wedding });
   } catch (err) {

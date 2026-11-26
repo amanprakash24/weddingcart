@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // No GET — invoices ride the existing aggregate GET /api/weddings/[id]/workspace,
 // same "one Workspace Loader" rule as vendor-bookings.
@@ -35,7 +36,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   if (guard instanceof NextResponse) return guard;
   const { session } = guard;
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const invoice = await weddingWorkspaceService.createInvoice(id, body, session.user.id ?? null);
     return NextResponse.json({ success: true, data: invoice }, { status: 201 });
   } catch (err) {

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // The wedding team drops this vendor. The service goes back to "needs a vendor". Nothing is sent to the vendor.
 const bodySchema = z.object({ reason: z.string().trim().max(300).default('') });
@@ -14,7 +15,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   if (guard instanceof NextResponse) return guard;
   const { session } = guard;
   try {
-    const { reason } = bodySchema.parse(await req.json());
+    const { reason } = bodySchema.parse(await readJsonBody(req));
     const result = await weddingWorkspaceService.cancelVendorBooking(id, vbId, reason, session.user.id ?? null);
     return NextResponse.json({ success: true, data: result });
   } catch (err) {

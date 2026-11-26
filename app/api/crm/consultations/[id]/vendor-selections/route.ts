@@ -6,6 +6,7 @@ import { handleApiError } from '@/lib/errors';
 import { consultationVendorSelectionService } from '@/services/consultationVendorSelection.service';
 import { afterVendorLinkChange } from '@/lib/vendorEnquiry/hook';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const selectionSchema = z.object({
   serviceKey: z.string().trim().min(1).max(100),
@@ -37,7 +38,7 @@ async function handlePUT(req: NextRequest, { params }: RouteContext) {
   }
   try {
     const { id } = await params;
-    const input = selectionSchema.parse(await req.json());
+    const input = selectionSchema.parse(await readJsonBody(req));
     const selection = await consultationVendorSelectionService.select({ consultationId: id, ...input });
     // The chosen vendor is asked for availability (04-vendor-os.md §9) — best-effort, never fails the choice.
     await afterVendorLinkChange('CONSULTATION', id, null);
@@ -53,7 +54,7 @@ async function handleDELETE(req: NextRequest, { params }: RouteContext) {
   }
   try {
     const { id } = await params;
-    const { serviceKey } = serviceKeySchema.parse(await req.json());
+    const { serviceKey } = serviceKeySchema.parse(await readJsonBody(req));
     await consultationVendorSelectionService.remove(id, serviceKey);
     await afterVendorLinkChange('CONSULTATION', id, null);
     return NextResponse.json({ success: true });
