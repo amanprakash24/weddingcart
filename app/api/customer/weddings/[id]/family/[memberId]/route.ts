@@ -6,6 +6,7 @@ import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 import { familyService } from '@/services/family.service';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // PATCH / DELETE /api/customer/weddings/[id]/family/[memberId] — the couple changes what a family member can do, or removes them
 // (their access ends at once). The couple only.
@@ -15,7 +16,7 @@ async function handlePATCH(req: NextRequest, { params }: Ctx) {
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const { role } = z.object({ role: z.string().max(20) }).parse(await req.json());
+    const { role } = z.object({ role: z.string().max(20) }).parse(await readJsonBody(req));
     const { id, memberId } = await params;
     const userId = session.user.id;
     return NextResponse.json({ success: true, data: await asCoupleWedding(id, userId, () => familyService.changeRole(id, memberId, role, userId), 'family') });

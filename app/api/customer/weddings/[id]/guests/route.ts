@@ -7,6 +7,7 @@ import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 import { can, guestForViewer } from '@/lib/customer/familyAccess';
 import { guestInputSchema } from '@/lib/guest/guestInput';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // The shared guest rules (lib/guest/guestInput.ts): optional details may be null.
 const schema = guestInputSchema;
@@ -25,7 +26,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const body = schema.parse(await req.json());
+    const body = schema.parse(await readJsonBody(req));
     const { id } = await params;
     const userId = session.user.id;
     const created = await asCoupleWedding(id, userId, async () => {

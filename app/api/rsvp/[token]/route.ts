@@ -4,6 +4,7 @@ import { GuestRsvpStatus } from '@/generated/prisma/enums';
 import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
 import { rsvpScoped } from '@/lib/guest/rsvpEntry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const schema = z.object({
   rsvpStatus: z.nativeEnum(GuestRsvpStatus),
@@ -19,7 +20,7 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ toke
 
 async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
-    const body = schema.parse(await req.json());
+    const body = schema.parse(await readJsonBody(req));
     return NextResponse.json({ success: true, data: await guestService.submitPublic((await params).token, body) });
   } catch (error) { return handleApiError(error); }
 }

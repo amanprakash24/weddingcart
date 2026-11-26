@@ -6,6 +6,7 @@ import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 import { coupleFunctionBody } from '@/lib/wedding/coupleFunctionSchema';
 import { coupleFunctionsService } from '@/services/coupleFunctions.service';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // PATCH / DELETE /api/customer/weddings/[id]/functions/[functionId]: the couple changes or removes one of THEIR OWN functions.
 // Editing a function set by the planner or the venue is a request: nothing moves until staff confirm it.
@@ -15,7 +16,7 @@ async function handlePATCH(req: NextRequest, { params }: Ctx) {
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const body = coupleFunctionBody.parse(await req.json());
+    const body = coupleFunctionBody.parse(await readJsonBody(req));
     const { id, functionId } = await params;
     const userId = session.user.id;
     const updated = await asCoupleWedding(id, userId, () => coupleFunctionsService.update(id, functionId, body, userId), 'plan');

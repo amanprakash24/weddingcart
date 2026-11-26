@@ -4,6 +4,7 @@ import { eventService } from '@/services/event.service';
 import { handleApiError } from '@/lib/errors';
 import { isRequestRateLimited, recordRequest } from '@/lib/auth/rateLimit';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Public, unauthenticated POST that creates a real Razorpay payment link on
 // every request (external API cost, not just a local write) — unthrottled,
@@ -48,7 +49,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
     await recordRequest(rateLimitId);
 
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const parsed = schema.parse(body);
 
     // paymentProvider/paymentReference are deliberately read from the raw

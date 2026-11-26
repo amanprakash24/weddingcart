@@ -5,9 +5,9 @@ import { platformScoped } from '@/lib/ownership/entry';
 
 async function handlePOST(req: Request) {
   try {
-    const { phone, code } = await req.json();
+    const { phone, code } = (await req.json().catch(() => null)) ?? {};
 
-    if (!phone || !code) {
+    if (typeof phone !== 'string' || typeof code !== 'string' || !phone || !code) {
       return NextResponse.json({ success: false, message: 'Phone and code are required' }, { status: 400 });
     }
 

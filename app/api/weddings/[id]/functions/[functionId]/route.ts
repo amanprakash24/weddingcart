@@ -6,6 +6,7 @@ import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { FUNCTION_TYPES } from '@/lib/wedding/functions';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Only the fields that are sent change; send null to clear the optional ones.
 const patchSchema = z
@@ -30,7 +31,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id, functionId } = await params;
   try {
-    const patch = patchSchema.parse(await req.json());
+    const patch = patchSchema.parse(await readJsonBody(req));
     const updated = await weddingWorkspaceService.updateFunction(id, functionId, patch, session.user.id ?? null);
     return NextResponse.json({ success: true, data: updated });
   } catch (err) {

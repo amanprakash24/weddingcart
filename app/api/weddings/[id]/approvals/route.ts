@@ -7,6 +7,7 @@ import { approvalService } from '@/services/approval.service';
 import { handleApiError } from '@/lib/errors';
 import { ApprovalSubjectType } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Approvals are everyday coordination with the couple, open to the whole team. An approval's amount is wedding money: it is left
 // out for anyone without access to this wedding's money, and only someone with full access may ask the couple to approve one
@@ -30,7 +31,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     if (!Object.values(ApprovalSubjectType).includes(body.subjectType) || typeof body.title !== 'string' || !body.title.trim()) {
       return NextResponse.json({ success: false, error: 'A valid type and title are required' }, { status: 400 });
     }

@@ -7,6 +7,7 @@ import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
 import { LOST_REASONS } from '@/lib/crm/pipeline';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const VALID_STAGES = [
   'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED',
@@ -35,7 +36,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ sou
   }
 
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     if (body.toStage === 'LOST' && !LOST_REASONS.includes(body.reason as (typeof LOST_REASONS)[number])) {
       return NextResponse.json(
         { success: false, error: `reason must be one of: ${LOST_REASONS.join(', ')}` },

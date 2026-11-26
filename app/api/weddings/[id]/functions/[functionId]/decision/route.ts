@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { functionDecisionBody } from '@/lib/wedding/coupleFunctionSchema';
 import { coupleFunctionsService } from '@/services/coupleFunctions.service';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // POST /api/weddings/[id]/functions/[functionId]/decision: Shaadi Shopping's team confirms a couple's function at the booked venue, or
 // says it is not possible (with the reason the couple reads). Changes nothing about the venue booking, holds or price.
@@ -12,7 +13,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const body = functionDecisionBody.parse(await req.json());
+    const body = functionDecisionBody.parse(await readJsonBody(req));
     const { id, functionId } = await params;
     return NextResponse.json({ success: true, data: await coupleFunctionsService.decide(id, functionId, body, session.user.id ?? null) });
   } catch (err) {

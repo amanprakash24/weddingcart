@@ -8,6 +8,7 @@ import { quotationService } from '@/services/quotation.service';
 import { afterVendorLinkChange, sourceOfQuotation } from '@/lib/vendorEnquiry/hook';
 import { createQuotationSchema } from './schema';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Staff-only in V1 (docs/wedding-os/08-quotation.md §10): quotations carry pricing, so there is
 // no public route and no customer login/link at this stage.
@@ -40,7 +41,7 @@ async function handlePOST(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
   try {
-    const { sourceType, sourceId, ...input } = createQuotationSchema.parse(await req.json());
+    const { sourceType, sourceId, ...input } = createQuotationSchema.parse(await readJsonBody(req));
     const denied = await moneyDenied({ source: { sourceType, id: sourceId } }, 'full');
     if (denied) return denied;
     const created = await quotationService.create(sourceType, sourceId, input, session.user.id ?? null);

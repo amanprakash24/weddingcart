@@ -5,6 +5,7 @@ import { invoiceWorkflowService } from '@/services/invoiceWorkflow.service';
 import { MANUAL_PAYMENT_METHODS } from '@/lib/invoice/lifecycle';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   amount: z.number().int().positive(),
@@ -20,7 +21,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   if (guard instanceof NextResponse) return guard;
   const { session } = guard;
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const result = await invoiceWorkflowService.recordManualPayment(
       id,
       invoiceId,

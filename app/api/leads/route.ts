@@ -25,8 +25,8 @@ async function handleGET() {
 
 async function handlePOST(req: NextRequest) {
   try {
-    const { phone, whatsapp } = await req.json();
-    if (!phone || phone.replace(/\D/g, '').length < 10) {
+    const { phone, whatsapp } = (await req.json().catch(() => null)) ?? {};
+    if (typeof phone !== 'string' || phone.replace(/\D/g, '').length < 10) {
       return NextResponse.json({ success: false, error: 'Valid phone number required' }, { status: 400 });
     }
     await leadService.create({ phone, whatsapp: !!whatsapp });

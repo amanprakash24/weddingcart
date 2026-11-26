@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/errors';
 import type { InvoiceWithDetails } from '@/repositories/invoice.repository';
 import type { Prisma, InvoiceStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 function toResponseShape(invoice: InvoiceWithDetails) {
   const { weddingId: _weddingId, payments: _payments, paymentLinks: _paymentLinks, ...rest } = invoice;
@@ -43,7 +44,7 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
   if (denied) return denied;
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
 
     const data: Prisma.InvoiceUpdateInput = {};
     if (body.clientName !== undefined) data.clientName = body.clientName;

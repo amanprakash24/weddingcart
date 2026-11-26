@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/errors';
 import type { Blog } from '@/generated/prisma/client';
 import { blogCoverImage } from '@/lib/images/workingImage';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Admin/public callers still expect the legacy Mongo shape: lowercase
 // 'draft'/'published' (Prisma's BlogStatus enum is uppercase) and an `_id`
@@ -51,7 +52,7 @@ async function handlePOST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req);
 
     if (!body.title || !body.slug) {
       return NextResponse.json({ error: 'Title and slug are required' }, { status: 400 });
