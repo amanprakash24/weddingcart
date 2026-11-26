@@ -25,6 +25,7 @@ const CHANNEL_LABEL: Record<string, string> = { WHATSAPP: 'WhatsApp', PHONE: 'ph
 
 import type { QuotationPrefillLine } from './quotationPrefill';
 import ConfirmationsBox from './ConfirmationsBox';
+import { SS_PLANNING, isShaadiShoppingBusiness, planningScope } from '@/lib/planning/ssPlanning';
 export type { QuotationPrefillLine } from './quotationPrefill';
 
 interface DraftLine {
@@ -305,6 +306,18 @@ const QuotationPanel = forwardRef<
                 <span role="cell" className="text-right tabular-nums text-gray-900">{rupees(i.lineTotal)}</span>
               </div>
             ))}
+            {/* Shaadi Shopping's own planning & coordination — what the couple sees on their link and invoice, included, never a
+                price and never in the totals (lib/planning/ssPlanning.ts). */}
+            {isShaadiShoppingBusiness(current.businessId) && (
+              <div role="row" className="grid grid-cols-[1fr_auto] gap-x-3 border-b border-gray-100 bg-violet-50/40 px-5 py-3 text-sm md:grid-cols-[1fr_150px_120px]">
+                <span role="cell" className="font-medium text-gray-900">
+                  {SS_PLANNING.service}
+                  <span className="block text-xs font-normal text-gray-500">{SS_PLANNING.provider} · {planningScope(current.items.map((i) => i.functionLabel ?? ''))}</span>
+                </span>
+                <span role="cell" className="hidden text-right text-gray-500 md:block">—</span>
+                <span role="cell" className="text-right font-semibold text-emerald-700">{SS_PLANNING.included}</span>
+              </div>
+            )}
           </div>
 
           <div className="grid justify-items-end gap-1.5 px-5 pb-1 pt-4 text-sm tabular-nums text-gray-700">

@@ -7,6 +7,7 @@ import { vendorService } from '@/services/vendor.service';
 import { toLegacyVendors } from '@/lib/serializers/vendor';
 import { JsonLd } from '@/components/JsonLd';
 import VendorCard from '@/components/VendorCard';
+import SsPlanningFeature from '@/components/planning/SsPlanningFeature';
 import RelatedGuides, { type RelatedGuide } from '@/components/RelatedGuides';
 import { BIHAR_CITIES } from '@/data/biharCities';
 import type { Vendor } from '@/types';
@@ -563,7 +564,9 @@ export default async function CityCategoryPage({
 
         {/* Vendor Grid */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          {vendors.length === 0 ? (
+          {catSlug === 'planning' && <SsPlanningFeature city={city.name} />}
+          {/* On planning, our own card above is the answer — no "no vendors yet" under it */}
+          {vendors.length === 0 && catSlug === 'planning' ? null : vendors.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-gray-600 text-lg mb-2">No vendors listed yet in {city.name}</p>
               <p className="text-gray-400 text-sm mb-6">We are onboarding vendors regularly. Contact us to be listed or for recommendations.</p>

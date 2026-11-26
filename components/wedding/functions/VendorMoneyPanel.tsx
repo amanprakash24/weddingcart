@@ -32,6 +32,20 @@ export default function VendorMoneyPanel({ weddingId, refreshKey = 0 }: { weddin
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [showEnded, setShowEnded] = useState(false);
+  const [recordFor, setRecordFor] = useState<string | null>(null); // a work whose payment form a vendor card asked to open
+
+  useEffect(() => {
+    const onRecord = (e: Event) => {
+      const workId = (e as CustomEvent<string>).detail;
+      const group = data?.vendors.find((g) => g.works.some((w) => w.id === workId));
+      if (!group) return;
+      setOpen(group.vendorId);
+      setRecordFor(workId);
+      setTimeout(() => document.getElementById(`work-${workId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+    };
+    window.addEventListener('vendor-money:record', onRecord);
+    return () => window.removeEventListener('vendor-money:record', onRecord);
+  }, [data]);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/weddings/${weddingId}/vendor-money`, { cache: 'no-store' });
@@ -127,7 +141,7 @@ export default function VendorMoneyPanel({ weddingId, refreshKey = 0 }: { weddin
         return (
           <div key={g.vendorId} className="mt-4 space-y-3 rounded-xl border border-gray-200 p-3">
             <h3 className="font-semibold text-gray-900">{g.vendorName} — each work</h3>
-            {shown.map((w) => <WorkRow key={w.id} weddingId={weddingId} work={w} showCommission={commission} onChanged={load} />)}
+            {shown.map((w) => <WorkRow key={w.id + (recordFor === w.id ? ':record' : '')} weddingId={weddingId} work={w} showCommission={commission} onChanged={load} startRecording={recordFor === w.id} />)}
             {ended.length > 0 && !showEnded && (
               <button type="button" onClick={() => setShowEnded(true)} className="min-h-10 text-sm font-semibold text-gray-600 underline">
                 Show {ended.length} cancelled or declined {ended.length === 1 ? 'work' : 'works'} (₹{ended.reduce((s, w) => s + w.agreedPrice, 0).toLocaleString('en-IN')} agreed, not owed)
@@ -150,8 +164,10 @@ function Stat({ label, value, strong }: { label: string; value: string; strong?:
   );
 }
 
-function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId: string; work: WorkView; showCommission: boolean; onChanged: () => Promise<void> }) {
-  const [form, setForm] = useState<{ amount: string; paidOn: string; method: string; reference: string; note: string; finalOverrideReason: string } | null>(null);
+function WorkRow({ weddingId, work: w, showCommission, onChanged, startRecording = false }: { weddingId: string; work: WorkView; showCommission: boolean; onChanged: () => Promise<void>; startRecording?: boolean }) {
+  const [form, setForm] = useState<{ amount: string; paidOn: string; method: string; reference: string; note: string; finalOverrideReason: string } | null>(
+    startRecording && w.money.owed && (w.money.remaining ?? 1) > 0 ? { amount: '', paidOn: today(), method: 'UPI', reference: '', note: '', finalOverrideReason: '' } : null
+  );
   const [adjusting, setAdjusting] = useState<{ kind: string; amount: string; clientPriceDelta: string; reason: string } | null>(null);
   const [voiding, setVoiding] = useState<{ id: string; reason: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -195,7 +211,7 @@ function WorkRow({ weddingId, work: w, showCommission, onChanged }: { weddingId:
   };
 
   return (
-    <div className="rounded-lg border border-gray-100 p-3">
+    <div id={`work-${w.id}`} className="scroll-mt-24 rounded-lg border border-gray-100 p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-gray-900">{w.functionName} <span className="font-normal text-gray-500">· {new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(w.functionDate))}</span></p>

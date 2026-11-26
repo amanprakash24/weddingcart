@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { eventService } from '@/services/event.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
@@ -11,7 +12,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
 
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const ticket = await eventService.checkIn(id, body.ticketId);
     return NextResponse.json({ success: true, data: { id, ticket } });
   } catch (error) {

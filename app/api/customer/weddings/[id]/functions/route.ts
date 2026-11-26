@@ -6,6 +6,7 @@ import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleWedding } from '@/lib/customer/coupleEntry';
 import { coupleFunctionBody } from '@/lib/wedding/coupleFunctionSchema';
 import { coupleFunctionsService } from '@/services/coupleFunctions.service';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // POST /api/customer/weddings/[id]/functions: the couple adds one of their own functions (My Wedding). At the booked venue it waits
 // for staff to confirm (services/coupleFunctions.service.ts). Only the couple of this wedding; anyone else gets "not found".
@@ -13,7 +14,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const body = coupleFunctionBody.parse(await req.json());
+    const body = coupleFunctionBody.parse(await readJsonBody(req));
     const { id } = await params;
     const userId = session.user.id;
     const created = await asCoupleWedding(id, userId, () => coupleFunctionsService.add(id, body, userId), 'plan');

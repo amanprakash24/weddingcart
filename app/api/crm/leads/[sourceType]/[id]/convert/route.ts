@@ -8,6 +8,7 @@ import { convertLeadToWedding } from '@/services/weddingConversion.service';
 import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   weddingDate: z.string().datetime(),
@@ -35,7 +36,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ sour
   if (denied) return denied;
 
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     // Choosing the coordinator decides who sees the wedding's money — founder only (lib/auth/moneyAccess.ts).
     if (body.coordinatorId && !canAssignWork({ userId: session.user.id, roles: session.user.roles })) {
       return NextResponse.json({ success: false, error: 'Only the founder can choose the coordinator' }, { status: 403 });

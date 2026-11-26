@@ -39,6 +39,7 @@ export interface WorkspaceVendorBooking {
   vendorCategory: string;
   status: VendorBookingStatus;
   agreedPrice: number;
+  workOrderNumber: string | null; // an issued work order fixes the price (26 Nov 2026)
   declineReason: string | null;
   respondedAt: string | null;
   onTimeService: boolean | null;

@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   brideName: z.string().trim().min(1).optional(),
@@ -23,7 +24,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const couple = await weddingWorkspaceService.upsertCouple(id, body);
     return NextResponse.json({ success: true, data: couple });
   } catch (err) {

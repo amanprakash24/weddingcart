@@ -5,13 +5,14 @@ import { approvalService } from '@/services/approval.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { asCoupleApproval } from '@/lib/customer/coupleEntry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ approvalId: string }> }) {
   const session = await requireRole([Role.CUSTOMER]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
     const { approvalId } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     if (body.decision !== 'APPROVED' && body.decision !== 'CHANGES_REQUESTED') {
       return NextResponse.json({ success: false, error: 'Invalid approval decision' }, { status: 400 });
     }

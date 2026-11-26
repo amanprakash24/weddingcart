@@ -6,6 +6,7 @@ import { handleApiError } from '@/lib/errors';
 import { isSourceType } from '@/lib/crm/subject';
 import { STAFF_CHANNELS, ANSWER_STATUSES, type AnswerInput, type StaffChannel } from '@/lib/vendorEnquiry/rules';
 import type { SourceType } from '@/services/leadInbox.service';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 type Session = { user: { id?: string | null; roles?: string[] } } | null;
 
@@ -52,7 +53,7 @@ export function makeStaffAnswer(deps: StaffDeps) {
     const session = await deps.requireAdmin();
     if (!session) return unauthorized();
     try {
-      const { channel, ...input } = staffAnswerSchema.parse(await req.json());
+      const { channel, ...input } = staffAnswerSchema.parse(await readJsonBody(req));
       const status = await deps.answerAsStaff((await params).id, input, channel, session.user.id ?? null);
       return NextResponse.json({ success: true, data: { status } }, { headers: NO_STORE });
     } catch (err) {
@@ -67,7 +68,7 @@ export function makeVendorAnswer(deps: VendorDeps) {
     const gate = await deps.vendor();
     if ('refused' in gate) return gate.refused;
     try {
-      const input = answerSchema.parse(await req.json());
+      const input = answerSchema.parse(await readJsonBody(req));
       return NextResponse.json({ success: true, data: await deps.answerAsVendor({ vendorId: gate.who.vendorId, userId: gate.who.userId }, (await params).id, input) }, { headers: NO_STORE });
     } catch (err) {
       return handleApiError(err);

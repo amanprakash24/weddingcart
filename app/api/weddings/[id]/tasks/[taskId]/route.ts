@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // Any of these may be sent; only what is sent changes. `status` alone keeps working exactly as before (Done / Cancelled), and now also
 // PENDING / IN_PROGRESS to reopen a task. `dueAt`, `assignedToId` and `description` may be null to clear them.
@@ -28,7 +29,7 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id, taskId } = await params;
   try {
-    const body = bodySchema.parse(await req.json());
+    const body = bodySchema.parse(await readJsonBody(req));
     const task = await weddingWorkspaceService.updateTask(id, taskId, {
       ...body,
       dueAt: body.dueAt === undefined ? undefined : body.dueAt === null ? null : new Date(body.dueAt),

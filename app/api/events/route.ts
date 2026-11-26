@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { eventService } from '@/services/event.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 async function handleGET() {
   const events = await eventService.listPublished();
@@ -15,7 +16,7 @@ async function handlePOST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const event = await eventService.create({
       slug: body.slug,
       name: body.name,

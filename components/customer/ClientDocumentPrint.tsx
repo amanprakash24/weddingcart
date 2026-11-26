@@ -1,6 +1,7 @@
 import { Label, Letterhead, PrintPage, type ReceiptIssuer } from '@/components/proposal/PaymentReceipt';
 import { rupeesInWords } from '@/lib/payments/amountInWords';
 import type { ClientDocumentLine } from '@/services/clientPortal.service';
+import { SS_PLANNING } from '@/lib/planning/ssPlanning';
 
 // The couple's printable invoice or accepted quotation on My Wedding (22 Nov 2026). Same A4 letterhead as the payment receipt.
 // Only rendered while it is being printed (everything else on the page is print:hidden then).
@@ -74,6 +75,18 @@ export default function ClientDocumentPrint({ doc, issuer, coupleName, weddingNu
               <td className="py-2 pr-1 text-right">{rupees(l.amount)}</td>
             </tr>
           ))}
+          {/* Shaadi Shopping's own planning & coordination — always included, never a price, never in the totals (lib/planning/ssPlanning.ts). */}
+          {issuer.isPlatform && (
+            <tr className="border-b border-[#F0E6D6] align-top">
+              <td className="py-2 pl-1 pr-3">{doc.lines.length + 1}</td>
+              <td className="py-2 pr-3">
+                {SS_PLANNING.service} — {SS_PLANNING.provider}
+              </td>
+              <td className="py-2 pr-3 text-right">—</td>
+              {showUnit && <td className="py-2 pr-3 text-right"></td>}
+              <td className="py-2 pr-1 text-right italic">{SS_PLANNING.included}</td>
+            </tr>
+          )}
         </tbody>
       </table>
 

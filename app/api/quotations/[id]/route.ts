@@ -7,6 +7,7 @@ import { quotationService } from '@/services/quotation.service';
 import { afterVendorLinkChange, sourceOfQuotation } from '@/lib/vendorEnquiry/hook';
 import { updateQuotationSchema } from '../schema';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -29,7 +30,7 @@ async function handlePATCH(req: NextRequest, { params }: Params) {
   if (denied) return denied;
   if (!(await requireRole(ADMIN_ROLES))) return unauthorized();
   try {
-    const input = updateQuotationSchema.parse(await req.json());
+    const input = updateQuotationSchema.parse(await readJsonBody(req));
     const updated = await quotationService.update((await params).id, input);
     // Vendors linked on the quote are asked for availability (04-vendor-os.md §9) — best-effort, never fails the save.
     const source = sourceOfQuotation(updated);
