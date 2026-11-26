@@ -5,6 +5,7 @@ import { guestService } from '@/services/guest.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
 import { guestInputSchema } from '@/lib/guest/guestInput';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // The shared guest rules (lib/guest/guestInput.ts): optional details may be null.
 const guestSchema = guestInputSchema;
@@ -19,7 +20,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await requireRole(ADMIN_ROLES);
   if (!session) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const body = guestSchema.parse(await req.json());
+    const body = guestSchema.parse(await readJsonBody(req));
     return NextResponse.json({ success: true, data: await guestService.create((await params).id, body) }, { status: 201 });
   } catch (error) { return handleApiError(error); }
 }

@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/errors';
 import type { VendorApplicationWithCategory } from '@/repositories/vendorApplication.repository';
 import type { ApplicationStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 function toResponseShape(app: VendorApplicationWithCategory) {
   const { category, ...rest } = app;
@@ -39,7 +40,7 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
   }
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
     const status = toApplicationStatus(body.status);
     if (!status) {
       return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });

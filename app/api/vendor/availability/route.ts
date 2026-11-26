@@ -6,6 +6,7 @@ import { AvailabilityStatus } from '@/generated/prisma/enums';
 import { venuePortalService } from '@/services/venuePortal.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const schema = z.object({
   dates: z
@@ -23,7 +24,7 @@ async function handlePATCH(req: NextRequest) {
   const session = await requireRole([Role.VENDOR]);
   if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   try {
-    const body = schema.parse(await req.json());
+    const body = schema.parse(await readJsonBody(req));
     return NextResponse.json({ success: true, data: await venuePortalService.setAvailability(session.user.id, body.dates) });
   } catch (error) {
     return handleApiError(error);

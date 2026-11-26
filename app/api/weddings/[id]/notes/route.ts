@@ -5,6 +5,7 @@ import { ADMIN_ROLES } from '@/lib/auth/roles';
 import { weddingWorkspaceService } from '@/services/weddingWorkspace.service';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const bodySchema = z.object({
   detail: z.string().trim().min(1, 'Note text is required'),
@@ -18,7 +19,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   try {
-    const { detail } = bodySchema.parse(await req.json());
+    const { detail } = bodySchema.parse(await readJsonBody(req));
     const note = await weddingWorkspaceService.addNote(id, { detail, performedById: session.user.id ?? null });
     return NextResponse.json({ success: true, data: note }, { status: 201 });
   } catch (err) {

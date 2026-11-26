@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/adminAuth';
 import { withoutOwnerContact } from '@/lib/vendor/publicVendor';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 // /vendors/[id] is ISR (revalidate = 3600) and prerendered at build. When a vendor is unpublished, the
 // hourly refresh ends in notFound() and the old page kept being served until the next deploy
@@ -65,7 +66,7 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
 
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJsonBody(req);
 
     const {
       name,

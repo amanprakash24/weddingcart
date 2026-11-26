@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/errors';
 import type { VendorStatus } from '@/generated/prisma/client';
 import { platformScoped } from '@/lib/ownership/entry';
 import { withoutOwnerContact } from '@/lib/vendor/publicVendor';
+import { readJsonBody } from '@/lib/readJsonBody';
 
 const VALID_STATUSES: VendorStatus[] = ['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED'];
 
@@ -83,7 +84,7 @@ async function handlePOST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req);
 
     // No `slug` here, deliberately — it's always derived server-side from
     // name+city (vendorService.create), never accepted from the client.

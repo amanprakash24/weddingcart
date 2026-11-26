@@ -3,6 +3,8 @@ import { categoryService } from '@/services/category.service';
 import { requireAdmin } from '@/lib/adminAuth';
 import { handleApiError } from '@/lib/errors';
 import { platformScoped } from '@/lib/ownership/entry';
+import { readJsonBody } from '@/lib/readJsonBody';
+import { updateCategoryBody } from '@/lib/categories/categorySchema';
 
 async function handleGET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -28,7 +30,7 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
 
   try {
     const { id } = await params;
-    const body = await req.json();
+    const body = updateCategoryBody.parse(await readJsonBody(req));
 
     const category = await categoryService.update(id, {
       name: body.name,
